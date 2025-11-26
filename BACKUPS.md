@@ -130,7 +130,14 @@ chmod +x ~/backup-restic-local.sh
 ```bash
 cat > ~/.backup-restic-cloud-config << 'EOF'
 # Paths to backup to cloud (whitelist)
-BACKUP_PATHS=("/mnt/t7/docker/immich_postgres" "/mnt/t7/docker/gitea" "/mnt/t7/docker/copyparty_config")
+BACKUP_PATHS=(
+  "/mnt/t7/docker/immich_postgres"
+  "/mnt/t7/docker/gitea"
+  "/mnt/t7/docker/copyparty_config"
+  "/home/$USER/nas-docker/.env"
+  "/home/$USER/nas-docker/docker-compose.yml"
+  "/home/$USER/nas-docker/Caddyfile"
+)
 EOF
 ```
 
