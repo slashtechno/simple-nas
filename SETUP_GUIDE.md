@@ -402,8 +402,6 @@ your-machine.user-xxxxx.ts.net {
 }
 ```
 
-Replace `your-machine.user-xxxxx.ts.net` with your actual Tailscale domain from Part 3.3.
-
 ---
 
 ## Part 5: Start Services
