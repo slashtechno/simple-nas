@@ -127,11 +127,14 @@ sudo tailscale up
 
 Follow the login link.
 
-### 3.2 Enable Funnel
+### 3.2 Enable Funnel (After Caddy Starts)
+
+**Important:** Enable Funnel AFTER starting Caddy in Part 5, not now. Skip this step for now and return to it after Part 5.1.
 
 **Funnel only supports ports 443, 8443, 10000.** We use Caddy on port 443 to route all services.
 
 ```bash
+# Run this AFTER docker compose up in Part 5.1
 sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
 ```
 
@@ -373,7 +376,7 @@ services:
 nano Caddyfile
 ```
 
-**Note:** The domain will be read from your `.env` file. Use the literal domain for now:
+Replace `your-machine.user-xxxxx.ts.net` with your actual Tailscale domain from Part 3.3:
 
 ```caddyfile
 {
@@ -407,6 +410,19 @@ Replace `your-machine.user-xxxxx.ts.net` with your actual Tailscale domain from 
 
 ### 5.1 Start All Services
 
+**First, make sure port 443 is free:**
+
+```bash
+# Check what's using port 443
+sudo lsof -i :443
+
+# If something is there, stop it:
+sudo systemctl stop nginx     # or apache2, or whatever is running
+sudo systemctl disable nginx  # prevent auto-start
+```
+
+**Now start Docker services:**
+
 ```bash
 cd ~/nas-docker
 docker compose up -d
@@ -417,7 +433,20 @@ Wait 60 seconds for Postgres to initialize:
 docker compose logs immich_postgres | grep "ready to accept connections"
 ```
 
-### 5.2 Check Status
+### 5.2 Enable Tailscale Funnel
+
+Now that Caddy is running on port 443, enable Funnel:
+
+```bash
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
+```
+
+Verify:
+```bash
+tailscale funnel status
+```
+
+### 5.3 Check Status
 
 ```bash
 docker compose ps
@@ -541,6 +570,25 @@ du -sh /mnt/t7/*
 cd ~/nas-docker
 docker compose logs
 docker compose ps
+```
+
+**Port 443 already in use:**
+```bash
+# Find what's using it
+sudo lsof -i :443
+
+# Stop conflicting service
+sudo systemctl stop nginx  # or apache2
+sudo systemctl disable nginx
+
+# Or disable Funnel temporarily
+sudo tailscale funnel --bg --https=443 off
+
+# Restart Caddy
+docker compose restart caddy
+
+# Re-enable Funnel
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
 ```
 
 **Can't reach services:**
