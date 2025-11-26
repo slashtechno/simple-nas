@@ -189,9 +189,9 @@ GITEA_DATA=/mnt/t7/docker/gitea
 # Tailscale Domain (from Part 3.3)
 TAILSCALE_DOMAIN=your-machine.user-xxxxx.ts.net
 
-# Copyparty Authentication (optional - leave blank for no auth)
-COPYPARTY_USER=
-COPYPARTY_PASS=
+# Copyparty Authentication
+COPYPARTY_USER=yourusername
+COPYPARTY_PASS=yourpassword
 
 # Gitea Configuration
 GITEA__server__ROOT_URL=https://${TAILSCALE_DOMAIN}/git/
@@ -321,6 +321,7 @@ services:
   immich_redis:
     image: redis:7.2-alpine
     container_name: immich_redis
+    hostname: redis
     restart: unless-stopped
     networks:
       - services
@@ -334,13 +335,8 @@ services:
       - ${COPYPARTY_CONFIG}:/cfg:rw
     environment:
       TZ: ${TIMEZONE}
-    command:
-      - -v
-      - /files::r:rw,ed,dd:c,g
-      - -e2dsa
-      - -e2ts
-      - ${COPYPARTY_USER:+-a}
-      - ${COPYPARTY_USER:+${COPYPARTY_USER}:${COPYPARTY_PASS}}
+    entrypoint: []
+    command: python3 -m copyparty -v /files:A:c,g -e2dsa -e2ts -a ${COPYPARTY_USER}:${COPYPARTY_PASS}
     networks:
       - services
     env_file:
@@ -370,37 +366,50 @@ services:
       - .env
 ```
 
-### 4.4 Create Caddyfile
+### 4.4 Copyparty-only / Funnel-ready setup
+
+If you only want to expose Copyparty via Tailscale Funnel (no reverse proxy), configure your
+compose so Copyparty binds to the loopback interface. This keeps the file server reachable only
+from the host and lets Tailscale Funnel forward public HTTPS to the local port.
+
+Example `copyparty` excerpt for `docker-compose.yml`:
+
+```yaml
+  copyparty:
+    image: copyparty/ac
+    container_name: copyparty
+    restart: unless-stopped
+    volumes:
+      - ${FILES_DIR}:/files:rw
+      - ${COPYPARTY_CONFIG}:/cfg:rw
+    environment:
+      TZ: ${TIMEZONE}
+    entrypoint: []
+    command: python3 -m copyparty -v /files:A:c,g -e2dsa -e2ts -a ${COPYPARTY_USER}:${COPYPARTY_PASS}
+    ports:
+      - "127.0.0.1:3923:3923"
+    networks:
+      - services
+    env_file:
+      - .env
+```
+
+After editing `docker-compose.yml`, (re)start Copyparty:
 
 ```bash
-nano Caddyfile
+cd ~/nas-docker
+docker compose up -d copyparty
 ```
 
-Replace `your-machine.user-xxxxx.ts.net` with your actual Tailscale domain from Part 3.3:
+Verify locally:
 
-```caddyfile
-{
-  auto_https off
-}
-
-your-machine.user-xxxxx.ts.net {
-  handle /immich/* {
-    reverse_proxy immich_server:3001
-  }
-
-  handle /copyparty/* {
-    reverse_proxy copyparty:3923
-  }
-
-  handle /git/* {
-    reverse_proxy gitea:3000
-  }
-
-  handle / {
-    respond "NAS Ready"
-  }
-}
+```bash
+curl -I http://127.0.0.1:3923
 ```
+
+This approach avoids running a reverse proxy on the host. If you later decide to host
+multiple services under the same public domain, consider using per-application subdomains
+and a reverse proxy at that time.
 
 ---
 
@@ -431,17 +440,25 @@ Wait 60 seconds for Postgres to initialize:
 docker compose logs immich_postgres | grep "ready to accept connections"
 ```
 
-### 5.2 Enable Tailscale Funnel
 
-Now that Caddy is running on port 443, enable Funnel:
+### 5.2 Enable Tailscale Funnel (Copyparty-only)
+
+Now that Copyparty is running and bound to `127.0.0.1:3923`, enable Funnel to forward public HTTPS to it:
 
 ```bash
-sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:3923
 ```
 
 Verify:
+
 ```bash
 tailscale funnel status
+```
+
+The funnel will print the public URL and the proxy target (e.g. `http://127.0.0.1:3923`). To disable the proxy:
+
+```bash
+sudo tailscale funnel --https=443 off
 ```
 
 ### 5.3 Check Status
@@ -463,29 +480,13 @@ curl http://localhost/git
 
 ## Part 6: Initial Configuration
 
-### Copyparty Authentication (Optional)
+### Copyparty Authentication (Required)
 
-If you want to require login for uploading/editing files, add credentials to `.env`:
-
-```bash
-cd ~/nas-docker
-nano .env
-```
-
-Set these values:
-```bash
-COPYPARTY_USER=your-username
-COPYPARTY_PASS=your-password
-```
-
-Then restart Copyparty:
-```bash
-docker compose restart copyparty
-```
+Authentication is always required for all operations, including reading files. Only authenticated users can access the file server. Set the username and password in the .env file as COPYPARTY_USER and COPYPARTY_PASS.
 
 **How it works:**
-- Without authentication: Anyone can read and write
-- With authentication: Anyone can read, only logged-in users can write/edit/delete
+- Anonymous users cannot access anything
+- Authenticated users have full access: read, write, edit, delete, etc.
 
 ### Initial Service Setup
 
