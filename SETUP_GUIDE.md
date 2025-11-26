@@ -127,11 +127,11 @@ sudo tailscale up
 
 Follow the login link.
 
-### 3.2 Enable Funnel (After Caddy Starts)
+### 3.2 Enable Funnel (Copyparty-only)
 
-**Important:** Enable Funnel AFTER starting Caddy in Part 5, not now. Skip this step for now and return to it after Part 5.1.
+**Important:** Enable Funnel AFTER starting Copyparty, not now. Skip this step for now and return to it after Part 5.1.
 
-**Funnel only supports ports 443, 8443, 10000.** We use Caddy on port 443 to route all services.
+**Funnel only supports ports 443, 8443, 10000.** We expose Copyparty on port 443 for Funnel.
 
 ```bash
 # Run this AFTER docker compose up in Part 5.1
@@ -190,8 +190,8 @@ GITEA_DATA=/mnt/t7/docker/gitea
 TAILSCALE_DOMAIN=your-machine.user-xxxxx.ts.net
 
 # Copyparty Authentication
-COPYPARTY_USER=yourusername
-COPYPARTY_PASS=yourpassword
+COPYPARTY_USER=yourusername  # Username for account creation and permissions; login uses password only (UI has password field)
+COPYPARTY_PASS=yourpassword  # For security, consider hashing with: python3 -c "import argon2; print(argon2.hash_password(b'yourpassword').decode())" and use --ah-alg argon2 in command
 
 # Gitea Configuration
 GITEA__server__ROOT_URL=https://${TAILSCALE_DOMAIN}/git/
@@ -215,34 +215,11 @@ nano docker-compose.yml
 ```
 
 ```yaml
-version: "3.8"
-
 networks:
   services:
     driver: bridge
 
-volumes:
-  caddy_data:
-  caddy_config:
-
 services:
-  caddy:
-    image: caddy:latest
-    container_name: caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    networks:
-      - services
-    depends_on:
-      - immich_server
-      - copyparty
-      - gitea
 
   immich_server:
     image: ghcr.io/immich-app/immich-server:release
@@ -258,6 +235,8 @@ services:
       DB_PASSWORD: ${IMMICH_DB_PASSWORD}
       DB_DATABASE_NAME: immich
       TZ: ${TIMEZONE}
+    ports:
+      - "2283:2283"
     networks:
       - services
     depends_on:
@@ -336,7 +315,24 @@ services:
     environment:
       TZ: ${TIMEZONE}
     entrypoint: []
-    command: python3 -m copyparty -v /files:A:c,g -e2dsa -e2ts -a ${COPYPARTY_USER}:${COPYPARTY_PASS}
+    command:
+      - python3
+      - -m
+      - copyparty
+      - -v
+      - /files:/files:A,${COPYPARTY_USER}
+      - -a
+      - ${COPYPARTY_USER}:${COPYPARTY_PASS}
+      - -e2dsa
+      - -e2ts
+      - --xff-src
+      - lan
+      - --xff-hdr
+      - x-forwarded-for
+      - --rproxy
+      - "1"
+    ports:
+      - "3923:3923"
     networks:
       - services
     env_file:
@@ -360,6 +356,7 @@ services:
       GITEA__database__PATH: ${GITEA__database__PATH}
     ports:
       - "2222:22"
+      - "3000:3000"
     networks:
       - services
     env_file:
@@ -369,7 +366,7 @@ services:
 ### 4.4 Copyparty-only / Funnel-ready setup
 
 If you only want to expose Copyparty via Tailscale Funnel (no reverse proxy), configure your
-compose so Copyparty binds to the loopback interface. This keeps the file server reachable only
+compose so Copyparty runs on port 3923. This keeps the file server reachable only
 from the host and lets Tailscale Funnel forward public HTTPS to the local port.
 
 Example `copyparty` excerpt for `docker-compose.yml`:
@@ -385,9 +382,24 @@ Example `copyparty` excerpt for `docker-compose.yml`:
     environment:
       TZ: ${TIMEZONE}
     entrypoint: []
-    command: python3 -m copyparty -v /files:A:c,g -e2dsa -e2ts -a ${COPYPARTY_USER}:${COPYPARTY_PASS}
+    command:
+      - python3
+      - -m
+      - copyparty
+      - -v
+      - /files:/files:A,${COPYPARTY_USER}
+      - -a
+      - ${COPYPARTY_USER}:${COPYPARTY_PASS}
+      - -e2dsa
+      - -e2ts
+      - --xff-src
+      - lan
+      - --xff-hdr
+      - x-forwarded-for
+      - --rproxy
+      - "1"
     ports:
-      - "127.0.0.1:3923:3923"
+      - "3923:3923"
     networks:
       - services
     env_file:
@@ -417,11 +429,11 @@ and a reverse proxy at that time.
 
 ### 5.1 Start All Services
 
-**First, make sure port 443 is free:**
+**First, make sure port 3923 is free:**
 
 ```bash
-# Check what's using port 443
-sudo lsof -i :443
+# Check what's using port 3923
+sudo lsof -i :3923
 
 # If something is there, stop it:
 sudo systemctl stop nginx     # or apache2, or whatever is running
@@ -443,7 +455,7 @@ docker compose logs immich_postgres | grep "ready to accept connections"
 
 ### 5.2 Enable Tailscale Funnel (Copyparty-only)
 
-Now that Copyparty is running and bound to `127.0.0.1:3923`, enable Funnel to forward public HTTPS to it:
+Now that Copyparty is running on port 3923, enable Funnel to forward public HTTPS to it:
 
 ```bash
 sudo tailscale funnel --bg --https=443 http://127.0.0.1:3923
@@ -471,9 +483,9 @@ All services should show "Up" status.
 
 Test locally:
 ```bash
-curl http://localhost/immich
-curl http://localhost/copyparty  
-curl http://localhost/git
+curl http://localhost:2283  # Immich
+curl http://localhost:3923  # Copyparty
+curl http://localhost:3000  # Gitea
 ```
 
 ---
@@ -492,9 +504,9 @@ Authentication is always required for all operations, including reading files. O
 
 Open in browser:
 
-1. **Immich**: `https://your-domain.ts.net/immich` → Create admin account
-2. **Gitea**: `https://your-domain.ts.net/git` → Click "Install Gitea"
-3. **Copyparty**: `https://your-domain.ts.net/copyparty` → Ready to use
+1. **Immich**: `http://your-tailscale-ip:2283` → Create admin account
+2. **Gitea**: `http://your-tailscale-ip:3000` → Click "Install Gitea"
+3. **Copyparty**: `https://your-domain.ts.net` → Ready to use (via Funnel)
 
 Test Gitea SSH (local only):
 ```bash
@@ -521,7 +533,7 @@ See [BACKUPS.md](./BACKUPS.md) for complete backup procedures with restic.
 # View logs
 cd ~/nas-docker
 docker compose logs immich_server -f
-docker compose logs caddy -f
+docker compose logs copyparty -f
 
 # Restart all services
 docker compose restart
@@ -571,34 +583,31 @@ docker compose logs
 docker compose ps
 ```
 
-**Port 443 already in use:**
+**Port 3923 already in use:**
 ```bash
 # Find what's using it
-sudo lsof -i :443
+sudo lsof -i :3923
 
 # Stop conflicting service
 sudo systemctl stop nginx  # or apache2
 sudo systemctl disable nginx
 
 # Or disable Funnel temporarily
-sudo tailscale funnel --bg --https=443 off
+sudo tailscale funnel --https=443 off
 
-# Restart Caddy
-docker compose restart caddy
+# Restart Copyparty
+docker compose restart copyparty
 
 # Re-enable Funnel
-sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:3923
 ```
 
 **Can't reach services:**
 ```bash
 # Test internal ports
-curl http://localhost:3001  # Immich
+curl http://localhost:2283  # Immich
 curl http://localhost:3923  # Copyparty
 curl http://localhost:3000  # Gitea
-
-# Check Caddy routing
-docker compose logs caddy
 ```
 
 **Postgres permission denied:**

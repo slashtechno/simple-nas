@@ -16,10 +16,11 @@ Raspberry Pi 4 (headless, WiFi only)
 ├─ 500GB SSD (/mnt/t7) - primary data
 └─ 500GB HDD (/mnt/backup) - full backups
 
-Internet → Tailscale Funnel (443) → Caddy (reverse proxy)
-├─ /immich → Immich (photos)
-├─ /copyparty → Copyparty (files)
-└─ /git → Gitea (repos)
+Internet → Tailscale Funnel (443) → Copyparty (files)
+Internet → Tailscale IP
+├─ :2283 → Immich (photos)
+├─ :3000 → Gitea (repos)
+└─ :3923 → Copyparty (files)
 ```
 
 **Why this design?**
