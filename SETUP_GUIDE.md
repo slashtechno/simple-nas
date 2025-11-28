@@ -194,7 +194,8 @@ COPYPARTY_USER=yourusername  # Username for account creation and permissions; lo
 COPYPARTY_PASS=yourpassword  # For security, consider hashing with: python3 -c "import argon2; print(argon2.hash_password(b'yourpassword').decode())" and use --ah-alg argon2 in command
 
 # Gitea Configuration
-GITEA__server__ROOT_URL=https://${TAILSCALE_DOMAIN}/git/
+# Use plain HTTP and the container port (no /git/ and no HTTPS)
+GITEA__server__ROOT_URL=http://${TAILSCALE_DOMAIN}:3000/
 GITEA__server__DOMAIN=${TAILSCALE_DOMAIN}
 GITEA__server__SSH_DOMAIN=${TAILSCALE_DOMAIN}
 GITEA__server__SSH_PORT=2222
