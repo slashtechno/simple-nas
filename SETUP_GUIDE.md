@@ -321,7 +321,7 @@ services:
       - -m
       - copyparty
       - -v
-      - /files:/files:A,${COPYPARTY_USER}
+      - /files::A,${COPYPARTY_USER}
       - -a
       - ${COPYPARTY_USER}:${COPYPARTY_PASS}
       - -e2dsa
@@ -388,7 +388,7 @@ Example `copyparty` excerpt for `docker-compose.yml`:
       - -m
       - copyparty
       - -v
-      - /files:/files:A,${COPYPARTY_USER}
+      - /files::A,${COPYPARTY_USER}
       - -a
       - ${COPYPARTY_USER}:${COPYPARTY_PASS}
       - -e2dsa
