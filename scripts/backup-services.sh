@@ -15,7 +15,13 @@ IMMICH_DUMP="$DUMP_DIR/immich-db-$(timestamp).sql.gz"
 
 if docker ps -q -f name="^${IMMICH_DB_CONTAINER}$" >/dev/null 2>&1; then
   echo "Dumping Immich DB..."
-  docker exec -t "$IMMICH_DB_CONTAINER" pg_dumpall --clean --if-exists --username="$IMMICH_DB_USER" | gzip > "$IMMICH_DUMP"
+  # Run pg_dumpall as the Postgres user inside the container to avoid password prompts.
+  # If the container's postgres user is different, override via IMMICH_DB_USER.
+  if ! docker exec -t --user "$IMMICH_DB_USER" "$IMMICH_DB_CONTAINER" \
+       pg_dumpall --clean --if-exists --username="$IMMICH_DB_USER" | gzip > "$IMMICH_DUMP"; then
+    echo "Error: Immich DB dump failed" >&2
+    exit 1
+  fi
 else
   echo "Warning: Immich container not running" >&2
 fi
