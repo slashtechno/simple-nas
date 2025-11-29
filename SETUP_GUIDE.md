@@ -166,42 +166,17 @@ Generate database password:
 openssl rand -base64 32
 ```
 
-Create `.env` with ALL configuration in one place:
+Copy the sample environment file and customize it:
 ```bash
+cp ~/pi-nas/.env.example .env
 nano .env
 ```
 
-Paste (replace values as needed):
-```bash
-# Database
-IMMICH_DB_PASSWORD=<paste-generated-password-here>
-
-# Timezone
-TIMEZONE=America/New_York
-
-# Paths
-UPLOAD_LOCATION=/mnt/t7/photos
-DB_DATA_LOCATION=/mnt/t7/docker/immich_postgres
-FILES_DIR=/mnt/t7/files
-COPYPARTY_CONFIG=/mnt/t7/docker/copyparty_config
-GITEA_DATA=/mnt/t7/docker/gitea
-
-# Tailscale Domain (from Part 3.3)
-TAILSCALE_DOMAIN=your-machine.user-xxxxx.ts.net
-
-# Copyparty Authentication
-COPYPARTY_USER=yourusername  # Username for account creation and permissions; login uses password only (UI has password field)
-COPYPARTY_PASS=yourpassword  # For security, consider hashing with: python3 -c "import argon2; print(argon2.hash_password(b'yourpassword').decode())" and use --ah-alg argon2 in command
-
-# Gitea Configuration
-# Use plain HTTP and the container port (no /git/ and no HTTPS)
-GITEA__server__ROOT_URL=http://${TAILSCALE_DOMAIN}:3000/
-GITEA__server__DOMAIN=${TAILSCALE_DOMAIN}
-GITEA__server__SSH_DOMAIN=${TAILSCALE_DOMAIN}
-GITEA__server__SSH_PORT=2222
-GITEA__database__DB_TYPE=sqlite3
-GITEA__database__PATH=/data/gitea/gitea.db
-```
+**Required changes:**
+- Replace `IMMICH_DB_PASSWORD=your-generated-password-here` with the password you just generated
+- Update `TIMEZONE` to your timezone (run `timedatectl list-timezones` to see options)
+- Update `TAILSCALE_DOMAIN` with your Tailscale domain from Part 3.3
+- Set `COPYPARTY_USER` and `COPYPARTY_PASS` to your desired credentials
 
 Secure it:
 ```bash
@@ -210,158 +185,17 @@ chmod 600 .env
 
 ### 4.3 Create docker-compose.yml
 
+**CRITICAL: All `docker compose` commands must run from this directory.**
+
 ```bash
+mkdir -p ~/nas-docker
 cd ~/nas-docker
-nano docker-compose.yml
 ```
 
-```yaml
-networks:
-  services:
-    driver: bridge
+Copy the `docker-compose.yml` file from the project root:
 
-services:
-
-  immich_server:
-    image: ghcr.io/immich-app/immich-server:release
-    container_name: immich_server
-    restart: unless-stopped
-    command: ['start.sh', 'immich']
-    volumes:
-      - ${UPLOAD_LOCATION}:/usr/src/app/upload
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      DB_HOSTNAME: immich_postgres
-      DB_USERNAME: immich
-      DB_PASSWORD: ${IMMICH_DB_PASSWORD}
-      DB_DATABASE_NAME: immich
-      TZ: ${TIMEZONE}
-    ports:
-      - "2283:2283"
-    networks:
-      - services
-    depends_on:
-      - immich_postgres
-      - immich_redis
-    env_file:
-      - .env
-
-  immich_microservices:
-    image: ghcr.io/immich-app/immich-server:release
-    container_name: immich_microservices
-    restart: unless-stopped
-    command: ['start.sh', 'microservices']
-    volumes:
-      - ${UPLOAD_LOCATION}:/usr/src/app/upload
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      DB_HOSTNAME: immich_postgres
-      DB_USERNAME: immich
-      DB_PASSWORD: ${IMMICH_DB_PASSWORD}
-      DB_DATABASE_NAME: immich
-      TZ: ${TIMEZONE}
-    networks:
-      - services
-    depends_on:
-      - immich_postgres
-      - immich_redis
-    env_file:
-      - .env
-
-  immich_machine_learning:
-    image: ghcr.io/immich-app/immich-machine-learning:release
-    container_name: immich_machine_learning
-    restart: unless-stopped
-    volumes:
-      - ./immich_model_cache:/cache
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      TZ: ${TIMEZONE}
-    networks:
-      - services
-    env_file:
-      - .env
-
-  immich_postgres:
-    image: tensorchord/pgvecto-rs:pg14-v0.2.0
-    container_name: immich_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: immich
-      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
-      POSTGRES_DB: immich
-      POSTGRES_INITDB_ARGS: '-U immich'
-    volumes:
-      - ${DB_DATA_LOCATION}:/var/lib/postgresql/data
-    networks:
-      - services
-    env_file:
-      - .env
-
-  immich_redis:
-    image: redis:7.2-alpine
-    container_name: immich_redis
-    hostname: redis
-    restart: unless-stopped
-    networks:
-      - services
-
-  copyparty:
-    image: copyparty/ac
-    container_name: copyparty
-    restart: unless-stopped
-    volumes:
-      - ${FILES_DIR}:/files:rw
-      - ${COPYPARTY_CONFIG}:/cfg:rw
-    environment:
-      TZ: ${TIMEZONE}
-    entrypoint: []
-    command:
-      - python3
-      - -m
-      - copyparty
-      - -v
-      - /files::A,${COPYPARTY_USER}
-      - -a
-      - ${COPYPARTY_USER}:${COPYPARTY_PASS}
-      - -e2dsa
-      - -e2ts
-      - --xff-src
-      - lan
-      - --xff-hdr
-      - x-forwarded-for
-      - --rproxy
-      - "1"
-    ports:
-      - "3923:3923"
-    networks:
-      - services
-    env_file:
-      - .env
-
-  gitea:
-    image: gitea/gitea:latest
-    container_name: gitea
-    restart: unless-stopped
-    volumes:
-      - ${GITEA_DATA}:/data
-      - /etc/localtime:/etc/localtime:ro
-    environment:
-      USER_UID: 1000
-      USER_GID: 1000
-      GITEA__server__ROOT_URL: ${GITEA__server__ROOT_URL}
-      GITEA__server__DOMAIN: ${GITEA__server__DOMAIN}
-      GITEA__server__SSH_DOMAIN: ${GITEA__server__SSH_DOMAIN}
-      GITEA__server__SSH_PORT: ${GITEA__server__SSH_PORT}
-      GITEA__database__DB_TYPE: ${GITEA__database__DB_TYPE}
-      GITEA__database__PATH: ${GITEA__database__PATH}
-    ports:
-      - "2222:22"
-      - "3000:3000"
-    networks:
-      - services
-    env_file:
-      - .env
+```bash
+cp ~/pi-nas/docker-compose.yml .
 ```
 
 ### 4.4 Copyparty-only / Funnel-ready setup
@@ -520,6 +354,22 @@ ssh -p 2222 git@localhost
 ## Part 7: Backups
 
 See [BACKUPS.md](./BACKUPS.md) for complete backup procedures with restic.
+
+Quick setup notes from the repository:
+
+- Copy the cloud backup paths file into your home (optional):
+
+```bash
+cp ~/pi-nas/scripts/backup-paths.txt ~/
+```
+
+- Or run the script from the project without copying:
+
+```bash
+cp ~/pi-nas/scripts/backup-restic-cloud.sh ~/
+chmod +x ~/backup-restic-cloud.sh
+~/backup-restic-cloud.sh
+```
 
 **Quick summary:**
 - Local backups: Everything to HDD daily

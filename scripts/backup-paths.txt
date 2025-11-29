@@ -1,0 +1,5 @@
+ /mnt/t7/docker/gitea
+ /mnt/t7/docker/copyparty_config
+ /home/$USER/nas-docker/.env
+ /home/$USER/nas-docker/docker-compose.yml
+ /home/$USER/nas-docker/Caddyfile

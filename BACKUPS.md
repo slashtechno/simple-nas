@@ -4,9 +4,11 @@
 
 ---
 
-## Quick Setup
+## Setup Instructions
 
 ### 1. Install Restic
+
+Install restic on your Raspberry Pi:
 
 ```bash
 sudo apt install -y restic
@@ -15,28 +17,30 @@ restic version
 
 ### 2. Set Restic Password
 
-Choose a strong password (required for accessing backups):
+Create a secure password file for restic:
 
 ```bash
-# Create secure password file (only readable by you)
 openssl rand -base64 32 > ~/.restic-password
 chmod 600 ~/.restic-password
-cat ~/.restic-password  # Save this in password manager too
+cat ~/.restic-password  # Save this in a password manager
 ```
 
-### 3. Initialize Local Repository (HDD)
+### 3. Initialize Repositories
+
+#### Local Repository (HDD)
+
+Set up the local repository on your external HDD:
 
 ```bash
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
 
 restic init
-# Output shows repository ID (note for records)
 ```
 
-### 4. Configure Rclone for Cloud (One-Time, Laptop with Browser)
+#### Cloud Repository (Google Drive)
 
-**On your laptop:**
+1. Configure rclone on your laptop:
 
 ```bash
 rclone config
@@ -44,25 +48,17 @@ rclone config
 # Name: gdrive-nas
 # Type: Google Drive
 # Use defaults for client ID/secret
-# Scope: 3 (Access to files created by rclone only) ← IMPORTANT
+# Scope: 3 (Access to files created by rclone only)
 # Authorize in browser
 ```
 
-**Why scope 3?** Even if rclone config is stolen, rclone can ONLY access files it created.
-
-**Copy to Pi:**
+2. Copy the rclone configuration to your Pi:
 
 ```bash
 scp ~/.config/rclone/rclone.conf pi@your-pi:~/.config/rclone/
 ```
 
-**Test on Pi:**
-
-```bash
-rclone lsd gdrive-nas:
-```
-
-### 5. Initialize Cloud Repository
+3. Initialize the cloud repository:
 
 ```bash
 export RESTIC_PASSWORD_FILE=~/.restic-password
@@ -73,129 +69,144 @@ restic init
 
 ---
 
-## Daily Local Backup Script
+## Backup Scripts
 
-**What**: Everything from `/mnt/t7` → HDD with automatic deduplication (keeps 7 daily + 4 weekly snapshots)
+### Daily Local Backup
+
+**What**: Full backup of `/mnt/t7` to HDD with deduplication (7 daily + 4 weekly snapshots).
+
+1. Copy the script to your home directory:
 
 ```bash
-cat > ~/backup-restic-local.sh << 'EOF'
-#!/bin/bash
-set -o pipefail
-
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-LOG_FILE="/mnt/backup/logs/restic-local-$(date +%Y-%m-%d).log"
-mkdir -p "$(dirname "$LOG_FILE")"
-
-{
-  echo "=== Local Backup: $(date) ==="
-  
-  # Backup everything except cache
-  restic backup /mnt/t7 \
-    --exclude "/mnt/t7/immich_model_cache" \
-    --exclude "/mnt/t7/**/.cache" \
-    --tag daily \
-    --verbose
-  
-  if [ $? -eq 0 ]; then
-    echo "Backup successful. Removing old snapshots..."
-    # Keep last 7 daily + 4 weekly + 1 monthly snapshots
-    restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 1 --prune
-    
-    echo "Repository stats:"
-    restic stats
-    echo "Free space on HDD:"
-    df -h /mnt/backup
-  else
-    echo "ERROR: Backup failed!"
-    exit 1
-  fi
-  
-  echo "=== Complete: $(date) ==="
-} | tee -a "$LOG_FILE"
-EOF
-
+cp ~/pi-nas/scripts/backup-restic-local.sh ~/
 chmod +x ~/backup-restic-local.sh
 ```
 
-**Test it**: `~/backup-restic-local.sh`
-
----
-
-## Weekly Cloud Backup Script
-
-**What**: Selective paths → Google Drive (config databases, Gitea repos)
+2. Run the script:
 
 ```bash
-cat > ~/.backup-restic-cloud-config << 'EOF'
-# Paths to backup to cloud (whitelist)
-BACKUP_PATHS=(
-  "/mnt/t7/docker/immich_postgres"
-  "/mnt/t7/docker/gitea"
-  "/mnt/t7/docker/copyparty_config"
-  "/home/$USER/nas-docker/.env"
-  "/home/$USER/nas-docker/docker-compose.yml"
-  "/home/$USER/nas-docker/Caddyfile"
-)
-EOF
+~/backup-restic-local.sh
 ```
 
-**Backup script**:
+### Weekly Cloud Backup
+
+**What**: Selective paths (e.g., service dumps, configs) to Google Drive.
+
+1. Copy the script to your home directory:
 
 ```bash
-cat > ~/backup-restic-cloud.sh << 'EOF'
-#!/bin/bash
-set -o pipefail
-
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-
-source ~/.backup-restic-cloud-config
-
-LOG_FILE="/mnt/backup/logs/restic-cloud-$(date +%Y-%m-%d).log"
-mkdir -p "$(dirname "$LOG_FILE")"
-
-{
-  echo "=== Cloud Backup: $(date) ==="
-  
-  # Backup only critical paths
-  for path in "${BACKUP_PATHS[@]}"; do
-    if [ -d "$path" ]; then
-      echo "Backing up $path..."
-      restic backup "$path" --tag weekly --verbose
-    fi
-  done
-  
-  if [ $? -eq 0 ]; then
-    echo "Cloud backup successful. Removing old snapshots..."
-    restic forget --keep-weekly 12 --keep-monthly 6 --prune
-    
-    echo "Cloud repository stats:"
-    restic stats
-  else
-    echo "ERROR: Cloud backup failed!"
-    exit 1
-  fi
-  
-  echo "=== Complete: $(date) ==="
-} | tee -a "$LOG_FILE"
-EOF
-
+cp ~/pi-nas/scripts/backup-restic-cloud.sh ~/
 chmod +x ~/backup-restic-cloud.sh
 ```
 
-**Test it**: `~/backup-restic-cloud.sh`
+2. Define critical paths in `scripts/backup-paths.txt` or use the default file.
+
+3. Run the script:
+
+```bash
+~/backup-restic-cloud.sh
+```
 
 ---
 
-## Schedule with Cron
+## Backup Overview
+
+| **Backup Type** | **Includes** | **Notes** |
+|------------------|--------------|-----------|
+| **Cloud**       | Service dumps, configs | Smaller, critical items |
+| **Local**       | Full `/mnt/t7` | Fast restore copy |
+
+**Key Notes**:
+- Use logical dumps for databases (e.g., `backup-services.sh`).
+- Avoid raw database directories in cloud backups.
+
+---
+
+## Restore Instructions
+
+### From Local Backup
+
+Restore from the local repository:
+
+```bash
+export RESTIC_PASSWORD_FILE=~/.restic-password
+export RESTIC_REPOSITORY=/mnt/backup/restic-repo
+
+# List all snapshots
+restic snapshots
+
+# Restore latest snapshot to original paths
+restic restore latest --target /
+
+# Restore specific file or directory
+restic restore latest --include "/mnt/t7/docker/gitea" --target /
+
+# Restore specific snapshot by ID
+restic restore <snapshot-id> --target /
+```
+
+### From Cloud Backup
+
+Restore from the cloud repository:
+
+```bash
+export RESTIC_PASSWORD_FILE=~/.restic-password
+export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
+
+# List cloud snapshots
+restic snapshots
+
+# Restore critical configs to a temporary location
+restic restore latest --target /tmp/cloud-restore
+
+# Restore specific file or directory
+restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/cloud-restore
+```
+
+### Restore Service Dumps
+
+#### Option 1: Use Helper Script
+
+Restore Immich or Gitea dumps using the helper script:
+
+```bash
+~/pi-nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-YYYYMMDDTHHMMSS.sql.gz
+~/pi-nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-YYYYMMDDTHHMMSS.zip
+```
+
+#### Option 2: Manual Restore
+
+**Immich Database:**
+
+```bash
+# Find the dump in restic
+export RESTIC_PASSWORD_FILE=~/.restic-password
+export RESTIC_REPOSITORY=/mnt/backup/restic-repo
+restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/restore
+
+# Restore the database
+gunzip -c /tmp/restore/mnt/backup/service-dumps/immich-db-*.sql.gz | \
+  docker exec -i immich_postgres psql -U postgres postgres
+```
+
+**Gitea:**
+
+```bash
+# Restore data directories instead of using dump
+restic restore latest --include "/mnt/t7/docker/gitea" --target /
+```
+
+---
+
+## Schedule Backups with Cron
+
+Edit your crontab:
 
 ```bash
 crontab -e
 ```
 
-Add:
+Add the following entries:
 
 ```cron
 # Daily local backup @ 2 AM
@@ -210,158 +221,46 @@ Add:
 
 ---
 
-## Check Status
+## Additional Commands
+
+### Check Status
+
+Monitor the status of your backups:
 
 ```bash
-# List all snapshots (local)
+# Set environment variables
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
+
+# List snapshots
 restic snapshots
 
-# Recent backup size
+# Repository stats
 restic stats
 
-# HDD free space
-df -h /mnt/backup
-
-# Recent logs
-tail -30 /mnt/backup/logs/restic-local-*.log
-
-# Verify repository integrity
+# Verify integrity
 restic check
 ```
 
-**Cloud snapshots:**
+### Space Management
+
+Free up space by removing old snapshots:
 
 ```bash
-export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-restic snapshots
-```
-
----
-
-## Restore from Local Backup
-
-```bash
+# Set environment variables
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
 
-# List all snapshots with dates
-restic snapshots
-
-# Restore latest snapshot (to original paths)
-restic restore latest --target /
-
-# Or restore to a different location
-restic restore latest --target /tmp/restore-test
-
-# Restore specific file or directory (use --include)
-restic restore latest --include "/mnt/t7/docker/gitea" --target /
-
-# Restore specific snapshot (use ID from snapshots list)
-restic restore abc12345 --target /
-```
-
-### Restore Databases
-
-**Immich database:**
-
-```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-# Stop server while restoring
-docker compose stop immich_server immich_microservices
-
-# Restore database backup (if backed up as a dump)
-# Or restore the postgres data directory
-restic restore latest --include "/mnt/t7/docker/immich_postgres" --target /
-
-# Restart
-docker compose start immich_server immich_microservices
-```
-
-**Gitea:**
-
-```bash
-docker compose stop gitea
-
-# Restore entire Gitea directory
-restic restore latest --include "/mnt/t7/docker/gitea" --target /
-
-docker compose start gitea
-```
-
----
-
-## Restore from Cloud
-
-```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-
-# List cloud snapshots
-restic snapshots
-
-# Restore critical configs to temp location
-restic restore latest --target /tmp/cloud-restore
-```
-
----
-
-## Important: Browse Backups Without Restoring
-
-Mount a snapshot as read-only filesystem to browse without restoring:
-
-```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-# Mount latest snapshot
-mkdir -p /tmp/restic-mount
-restic mount /tmp/restic-mount &
-
-# Browse (in another terminal)
-ls /tmp/restic-mount/
-# Structure: /tmp/restic-mount/snapshots/SNAPSHOT_ID/mnt/t7/
-
-# Unmount
-fusermount -u /tmp/restic-mount
-```
-
----
-
-## Space Management
-
-Restic deduplication means multiple snapshots take minimal extra space.
-
-**Monitor:**
-
-```bash
-df -h /mnt/backup
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-restic stats  # Shows total repo size
-```
-
-**If HDD fills (>90%)**:
-
-```bash
-# Remove old snapshots manually
+# Remove old snapshots
 restic forget --keep-daily 3 --keep-weekly 2 --prune
-
-# Check freed space
-df -h /mnt/backup
 ```
 
 ---
 
 ## Troubleshooting
 
-| Problem | Fix |
-|---------|-----|
-| "Failed to create lock" | Another restic process running; wait or kill it |
-| "Permission denied" | Check: `chmod 600 ~/.restic-password` and `ls -la /mnt/backup/restic-repo` |
-| Restore fails | Verify: `restic check` runs first; restore to /tmp to test |
-| Cloud upload stalls | Check rclone: `rclone lsd gdrive-nas:` |
-| "Repository not found" | Verify: `RESTIC_REPOSITORY` env var is set correctly |
+| Problem                  | Fix                                      |
+|--------------------------|------------------------------------------|
+| "Failed to create lock"  | Wait or kill other restic processes      |
+| "Permission denied"      | Check file permissions                  |
+| Restore fails            | Verify repository integrity with `check` |

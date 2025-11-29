@@ -50,6 +50,7 @@ Internet → Tailscale IP
 
 - **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete installation & operations
 - **[BACKUPS.md](./BACKUPS.md)** - Backup/restore procedures & space planning
+- **[.env.example](./.env.example)** - Environment configuration template
 
 ---
 
