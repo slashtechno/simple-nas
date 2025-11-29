@@ -52,8 +52,10 @@ done
   echo "=== Local Backup: $(date) ==="
   # Create service dumps (Immich DB, Gitea)
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-  if [ -x "$SCRIPT_DIR/backup-services.sh" ]; then
-    "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
+  # If the service dump helper exists, always invoke it with bash. This
+  # avoids relying on the executable bit and ensures a consistent shell.
+  if [ -f "$SCRIPT_DIR/backup-services.sh" ]; then
+    bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
   fi
 
   # Backup /mnt/t7 and /mnt/backup/service-dumps
