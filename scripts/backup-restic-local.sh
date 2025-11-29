@@ -1,7 +1,32 @@
 #!/bin/bash
 set -o pipefail
 
-export RESTIC_PASSWORD_FILE=~/.restic-password
+## RESTIC_PASSWORD_FILE selection
+# Default to caller's home file, but when running under sudo/root prefer the
+# calling user's file if present. This avoids failures when calling via sudo
+# without a root password file (common when the script is run from a cron
+# job or by a system user).
+if [ -n "${RESTIC_PASSWORD_FILE:-}" ]; then
+  export RESTIC_PASSWORD_FILE
+else
+  if [ "$(id -u)" -eq 0 ]; then
+    # We're root. Prefer /root/.restic-password if it exists, otherwise try
+    # the sudo user's home file.
+    if [ -f /root/.restic-password ]; then
+      export RESTIC_PASSWORD_FILE=/root/.restic-password
+    elif [ -n "${SUDO_USER:-}" ] && [ -f "/home/${SUDO_USER}/.restic-password" ]; then
+      export RESTIC_PASSWORD_FILE="/home/${SUDO_USER}/.restic-password"
+    elif [ -f "${HOME:-/root}/.restic-password" ]; then
+      export RESTIC_PASSWORD_FILE="${HOME:-/root}/.restic-password"
+    else
+      # Fallback to a user-level default (will likely error later but message is clearer)
+      export RESTIC_PASSWORD_FILE="/root/.restic-password"
+    fi
+  else
+    export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-$HOME/.restic-password}"
+  fi
+fi
+
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
 
 LOG_FILE="/mnt/backup/logs/restic-local-$(date +%Y-%m-%d).log"
