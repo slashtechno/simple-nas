@@ -166,9 +166,9 @@ Generate database password:
 openssl rand -base64 32
 ```
 
-Copy the sample environment file and customize it:
+Copy the sample environment file and customize it (assuming you cloned the repo to `~/simple-nas`):
 ```bash
-cp ~/pi-nas/.env.example .env
+cp ~/simple-nas/.env.example .env
 nano .env
 ```
 
@@ -192,10 +192,10 @@ mkdir -p ~/nas-docker
 cd ~/nas-docker
 ```
 
-Copy the `docker-compose.yml` file from the project root:
+Copy the `docker-compose.yml` file from the project root (assuming `~/simple-nas`):
 
 ```bash
-cp ~/pi-nas/docker-compose.yml .
+cp ~/simple-nas/docker-compose.yml .
 ```
 
 ### 4.4 Copyparty-only / Funnel-ready setup
@@ -357,18 +357,12 @@ See [BACKUPS.md](./BACKUPS.md) for complete backup procedures with restic.
 
 Quick setup notes from the repository:
 
-- Copy the cloud backup paths file into your home (optional):
+- You can run backup scripts directly from the cloned repository (recommended). For example, if you cloned to `~/simple-nas`:
 
 ```bash
-cp ~/pi-nas/scripts/backup-paths.txt ~/
-```
-
-- Or run the script from the project without copying:
-
-```bash
-cp ~/pi-nas/scripts/backup-restic-cloud.sh ~/
-chmod +x ~/backup-restic-cloud.sh
-~/backup-restic-cloud.sh
+# Use scripts in-place (no need to copy to your home directory)
+chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
+~/simple-nas/scripts/backup-restic-cloud.sh
 ```
 
 **Quick summary:**

@@ -1,4 +1,5 @@
-# Pi NAS: Self-Hosted Photo + File + Git Server
+# Simple NAS: Self-Hosted Photo + File + Git Server  
+Uses two drives and a Pi to make somewhat of a reliable NAS. Basically used AI to glue together a couple services to create a simple, extensible, and backup-friendly home server.
 
 A self-hosted NAS on Raspberry Pi 4 with:
 - **Immich**: Photo library (like Google Photos)

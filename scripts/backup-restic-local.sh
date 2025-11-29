@@ -7,6 +7,22 @@ export RESTIC_REPOSITORY=/mnt/backup/restic-repo
 LOG_FILE="/mnt/backup/logs/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
+# Directories to exclude from backups. Keep as an immutable list so callers
+# can review or extend in one place. These exclude patterns avoid permission
+# errors for socket/DB/ssh dirs and skip filesystem junk like lost+found.
+readonly EXCLUDES=(
+  "/mnt/t7/docker/gitea/ssh"
+  "/mnt/t7/docker/immich_postgres"
+  "/mnt/t7/docker/copyparty_config/copyparty"
+  "/mnt/t7/lost+found"
+)
+
+# Build restic-friendly exclude arguments from the `EXCLUDES` array
+EXCLUDE_ARGS=()
+for p in "${EXCLUDES[@]}"; do
+  EXCLUDE_ARGS+=( --exclude "$p" )
+done
+
 {
   echo "=== Local Backup: $(date) ==="
   # Create service dumps (Immich DB, Gitea)
@@ -19,6 +35,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
   restic backup /mnt/t7 /mnt/backup/service-dumps \
     --exclude "/mnt/t7/immich_model_cache" \
     --exclude "/mnt/t7/**/.cache" \
+    "${EXCLUDE_ARGS[@]}" \
     --tag daily \
     --verbose
   

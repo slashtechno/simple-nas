@@ -75,37 +75,29 @@ restic init
 
 **What**: Full backup of `/mnt/t7` to HDD with deduplication (7 daily + 4 weekly snapshots).
 
-1. Copy the script to your home directory:
+1. Run the script directly from the project (recommended). If you cloned the repo to `~/simple-nas`:
 
 ```bash
-cp ~/pi-nas/scripts/backup-restic-local.sh ~/
-chmod +x ~/backup-restic-local.sh
+# Make executable and run in-place
+chmod +x ~/simple-nas/scripts/backup-restic-local.sh
+~/simple-nas/scripts/backup-restic-local.sh
 ```
 
-2. Run the script:
-
-```bash
-~/backup-restic-local.sh
-```
+Note: Root is not required — certain sensitive/inaccessible paths are excluded from the local backup.
 
 ### Weekly Cloud Backup
 
 **What**: Selective paths (e.g., service dumps, configs) to Google Drive.
 
-1. Copy the script to your home directory:
+1. Run the cloud backup script directly from the project (recommended). If you cloned the repo to `~/simple-nas`:
 
 ```bash
-cp ~/pi-nas/scripts/backup-restic-cloud.sh ~/
-chmod +x ~/backup-restic-cloud.sh
+# Make executable and run in-place
+chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
+~/simple-nas/scripts/backup-restic-cloud.sh
 ```
 
-2. Define critical paths in `scripts/backup-paths.txt` or use the default file.
-
-3. Run the script:
-
-```bash
-~/backup-restic-cloud.sh
-```
+2. Define critical paths in `~/simple-nas/scripts/backup-paths.txt` or use the default file.
 
 ---
 
@@ -167,11 +159,11 @@ restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/cloud-
 
 #### Option 1: Use Helper Script
 
-Restore Immich or Gitea dumps using the helper script:
+Restore Immich or Gitea dumps using the helper script (run from the cloned repo):
 
 ```bash
-~/pi-nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-YYYYMMDDTHHMMSS.sql.gz
-~/pi-nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-YYYYMMDDTHHMMSS.zip
+~/simple-nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-YYYYMMDDTHHMMSS.sql.gz
+~/simple-nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-YYYYMMDDTHHMMSS.zip
 ```
 
 #### Option 2: Manual Restore
