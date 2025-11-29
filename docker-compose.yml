@@ -27,6 +27,7 @@ services:
     depends_on:
       - immich_postgres
       - immich_redis
+      - immich_machine_learning
     env_file:
       - .env
 
@@ -42,7 +43,9 @@ services:
     environment:
       TZ: ${TIMEZONE}
     networks:
-      - services
+      services:
+        aliases:
+          - immich-machine-learning
     env_file:
       - .env
 
