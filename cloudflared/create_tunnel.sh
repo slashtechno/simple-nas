@@ -110,7 +110,7 @@ if [ "$SKIP_CREATION" = "0" ]; then
 fi
 
 # Register tunnel routes with Cloudflare edge (needed for config_src: local tunnels)
-if [ "$SKIP_CREATION" = "0" ] && [ -n "${HOSTNAMES:-}" ]; then
+if [ -n "${HOSTNAMES:-}" ] && [ -n "$TUNNEL_ID" ]; then
   log "Registering tunnel routes with Cloudflare edge..."
   
   for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
