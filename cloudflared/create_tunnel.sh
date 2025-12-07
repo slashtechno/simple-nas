@@ -109,6 +109,35 @@ if [ "$SKIP_CREATION" = "0" ]; then
     log "ERROR: Could not extract credentials_file from tunnel creation response"
     exit 2
   fi
+  
+  # Since we created a new tunnel, delete old DNS records so they get recreated with the new tunnel ID
+  if [ -n "${HOSTNAMES:-}" ] && [ -n "${CF_ZONE_ID:-}" ]; then
+    log "Deleting old DNS records to recreate with new tunnel ID..."
+    
+    for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
+      host=$(printf '%s' "$host" | tr -d '[:space:]')
+      [ -z "$host" ] && continue
+      
+      # Find existing DNS records for this hostname
+      records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${host}" \
+        -H "Authorization: Bearer ${CF_API_TOKEN}" \
+        -H "Content-Type: application/json" 2>&1)
+      
+      # Delete each record found
+      record_ids=$(printf '%s' "$records" | jq -r '.result[].id' 2>/dev/null || true)
+      if [ -n "$record_ids" ]; then
+        while IFS= read -r record_id; do
+          [ -z "$record_id" ] && continue
+          curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${record_id}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" >/dev/null 2>&1
+          log "Deleted old DNS record for ${host} (id: ${record_id})"
+        done <<EOF
+$record_ids
+EOF
+      fi
+    done
+  fi
 fi
 
 # Verify credentials file was created
