@@ -157,9 +157,6 @@ services:
       - ./cloudflared:/etc/cloudflared:rw
     networks:
       - services
-    environment:
-      # Override any TUNNEL_ORIGIN_CERT from .env file to prevent legacy cert-based auth
-      TUNNEL_ORIGIN_CERT: ""
     env_file:
       - .env
     depends_on:

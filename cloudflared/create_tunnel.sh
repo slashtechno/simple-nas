@@ -90,7 +90,7 @@ if [ "$SKIP_CREATION" = "0" ]; then
     tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json" \
-      -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+      -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"local\"}" 2>&1)
     
     # Extract tunnel id from response
     TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
