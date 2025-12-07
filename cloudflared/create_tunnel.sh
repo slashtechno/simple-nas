@@ -55,7 +55,7 @@ fi
 if [ "$SKIP_CREATION" = "0" ]; then
   log "Creating new tunnel named '$CF_TUNNEL_NAME'..."
   
-  # First check if a tunnel with this name already exists and delete it
+  # First check if a tunnel with this name already exists
   existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
     -H "Content-Type: application/json" 2>&1)
@@ -63,77 +63,33 @@ if [ "$SKIP_CREATION" = "0" ]; then
   EXISTING_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
   
   if [ -n "$EXISTING_ID" ]; then
-    log "Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID). Deleting it..."
-    
-    # First, try to clean up any connections
-    log "Cleaning up tunnel connections..."
-    cleanup_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}/connections" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" 2>&1 || true)
-    
-    # Wait a moment for connections to close
-    sleep 2
-    
-    # Now delete the tunnel
-    delete_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" 2>&1)
-    
-    delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
-    if [ "$delete_success" = "true" ]; then
-      log "Successfully deleted existing tunnel. Waiting 10 seconds for API to propagate..."
-      sleep 10
-    else
-      log "WARNING: Failed to delete existing tunnel. Response: $delete_response"
-      log "You may need to manually delete the tunnel in the Cloudflare dashboard."
-      log "Visit: https://one.dash.cloudflare.com/${CF_ACCOUNT_ID}/networks/tunnels"
-      exit 2
-    fi
+    log "ERROR: Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID)"
+    log "Please manually delete it from the Cloudflare dashboard:"
+    log "  https://one.dash.cloudflare.com/${CF_ACCOUNT_ID}/networks/connectors"
+    log ""
+    log "After deleting, this container will automatically restart and create a new tunnel."
+    log "Alternatively, change CF_TUNNEL_NAME in your .env file to use a different name."
+    exit 1
   fi
   
-  # Try to create tunnel with retries
-  CREATE_ATTEMPTS=0
-  MAX_ATTEMPTS=3
-  while [ $CREATE_ATTEMPTS -lt $MAX_ATTEMPTS ]; do
-    CREATE_ATTEMPTS=$((CREATE_ATTEMPTS + 1))
-    log "Tunnel creation attempt $CREATE_ATTEMPTS of $MAX_ATTEMPTS..."
-    
-    # Create tunnel via Cloudflare API
-    tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" \
-      -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"local\"}" 2>&1)
-    
-    # Extract tunnel id from response
-    TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
-    
-    if [ -n "$TUNNEL_ID" ]; then
-      log "API Response: $tunnel_response"
-      log "Successfully created tunnel on attempt $CREATE_ATTEMPTS"
-      break
-    fi
-    
-    error_code=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].code // "unknown"' 2>/dev/null || echo "unknown")
-    
-    if [ "$error_code" = "1013" ] && [ $CREATE_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
-      # Tunnel name still exists, wait and retry
-      log "Tunnel name still in use (error 1013). Waiting 5 seconds before retry..."
-      sleep 5
-    else
-      # Different error or last attempt
-      error_msg=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
-      log "ERROR: Failed to create tunnel after $CREATE_ATTEMPTS attempts. Error: $error_msg"
-      log "Full response: $tunnel_response"
-      exit 2
-    fi
-  done
+  # Create tunnel via Cloudflare API
+  log "Creating tunnel via Cloudflare API..."
+  tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"local\"}" 2>&1)
+  
+  # Extract tunnel id from response
+  TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
   
   if [ -z "$TUNNEL_ID" ]; then
-    log "ERROR: Failed to create tunnel after $MAX_ATTEMPTS attempts"
+    error_msg=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
+    log "ERROR: Failed to create tunnel. Error: $error_msg"
+    log "Full response: $tunnel_response"
     exit 2
   fi
   
-  log "Created tunnel id: $TUNNEL_ID"
+  log "Successfully created tunnel id: $TUNNEL_ID"
   
   # Extract credentials_file from response
   credentials_file=$(printf '%s' "$tunnel_response" | jq -c '.result.credentials_file' 2>/dev/null || true)
@@ -145,35 +101,6 @@ if [ "$SKIP_CREATION" = "0" ]; then
   else
     log "ERROR: Could not extract credentials_file from tunnel creation response"
     exit 2
-  fi
-  
-  # Since we created a new tunnel, delete old DNS records so they get recreated with the new tunnel ID
-  if [ -n "${HOSTNAMES:-}" ] && [ -n "${CF_ZONE_ID:-}" ]; then
-    log "Deleting old DNS records to recreate with new tunnel ID..."
-    
-    for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
-      host=$(printf '%s' "$host" | tr -d '[:space:]')
-      [ -z "$host" ] && continue
-      
-      # Find existing DNS records for this hostname
-      records=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${host}" \
-        -H "Authorization: Bearer ${CF_API_TOKEN}" \
-        -H "Content-Type: application/json" 2>&1)
-      
-      # Delete each record found
-      record_ids=$(printf '%s' "$records" | jq -r '.result[].id' 2>/dev/null || true)
-      if [ -n "$record_ids" ]; then
-        while IFS= read -r record_id; do
-          [ -z "$record_id" ] && continue
-          curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${record_id}" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/json" >/dev/null 2>&1
-          log "Deleted old DNS record for ${host} (id: ${record_id})"
-        done <<EOF
-$record_ids
-EOF
-      fi
-    done
   fi
 fi
 
@@ -278,24 +205,27 @@ if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
 
     log "Processing DNS for $host"
 
-    # Prefer using cloudflared route command if available
-    if command -v cloudflared >/dev/null 2>&1; then
-      if cloudflared tunnel route dns "$TUNNEL_ID" "$host" >/dev/null 2>&1; then
-        log "cloudflared route dns succeeded for $host"
+    # Check if a record exists and get its details
+    record_response=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${host}" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json")
+    
+    existing_id=$(printf '%s' "$record_response" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+    existing_content=$(printf '%s' "$record_response" | jq -r '.result[0].content // empty' 2>/dev/null || true)
+    expected_content="${TUNNEL_ID}.cfargotunnel.com"
+
+    if [ -n "$existing_id" ]; then
+      if [ "$existing_content" = "$expected_content" ]; then
+        log "DNS record for ${host} already points to correct tunnel (id: ${existing_id})"
         continue
       else
-        log "cloudflared route dns failed or not supported for $host — falling back to Cloudflare API"
+        log "DNS record for ${host} points to wrong tunnel: ${existing_content} (expected: ${expected_content})"
+        log "Deleting old DNS record (id: ${existing_id})..."
+        curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${existing_id}" \
+          -H "Authorization: Bearer ${CF_API_TOKEN}" \
+          -H "Content-Type: application/json" >/dev/null 2>&1
+        log "Deleted. Will recreate with correct tunnel ID."
       fi
-    fi
-
-    # Check if a record exists
-    existing=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${host}" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" | jq -r '.result[] | .id' 2>/dev/null || true)
-
-    if [ -n "$existing" ]; then
-      log "DNS record already exists for ${host} (id: ${existing})"
-      continue
     fi
 
     # Create a CNAME record pointing to the tunnel's cfargotunnel.com domain
