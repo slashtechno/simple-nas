@@ -46,6 +46,21 @@ else
   TUNNEL_ID=""
 fi
 
+# Parse hostnames early so they're available for route registration
+HOSTNAMES_STR="${HOSTNAMES:-}"
+IMMICH_HOST=""
+GITEA_HOST=""
+COPYPARTY_HOST=""
+
+if [ -n "$HOSTNAMES_STR" ]; then
+  # Extract first hostname
+  IMMICH_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f1 | tr -d '[:space:]')
+  # Extract second hostname
+  GITEA_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f2 | tr -d '[:space:]')
+  # Extract third hostname
+  COPYPARTY_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f3 | tr -d '[:space:]')
+fi
+
 if [ -z "${CF_ACCOUNT_ID:-}" ]; then
   log "ERROR: CF_ACCOUNT_ID is required to create a tunnel via API. Please set CF_ACCOUNT_ID in your .env"
   exit 2
@@ -163,23 +178,8 @@ fi
 
 log "Using credentials file: $CREDENTIALS_FILE"
 
+
 # Render config.yml into CLOUD_DIR/config.yml.
-# HOSTNAMES is expected as comma-separated: immich.example.com,gitea.example.com,copyparty.example.com
-# Parse hostnames manually since 'read -a' is bash-only
-HOSTNAMES_STR="${HOSTNAMES:-}"
-IMMICH_HOST=""
-GITEA_HOST=""
-COPYPARTY_HOST=""
-
-if [ -n "$HOSTNAMES_STR" ]; then
-  # Extract first hostname
-  IMMICH_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f1 | tr -d '[:space:]')
-  # Extract second hostname
-  GITEA_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f2 | tr -d '[:space:]')
-  # Extract third hostname
-  COPYPARTY_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f3 | tr -d '[:space:]')
-fi
-
 CONFIG_PATH="$CLOUD_DIR/config.yml"
 
 log "Rendering $CONFIG_PATH"
