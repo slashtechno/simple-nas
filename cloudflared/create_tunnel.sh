@@ -240,7 +240,7 @@ if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
   "name": "${host}",
   "content": "${TUNNEL_ID}.cfargotunnel.com",
   "ttl": 1,
-  "proxied": false
+  "proxied": true
 }
 JSON
 )
