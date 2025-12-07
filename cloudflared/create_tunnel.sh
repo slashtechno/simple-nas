@@ -3,9 +3,9 @@
 # Idempotent init script to create/reuse a Cloudflare Tunnel, render config.yml, and optionally create DNS records.
 # Required env vars:
 #   CF_API_TOKEN  - Cloudflare API token with DNS:Edit and Tunnels permissions (required)
+#   CF_ACCOUNT_ID - Account ID (required when creating tunnel via API; optional if reusing existing)
 #   CF_ZONE_ID    - Zone ID for DNS record creation (required if DNS creation is desired)
 # Optional:
-#   CF_ACCOUNT_ID - Account ID (may be required for some API endpoints; optional)
 #   CF_TUNNEL_NAME - Tunnel name (default: pi-nas-tunnel)
 #   HOSTNAMES     - Comma-separated hostnames (e.g. immich.example.com,gitea.example.com,copyparty.example.com)
 #
@@ -39,31 +39,57 @@ if [ -n "$existing_json" ]; then
   TUNNEL_ID="$(basename "$existing_json" .json)"
   log "Reusing existing credentials: $existing_json (tunnel id: $TUNNEL_ID)"
 else
-  log "No existing credentials found in $CLOUD_DIR — creating tunnel named '$CF_TUNNEL_NAME'..."
-  # Create tunnel and write credentials into CLOUD_DIR. cloudflared prints details to stdout.
-  # We run create in CLOUD_DIR so the credentials file lands there.
-  (cd "$CLOUD_DIR" && cloudflared tunnel create "${CF_TUNNEL_NAME}") 2>&1 | tee "$CLOUD_DIR/create_output.log"
-  # Try to parse tunnel id from output log.
-  TUNNEL_ID="$(awk '/Tunnel ID/{print $NF; exit}' "$CLOUD_DIR/create_output.log" || true)"
-  # Fallback: attempt to find any newly-created JSON
-  if [ -z "$TUNNEL_ID" ]; then
-    new_json=$(ls "$CLOUD_DIR"/*.json 2>/dev/null | head -n1 || true)
-    if [ -n "$new_json" ]; then
-      TUNNEL_ID="$(basename "$new_json" .json)"
-    fi
-  fi
-
-  if [ -z "$TUNNEL_ID" ]; then
-    log "ERROR: Failed to determine tunnel ID after creation. See $CLOUD_DIR/create_output.log for details."
+  log "No existing credentials found in $CLOUD_DIR — creating tunnel named '$CF_TUNNEL_NAME' via API..."
+  
+  if [ -z "${CF_ACCOUNT_ID:-}" ]; then
+    log "ERROR: CF_ACCOUNT_ID is required to create a tunnel via API. Please set CF_ACCOUNT_ID in your .env"
     exit 2
   fi
-
+  
+  # Create tunnel via Cloudflare API
+  tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+  
+  log "API Response: $tunnel_response"
+  
+  # Extract tunnel id from response
+  TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
+  
+  if [ -z "$TUNNEL_ID" ]; then
+    log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
+    exit 2
+  fi
+  
   log "Created tunnel id: $TUNNEL_ID"
+  
+  # Get the tunnel secret/token from the API
+  tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
+  
+  if [ -z "$tunnel_token" ]; then
+    log "ERROR: Could not extract tunnel token from API response"
+    exit 2
+  fi
+  
+  # Create credentials JSON file in cloudflared format
+  credentials_json=$(cat <<JSON
+{
+  "AccountTag": "${CF_ACCOUNT_ID}",
+  "TunnelSecret": "${tunnel_token}",
+  "TunnelID": "${TUNNEL_ID}",
+  "TunnelName": "${CF_TUNNEL_NAME}"
+}
+JSON
+)
+  
+  echo "$credentials_json" > "$CLOUD_DIR/${TUNNEL_ID}.json"
+  log "Created credentials file: $CLOUD_DIR/${TUNNEL_ID}.json"
 fi
 
 CREDENTIALS_FILE="$CLOUD_DIR/${TUNNEL_ID}.json"
 if [ ! -f "$CREDENTIALS_FILE" ]; then
-  # If cloudflared created a json with a different name, attempt to find any json named like the tunnel id or fallback to first json.
+  # If credentials with a different name, attempt to find any json named like the tunnel id or fallback to first json.
   if [ -f "$CLOUD_DIR/$TUNNEL_ID.json" ]; then
     CREDENTIALS_FILE="$CLOUD_DIR/$TUNNEL_ID.json"
   else
