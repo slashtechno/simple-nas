@@ -247,12 +247,12 @@ if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
       continue
     fi
 
-    # Create a CNAME record pointing at tunnel.cloudflare.com (adjust if you prefer a different target)
+    # Create a CNAME record pointing to the tunnel's cfargotunnel.com domain
     payload=$(cat <<JSON
 {
   "type": "CNAME",
   "name": "${host}",
-  "content": "tunnel.cloudflare.com",
+  "content": "${TUNNEL_ID}.cfargotunnel.com",
   "ttl": 1,
   "proxied": false
 }
