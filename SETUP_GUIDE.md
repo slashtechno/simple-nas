@@ -367,6 +367,16 @@ df -h
 du -sh /mnt/t7/*
 ```
 
+
+## Part 9: Gitea Actions Runner
+
+An optional ephemeral runner is provided as the `gitea-runner` service in `docker-compose.yml`. To auto-register it, add a registration token to your `.env`:
+
+```
+GITEA_RUNNER_REGISTRATION_TOKEN=your-token-here
+```
+
+The runner starts as part of the normal `docker compose up` for the stack. It requires access to the Docker socket to run jobs in container mode (the compose service mounts `/var/run/docker.sock`). Ephemeral runners are enabled by default.
 ---
 
 ## What to Save in Password Manager
