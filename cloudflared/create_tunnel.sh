@@ -61,7 +61,7 @@ else
     tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json" 2>&1)
-    credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
+    credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file' 2>/dev/null || true)
   else
     log "No existing tunnel found, creating new tunnel named '$CF_TUNNEL_NAME'..."
     
@@ -91,7 +91,7 @@ else
           tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" 2>&1)
-          credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
+          credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file' 2>/dev/null || true)
         else
           log "ERROR: Could not find existing tunnel after creation attempt"
           exit 2
@@ -103,7 +103,7 @@ else
     else
       log "Created tunnel id: $TUNNEL_ID"
       # Extract the credentials_file object from the response
-      credentials_json=$(printf '%s' "$tunnel_response" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
+      credentials_json=$(printf '%s' "$tunnel_response" | jq -r '.result.credentials_file' 2>/dev/null || true)
     fi
   fi
   
