@@ -99,6 +99,22 @@ chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
 
 2. Define critical paths in `~/simple-nas/scripts/backup-paths.txt` or use the default file.
 
+### Service-Aware Backup
+
+Create consistent service dumps before snapshotting with restic:
+
+```bash
+# Immich DB dump + Gitea dump into /mnt/backup/service-dumps
+~/simple-nas/scripts/backup-services.sh
+```
+
+What it does:
+- Immich: `pg_dumpall` from the `immich_postgres` container → `immich-db-*.sql.gz`
+- Gitea: `gitea dump` inside the `gitea` container → `gitea-dump-*.zip`
+- Keeps the last 3 dumps of each type
+
+This ensures restic captures a consistent snapshot of service state without relying on raw live data directories.
+
 ---
 
 ## Backup Overview
@@ -131,7 +147,7 @@ restic snapshots
 restic restore latest --target /
 
 # Restore specific file or directory
-restic restore latest --include "/mnt/t7/docker/gitea" --target /
+restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/restore
 
 # Restore specific snapshot by ID
 restic restore <snapshot-id> --target /
@@ -183,9 +199,24 @@ gunzip -c /tmp/restore/mnt/backup/service-dumps/immich-db-*.sql.gz | \
 
 **Gitea:**
 
+Best practice is to restore from a `gitea dump` ZIP with Gitea stopped (Docker rootless paths). Our helper script automates this:
+
+- Stop `gitea` to ensure consistency
+- Unpack and place files:
+  - `data/conf/app.ini` → `/etc/gitea/app.ini`
+  - `data/*` → `/var/lib/gitea/`
+  - `repos/*` → `/var/lib/gitea/git/repositories/`
+- `chown -R git:git /etc/gitea /var/lib/gitea`
+- Regenerate hooks: `gitea admin regenerate hooks`
+- Start `gitea`
+
+Optional DB import (if `gitea-db.sql` is present):
+
 ```bash
-# Restore data directories instead of using dump
-restic restore latest --include "/mnt/t7/docker/gitea" --target /
+# Inside the container, import to the DB configured in /etc/gitea/app.ini
+docker exec -it gitea bash
+# SQLite only:
+sqlite3 /data/gitea/gitea.db < /tmp/restore/gitea-db.sql
 ```
 
 ---

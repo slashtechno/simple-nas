@@ -4,6 +4,13 @@ set -euo pipefail
 # Restore Immich DB or Gitea from dump files
 # Usage: ./restore-services.sh immich /path/to/immich-db-*.sql.gz
 #        ./restore-services.sh gitea /path/to/gitea-dump-*.zip
+#
+# Notes (Gitea, Docker rootless best practices):
+# - Stop Gitea before restoring to ensure consistency.
+# - Use a one-off helper container with `--volumes-from gitea` to place files.
+# - Paths (rootless): app.ini -> /etc/gitea/app.ini, data -> /var/lib/gitea,
+#   repos -> /var/lib/gitea/git/repositories.
+# - After file restore, regenerate hooks: `gitea admin regenerate hooks`.
 
 if [ $# -lt 2 ]; then
   echo "Usage: $0 <immich|gitea> <dump-file>"
@@ -34,16 +41,64 @@ case "$TARGET" in
 
   gitea)
     GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
-    echo "Restoring Gitea from: $DUMPFILE"
-    echo "Unpacking dump inside container at /tmp/gitea-restore"
-    docker cp "$DUMPFILE" "$GITEA_CONTAINER:/tmp/"
-    docker exec "$GITEA_CONTAINER" bash -c "unzip -o /tmp/$(basename "$DUMPFILE") -d /tmp/gitea-restore"
-    echo ""
-    echo "Gitea dump unpacked. Manual steps required:"
-    echo "  docker exec -it $GITEA_CONTAINER bash"
-    echo "  cd /tmp/gitea-restore"
-    echo "  # Move data, repos, app.ini to proper locations"
-    echo "  # Import gitea-db.sql into your database"
+    GITEA_IMAGE_HELPER="${GITEA_IMAGE_HELPER:-gitea/gitea:latest}"
+    echo "Restoring Gitea (Docker, rootful) from: $DUMPFILE"
+
+    if [ -z "$(docker ps -q -f name=^${GITEA_CONTAINER}$)" ] && [ -z "$(docker ps -aq -f name=^${GITEA_CONTAINER}$)" ]; then
+      echo "Error: Gitea container '$GITEA_CONTAINER' not found" >&2
+      exit 1
+    fi
+
+    echo "Stopping Gitea to ensure consistency..."
+    docker stop "$GITEA_CONTAINER" >/dev/null
+
+    echo "Running helper container to restore files into Gitea volumes..."
+    docker run --rm \
+      --name gitea-restore-helper \
+      --volumes-from "$GITEA_CONTAINER" \
+      -v "$(readlink -f "$DUMPFILE")":/tmp/dump.zip:ro \
+      "$GITEA_IMAGE_HELPER" bash -lc '
+        set -euo pipefail
+        unzip -o /tmp/dump.zip -d /tmp/restore
+        cd /tmp/restore
+        # app.ini (rootful: data/conf/app.ini -> /data/gitea/conf/app.ini)
+        if [ -f data/conf/app.ini ]; then
+          mkdir -p /data/gitea/conf
+          mv -f data/conf/app.ini /data/gitea/conf/app.ini
+        fi
+        # data -> /data/gitea (APP_DATA_PATH)
+        if [ -d data ]; then
+          mkdir -p /data/gitea
+          mv -f data/* /data/gitea/
+        fi
+        # repos -> /data/git/repositories
+        if [ -d repos ]; then
+          mkdir -p /data/git/repositories
+          mv -f repos/* /data/git/repositories/
+        fi
+        chown -R git:git /data || true
+        # Regenerate hooks to ensure paths are correct
+        if command -v gitea >/dev/null 2>&1; then
+          /usr/local/bin/gitea -c "/data/gitea/conf/app.ini" admin regenerate hooks || true
+        fi
+        # Auto-import SQLite DB if present (assumes sqlite-only setup)
+        if [ -f gitea-db.sql ]; then
+          # SQLite DB path under APP_DATA_PATH; common locations: /data/gitea/gitea.db or /data/gitea/data/gitea.db
+          DB_PATH=""
+          if [ -f /data/gitea/gitea.db ]; then DB_PATH="/data/gitea/gitea.db"; fi
+          if [ -z "$DB_PATH" ] && [ -f /data/gitea/data/gitea.db ]; then DB_PATH="/data/gitea/data/gitea.db"; fi
+          if [ -n "$DB_PATH" ]; then
+            echo "Importing SQLite DB from gitea-db.sql into $DB_PATH"
+            sqlite3 "$DB_PATH" < /tmp/restore/gitea-db.sql || echo "SQLite import failed; please import manually"
+          else
+            echo "SQLite DB file not found under /data/gitea; skipping import"
+          fi
+        fi
+      '
+
+    echo "Starting Gitea..."
+    docker start "$GITEA_CONTAINER" >/dev/null
+    echo "Gitea restore complete (rootful). SQLite DB import attempted if dump was present."
     ;;
 
   *)
