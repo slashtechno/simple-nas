@@ -53,7 +53,7 @@ else
     -H "Content-Type: application/json" 2>&1)
   
   TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
-  credentials_json=""
+  tunnel_token=""
   
   if [ -n "$TUNNEL_ID" ]; then
     log "Found existing tunnel: $TUNNEL_ID"
@@ -91,16 +91,9 @@ else
       fi
     else
       log "Created tunnel id: $TUNNEL_ID"
+      # Extract token from creation response
+      tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
     fi
-  fi
-  
-  # Create credentials JSON file using the proper cloudflared format
-  log "Creating credentials file for tunnel $TUNNEL_ID..."
-  
-  # Extract token from creation response if we just created the tunnel
-  tunnel_token=""
-  if [ -n "$tunnel_response" ]; then
-    tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
   fi
   
   if [ -z "$tunnel_token" ] || [ "$tunnel_token" = "null" ]; then
