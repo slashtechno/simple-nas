@@ -1,0 +1,15 @@
+FROM cloudflare/cloudflared:latest as cloudflared
+FROM alpine:latest
+
+# Copy cloudflared binary from the official image
+COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared
+
+# Copy init script
+COPY create_tunnel.sh /etc/cloudflared/create_tunnel.sh
+RUN chmod +x /etc/cloudflared/create_tunnel.sh
+
+# Install curl and other dependencies the script might need
+RUN apk add --no-cache curl jq
+
+ENTRYPOINT []
+CMD ["sh", "-c", "/etc/cloudflared/create_tunnel.sh"]

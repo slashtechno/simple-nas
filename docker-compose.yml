@@ -134,14 +134,11 @@ services:
       - .env
 
   cloudflared-init:
-    image: cloudflare/cloudflared:latest
+    build:
+      context: ./cloudflared
+      dockerfile: Dockerfile.init
     container_name: cloudflared-init
     restart: "no"
-    # Run the init script to create/reuse tunnel credentials and render config.yml
-    entrypoint: []
-    command: ["sh", "-c", "/etc/cloudflared/create_tunnel.sh"]
-    volumes:
-      - ./cloudflared:/etc/cloudflared:rw
     networks:
       - services
     env_file:
