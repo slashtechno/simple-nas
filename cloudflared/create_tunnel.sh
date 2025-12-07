@@ -142,6 +142,7 @@ JSON
 JSON
     log "Created credentials file with new token from token endpoint"
   fi
+fi
 
 CREDENTIALS_FILE="$CLOUD_DIR/${TUNNEL_ID}.json"
 if [ ! -f "$CREDENTIALS_FILE" ]; then
