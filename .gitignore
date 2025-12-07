@@ -10,7 +10,7 @@
 *.log
 logs/
 *.log.*
-
+ 
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -59,3 +59,7 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
+
+# Cloudflared tunnel runtime files (created at init/runtime)
+cloudflared/*.json
+cloudflared/config.yml

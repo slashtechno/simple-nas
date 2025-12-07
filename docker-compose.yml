@@ -20,6 +20,7 @@ services:
       DB_PASSWORD: ${IMMICH_DB_PASSWORD}
       DB_DATABASE_NAME: immich
       TZ: ${TIMEZONE}
+      PUBLIC_IMMICH_URL: /immich
     ports:
       - "2283:2283"
     networks:
@@ -132,5 +133,30 @@ services:
     env_file:
       - .env
 
+  cloudflared-init:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-init
+    restart: "no"
+    # Run the init script to create/reuse tunnel credentials and render config.yml
+    entrypoint: ["/bin/sh","-c"]
+    command: ["/etc/cloudflared/create_tunnel.sh"]
+    volumes:
+      - ./cloudflared:/etc/cloudflared:rw
+    networks:
+      - services
+    env_file:
+      - .env
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run --config /etc/cloudflared/config.yml
+    volumes:
+      - ./cloudflared:/etc/cloudflared:rw
+    networks:
+      - services
+    depends_on:
+      - cloudflared-init
 volumes:
   model-cache:

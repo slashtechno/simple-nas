@@ -17,8 +17,14 @@ Raspberry Pi 4 (headless, WiFi only)
 ├─ 500GB SSD (/mnt/t7) - primary data
 └─ 500GB HDD (/mnt/backup) - full backups
 
-Internet → Tailscale Funnel (443) → Copyparty (files)
-Internet → Tailscale IP
+Internet → Cloudflare Tunnel (cloudflared) → Services (hostname-based)
+  ├─ immich.example.com → Immich (2283)
+  ├─ gitea.example.com → Gitea (3000)
+  └─ copyparty.example.com → Copyparty (3923)
+
+Note: Services are exposed by hostname via the containerized cloudflared tunnel (see SETUP_GUIDE.md). Copyparty may still be optionally exposed via Tailscale Funnel for convenience.
+
+Local Tailscale IP (private):
 ├─ :2283 → Immich (photos)
 ├─ :3000 → Gitea (repos)
 └─ :3923 → Copyparty (files)

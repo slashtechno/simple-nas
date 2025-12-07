@@ -1,0 +1,22 @@
+# Cloudflared config template
+# The init script (create_tunnel.sh) renders this template into /etc/cloudflared/config.yml
+# Placeholders:
+#   {{TUNNEL_ID}} - replaced with the created or discovered tunnel id
+#   {{CREDENTIALS_FILE}} - the credentials filename (e.g. /etc/cloudflared/<tunnel-id>.json)
+# Hostnames are rendered by the init script from the HOSTNAMES env var.
+#
+# Example rendered output (for reference only):
+# tunnel: <TUNNEL_ID>
+# credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+#
+# ingress:
+#   - hostname: immich.example.com
+#     service: http://immich_server:2283
+#   - hostname: gitea.example.com
+#     service: http://gitea:3000
+#   - hostname: copyparty.example.com
+#     service: http://copyparty:3923
+#   - service: http_status:404
+
+# The actual template file is intentionally minimal; the init script will generate a concrete config.yml
+# from this template and the provided HOSTNAMES. Do not keep sensitive credentials in this repo.

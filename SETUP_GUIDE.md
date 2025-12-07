@@ -127,16 +127,18 @@ sudo tailscale up
 
 Follow the login link.
 
-### 3.2 Enable Funnel (Copyparty-only)
+### 3.2 Enable Funnel (optional for Copyparty)
 
-**Important:** Enable Funnel AFTER starting Copyparty, not now. Skip this step for now and return to it after Part 5.1.
+With Cloudflared handling public hostnames for most services, you generally do not need the Tailscale Funnel. If you still want a Tailscale-hosted URL for Copyparty in addition to its Cloudflare hostname, enable Funnel after services are up.
 
-**Funnel only supports ports 443, 8443, 10000.** We expose Copyparty on port 443 for Funnel.
+**Funnel only supports ports 443, 8443, 10000.** Use the Funnel to forward HTTPS to the local Copyparty port (3923):
 
 ```bash
-# Run this AFTER docker compose up in Part 5.1
-sudo tailscale funnel --bg --https=443 http://127.0.0.1:443
+# Optional: enable Funnel to expose Copyparty via Tailscale
+sudo tailscale funnel --bg --https=443 http://127.0.0.1:3923
 ```
+
+Use `tailscale funnel status` to retrieve the public Tailscale-hosted URL when enabled.
 
 ### 3.3 Get Your Domain
 
@@ -198,65 +200,44 @@ Copy the `docker-compose.yml` file from the project root (assuming `~/simple-nas
 cp ~/simple-nas/docker-compose.yml .
 ```
 
-### 4.4 Copyparty-only / Funnel-ready setup
+### 4.4 Cloudflared Tunnel (replaces Caddy)
 
-If you only want to expose Copyparty via Tailscale Funnel (no reverse proxy), configure your
-compose so Copyparty runs on port 3923. This keeps the file server reachable only
-from the host and lets Tailscale Funnel forward public HTTPS to the local port.
+This setup uses a containerized Cloudflare Tunnel (`cloudflared`) to expose each service on its own hostname instead of path-based proxying.
 
-Example `copyparty` excerpt for `docker-compose.yml`:
+Key points:
+- Each service is routed by hostname (e.g. `immich.example.com`) to the internal container address.
+- Runtime files and tunnel credentials are generated at init time; a template is tracked in the repo: [`cloudflared/config.yml.template`](cloudflared/config.yml.template:1).
+- You still expose Copyparty via Tailscale Funnel optionally (see Part 5.2) while Cloudflare also provides a public hostname.
 
-```yaml
-  copyparty:
-    image: copyparty/ac
-    container_name: copyparty
-    restart: unless-stopped
-    volumes:
-      - ${FILES_DIR}:/files:rw
-      - ${COPYPARTY_CONFIG}:/cfg:rw
-    environment:
-      TZ: ${TIMEZONE}
-    entrypoint: []
-    command:
-      - python3
-      - -m
-      - copyparty
-      - -v
-      - /files::A,${COPYPARTY_USER}
-      - -a
-      - ${COPYPARTY_USER}:${COPYPARTY_PASS}
-      - -e2dsa
-      - -e2ts
-      - --xff-src
-      - lan
-      - --xff-hdr
-      - x-forwarded-for
-      - --rproxy
-      - "1"
-    ports:
-      - "3923:3923"
-    networks:
-      - services
-    env_file:
-      - .env
-```
+Required environment variables (add to your `.env`):
+- `CF_API_TOKEN` — Cloudflare API token with DNS and Tunnel permissions
+- `CF_ZONE_ID` — Cloudflare Zone ID for your domain
+- `CF_TUNNEL_NAME` — name for the tunnel (default: `pi-nas-tunnel`)
+- `HOSTNAMES` — comma-separated hostnames, e.g. `immich.example.com,gitea.example.com,copyparty.example.com`
 
-After editing `docker-compose.yml`, (re)start Copyparty:
-
+Init and runtime (one-time + normal start):
 ```bash
-cd ~/nas-docker
-docker compose up -d copyparty
+# run the init script (one-time)
+# the script can be run via `sh` or `bash` — no need to make it executable beforehand
+sh ./cloudflared/create_tunnel.sh
+
+# copy .env.example and add CF_* vars and HOSTNAMES (if you haven't already configured .env)
+cp .env.example .env
+nano .env
+
+# start the stack — the init job will create or reuse a tunnel and render /etc/cloudflared/config.yml
+docker compose up -d
 ```
 
-Verify locally:
+After init, cloudflared will map hostnames to internal services:
+- Immich -> `http://immich_server:2283`
+- Gitea  -> `http://gitea:3000`
+- Copyparty -> `http://copyparty:3923`
 
-```bash
-curl -I http://127.0.0.1:3923
-```
-
-This approach avoids running a reverse proxy on the host. If you later decide to host
-multiple services under the same public domain, consider using per-application subdomains
-and a reverse proxy at that time.
+Local access to services (unchanged):
+- Immich: `http://localhost:2283`
+- Gitea: `http://localhost:3000`
+- Copyparty: `http://localhost:3923`
 
 ---
 
@@ -282,17 +263,13 @@ cd ~/nas-docker
 docker compose up -d
 ```
 
-Wait 60 seconds for Postgres to initialize:
-```bash
-docker compose logs immich_postgres | grep "ready to accept connections"
-```
 
+### 5.2 Tailscale Funnel and Copyparty (optional)
 
-### 5.2 Enable Tailscale Funnel (Copyparty-only)
-
-Now that Copyparty is running on port 3923, enable Funnel to forward public HTTPS to it:
+Cloudflared provides public hostnames for your services; the Funnel is optional. If you want to expose Copyparty via Tailscale in addition to its Cloudflare hostname, enable Funnel after services are up:
 
 ```bash
+# Optional: forward public HTTPS to local Copyparty port (3923)
 sudo tailscale funnel --bg --https=443 http://127.0.0.1:3923
 ```
 
@@ -302,11 +279,15 @@ Verify:
 tailscale funnel status
 ```
 
-The funnel will print the public URL and the proxy target (e.g. `http://127.0.0.1:3923`). To disable the proxy:
+The funnel will print the public URL (e.g. `your-machine.user-xxxxx.ts.net`). To disable Funnel:
 
 ```bash
 sudo tailscale funnel --https=443 off
 ```
+
+Notes:
+- Use Cloudflared hostnames (see Part 4.4 HOSTNAMES) for primary public access.
+- Keep Funnel enabled only while you need the Tailscale-hosted URL for Copyparty.
 
 ### 5.3 Check Status
 
@@ -341,7 +322,12 @@ Open in browser:
 
 1. **Immich**: `http://your-tailscale-ip:2283` → Create admin account
 2. **Gitea**: `http://your-tailscale-ip:3000` → Click "Install Gitea"
-3. **Copyparty**: `https://your-domain.ts.net` → Ready to use (via Funnel)
+3. **Copyparty**: `http://your-tailscale-ip:3923` → Ready to use
+
+Via public Funnel (after enabling in 5.2):
+- **Immich**: `https://your-machine.ts.net/immich`
+- **Gitea**: `https://your-machine.ts.net/gitea`
+- **Copyparty**: `https://your-machine.ts.net/copyparty`
 
 Test Gitea SSH (local only):
 ```bash
@@ -410,7 +396,7 @@ du -sh /mnt/t7/*
 
 5. `~/nas-docker/.env` - All configuration in one place
 6. `~/nas-docker/docker-compose.yml`
-7. `~/nas-docker/Caddyfile`
+7. `~/nas-docker/cloudflared/config.yml.template` - tracked template for cloudflared runtime config (do NOT commit generated `cloudflared/config.yml` or credentials)
 8. `~/.config/rclone/rclone.conf` - Google Drive credentials
 
 **Note These (not secret):**
@@ -478,10 +464,10 @@ docker system prune -a
 
 ## Next Steps
 
-1. Install Immich mobile app → Point to `https://your-domain.ts.net/immich`
-2. Test Git workflows with Gitea
+1. Install Immich mobile app → Point to your Immich hostname (e.g. `https://immich.example.com`) — use the `HOSTNAMES` you set in `.env`
+2. Test Git workflows with Gitea at its hostname (e.g. `https://gitea.example.com`)
 3. Set up backups (see BACKUPS.md)
-4. Share Tailscale domain for remote access
+4. Optionally share the Tailscale Funnel URL for Copyparty if you enabled it (see Part 5.2)
 
 ---
 
