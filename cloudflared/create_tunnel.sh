@@ -106,25 +106,25 @@ else
       fi
     else
       log "Created tunnel id: $TUNNEL_ID"
-      # Extract token from creation response
-      tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
+      # The creation response includes a credentials_file object with the proper format
+      credentials_file=$(printf '%s' "$tunnel_response" | jq -c '.result.credentials_file' 2>/dev/null || true)
+      
+      if [ -n "$credentials_file" ] && [ "$credentials_file" != "null" ]; then
+        # Use the credentials file directly from the API
+        echo "$credentials_file" > "$CLOUD_DIR/${TUNNEL_ID}.json"
+        log "Created credentials file from API response"
+      else
+        log "ERROR: Could not extract credentials_file from tunnel creation response"
+        exit 2
+      fi
     fi
   fi
   
-  if [ -z "$tunnel_token" ] || [ "$tunnel_token" = "null" ]; then
-    log "ERROR: No tunnel token available. This should not happen after tunnel creation."
+  # Verify credentials file was created
+  if [ ! -f "$CLOUD_DIR/${TUNNEL_ID}.json" ]; then
+    log "ERROR: Credentials file was not created"
     exit 2
   fi
-  
-  # Write the credentials file with the token from creation
-  cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
-{
-  "AccountTag": "${CF_ACCOUNT_ID}",
-  "TunnelID": "${TUNNEL_ID}",
-  "TunnelName": "${CF_TUNNEL_NAME}",
-  "TunnelSecret": "${tunnel_token}"
-}
-JSON
   
   log "Created credentials file: $CLOUD_DIR/${TUNNEL_ID}.json"
 fi
