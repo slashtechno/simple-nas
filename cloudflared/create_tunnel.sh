@@ -106,13 +106,20 @@ log "Using credentials file: $CREDENTIALS_FILE"
 
 # Render config.yml into CLOUD_DIR/config.yml.
 # HOSTNAMES is expected as comma-separated: immich.example.com,gitea.example.com,copyparty.example.com
-IFS=',' read -r -a HOST_ARR <<EOF
-${HOSTNAMES:-}
-EOF
+# Parse hostnames manually since 'read -a' is bash-only
+HOSTNAMES_STR="${HOSTNAMES:-}"
+IMMICH_HOST=""
+GITEA_HOST=""
+COPYPARTY_HOST=""
 
-IMMICH_HOST="${HOST_ARR[0]:-}"
-GITEA_HOST="${HOST_ARR[1]:-}"
-COPYPARTY_HOST="${HOST_ARR[2]:-}"
+if [ -n "$HOSTNAMES_STR" ]; then
+  # Extract first hostname
+  IMMICH_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f1 | tr -d '[:space:]')
+  # Extract second hostname
+  GITEA_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f2 | tr -d '[:space:]')
+  # Extract third hostname
+  COPYPARTY_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f3 | tr -d '[:space:]')
+fi
 
 CONFIG_PATH="$CLOUD_DIR/config.yml"
 
@@ -166,7 +173,8 @@ chmod 0600 "$CREDENTIALS_FILE" || true
 if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
   log "Ensuring DNS records exist in zone $CF_ZONE_ID for hostnames: $HOSTNAMES"
 
-  for host in "${HOST_ARR[@]}"; do
+  # Process each hostname
+  for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
     host=$(printf '%s' "$host" | tr -d '[:space:]')
     [ -z "$host" ] && continue
 
