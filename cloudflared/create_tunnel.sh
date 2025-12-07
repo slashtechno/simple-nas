@@ -32,17 +32,18 @@ mkdir -p "$CLOUD_DIR"
 # Ensure permissions are permissive for creation; we'll tighten later.
 umask 0077
 
-# Find existing credentials file - we'll delete and recreate to ensure fresh credentials
-existing_json=$(ls "$CLOUD_DIR"/*.json 2>/dev/null || true | head -n1 || true)
+# Find existing credentials file and tunnel
+existing_json=$(ls "$CLOUD_DIR"/*.json 2>/dev/null | head -n1 || true)
 
 if [ -n "$existing_json" ]; then
   TUNNEL_ID="$(basename "$existing_json" .json)"
   log "Found existing credentials file: $existing_json (tunnel id: $TUNNEL_ID)"
-  log "Will delete and recreate tunnel to ensure valid credentials..."
-  rm -f "$existing_json"
+  log "Will reuse this tunnel."
+else
+  log "No existing credentials found. Will create new tunnel."
 fi
 
-# Always check for tunnel existence via API
+# Check for tunnel existence via API
 log "Checking for tunnel named '$CF_TUNNEL_NAME' via API..."
 
 if [ -z "${CF_ACCOUNT_ID:-}" ]; then
@@ -50,35 +51,29 @@ if [ -z "${CF_ACCOUNT_ID:-}" ]; then
   exit 2
 fi
 
-# First, try to find an existing tunnel with this name
+# Try to find an existing tunnel with this name
 existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
   -H "Authorization: Bearer ${CF_API_TOKEN}" \
   -H "Content-Type: application/json" 2>&1)
 
-TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+FOUND_TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
 
-if [ -n "$TUNNEL_ID" ]; then
-  log "Found existing tunnel: $TUNNEL_ID - deleting to recreate with proper credentials..."
-  
-  # Delete the old credentials file
-  rm -f "$CLOUD_DIR/${TUNNEL_ID}.json"
-  
-  delete_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
-    -H "Authorization: Bearer ${CF_API_TOKEN}" \
-    -H "Content-Type: application/json" 2>&1)
-  
-  delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
-  if [ "$delete_success" = "true" ]; then
-    log "Deleted existing tunnel successfully"
-    # Wait for API to reflect deletion
-    sleep 2
+if [ -n "$FOUND_TUNNEL_ID" ]; then
+  log "Found existing tunnel via API: $FOUND_TUNNEL_ID"
+  if [ -z "$TUNNEL_ID" ]; then
+    # We found it via API but don't have local credentials
+    log "Tunnel exists but credentials file is missing. This tunnel may not be usable without credentials."
+    log "Will create a new tunnel with a different approach..."
     TUNNEL_ID=""
   else
-    log "WARNING: Could not delete existing tunnel. Response: $delete_response"
-    log "Proceeding to attempt creation anyway..."
-    TUNNEL_ID=""
+    # Tunnel exists and we have credentials - reuse it
+    TUNNEL_ID="$FOUND_TUNNEL_ID"
+    log "Reusing existing tunnel: $TUNNEL_ID"
   fi
+else
+  log "No existing tunnel found via API"
 fi
+
 
 if [ -z "$TUNNEL_ID" ]; then
   log "Creating new tunnel named '$CF_TUNNEL_NAME'..."
@@ -95,43 +90,11 @@ if [ -z "$TUNNEL_ID" ]; then
   TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
   
   if [ -z "$TUNNEL_ID" ]; then
-    # Check if error is "tunnel already exists" - may happen if deletion hasn't fully propagated
-    error_code=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].code // empty' 2>/dev/null || true)
-    if [ "$error_code" = "1013" ]; then
-      log "Tunnel name already in use (deletion may not have fully propagated). Waiting 3 seconds and retrying..."
-      sleep 3
-      # Retry deletion one more time
-      existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
-        -H "Authorization: Bearer ${CF_API_TOKEN}" \
-        -H "Content-Type: application/json" 2>&1)
-      OLD_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
-      if [ -n "$OLD_ID" ]; then
-        log "Found lingering tunnel $OLD_ID, attempting second delete..."
-        curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${OLD_ID}" \
-          -H "Authorization: Bearer ${CF_API_TOKEN}" \
-          -H "Content-Type: application/json" >/dev/null 2>&1
-        sleep 3
-      fi
-      
-      # Retry tunnel creation
-      tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
-        -H "Authorization: Bearer ${CF_API_TOKEN}" \
-        -H "Content-Type: application/json" \
-        -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
-      
-      TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
-      if [ -z "$TUNNEL_ID" ]; then
-        log "ERROR: Failed to create tunnel after retry. Response: $tunnel_response"
-        exit 2
-      fi
-      log "Successfully created tunnel on retry: $TUNNEL_ID"
-    else
-      log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
-      exit 2
-    fi
-  else
-    log "Created tunnel id: $TUNNEL_ID"
+    log "ERROR: Failed to create tunnel via API. Response: $tunnel_response"
+    exit 2
   fi
+  
+  log "Created tunnel id: $TUNNEL_ID"
   
   # Extract credentials_file from response
   credentials_file=$(printf '%s' "$tunnel_response" | jq -c '.result.credentials_file' 2>/dev/null || true)
