@@ -208,7 +208,7 @@ EOF
 
 # Ensure permissions so runtime cloudflared can read files
 chmod 0644 "$CONFIG_PATH"
-chmod 0600 "$CREDENTIALS_FILE" || true
+chmod 0644 "$CREDENTIALS_FILE" || true
 
 # Optional: create DNS records for each hostname if CF_ZONE_ID is provided.
 if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
