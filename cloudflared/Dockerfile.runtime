@@ -12,7 +12,7 @@ RUN apk add --no-cache \
   bind-tools \
   tcpdump \
   htop \
-  ps \
+  procps \
   bash
 
 ENTRYPOINT ["/usr/local/bin/cloudflared"]
