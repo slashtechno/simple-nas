@@ -12,91 +12,100 @@ Self-hosted single-user home NAS on Raspberry Pi 4 with Immich (photos), Copypar
 
 **Access Pattern**: `Internet → Cloudflare Tunnel (cloudflared) → Docker services (by hostname)`
 - DNS: `immich.slashtechno.com`, `gitea.slashtechno.com`, `copyparty.slashtechno.com` → CNAME to `{TUNNEL_ID}.cfargotunnel.com`
+- **Critical**: DNS records must have `proxied: true` (Cloudflare orange cloud icon), not just pointing to tunnel
 - All services on internal `services` bridge network; cloudflared bridges to Cloudflare edge
 
 ## Critical Implementation Details
 
 ### Cloudflare Tunnel Setup (cloudflared/)
-**Pattern**: API-based tunnel (not cert.pem). Init container creates tunnel + credentials, runtime container connects.
+**Pattern**: API-based tunnel with `config_src: local` (routes defined in config.yml, not Cloudflare dashboard).
 
 - `create_tunnel.sh`: POSIX shell script (not bash) that:
-  1. Deletes existing tunnel if name conflict (with retries, 5s wait between attempts)
-  2. Creates new tunnel via POST to `/cfd_tunnel` API
-  3. Extracts `credentials_file` JSON from response (only available during creation)
-  4. Renders `config.yml` from template with ingress rules for 3 services
-  5. Creates/updates DNS records via Cloudflare API (deletes old ones if tunnel recreated)
+  1. Checks for existing **active** tunnels (filters out soft-deleted ones via `deleted_at == null`)
+  2. Creates new tunnel via POST to `/cfd_tunnel` API with `config_src: local`
+  3. Extracts `credentials_file` JSON from response (only available during POST, not GET)
+  4. Renders `config.yml` with ingress rules for 3 services + default 404 rule
+  5. Creates/updates DNS records with `proxied: true` for Cloudflare routing
+  6. Parses `HOSTNAMES` env var (comma-separated) into individual service hostnames
   
-- `Dockerfile.init`: Alpine + cloudflared binary (multi-stage from official image) + curl/jq + sh support
+- `Dockerfile.init`: Alpine + cloudflared binary + curl/jq + sh support
 - `Dockerfile.runtime`: Alpine + cloudflared binary + debugging tools (curl, netcat, tcpdump, bash)
-- `config.yml.template`: Jinja2-style template with `{{TUNNEL_ID}}`, `{{IMMICH_HOST}}`, etc.
-- `config.yml`: Generated at runtime; contains tunnel ID + ingress routing rules
+- `config.yml`: Generated at runtime; contains tunnel ID + ingress routing rules (read by runtime cloudflared)
+- `config.yml.template`: Placeholder; actual template is generated in script
 
 **Required env vars** (in `.env`):
 - `CF_API_TOKEN` (account-level with Tunnels:Edit, DNS:Edit permissions)
 - `CF_ACCOUNT_ID` (numeric account ID)
 - `CF_ZONE_ID` (zone ID for slashtechno.com)
-- `CF_TUNNEL_NAME` (default: pi-nas-tunnel; if exists, deleted and recreated)
+- `CF_TUNNEL_NAME` (default: pi-nas-tunnel)
 - `HOSTNAMES` (comma-separated: immich.slashtechno.com,gitea.slashtechno.com,copyparty.slashtechno.com)
 
 **Key gotchas**:
-- Tunnel credentials only returned during POST creation, not GET. If credentials file missing, tunnel won't authenticate.
-- Cloudflare API has eventual consistency (~5s) after deletion; retries + sleep needed before recreating same-name tunnel
-- DNS records must point to `{TUNNEL_ID}.cfargotunnel.com`, not generic `tunnel.cloudflare.com`
-- POSIX shell (not bash) required in init container (no `read -a` arrays, use `cut` for parsing)
+- **DNS must be proxied**: `proxied: true` is required for Cloudflare routing to work (orange cloud)
+- Tunnel credentials only returned during POST creation, not GET. Stored in `{TUNNEL_ID}.json`
+- Soft-deleted tunnels appear in API list but have `deleted_at` set; filter these when checking for conflicts
+- Init container runs once (`restart: "no"`); use `docker compose restart cloudflared-init` to re-run
+- DNS record conflicts: script auto-detects wrong tunnel ID and deletes+recreates with correct one
+- Runtime cloudflared automatically registers routes from config.yml with Cloudflare edge
 
 ### Docker Compose Orchestration
-- **Init pattern**: `cloudflared-init` runs once (restart: "no"), generates credentials + config; `cloudflared` depends on it
-- **Network**: All services on `services` bridge network; cloudflared uses same for accessing backends
-- **Env file**: `.env` sourced by all services; `.env.example` documents all variables
+- **Init pattern**: `cloudflared-init` (restart: "no") generates credentials + config.yml, then `cloudflared` reads them
+- **Network**: All services on `services` bridge network (hostname-based routing)
+- **Env file**: `.env` sourced by all services; all services have `env_file: - .env`
+- **No depends_on chains**: Services can start in parallel (immich needs postgres/redis but not cloudflared)
 
 ### Backup Scripts (scripts/)
 - `backup-restic-local.sh` (daily) → restic snapshot to `/mnt/backup` (HDD)
-- `backup-restic-cloud.sh` (weekly) → restic to cloud storage (Google Drive via `backup-paths.txt`)
-- `backup-services.sh` / `restore-services.sh` → Start/stop services during backup
+- `backup-restic-cloud.sh` (weekly) → restic to cloud storage (Google Drive)
+- `backup-services.sh` / `restore-services.sh` → Stop/start services during backup (prevent data inconsistency)
 - `copyparty-funnel.sh` → Optional Tailscale Funnel exposure for file sharing
 
 ## Developer Workflows
 
-**First-time setup**:
+**Tunnel debugging**:
 ```bash
-cp .env.example .env
-# Edit .env with CF_API_TOKEN, CF_ACCOUNT_ID, CF_ZONE_ID
-docker compose up --build
-```
-
-**Tunnel debugging** (after containers up):
-```bash
-docker compose logs cloudflared -f               # Monitor tunnel connections
+docker compose logs cloudflared -f                    # Monitor connections
+docker compose logs cloudflared-init                  # Check init script output
 docker compose exec cloudflared curl http://immich_server:2283  # Test backend reachability
-docker compose exec cloudflared cat /etc/cloudflared/config.yml  # Check routing rules
+cat cloudflared/config.yml                            # Verify ingress rules
 ```
 
-**Tunnel recreation** (if deleted/broken in Cloudflare UI):
+**Tunnel recreation** (if corrupted):
 ```bash
 rm -f cloudflared/*.json cloudflared/config.yml
-docker compose down && docker compose up --build  # Init script recreates tunnel
+docker compose restart cloudflared-init               # Re-run init script
 ```
 
-**Full cleanup** (before fresh start):
+**DNS route mismatch** (if DNS points to old tunnel ID):
 ```bash
-# Via Cloudflare API: delete old tunnels by name, delete old DNS records
-curl -X DELETE "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/cfd_tunnel/{TUNNEL_ID}" \
-  -H "Authorization: Bearer $CF_API_TOKEN"
-rm -f cloudflared/*.json cloudflared/config.yml
-docker compose down && docker compose up --build
+# Script auto-detects and fixes this, but if manual:
+rm cloudflared/config.yml
+docker compose restart cloudflared-init               # Recreates DNS with correct tunnel ID
+```
+
+**Tunnel conflict resolution** (if tunnel already exists in Cloudflare):
+```bash
+# Init script will error and suggest:
+docker compose run --rm --entrypoint sh cloudflared-init -c \
+  'curl -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/{TUNNEL_ID}" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}"'
+docker compose up -d
 ```
 
 ## Key Files & Patterns
 
-- **docker-compose.yml**: Single file; no depends_on chains (services start in parallel)
-- **SETUP_GUIDE.md**: Step-by-step onboarding (networking, storage mounts, Cloudflare setup)
-- **BACKUPS.md**: Restic workflow, storage constraints, disaster recovery
-- **.env.example**: Template with all vars; human-readable comments
-- **scripts/**: All executable; designed for cron (immich backup, gitea updates, etc.)
+- **docker-compose.yml**: Single file orchestration (no distributed config)
+- **cloudflared/create_tunnel.sh**: Idempotent tunnel setup (safe to re-run, filters soft-deleted tunnels, auto-fixes DNS)
+- **SETUP_GUIDE.md**: Step-by-step onboarding (Cloudflare account setup, DNS config, storage mounts)
+- **BACKUPS.md**: Restic workflow, storage constraints, restore procedures
+- **.env.example**: All required variables documented with comments
+- **scripts/**: All bash, designed for cron jobs and manual operations
 
 ## Design Philosophy
 
-- **Single-user**: No multi-tenancy, no role-based access control
-- **Simple**: Few services, straightforward networking (Docker bridge + Tailscale)
-- **Reliable**: Health checks, automatic restarts, encrypted backups
-- **Replicable**: Entire setup in one repo; easily redeploy to new Pi 
+- **Single-user**: No multi-tenancy, no RBAC
+- **Reliable**: Health checks, automatic restarts, daily local backups + weekly cloud backups
+- **Simple**: Local config sources (no complex orchestration), straightforward routing (hostname → service)
+- **Replicable**: Entire setup in one repo, can redeploy to new Pi by copying .env and data
+- **Failure-tolerant**: DNS auto-correction, soft-delete handling for tunnels, idempotent scripts
+ 
