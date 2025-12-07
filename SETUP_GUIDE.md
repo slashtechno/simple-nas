@@ -339,22 +339,7 @@ ssh -p 2222 git@localhost
 
 ## Part 7: Backups
 
-See [BACKUPS.md](./BACKUPS.md) for complete backup procedures with restic.
-
-Quick setup notes from the repository:
-
-- You can run backup scripts directly from the cloned repository (recommended). For example, if you cloned to `~/simple-nas`:
-
-```bash
-# Use scripts in-place (no need to copy to your home directory)
-chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
-~/simple-nas/scripts/backup-restic-cloud.sh
-```
-
-**Quick summary:**
-- Local backups: Everything to HDD daily
-- Cloud backups: Configs + databases to Google Drive weekly
-- Retention: 7 daily + 4 weekly + 1 monthly (local), 12 weekly + 6 monthly (cloud)
+See [`BACKUPS.md`](BACKUPS.md:1) for backup instructions.
 
 ---
 

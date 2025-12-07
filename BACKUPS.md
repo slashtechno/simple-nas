@@ -192,24 +192,28 @@ restic restore latest --include "/mnt/t7/docker/gitea" --target /
 
 ## Schedule Backups with Cron
 
-Edit your crontab:
+Cron does not expand shell constructs in the command field (no $(...), no ~, no unexpanded $VAR). Use absolute paths.
 
-```bash
-crontab -e
-```
-
-Add the following entries:
+**IMPORTANT: replace `user` with your actual username in these examples.**
 
 ```cron
 # Daily local backup @ 2 AM
-0 2 * * * /home/$(whoami)/backup-restic-local.sh
+0 2 * * * /home/user/simple-nas/scripts/backup-restic-local.sh >> /mnt/backup/logs/backup-cron.log 2>&1
 
 # Weekly cloud backup @ Sunday 4 AM
-0 4 * * 0 /home/$(whoami)/backup-restic-cloud.sh
+0 4 * * 0 /home/user/simple-nas/scripts/backup-restic-cloud.sh >> /mnt/backup/logs/backup-cron.log 2>&1
 
-# Weekly integrity check @ Wednesday 3 AM
-0 3 * * 3 bash -c "export RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo && restic check" >> /mnt/backup/logs/restic-check.log 2>&1
+# Weekly integrity check @ Wednesday 3 AM (advanced)
+0 3 * * 3 /bin/bash -lc 'export RESTIC_PASSWORD_FILE=/home/user/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo && restic check' >> /mnt/backup/logs/restic-check.log 2>&1
 ```
+
+Quick checklist:
+- chmod +x /home/user/simple-nas/scripts/backup-restic-local.sh
+- Test-run as the target user
+- Ensure /mnt/backup is mounted and RESTIC_PASSWORD_FILE exists
+- Check /mnt/backup/logs for output
+
+Note: `$USER` or `~` is fine inside scripts or files read at runtime (e.g., [`scripts/backup-paths.txt`](scripts/backup-paths.txt:1)), but not in the crontab command field.
 
 ---
 
