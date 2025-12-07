@@ -155,8 +155,6 @@ services:
     command: tunnel --config /etc/cloudflared/config.yml run
     volumes:
       - ./cloudflared:/etc/cloudflared:rw
-    environment:
-      TUNNEL_ORIGIN_CERT: /etc/cloudflared/cert.pem
     networks:
       - services
     env_file:
