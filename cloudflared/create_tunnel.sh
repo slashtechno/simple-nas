@@ -64,18 +64,30 @@ if [ "$SKIP_CREATION" = "0" ]; then
   
   if [ -n "$EXISTING_ID" ]; then
     log "Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID). Deleting it..."
+    
+    # First, try to clean up any connections
+    log "Cleaning up tunnel connections..."
+    cleanup_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}/connections" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" 2>&1 || true)
+    
+    # Wait a moment for connections to close
+    sleep 2
+    
+    # Now delete the tunnel
     delete_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json" 2>&1)
     
     delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
     if [ "$delete_success" = "true" ]; then
-      log "Successfully deleted existing tunnel. Waiting 5 seconds for API to propagate..."
-      sleep 5
+      log "Successfully deleted existing tunnel. Waiting 10 seconds for API to propagate..."
+      sleep 10
     else
       log "WARNING: Failed to delete existing tunnel. Response: $delete_response"
-      log "Attempting to create anyway after waiting 3 seconds..."
-      sleep 3
+      log "You may need to manually delete the tunnel in the Cloudflare dashboard."
+      log "Visit: https://one.dash.cloudflare.com/${CF_ACCOUNT_ID}/networks/tunnels"
+      exit 2
     fi
   fi
   
