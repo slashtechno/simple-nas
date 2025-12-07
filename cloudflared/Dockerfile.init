@@ -6,10 +6,10 @@ COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 
 # Copy init script
 COPY create_tunnel.sh /etc/cloudflared/create_tunnel.sh
-RUN chmod +x /etc/cloudflared/create_tunnel.sh
+RUN chmod -R 755 /etc/cloudflared
 
 # Install curl and jq for API calls and JSON parsing
 RUN apk add --no-cache curl jq
 
-ENTRYPOINT []
-CMD ["sh", "-c", "/etc/cloudflared/create_tunnel.sh"]
+ENTRYPOINT ["/bin/sh"]
+CMD ["/etc/cloudflared/create_tunnel.sh"]
