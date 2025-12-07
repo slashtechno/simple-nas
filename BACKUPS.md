@@ -198,14 +198,7 @@ Best practice is to restore from a `gitea dump` ZIP with Gitea stopped (Docker r
 - Regenerate hooks: `gitea admin regenerate hooks`
 - Start `gitea`
 
-Optional DB import (if `gitea-db.sql` is present):
-
-```bash
-# Inside the container, import to the DB configured in /etc/gitea/app.ini
-docker exec -it gitea bash
-# SQLite only:
-sqlite3 /data/gitea/gitea.db < /tmp/restore/gitea-db.sql
-```
+SQLite note: The `gitea dump` includes the SQLite database file inside `data/`. Our restore script copies that file into `/data/gitea/` automatically and skips importing `gitea-db.sql` to avoid duplicate schema/data errors. You generally do not need to run a manual import for SQLite.
 
 ---
 

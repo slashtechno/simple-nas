@@ -83,17 +83,13 @@ case "$TARGET" in
         if command -v gitea >/dev/null 2>&1; then
           /usr/local/bin/gitea -c "/data/gitea/conf/app.ini" admin regenerate hooks || true
         fi
-        # Auto-import SQLite DB if present (assumes sqlite-only setup)
-        if [ -f gitea-db.sql ]; then
-          # SQLite DB path under APP_DATA_PATH; common locations: /data/gitea/gitea.db or /data/gitea/data/gitea.db
-          DB_PATH=""
-          if [ -f /data/gitea/gitea.db ]; then DB_PATH="/data/gitea/gitea.db"; fi
-          if [ -z "$DB_PATH" ] && [ -f /data/gitea/data/gitea.db ]; then DB_PATH="/data/gitea/data/gitea.db"; fi
-          if [ -n "$DB_PATH" ]; then
-            echo "Importing SQLite DB from gitea-db.sql into $DB_PATH"
-            sqlite3 "$DB_PATH" < /tmp/restore/gitea-db.sql || echo "SQLite import failed; please import manually"
-          else
-            echo "SQLite DB file not found under /data/gitea; skipping import"
+        # SQLite-only: prefer the SQLite DB file included in the dump.
+        # If a SQLite DB file exists after copy, do NOT import gitea-db.sql to avoid duplicate schema/data errors.
+        if [ -f /data/gitea/gitea.db ] || [ -f /data/gitea/data/gitea.db ]; then
+          echo "SQLite DB file restored from dump; skipping SQL import."
+        else
+          if [ -f gitea-db.sql ]; then
+            echo "No SQLite DB file found; SQL dump present. Skipping import by default to avoid conflicts."
           fi
         fi
       '
