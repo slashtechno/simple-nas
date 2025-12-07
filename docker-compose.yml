@@ -147,7 +147,9 @@ services:
       - .env
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    build:
+      context: ./cloudflared
+      dockerfile: Dockerfile.runtime
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --config /etc/cloudflared/config.yml run

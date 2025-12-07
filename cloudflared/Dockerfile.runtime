@@ -1,0 +1,18 @@
+FROM cloudflare/cloudflared:latest as cloudflared
+FROM alpine:latest
+
+# Copy cloudflared binary from the official image
+COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared
+
+# Install debugging tools
+RUN apk add --no-cache \
+  curl \
+  wget \
+  netcat-openbsd \
+  bind-tools \
+  tcpdump \
+  htop \
+  ps \
+  bash
+
+ENTRYPOINT ["/usr/local/bin/cloudflared"]
