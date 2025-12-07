@@ -56,8 +56,23 @@ else
   tunnel_token=""
   
   if [ -n "$TUNNEL_ID" ]; then
-    log "Found existing tunnel: $TUNNEL_ID"
-  else
+    log "Found existing tunnel: $TUNNEL_ID - deleting to recreate with proper credentials..."
+    delete_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" 2>&1)
+    
+    delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
+    if [ "$delete_success" = "true" ]; then
+      log "Deleted existing tunnel successfully"
+      TUNNEL_ID=""
+    else
+      log "WARNING: Could not delete existing tunnel. Response: $delete_response"
+      log "Proceeding to attempt creation anyway..."
+      TUNNEL_ID=""
+    fi
+  fi
+  
+  if [ -z "$TUNNEL_ID" ]; then
     log "No existing tunnel found, creating new tunnel named '$CF_TUNNEL_NAME'..."
     
     # Create tunnel via Cloudflare API
@@ -97,23 +112,12 @@ else
   fi
   
   if [ -z "$tunnel_token" ] || [ "$tunnel_token" = "null" ]; then
-    # For existing tunnels, we need to get new credentials
-    # Use the cloudflared API via a quick tunnel or use account-level auth
-    log "WARNING: Could not get token from API response. Using account-based auth instead."
-    log "NOTE: The tunnel will authenticate using CF_API_TOKEN environment variable at runtime."
-    
-    # Create a credentials file that cloudflared can use with account auth
-    cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
-{
-  "AccountTag": "${CF_ACCOUNT_ID}",
-  "TunnelID": "${TUNNEL_ID}",
-  "TunnelName": "${CF_TUNNEL_NAME}",
-  "TunnelSecret": ""
-}
-JSON
-  else
-    # We have a valid token from creation
-    cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
+    log "ERROR: No tunnel token available. This should not happen after tunnel creation."
+    exit 2
+  fi
+  
+  # Write the credentials file with the token from creation
+  cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
 {
   "AccountTag": "${CF_ACCOUNT_ID}",
   "TunnelID": "${TUNNEL_ID}",
@@ -121,7 +125,7 @@ JSON
   "TunnelSecret": "${tunnel_token}"
 }
 JSON
-  fi
+  
   log "Created credentials file: $CLOUD_DIR/${TUNNEL_ID}.json"
 fi
 
