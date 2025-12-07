@@ -139,6 +139,8 @@ services:
       dockerfile: Dockerfile.init
     container_name: cloudflared-init
     restart: "no"
+    volumes:
+      - ./cloudflared:/etc/cloudflared:rw
     networks:
       - services
     env_file:
