@@ -70,6 +70,8 @@ if [ -n "$TUNNEL_ID" ]; then
   delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
   if [ "$delete_success" = "true" ]; then
     log "Deleted existing tunnel successfully"
+    # Wait for API to reflect deletion
+    sleep 2
     TUNNEL_ID=""
   else
     log "WARNING: Could not delete existing tunnel. Response: $delete_response"
@@ -93,36 +95,54 @@ if [ -z "$TUNNEL_ID" ]; then
   TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
   
   if [ -z "$TUNNEL_ID" ]; then
-    # Check if error is "tunnel already exists" - if so, try to look it up
+    # Check if error is "tunnel already exists" - may happen if deletion hasn't fully propagated
     error_code=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].code // empty' 2>/dev/null || true)
     if [ "$error_code" = "1013" ]; then
-      log "Tunnel already exists, looking it up..."
+      log "Tunnel name already in use (deletion may not have fully propagated). Waiting 3 seconds and retrying..."
+      sleep 3
+      # Retry deletion one more time
       existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
         -H "Authorization: Bearer ${CF_API_TOKEN}" \
         -H "Content-Type: application/json" 2>&1)
-      TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+      OLD_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+      if [ -n "$OLD_ID" ]; then
+        log "Found lingering tunnel $OLD_ID, attempting second delete..."
+        curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${OLD_ID}" \
+          -H "Authorization: Bearer ${CF_API_TOKEN}" \
+          -H "Content-Type: application/json" >/dev/null 2>&1
+        sleep 3
+      fi
+      
+      # Retry tunnel creation
+      tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+        -H "Authorization: Bearer ${CF_API_TOKEN}" \
+        -H "Content-Type: application/json" \
+        -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+      
+      TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
       if [ -z "$TUNNEL_ID" ]; then
-        log "ERROR: Could not find existing tunnel after creation attempt"
+        log "ERROR: Failed to create tunnel after retry. Response: $tunnel_response"
         exit 2
       fi
-      log "Found existing tunnel: $TUNNEL_ID"
+      log "Successfully created tunnel on retry: $TUNNEL_ID"
     else
       log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
       exit 2
     fi
   else
     log "Created tunnel id: $TUNNEL_ID"
-    # The creation response includes a credentials_file object with the proper format
-    credentials_file=$(printf '%s' "$tunnel_response" | jq -c '.result.credentials_file' 2>/dev/null || true)
-    
-    if [ -n "$credentials_file" ] && [ "$credentials_file" != "null" ]; then
-      # Use the credentials file directly from the API
-      echo "$credentials_file" > "$CLOUD_DIR/${TUNNEL_ID}.json"
-      log "Created credentials file from API response"
-    else
-      log "ERROR: Could not extract credentials_file from tunnel creation response"
-      exit 2
-    fi
+  fi
+  
+  # Extract credentials_file from response
+  credentials_file=$(printf '%s' "$tunnel_response" | jq -c '.result.credentials_file' 2>/dev/null || true)
+  
+  if [ -n "$credentials_file" ] && [ "$credentials_file" != "null" ]; then
+    # Use the credentials file directly from the API
+    echo "$credentials_file" > "$CLOUD_DIR/${TUNNEL_ID}.json"
+    log "Created credentials file from API response"
+  else
+    log "ERROR: Could not extract credentials_file from tunnel creation response"
+    exit 2
   fi
 fi
 
