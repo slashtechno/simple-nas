@@ -70,29 +70,54 @@ if [ "$SKIP_CREATION" = "0" ]; then
     
     delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
     if [ "$delete_success" = "true" ]; then
-      log "Successfully deleted existing tunnel"
-      sleep 2  # Wait for API to propagate
+      log "Successfully deleted existing tunnel. Waiting 5 seconds for API to propagate..."
+      sleep 5
     else
       log "WARNING: Failed to delete existing tunnel. Response: $delete_response"
-      log "Attempting to create anyway..."
+      log "Attempting to create anyway after waiting 3 seconds..."
+      sleep 3
     fi
   fi
   
-  # Create tunnel via Cloudflare API
-  tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
-    -H "Authorization: Bearer ${CF_API_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
-  
-  log "API Response: $tunnel_response"
-  
-  # Extract tunnel id from response
-  TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
+  # Try to create tunnel with retries
+  CREATE_ATTEMPTS=0
+  MAX_ATTEMPTS=3
+  while [ $CREATE_ATTEMPTS -lt $MAX_ATTEMPTS ]; do
+    CREATE_ATTEMPTS=$((CREATE_ATTEMPTS + 1))
+    log "Tunnel creation attempt $CREATE_ATTEMPTS of $MAX_ATTEMPTS..."
+    
+    # Create tunnel via Cloudflare API
+    tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+    
+    # Extract tunnel id from response
+    TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
+    
+    if [ -n "$TUNNEL_ID" ]; then
+      log "API Response: $tunnel_response"
+      log "Successfully created tunnel on attempt $CREATE_ATTEMPTS"
+      break
+    fi
+    
+    error_code=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].code // "unknown"' 2>/dev/null || echo "unknown")
+    
+    if [ "$error_code" = "1013" ] && [ $CREATE_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+      # Tunnel name still exists, wait and retry
+      log "Tunnel name still in use (error 1013). Waiting 5 seconds before retry..."
+      sleep 5
+    else
+      # Different error or last attempt
+      error_msg=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
+      log "ERROR: Failed to create tunnel after $CREATE_ATTEMPTS attempts. Error: $error_msg"
+      log "Full response: $tunnel_response"
+      exit 2
+    fi
+  done
   
   if [ -z "$TUNNEL_ID" ]; then
-    error_msg=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
-    log "ERROR: Failed to create tunnel via API. Error: $error_msg"
-    log "Full response: $tunnel_response"
+    log "ERROR: Failed to create tunnel after $MAX_ATTEMPTS attempts"
     exit 2
   fi
   
