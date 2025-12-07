@@ -50,9 +50,19 @@ fi
 GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
 if docker ps -q -f name="^${GITEA_CONTAINER}$" >/dev/null 2>&1; then
   echo "Creating Gitea dump..."
-  # Use the specific gitea dump invocation that worked on this system.
-  docker exec --user git "$GITEA_CONTAINER" bash -c "/usr/local/bin/gitea dump -o /tmp" || \
-    { echo "Warning: gitea dump failed with -o /tmp" >&2; }
+  # Locate the gitea binary inside the container and run the documented
+  # dump command with an explicit tempdir. This is a simple, deterministic
+  # invocation that works for the gitea 1.25.2 binary present on this host.
+  GITEA_BIN="$(docker exec "$GITEA_CONTAINER" bash -lc 'command -v gitea' || true)"
+  if [ -z "$GITEA_BIN" ]; then
+    echo "Warning: gitea binary not found inside container; skipping gitea dump" >&2
+  else
+    if docker exec --user git "$GITEA_CONTAINER" bash -lc "$GITEA_BIN dump -t /tmp" >/dev/null 2>&1; then
+      echo "Gitea dump invoked successfully"
+    else
+      echo "Warning: gitea dump failed" >&2
+    fi
+  fi
 
   GITEA_ZIP="$(docker exec "$GITEA_CONTAINER" bash -c 'ls -1t /tmp/gitea-dump-*.zip 2>/dev/null | head -n1' || true)"
   if [ -n "$GITEA_ZIP" ]; then

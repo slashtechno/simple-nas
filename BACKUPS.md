@@ -198,17 +198,18 @@ Cron does not expand shell constructs in the command field (no $(...), no ~, no 
 
 ```cron
 # Daily local backup @ 2 AM
-0 2 * * * /home/user/simple-nas/scripts/backup-restic-local.sh >> /mnt/backup/logs/backup-cron.log 2>&1
+0 2 * * * /bin/bash /home/user/simple-nas/scripts/backup-restic-local.sh >> /mnt/backup/logs/backup-cron.log 2>&1
 
 # Weekly cloud backup @ Sunday 4 AM
-0 4 * * 0 /home/user/simple-nas/scripts/backup-restic-cloud.sh >> /mnt/backup/logs/backup-cron.log 2>&1
+0 4 * * 0 /bin/bash /home/user/simple-nas/scripts/backup-restic-cloud.sh >> /mnt/backup/logs/backup-cron.log 2>&1
 
 # Weekly integrity check @ Wednesday 3 AM (advanced)
 0 3 * * 3 /bin/bash -lc 'export RESTIC_PASSWORD_FILE=/home/user/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo && restic check' >> /mnt/backup/logs/restic-check.log 2>&1
 ```
 
-Quick checklist:
-- chmod +x /home/user/simple-nas/scripts/backup-restic-local.sh
+- Quick checklist:
+- Either: `chmod +x /home/user/simple-nas/scripts/backup-restic-local.sh` so the script is directly executable
+- Or: keep the script without the +x bit and call it from cron with `/bin/bash /home/user/simple-nas/scripts/backup-restic-local.sh` (recommended for cron)
 - Test-run as the target user
 - Ensure /mnt/backup is mounted and RESTIC_PASSWORD_FILE exists
 - Check /mnt/backup/logs for output
