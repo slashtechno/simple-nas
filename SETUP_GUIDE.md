@@ -208,6 +208,7 @@ Key points:
 - Each service is routed by hostname (e.g. `immich.example.com`) to the internal container address.
 - Runtime files and tunnel credentials are generated at init time; a template is tracked in the repo: [`cloudflared/config.yml.template`](cloudflared/config.yml.template:1).
 - You still expose Copyparty via Tailscale Funnel optionally (see Part 5.2) while Cloudflare also provides a public hostname.
+- **File upload limits**: Cloudflare has 100 MB per request limit on Free/Pro/Business plans (500 MB on Enterprise). Copyparty's up2k uploader automatically chunks large files below this limit, so there's no effective file size limit for uploads through the tunnel.
 
 Required environment variables (add to your `.env`):
 - `CF_API_TOKEN` — Cloudflare API token with DNS and Tunnel permissions
