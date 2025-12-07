@@ -48,26 +48,26 @@ fi
 
 # Gitea dump
 GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
+GITEA_APP_INI="${GITEA_APP_INI:-/data/gitea/conf/app.ini}"
 if docker ps -q -f name="^${GITEA_CONTAINER}$" >/dev/null 2>&1; then
   echo "Creating Gitea dump..."
-  # Locate the gitea binary inside the container and run the documented
-  # dump command with an explicit tempdir. This is a simple, deterministic
-  # invocation that works for the gitea 1.25.2 binary present on this host.
-  GITEA_BIN="$(docker exec "$GITEA_CONTAINER" bash -lc 'command -v gitea' || true)"
-  if [ -z "$GITEA_BIN" ]; then
-    echo "Warning: gitea binary not found inside container; skipping gitea dump" >&2
-  else
-    if docker exec --user git "$GITEA_CONTAINER" bash -lc "$GITEA_BIN dump -t /tmp" >/dev/null 2>&1; then
-      echo "Gitea dump invoked successfully"
+  # Run gitea dump with explicit config + target so we get deterministic output.
+  # Running as the git user matches the container's runtime UID/GID defaults.
+  if docker exec --user git "$GITEA_CONTAINER" test -r "$GITEA_APP_INI"; then
+        GITEA_DUMP_TARGET="/tmp/gitea-dump-$(timestamp).zip"
+    if docker exec --user git "$GITEA_CONTAINER" gitea dump \
+         --config "$GITEA_APP_INI" \
+         --tempdir /tmp \
+          --file "$GITEA_DUMP_TARGET" \
+         --skip-log; then
+      docker cp "$GITEA_CONTAINER:$GITEA_DUMP_TARGET" "$DUMP_DIR/"
+      docker exec "$GITEA_CONTAINER" rm -f "$GITEA_DUMP_TARGET"
+      echo "Gitea dump written to $DUMP_DIR/$(basename "$GITEA_DUMP_TARGET")"
     else
       echo "Warning: gitea dump failed" >&2
     fi
-  fi
-
-  GITEA_ZIP="$(docker exec "$GITEA_CONTAINER" bash -c 'ls -1t /tmp/gitea-dump-*.zip 2>/dev/null | head -n1' || true)"
-  if [ -n "$GITEA_ZIP" ]; then
-    docker cp "$GITEA_CONTAINER:$GITEA_ZIP" "$DUMP_DIR/"
-    docker exec "$GITEA_CONTAINER" rm -f "$GITEA_ZIP"
+  else
+    echo "Warning: gitea config not readable at $GITEA_APP_INI; skipping gitea dump" >&2
   fi
 else
   echo "Warning: Gitea container not running" >&2
