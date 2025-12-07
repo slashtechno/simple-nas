@@ -55,12 +55,13 @@ fi
 if [ "$SKIP_CREATION" = "0" ]; then
   log "Creating new tunnel named '$CF_TUNNEL_NAME'..."
   
-  # First check if a tunnel with this name already exists
+  # First check if a tunnel with this name already exists (exclude deleted tunnels)
   existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
     -H "Content-Type: application/json" 2>&1)
   
-  EXISTING_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+  # Filter out deleted tunnels (deleted_at is null for active tunnels)
+  EXISTING_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[] | select(.deleted_at == null) | .id' 2>/dev/null | head -n1 || true)
   
   if [ -n "$EXISTING_ID" ]; then
     log "ERROR: Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID) in Cloudflare API"
