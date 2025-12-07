@@ -32,51 +32,51 @@ mkdir -p "$CLOUD_DIR"
 # Ensure permissions are permissive for creation; we'll tighten later.
 umask 0077
 
-# Find existing credentials file and tunnel
+# Check if credentials file already exists (indicating tunnel is already set up)
 existing_json=$(ls "$CLOUD_DIR"/*.json 2>/dev/null | head -n1 || true)
 
 if [ -n "$existing_json" ]; then
   TUNNEL_ID="$(basename "$existing_json" .json)"
   log "Found existing credentials file: $existing_json (tunnel id: $TUNNEL_ID)"
-  log "Will reuse this tunnel."
+  log "Tunnel already configured. Skipping recreation."
+  SKIP_CREATION=1
 else
   log "No existing credentials found. Will create new tunnel."
+  SKIP_CREATION=0
+  TUNNEL_ID=""
 fi
-
-# Check for tunnel existence via API
-log "Checking for tunnel named '$CF_TUNNEL_NAME' via API..."
 
 if [ -z "${CF_ACCOUNT_ID:-}" ]; then
   log "ERROR: CF_ACCOUNT_ID is required to create a tunnel via API. Please set CF_ACCOUNT_ID in your .env"
   exit 2
 fi
 
-# Try to find an existing tunnel with this name
-existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
-  -H "Authorization: Bearer ${CF_API_TOKEN}" \
-  -H "Content-Type: application/json" 2>&1)
 
-FOUND_TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
-
-if [ -n "$FOUND_TUNNEL_ID" ]; then
-  log "Found existing tunnel via API: $FOUND_TUNNEL_ID"
-  if [ -z "$TUNNEL_ID" ]; then
-    # We found it via API but don't have local credentials
-    log "Tunnel exists but credentials file is missing. This tunnel may not be usable without credentials."
-    log "Will create a new tunnel with a different approach..."
-    TUNNEL_ID=""
-  else
-    # Tunnel exists and we have credentials - reuse it
-    TUNNEL_ID="$FOUND_TUNNEL_ID"
-    log "Reusing existing tunnel: $TUNNEL_ID"
-  fi
-else
-  log "No existing tunnel found via API"
-fi
-
-
-if [ -z "$TUNNEL_ID" ]; then
+if [ "$SKIP_CREATION" = "0" ]; then
   log "Creating new tunnel named '$CF_TUNNEL_NAME'..."
+  
+  # First check if a tunnel with this name already exists and delete it
+  existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" 2>&1)
+  
+  EXISTING_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+  
+  if [ -n "$EXISTING_ID" ]; then
+    log "Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID). Deleting it..."
+    delete_response=$(curl -s -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" 2>&1)
+    
+    delete_success=$(printf '%s' "$delete_response" | jq -r '.success // false' 2>/dev/null || echo "false")
+    if [ "$delete_success" = "true" ]; then
+      log "Successfully deleted existing tunnel"
+      sleep 2  # Wait for API to propagate
+    else
+      log "WARNING: Failed to delete existing tunnel. Response: $delete_response"
+      log "Attempting to create anyway..."
+    fi
+  fi
   
   # Create tunnel via Cloudflare API
   tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
@@ -90,7 +90,9 @@ if [ -z "$TUNNEL_ID" ]; then
   TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
   
   if [ -z "$TUNNEL_ID" ]; then
-    log "ERROR: Failed to create tunnel via API. Response: $tunnel_response"
+    error_msg=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
+    log "ERROR: Failed to create tunnel via API. Error: $error_msg"
+    log "Full response: $tunnel_response"
     exit 2
   fi
   
