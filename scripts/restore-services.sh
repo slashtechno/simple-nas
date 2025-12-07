@@ -52,7 +52,7 @@ case "$TARGET" in
     echo "Stopping Gitea to ensure consistency..."
     docker stop "$GITEA_CONTAINER" >/dev/null
 
-    echo "Running helper container to restore files into Gitea volumes..."
+    echo "Running helper container to wipe and restore files into Gitea volumes..."
     docker run --rm \
       --name gitea-restore-helper \
       --volumes-from "$GITEA_CONTAINER" \
@@ -61,20 +61,22 @@ case "$TARGET" in
         set -euo pipefail
         unzip -o /tmp/dump.zip -d /tmp/restore
         cd /tmp/restore
+        # Wipe current data for a clean restore (KISS)
+        rm -rf /data/gitea/* /data/git/repositories/* || true
         # app.ini (rootful: data/conf/app.ini -> /data/gitea/conf/app.ini)
         if [ -f data/conf/app.ini ]; then
           mkdir -p /data/gitea/conf
           cp -a data/conf/app.ini /data/gitea/conf/app.ini
         fi
-        # data -> /data/gitea (APP_DATA_PATH) using rsync to merge directories safely
+        # data -> /data/gitea (APP_DATA_PATH)
         if [ -d data ]; then
           mkdir -p /data/gitea
-          rsync -a --delete data/ /data/gitea/
+          rsync -a data/ /data/gitea/
         fi
-        # repos -> /data/git/repositories using rsync
+        # repos -> /data/git/repositories
         if [ -d repos ]; then
           mkdir -p /data/git/repositories
-          rsync -a --delete repos/ /data/git/repositories/
+          rsync -a repos/ /data/git/repositories/
         fi
         chown -R git:git /data || true
         # Regenerate hooks to ensure paths are correct
