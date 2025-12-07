@@ -57,11 +57,6 @@ else
   
   if [ -n "$TUNNEL_ID" ]; then
     log "Found existing tunnel: $TUNNEL_ID"
-    # Try to get credentials file from the tunnel details endpoint
-    tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" 2>&1)
-    credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file' 2>/dev/null || true)
   else
     log "No existing tunnel found, creating new tunnel named '$CF_TUNNEL_NAME'..."
     
@@ -85,39 +80,68 @@ else
           -H "Authorization: Bearer ${CF_API_TOKEN}" \
           -H "Content-Type: application/json" 2>&1)
         TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
-        if [ -n "$TUNNEL_ID" ]; then
-          log "Found existing tunnel: $TUNNEL_ID"
-          # Fetch credentials for the existing tunnel
-          tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/json" 2>&1)
-          credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file' 2>/dev/null || true)
-        else
+        if [ -z "$TUNNEL_ID" ]; then
           log "ERROR: Could not find existing tunnel after creation attempt"
           exit 2
         fi
+        log "Found existing tunnel: $TUNNEL_ID"
       else
         log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
         exit 2
       fi
     else
       log "Created tunnel id: $TUNNEL_ID"
-      # Extract the credentials_file object from the response
-      credentials_json=$(printf '%s' "$tunnel_response" | jq -r '.result.credentials_file' 2>/dev/null || true)
     fi
   fi
   
-  # Create credentials JSON file in cloudflared format
-  if [ -n "$credentials_json" ] && [ "$credentials_json" != "null" ]; then
-    echo "$credentials_json" > "$CLOUD_DIR/${TUNNEL_ID}.json"
+  # Create credentials JSON file using the proper cloudflared format
+  # We use the token from the creation response or create a minimal auth file
+  log "Creating credentials file for tunnel $TUNNEL_ID..."
+  
+  # The cloudflared tunnel expects either:
+  # 1. A full credentials file (AccountTag, TunnelSecret, TunnelID, TunnelName) - only available on creation
+  # 2. Or we use the token-based approach with environment variable
+  # For simplicity, we'll create a config that uses token-based auth
+  
+  # Get the token from creation response if available
+  tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
+  
+  if [ -n "$tunnel_token" ] && [ "$tunnel_token" != "null" ]; then
+    # We have a token from creation, save it to a credentials file
+    cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
+{
+  "AccountTag": "${CF_ACCOUNT_ID}",
+  "TunnelID": "${TUNNEL_ID}",
+  "TunnelName": "${CF_TUNNEL_NAME}",
+  "TunnelSecret": "$(printf '%s' "$tunnel_token" | jq -r '.secret // empty' 2>/dev/null || echo "$tunnel_token")"
+}
+JSON
+    log "Created credentials file with token from API response"
   else
-    log "WARNING: Could not fetch credentials_file from API. Creating minimal credentials for re-authentication."
-    # Cloudflared will re-authenticate with this minimal file
-    credentials_json="{\"AccountTag\":\"${CF_ACCOUNT_ID}\",\"TunnelID\":\"${TUNNEL_ID}\",\"TunnelName\":\"${CF_TUNNEL_NAME}\"}"
-    echo "$credentials_json" > "$CLOUD_DIR/${TUNNEL_ID}.json"
+    # Fallback: use the Tunnel token endpoint to get a new token for this tunnel
+    log "Requesting new tunnel token via API..."
+    token_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/token" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" 2>&1)
+    
+    new_token=$(printf '%s' "$token_response" | jq -r '.result // empty' 2>/dev/null || true)
+    
+    if [ -z "$new_token" ] || [ "$new_token" = "null" ]; then
+      log "ERROR: Could not obtain tunnel token from API. Response: $token_response"
+      exit 2
+    fi
+    
+    # The token response contains the tunnel credentials in standard format
+    cat > "$CLOUD_DIR/${TUNNEL_ID}.json" <<JSON
+{
+  "AccountTag": "${CF_ACCOUNT_ID}",
+  "TunnelID": "${TUNNEL_ID}",
+  "TunnelName": "${CF_TUNNEL_NAME}",
+  "TunnelSecret": "${new_token}"
+}
+JSON
+    log "Created credentials file with new token from token endpoint"
   fi
-  log "Created credentials file: $CLOUD_DIR/${TUNNEL_ID}.json"
-fi
 
 CREDENTIALS_FILE="$CLOUD_DIR/${TUNNEL_ID}.json"
 if [ ! -f "$CREDENTIALS_FILE" ]; then
