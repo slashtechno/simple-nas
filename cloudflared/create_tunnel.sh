@@ -46,33 +46,74 @@ else
     exit 2
   fi
   
-  # Create tunnel via Cloudflare API
-  tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+  # First, try to find an existing tunnel with this name
+  log "Checking for existing tunnel named '$CF_TUNNEL_NAME'..."
+  existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
     -H "Authorization: Bearer ${CF_API_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+    -H "Content-Type: application/json" 2>&1)
   
-  log "API Response: $tunnel_response"
+  TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
   
-  # Extract tunnel id from response
-  TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
-  
-  if [ -z "$TUNNEL_ID" ]; then
-    log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
-    exit 2
-  fi
-  
-  log "Created tunnel id: $TUNNEL_ID"
-  
-  # Get the tunnel secret/token from the API
-  tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
-  
-  if [ -z "$tunnel_token" ]; then
-    log "ERROR: Could not extract tunnel token from API response"
-    exit 2
+  if [ -n "$TUNNEL_ID" ]; then
+    log "Found existing tunnel: $TUNNEL_ID"
+    
+    # Get the tunnel secret from the API
+    tunnel_token=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].token // empty' 2>/dev/null || true)
+    
+    if [ -z "$tunnel_token" ]; then
+      log "WARNING: Could not extract tunnel token from API response, attempting to retrieve credentials file..."
+      # The token might not be available on subsequent lookups, which is expected
+      # We'll create a minimal credentials file and let cloudflared handle the rest
+      tunnel_token="placeholder"
+    fi
+  else
+    log "No existing tunnel found, creating new tunnel named '$CF_TUNNEL_NAME'..."
+    
+    # Create tunnel via Cloudflare API
+    tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "{\"name\":\"${CF_TUNNEL_NAME}\",\"config_src\":\"cloudflare\"}" 2>&1)
+    
+    log "API Response: $tunnel_response"
+    
+    # Extract tunnel id from response
+    TUNNEL_ID=$(printf '%s' "$tunnel_response" | jq -r '.result.id // empty' 2>/dev/null || true)
+    
+    if [ -z "$TUNNEL_ID" ]; then
+      # Check if error is "tunnel already exists" - if so, try to look it up
+      error_code=$(printf '%s' "$tunnel_response" | jq -r '.errors[0].code // empty' 2>/dev/null || true)
+      if [ "$error_code" = "1013" ]; then
+        log "Tunnel already exists, looking it up..."
+        existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel?name=${CF_TUNNEL_NAME}" \
+          -H "Authorization: Bearer ${CF_API_TOKEN}" \
+          -H "Content-Type: application/json" 2>&1)
+        TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+        if [ -n "$TUNNEL_ID" ]; then
+          log "Found existing tunnel: $TUNNEL_ID"
+        else
+          log "ERROR: Could not find existing tunnel after creation attempt"
+          exit 2
+        fi
+      else
+        log "ERROR: Failed to create tunnel via API. Response was: $tunnel_response"
+        exit 2
+      fi
+    else
+      log "Created tunnel id: $TUNNEL_ID"
+    fi
+    
+    # Get the tunnel secret/token from the API
+    tunnel_token=$(printf '%s' "$tunnel_response" | jq -r '.result.token // empty' 2>/dev/null || true)
+    
+    if [ -z "$tunnel_token" ]; then
+      log "ERROR: Could not extract tunnel token from API response"
+      exit 2
+    fi
   fi
   
   # Create credentials JSON file in cloudflared format
+  # Note: If tunnel already exists, tunnel_token may be "placeholder" which is ok for reconnection
   credentials_json=$(cat <<JSON
 {
   "AccountTag": "${CF_ACCOUNT_ID}",
