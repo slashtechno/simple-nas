@@ -11,7 +11,7 @@ Self-hosted single-user home NAS on Raspberry Pi 4 with Immich (photos), Copypar
 - `cloudflared` (init + runtime) → Cloudflare Tunnel for secure public access
 
 **Access Pattern**: `Internet → Cloudflare Tunnel (cloudflared) → Docker services (by hostname)`
-- DNS: `immich.slashtechno.com`, `gitea.slashtechno.com`, `copyparty.slashtechno.com` → CNAME to `{TUNNEL_ID}.cfargotunnel.com`
+- DNS: `immich.example.com`, `gitea.example.com`, `copyparty.example.com` → CNAME to `{TUNNEL_ID}.cfargotunnel.com`
 - **Critical**: DNS records must have `proxied: true` (Cloudflare orange cloud icon), not just pointing to tunnel
 - All services on internal `services` bridge network; cloudflared bridges to Cloudflare edge
 
@@ -36,9 +36,9 @@ Self-hosted single-user home NAS on Raspberry Pi 4 with Immich (photos), Copypar
 **Required env vars** (in `.env`):
 - `CF_API_TOKEN` (account-level with Tunnels:Edit, DNS:Edit permissions)
 - `CF_ACCOUNT_ID` (numeric account ID)
-- `CF_ZONE_ID` (zone ID for slashtechno.com)
+- `CF_ZONE_ID` (zone ID for example.com)
 - `CF_TUNNEL_NAME` (default: pi-nas-tunnel)
-- `HOSTNAMES` (comma-separated: immich.slashtechno.com,gitea.slashtechno.com,copyparty.slashtechno.com)
+- `HOSTNAMES` (comma-separated: immich.example.com,gitea.example.com,copyparty.example.com)
 
 **Key gotchas**:
 - **DNS must be proxied**: `proxied: true` is required for Cloudflare routing to work (orange cloud)
