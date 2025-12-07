@@ -64,17 +64,17 @@ case "$TARGET" in
         # app.ini (rootful: data/conf/app.ini -> /data/gitea/conf/app.ini)
         if [ -f data/conf/app.ini ]; then
           mkdir -p /data/gitea/conf
-          mv -f data/conf/app.ini /data/gitea/conf/app.ini
+          cp -a data/conf/app.ini /data/gitea/conf/app.ini
         fi
-        # data -> /data/gitea (APP_DATA_PATH)
+        # data -> /data/gitea (APP_DATA_PATH) using rsync to merge directories safely
         if [ -d data ]; then
           mkdir -p /data/gitea
-          mv -f data/* /data/gitea/
+          rsync -a --delete data/ /data/gitea/
         fi
-        # repos -> /data/git/repositories
+        # repos -> /data/git/repositories using rsync
         if [ -d repos ]; then
           mkdir -p /data/git/repositories
-          mv -f repos/* /data/git/repositories/
+          rsync -a --delete repos/ /data/git/repositories/
         fi
         chown -R git:git /data || true
         # Regenerate hooks to ensure paths are correct
