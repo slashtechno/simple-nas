@@ -65,8 +65,9 @@ if [ "$SKIP_CREATION" = "0" ]; then
   if [ -n "$EXISTING_ID" ]; then
     log "ERROR: Found existing tunnel with name '$CF_TUNNEL_NAME' (ID: $EXISTING_ID) in Cloudflare API"
     log ""
-    log "To delete the tunnel and retry, run this command on your host:"
-    log "  docker compose exec cloudflared-init sh -c 'curl -X DELETE \"https://api.cloudflare.com/client/v4/accounts/\${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}\" -H \"Authorization: Bearer \${CF_API_TOKEN}\"' && docker compose restart cloudflared-init"
+    log "To delete the tunnel and retry, run these commands on your host:"
+    log "  docker compose run --rm cloudflared-init sh -c 'curl -X DELETE \"https://api.cloudflare.com/client/v4/accounts/\${CF_ACCOUNT_ID}/cfd_tunnel/${EXISTING_ID}\" -H \"Authorization: Bearer \${CF_API_TOKEN}\"'"
+    log "  docker compose up -d"
     log ""
     log "Note: You may also need to manually delete the tunnel in the Cloudflare Dashboard:"
     log "  https://one.dash.cloudflare.com/${CF_ACCOUNT_ID}/networks/tunnels"
