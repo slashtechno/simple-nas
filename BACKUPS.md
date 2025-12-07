@@ -101,19 +101,7 @@ chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
 
 ### Service-Aware Backup
 
-Create consistent service dumps before snapshotting with restic:
-
-```bash
-# Immich DB dump + Gitea dump into /mnt/backup/service-dumps
-~/simple-nas/scripts/backup-services.sh
-```
-
-What it does:
-- Immich: `pg_dumpall` from the `immich_postgres` container → `immich-db-*.sql.gz`
-- Gitea: `gitea dump` inside the `gitea` container → `gitea-dump-*.zip`
-- Keeps the last 3 dumps of each type
-
-This ensures restic captures a consistent snapshot of service state without relying on raw live data directories.
+The `backup-services.sh` script (Immich DB dump + Gitea dump) is automatically invoked by the local and cloud backup scripts so you don’t have to run it manually. It writes dumps to `/mnt/backup/service-dumps` and prunes to the last 3 of each type.
 
 ---
 
