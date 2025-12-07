@@ -71,12 +71,12 @@ case "$TARGET" in
         # data -> /data/gitea (APP_DATA_PATH)
         if [ -d data ]; then
           mkdir -p /data/gitea
-          rsync -a data/ /data/gitea/
+          cp -a data/. /data/gitea/
         fi
         # repos -> /data/git/repositories
         if [ -d repos ]; then
           mkdir -p /data/git/repositories
-          rsync -a repos/ /data/git/repositories/
+          cp -a repos/. /data/git/repositories/
         fi
         chown -R git:git /data || true
         # Regenerate hooks to ensure paths are correct
