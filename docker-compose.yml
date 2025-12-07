@@ -138,8 +138,8 @@ services:
     container_name: cloudflared-init
     restart: "no"
     # Run the init script to create/reuse tunnel credentials and render config.yml
-    entrypoint: ["/bin/sh","-c"]
-    command: ["/etc/cloudflared/create_tunnel.sh"]
+    entrypoint: []
+    command: ["sh", "-c", "/etc/cloudflared/create_tunnel.sh"]
     volumes:
       - ./cloudflared:/etc/cloudflared:rw
     networks:
