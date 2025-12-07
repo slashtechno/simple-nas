@@ -109,6 +109,35 @@ if [ "$SKIP_CREATION" = "0" ]; then
   fi
 fi
 
+# Register tunnel routes with Cloudflare edge (needed for config_src: local tunnels)
+if [ "$SKIP_CREATION" = "0" ] && [ -n "${HOSTNAMES:-}" ]; then
+  log "Registering tunnel routes with Cloudflare edge..."
+  
+  for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
+    host=$(printf '%s' "$host" | tr -d '[:space:]')
+    [ -z "$host" ] && continue
+    
+    route_payload=$(cat <<JSON
+{
+  "pattern": "${host}"
+}
+JSON
+)
+    route_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}/routes" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "${route_payload}" 2>&1)
+    
+    route_success=$(printf '%s' "$route_response" | jq -r '.success // false' 2>/dev/null || echo "false")
+    if [ "$route_success" = "true" ]; then
+      log "Registered route for ${host}"
+    else
+      error=$(printf '%s' "$route_response" | jq -r '.errors[0].message // "Unknown error"' 2>/dev/null || echo "Unknown error")
+      log "WARNING: Failed to register route for ${host}: $error"
+    fi
+  done
+fi
+
 # Verify credentials file was created
 if [ ! -f "$CLOUD_DIR/${TUNNEL_ID}.json" ]; then
   log "ERROR: Credentials file was not created"
