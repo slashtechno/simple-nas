@@ -53,23 +53,19 @@ else
     -H "Content-Type: application/json" 2>&1)
   
   TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
+  credentials_json=""
   
   if [ -n "$TUNNEL_ID" ]; then
     log "Found existing tunnel: $TUNNEL_ID"
-    
-    # Get the tunnel secret from the API
-    tunnel_token=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].token // empty' 2>/dev/null || true)
-    
-    if [ -z "$tunnel_token" ]; then
-      log "WARNING: Could not extract tunnel token from API response, attempting to retrieve credentials file..."
-      # The token might not be available on subsequent lookups, which is expected
-      # We'll create a minimal credentials file and let cloudflared handle the rest
-      tunnel_token="placeholder"
-    fi
+    # Try to get credentials file from the tunnel details endpoint
+    tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
+      -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      -H "Content-Type: application/json" 2>&1)
+    credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
   else
     log "No existing tunnel found, creating new tunnel named '$CF_TUNNEL_NAME'..."
     
-  # Create tunnel via Cloudflare API
+    # Create tunnel via Cloudflare API
     tunnel_response=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json" \
@@ -91,6 +87,11 @@ else
         TUNNEL_ID=$(printf '%s' "$existing_tunnel" | jq -r '.result[0].id // empty' 2>/dev/null || true)
         if [ -n "$TUNNEL_ID" ]; then
           log "Found existing tunnel: $TUNNEL_ID"
+          # Fetch credentials for the existing tunnel
+          tunnel_details=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" 2>&1)
+          credentials_json=$(printf '%s' "$tunnel_details" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
         else
           log "ERROR: Could not find existing tunnel after creation attempt"
           exit 2
@@ -101,39 +102,22 @@ else
       fi
     else
       log "Created tunnel id: $TUNNEL_ID"
-    fi
-    
-    # Extract the credentials_file object from the response
-    credentials_json=$(printf '%s' "$tunnel_response" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
-    
-    if [ -z "$credentials_json" ] || [ "$credentials_json" = "null" ]; then
-      log "ERROR: Could not extract credentials_file from API response"
-      exit 2
+      # Extract the credentials_file object from the response
+      credentials_json=$(printf '%s' "$tunnel_response" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
     fi
   fi
   
   # Create credentials JSON file in cloudflared format
-  # Use the credentials_file from the API response if creating new tunnel
   if [ -n "$credentials_json" ] && [ "$credentials_json" != "null" ]; then
     echo "$credentials_json" > "$CLOUD_DIR/${TUNNEL_ID}.json"
   else
-    # For existing tunnels, we need to fetch the credentials file
-    # Since the API doesn't return the secret on subsequent lookups, we use a workaround
-    # The tunnel will re-authenticate using the account token
-    log "Fetching credentials for existing tunnel..."
-    existing_tunnel=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/cfd_tunnel/${TUNNEL_ID}" \
-      -H "Authorization: Bearer ${CF_API_TOKEN}" \
-      -H "Content-Type: application/json" 2>&1)
-    credentials_json=$(printf '%s' "$existing_tunnel" | jq -r '.result.credentials_file | @json' 2>/dev/null || true)
-    
-    if [ -z "$credentials_json" ] || [ "$credentials_json" = "null" ]; then
-      log "WARNING: Could not fetch credentials_file from API. Creating minimal credentials for re-authentication."
-      # Cloudflared will re-authenticate with this minimal file
-      credentials_json="{\"AccountTag\":\"${CF_ACCOUNT_ID}\",\"TunnelID\":\"${TUNNEL_ID}\",\"TunnelName\":\"${CF_TUNNEL_NAME}\"}"
-    fi
+    log "WARNING: Could not fetch credentials_file from API. Creating minimal credentials for re-authentication."
+    # Cloudflared will re-authenticate with this minimal file
+    credentials_json="{\"AccountTag\":\"${CF_ACCOUNT_ID}\",\"TunnelID\":\"${TUNNEL_ID}\",\"TunnelName\":\"${CF_TUNNEL_NAME}\"}"
     echo "$credentials_json" > "$CLOUD_DIR/${TUNNEL_ID}.json"
   fi
   log "Created credentials file: $CLOUD_DIR/${TUNNEL_ID}.json"
+fi
 
 CREDENTIALS_FILE="$CLOUD_DIR/${TUNNEL_ID}.json"
 if [ ! -f "$CREDENTIALS_FILE" ]; then
