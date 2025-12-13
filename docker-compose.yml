@@ -77,7 +77,7 @@ services:
       - services
 
   copyparty:
-    image: copyparty/ac
+    build: ./copyparty
     container_name: copyparty
     restart: unless-stopped
     volumes:
@@ -98,6 +98,8 @@ services:
       - -e2ts
       - --xff-src
       - lan
+      - --ui-filesz
+      - 5c
       - --xff-hdr
       - x-forwarded-for
       - --rproxy
