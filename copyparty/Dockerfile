@@ -15,13 +15,14 @@ RUN apk add --no-cache \
     jpeg-dev \
     zlib-dev \
     libheif-dev \
-    libwebp-dev
+    libwebp-dev \
+    py3-pip
 
 # Install Python packages
 # pyvips: python bindings for vips
 # rawpy: RAW image processing
 # pillow-heif, pillow-avif-plugin: extended format support for Pillow
-RUN pip install --no-cache-dir \
+RUN python3 -m pip install --no-cache-dir --break-system-packages \
     pyvips \
     rawpy \
     pillow-heif \
