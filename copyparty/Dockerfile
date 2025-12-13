@@ -16,14 +16,17 @@ RUN apk add --no-cache \
     zlib-dev \
     libheif-dev \
     libwebp-dev \
-    py3-pip
+    py3-pip \
+    git \
+    pkgconf
 
 # Install Python packages
 # pyvips: python bindings for vips
-# rawpy: RAW image processing
+# rawpy: RAW image processing (installed from git because PyPI lacks sdist)
 # pillow-heif, pillow-avif-plugin: extended format support for Pillow
-RUN python3 -m pip install --no-cache-dir --break-system-packages \
+RUN python3 -m pip install --no-cache-dir --break-system-packages cython numpy && \
+    python3 -m pip install --no-cache-dir --break-system-packages \
     pyvips \
-    rawpy \
+    git+https://github.com/letmaik/rawpy.git \
     pillow-heif \
     pillow-avif-plugin
