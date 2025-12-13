@@ -25,8 +25,8 @@ RUN apk add --no-cache \
 # rawpy: RAW image processing (installed from git because PyPI lacks sdist)
 # pillow-heif, pillow-avif-plugin: extended format support for Pillow
 RUN python3 -m pip install --no-cache-dir --break-system-packages cython numpy && \
+    python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation git+https://github.com/letmaik/rawpy.git && \
     python3 -m pip install --no-cache-dir --break-system-packages \
     pyvips \
-    git+https://github.com/letmaik/rawpy.git \
     pillow-heif \
     pillow-avif-plugin
