@@ -91,7 +91,7 @@ services:
       - -m
       - copyparty
       - -v
-      - /files:daw:A,${COPYPARTY_USER}
+      - /files:c,daw:A,${COPYPARTY_USER}
       - -a
       - ${COPYPARTY_USER}:${COPYPARTY_PASS}
       - -e2dsa
