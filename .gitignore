@@ -63,3 +63,6 @@ venv.bak/
 # Cloudflared tunnel runtime files (created at init/runtime)
 cloudflared/*.json
 cloudflared/config.yml
+
+# Copyparty local overrides
+copyparty/copyparty.conf.template

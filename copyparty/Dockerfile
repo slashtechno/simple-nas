@@ -30,3 +30,9 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages cython numpy &
     pyvips \
     pillow-heif \
     pillow-avif-plugin
+
+COPY copyparty.conf.template.default /etc/copyparty/copyparty.conf.template.default
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

@@ -85,25 +85,6 @@ services:
       - ${COPYPARTY_CONFIG}:/cfg:rw
     environment:
       TZ: ${TIMEZONE}
-    entrypoint: []
-    command:
-      - python3
-      - -m
-      - copyparty
-      - -v
-      - /files::A,${COPYPARTY_USER}:c,daw
-      - -a
-      - ${COPYPARTY_USER}:${COPYPARTY_PASS}
-      - -e2dsa
-      - -e2ts
-      - --xff-src
-      - lan
-      - --ui-filesz
-      - 5c
-      - --xff-hdr
-      - x-forwarded-for
-      - --rproxy
-      - "1"
     ports:
       - "3923:3923"
     networks:

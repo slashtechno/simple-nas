@@ -317,6 +317,19 @@ Authentication is always required for all operations, including reading files. O
 - Anonymous users cannot access anything
 - Authenticated users have full access: read, write, edit, delete, etc.
 
+### Advanced Configuration (Optional)
+
+The default configuration is defined in `copyparty/copyparty.conf.template.default`. To customize it (e.g., to add more accounts or volumes):
+
+1. Copy the default template to your config directory as `copyparty.conf.template`:
+   ```bash
+   cp ~/nas-docker/copyparty/copyparty.conf.template.default /mnt/t7/docker/copyparty_config/copyparty.conf.template
+   ```
+2. Edit the new file. You can add new accounts or volumes using standard Copyparty config syntax.
+3. Restart Copyparty: `docker compose restart copyparty`.
+
+The container will automatically detect your custom template and use it instead of the default.
+
 ### Initial Service Setup
 
 Open in browser:

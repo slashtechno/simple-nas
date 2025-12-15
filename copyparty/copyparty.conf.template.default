@@ -1,0 +1,18 @@
+[global]
+  e2dsa
+  e2ts
+  xff-src: lan,100.64.0.0/10
+  ui-filesz: 5c
+  xff-hdr: cf-connecting-ip
+  rproxy: 1
+  shr: /shares
+
+[accounts]
+  ${COPYPARTY_USER}: ${COPYPARTY_PASS}
+
+[/]
+  /files
+  accs:
+    A: ${COPYPARTY_USER}
+  flags:
+    daw
