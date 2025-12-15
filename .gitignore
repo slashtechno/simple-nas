@@ -60,7 +60,8 @@ venv.bak/
 *.sqlite
 *.sqlite3
 
-# Cloudflared tunnel runtime files (created at init/runtime)
+# Cloudflared tunnel files
+cloudflared/ingress.yml
 cloudflared/*.json
 cloudflared/config.yml
 

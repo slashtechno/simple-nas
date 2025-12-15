@@ -214,7 +214,9 @@ Required environment variables (add to your `.env`):
 - `CF_API_TOKEN` — Cloudflare API token with DNS and Tunnel permissions
 - `CF_ZONE_ID` — Cloudflare Zone ID for your domain
 - `CF_TUNNEL_NAME` — name for the tunnel (default: `pi-nas-tunnel`)
-- `HOSTNAMES` — comma-separated hostnames, e.g. `immich.example.com,gitea.example.com,copyparty.example.com`
+
+Configuration:
+- Copy `cloudflared/ingress.yml.example` to `cloudflared/ingress.yml` and edit it to define your hostnames and services.
 
 Init and runtime (one-time + normal start):
 ```bash
@@ -222,7 +224,7 @@ Init and runtime (one-time + normal start):
 # the script can be run via `sh` or `bash` — no need to make it executable beforehand
 sh ./cloudflared/create_tunnel.sh
 
-# copy .env.example and add CF_* vars and HOSTNAMES (if you haven't already configured .env)
+# copy .env.example and add CF_* vars (if you haven't already configured .env)
 cp .env.example .env
 nano .env
 
@@ -411,6 +413,25 @@ The runner starts as part of the normal `docker compose up` for the stack. It re
 **Note These (not secret):**
 - Tailscale domain: `your-machine.ts.net`
 - Restic repos: `/mnt/backup/restic-repo` and `rclone:gdrive-nas:/pi-nas-backups`
+### Password Recovery
+
+- **Immich admin:**
+  ```bash
+  docker exec -it immich_server immich-admin reset-admin-password
+  ```
+
+- **Gitea admin:**
+  ```bash
+  docker exec -it gitea gitea admin user change-password --username <your-username> --password <new-password>
+  ```
+
+- **Immich DB password:**
+  - **Find it:** check `~/nas-docker/.env` (or run `docker inspect immich_server | grep DB_PASSWORD`).
+  - **Reset it:** update `.env` with the new password, then run:
+    ```bash
+    docker exec -it immich_postgres psql -U immich -d immich -c "ALTER USER immich WITH PASSWORD 'new_password';"
+    docker compose restart immich_server
+    ```
 
 ---
 

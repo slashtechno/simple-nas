@@ -8,8 +8,8 @@ COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 COPY create_tunnel.sh /etc/cloudflared/create_tunnel.sh
 RUN chmod -R 755 /etc/cloudflared
 
-# Install curl and jq for API calls and JSON parsing
-RUN apk add --no-cache curl jq
+# Install curl, jq, and yq for API calls and YAML/JSON parsing
+RUN apk add --no-cache curl jq yq
 
 ENTRYPOINT ["/bin/sh"]
 CMD ["/etc/cloudflared/create_tunnel.sh"]

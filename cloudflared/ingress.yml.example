@@ -1,0 +1,12 @@
+# cloudflared/ingress.yml
+# Define your ingress rules here.
+# Hostnames defined here will be automatically registered in Cloudflare DNS if CF_ZONE_ID is set.
+# The format is a list of ingress rules.
+# See https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/configuration-file/#how-traffic-is-matched
+
+- hostname: immich.example.com
+  service: http://immich_server:2283
+- hostname: gitea.example.com
+  service: http://gitea:3000
+- hostname: copyparty.example.com
+  service: http://copyparty:3923

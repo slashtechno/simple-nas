@@ -3,7 +3,6 @@
 # Placeholders:
 #   {{TUNNEL_ID}} - replaced with the created or discovered tunnel id
 #   {{CREDENTIALS_FILE}} - the credentials filename (e.g. /etc/cloudflared/<tunnel-id>.json)
-# Hostnames are rendered by the init script from the HOSTNAMES env var.
 #
 # Example rendered output (for reference only):
 # tunnel: <TUNNEL_ID>

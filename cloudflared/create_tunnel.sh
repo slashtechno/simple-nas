@@ -7,7 +7,6 @@
 #   CF_ZONE_ID    - Zone ID for DNS record creation (required if DNS creation is desired)
 # Optional:
 #   CF_TUNNEL_NAME - Tunnel name (default: pi-nas-tunnel)
-#   HOSTNAMES     - Comma-separated hostnames (e.g. immich.example.com,gitea.example.com,copyparty.example.com)
 #
 # Notes:
 # - This script is intended to run inside the cloudflared-init container with /etc/cloudflared mounted rw.
@@ -21,10 +20,6 @@ set -eu
 log() { printf '%s\n' "$*" >&2; }
 
 : "${CF_API_TOKEN?CF_API_TOKEN is required (create token with DNS edit & tunnels permissions)}"
-# CF_ZONE_ID is required only when DNS creation is desired; we still warn if missing when HOSTNAMES provided.
-if [ -z "${HOSTNAMES:-}" ]; then
-  log "Warning: HOSTNAMES not set. Script will still ensure tunnel credentials and config.yml are present, but no DNS entries will be created."
-fi
 
 CF_TUNNEL_NAME="${CF_TUNNEL_NAME:-pi-nas-tunnel}"
 CLOUD_DIR="/etc/cloudflared"
@@ -47,18 +42,25 @@ else
 fi
 
 # Parse hostnames early so they're available for route registration
-HOSTNAMES_STR="${HOSTNAMES:-}"
-IMMICH_HOST=""
-GITEA_HOST=""
-COPYPARTY_HOST=""
+INGRESS_FILE="/etc/cloudflared/ingress.yml"
+INGRESS_EXAMPLE="/etc/cloudflared/ingress.yml.example"
+HOSTNAMES_LIST=""
 
-if [ -n "$HOSTNAMES_STR" ]; then
-  # Extract first hostname
-  IMMICH_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f1 | tr -d '[:space:]')
-  # Extract second hostname
-  GITEA_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f2 | tr -d '[:space:]')
-  # Extract third hostname
-  COPYPARTY_HOST=$(printf '%s' "$HOSTNAMES_STR" | cut -d',' -f3 | tr -d '[:space:]')
+if [ ! -f "$INGRESS_FILE" ] && [ -f "$INGRESS_EXAMPLE" ]; then
+  log "ingress.yml not found, copying from ingress.yml.example..."
+  cp "$INGRESS_EXAMPLE" "$INGRESS_FILE"
+fi
+
+if [ -f "$INGRESS_FILE" ]; then
+  log "Found ingress.yml, using it for configuration."
+  if command -v yq >/dev/null; then
+    # Extract hostnames from the list of rules
+    HOSTNAMES_LIST=$(yq '.[].hostname' "$INGRESS_FILE")
+  else
+    log "Warning: yq not found. Install yq to use ingress.yml fully."
+  fi
+else
+  log "Warning: ingress.yml not found. No DNS records will be created."
 fi
 
 if [ -z "${CF_ACCOUNT_ID:-}" ]; then
@@ -162,25 +164,9 @@ credentials-file: /etc/cloudflared/${TUNNEL_ID}.json
 ingress:
 EOF
 
-if [ -n "$IMMICH_HOST" ]; then
-  cat >> "$CONFIG_PATH" <<EOF
-  - hostname: ${IMMICH_HOST}
-    service: http://immich_server:2283
-EOF
-fi
-
-if [ -n "$GITEA_HOST" ]; then
-  cat >> "$CONFIG_PATH" <<EOF
-  - hostname: ${GITEA_HOST}
-    service: http://gitea:3000
-EOF
-fi
-
-if [ -n "$COPYPARTY_HOST" ]; then
-  cat >> "$CONFIG_PATH" <<EOF
-  - hostname: ${COPYPARTY_HOST}
-    service: http://copyparty:3923
-EOF
+if [ -f "$INGRESS_FILE" ]; then
+  # Append ingress.yml content, indented
+  sed 's/^/  /' "$INGRESS_FILE" >> "$CONFIG_PATH"
 fi
 
 # Optional: keep a default rule
@@ -200,11 +186,11 @@ chmod 0644 "$CONFIG_PATH"
 chmod 0644 "$CREDENTIALS_FILE" || true
 
 # Optional: create DNS records for each hostname if CF_ZONE_ID is provided.
-if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES:-}" ]; then
-  log "Ensuring DNS records exist in zone $CF_ZONE_ID for hostnames: $HOSTNAMES"
+if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES_LIST:-}" ]; then
+  log "Ensuring DNS records exist in zone $CF_ZONE_ID for hostnames: $HOSTNAMES_LIST"
 
   # Process each hostname
-  for host in "$IMMICH_HOST" "$GITEA_HOST" "$COPYPARTY_HOST"; do
+  for host in $HOSTNAMES_LIST; do
     host=$(printf '%s' "$host" | tr -d '[:space:]')
     [ -z "$host" ] && continue
 

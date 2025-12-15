@@ -24,13 +24,14 @@ Self-hosted single-user home NAS on Raspberry Pi 4 with Immich (photos), Copypar
   1. Checks for existing **active** tunnels (filters out soft-deleted ones via `deleted_at == null`)
   2. Creates new tunnel via POST to `/cfd_tunnel` API with `config_src: local`
   3. Extracts `credentials_file` JSON from response (only available during POST, not GET)
-  4. Renders `config.yml` with ingress rules for 3 services + default 404 rule
+  4. Renders `config.yml` with ingress rules from `ingress.yml` + default 404 rule
   5. Creates/updates DNS records with `proxied: true` for Cloudflare routing
-  6. Parses `HOSTNAMES` env var (comma-separated) into individual service hostnames
+  6. Parses `ingress.yml` (using `yq`) into individual service hostnames
   
-- `Dockerfile.init`: Alpine + cloudflared binary + curl/jq + sh support
+- `Dockerfile.init`: Alpine + cloudflared binary + curl/jq/yq + sh support
 - `Dockerfile.runtime`: Alpine + cloudflared binary + debugging tools (curl, netcat, tcpdump, bash)
 - `config.yml`: Generated at runtime; contains tunnel ID + ingress routing rules (read by runtime cloudflared)
+- `ingress.yml`: User-defined ingress rules (hostnames and services). Created from `ingress.yml.example`.
 - `config.yml.template`: Placeholder; actual template is generated in script
 
 **Required env vars** (in `.env`):
@@ -38,7 +39,6 @@ Self-hosted single-user home NAS on Raspberry Pi 4 with Immich (photos), Copypar
 - `CF_ACCOUNT_ID` (numeric account ID)
 - `CF_ZONE_ID` (zone ID for example.com)
 - `CF_TUNNEL_NAME` (default: pi-nas-tunnel)
-- `HOSTNAMES` (comma-separated: immich.example.com,gitea.example.com,copyparty.example.com)
 
 **Key gotchas**:
 - **DNS must be proxied**: `proxied: true` is required for Cloudflare routing to work (orange cloud)
