@@ -18,6 +18,7 @@ RUN apk add --no-cache \
     libwebp-dev \
     py3-pip \
     git \
+    cmake \
     pkgconf
 
 # Install Python packages
