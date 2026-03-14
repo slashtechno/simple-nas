@@ -16,3 +16,10 @@
     A: ${COPYPARTY_USER}
   flags:
     daw
+
+[/drives]
+  /host/mnt
+  accs:
+    r: ${COPYPARTY_USER}
+  flags:
+    -e2d

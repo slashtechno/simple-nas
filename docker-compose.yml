@@ -83,6 +83,7 @@ services:
     volumes:
       - ${FILES_DIR}:/files:rw
       - ${COPYPARTY_CONFIG}:/cfg:rw
+      - ${HOST_MNT_DIR:-/mnt}:/host/mnt:ro
     environment:
       TZ: ${TIMEZONE}
     ports:
