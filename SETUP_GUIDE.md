@@ -332,6 +332,16 @@ The default configuration is defined in `copyparty/copyparty.conf.template.defau
 
 The container will automatically detect your custom template and use it instead of the default.
 
+### Drives Browser
+
+The host's `/mnt` directory is mounted read-only into the container and exposed at `/drives` in the Copyparty UI. At startup, the entrypoint script enumerates the subdirectories of `/mnt` and creates one read-only Copyparty volume per drive (e.g. `/drives/data`, `/drives/media`). The drive containing `FILES_DIR` is skipped to avoid exposing the same files twice. If you add or remove a drive, restart the container to pick up the change:
+
+```bash
+docker compose restart copyparty
+```
+
+To use a different host directory as the drives root, set `HOST_MNT_DIR` in your `.env` (defaults to `/mnt`).
+
 ### Initial Service Setup
 
 Open in browser:

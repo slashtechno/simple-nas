@@ -17,9 +17,8 @@
   flags:
     daw
 
-[/drives]
-  /host/mnt
-  accs:
-    r: ${COPYPARTY_USER}
-  flags:
-    -e2d
+# [/drives/NAME] volumes are appended automatically at startup by entrypoint.sh —
+# one per subdirectory of /host/mnt, skipping the drive that contains FILES_DIR.
+# To customise this behaviour, override the loop in a custom entrypoint or use a
+# custom template at $COPYPARTY_CONFIG/copyparty.conf.template.
+
