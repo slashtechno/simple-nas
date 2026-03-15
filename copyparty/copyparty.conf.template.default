@@ -17,8 +17,10 @@
   flags:
     daw
 
-# A [/drives] volume over /host/mnt is appended automatically at startup by
-# entrypoint.sh. The drive containing FILES_DIR is hidden from the browser UI
-# via unlist. To customise this, provide a custom template at
+# A [/drives] section is appended automatically at startup by entrypoint.sh.
+# Each drive under HOST_MNT_DIR gets its own sub-volume except the one
+# containing FILES_DIR, which is already exposed at [/]. This keeps t7 (or
+# whatever drive holds your files) out of /drives in both the UI and WebDAV.
+# To customise this, provide a custom template at
 # $COPYPARTY_CONFIG/copyparty.conf.template and add your own [/drives] section.
 
