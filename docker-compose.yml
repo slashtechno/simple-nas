@@ -83,7 +83,7 @@ services:
     volumes:
       - ${FILES_DIR}:/files:rw
       - ${COPYPARTY_CONFIG}:/cfg:rw
-      - ${HOST_MNT_DIR:-/mnt}:/host/mnt:ro
+      - ${HOST_MNT_DIR:-/mnt}:/host/mnt:ro,rslave # rslave: re-plugged drives remount on host; without this the container sees an empty dir
     environment:
       TZ: ${TIMEZONE}
     ports:
