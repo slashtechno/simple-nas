@@ -63,6 +63,16 @@ Local Tailscale IP (private):
 
 ---
 
+## Updating
+
+```bash
+git pull && docker compose up -d --build --pull always
+```
+
+Pulls the latest pre-built images (Immich, Gitea, etc.) and rebuilds custom images (copyparty, cloudflared) in one step. Running containers are replaced with zero manual restarts needed.
+
+---
+
 ## Quick Restore
 
 If data is corrupted, restore from latest backup (usually within 24 hours):
