@@ -25,16 +25,13 @@ sed -e "s|\${COPYPARTY_USER}|$COPYPARTY_USER|g" \
 # same thing on other drives.
 _host_mnt="${HOST_MNT_DIR:-/mnt}"
 _files_rel="${FILES_DIR#${_host_mnt}/}"  # e.g. t7/files
-_files_drive="${_files_rel%%/*}"          # e.g. t7 — skip this drive entirely
+_files_drive="${_files_rel%%/*}"          # e.g. t7
 
-for _drive_path in /host/mnt/*/; do
-    [ -d "$_drive_path" ] || continue
-    _drive="${_drive_path%/}"
-    _drive="${_drive##*/}"
-    [ "$_drive" = "$_files_drive" ] && continue
-    printf '\n[/drives/%s]\n  /host/mnt/%s\n  accs:\n    r: %s\n  flags:\n    -e2d\n' \
-        "$_drive" "$_drive" "$COPYPARTY_USER" >> /cfg/copyparty.conf
-done
+# Single [/drives] volume over /host/mnt. The drive containing FILES_DIR is
+# hidden from the browser listing via unlist so its content doesn't appear
+# twice. Note: unlist is browser-UI only and does not affect WebDAV.
+printf '\n[/drives]\n  /host/mnt\n  accs:\n    r: %s\n  flags:\n    -e2d\n    unlist: ^%s(/|$)\n' \
+    "$COPYPARTY_USER" "$_files_drive" >> /cfg/copyparty.conf
 
 # Run copyparty with the config file
 exec python3 -m copyparty -c /cfg/copyparty.conf

@@ -17,8 +17,8 @@
   flags:
     daw
 
-# [/drives/NAME] volumes are appended automatically at startup by entrypoint.sh —
-# one per subdirectory of /host/mnt, skipping the drive that contains FILES_DIR.
-# To customise this behaviour, override the loop in a custom entrypoint or use a
-# custom template at $COPYPARTY_CONFIG/copyparty.conf.template.
+# A [/drives] volume over /host/mnt is appended automatically at startup by
+# entrypoint.sh. The drive containing FILES_DIR is hidden from the browser UI
+# via unlist. To customise this, provide a custom template at
+# $COPYPARTY_CONFIG/copyparty.conf.template and add your own [/drives] section.
 
