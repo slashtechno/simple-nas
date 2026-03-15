@@ -18,20 +18,17 @@ sed -e "s|\${COPYPARTY_USER}|$COPYPARTY_USER|g" \
     -e "s|\${COPYPARTY_PASS}|$COPYPARTY_PASS|g" \
     "$TEMPLATE_FILE" > /cfg/copyparty.conf
 
-# Dynamically append one [/drives/NAME] volume per subdirectory of /host/mnt.
-# This exposes each mounted drive individually at /drives/NAME, and applies
-# unlist only to the specific drive containing FILES_DIR so that the main
-# files volume does not appear duplicated — without hiding dirs named the
-# same thing on other drives.
-_host_mnt="${HOST_MNT_DIR:-/mnt}"
-_files_rel="${FILES_DIR#${_host_mnt}/}"  # e.g. t7/files
-_files_drive="${_files_rel%%/*}"          # e.g. t7
-
-# Single [/drives] volume over /host/mnt. The drive containing FILES_DIR is
-# hidden from the browser listing via unlist so its content doesn't appear
-# twice. Note: unlist is browser-UI only and does not affect WebDAV.
-printf '\n[/drives]\n  /host/mnt\n  accs:\n    r: %s\n  flags:\n    -e2d\n    unlist: ^%s(/|$)\n' \
-    "$COPYPARTY_USER" "$_files_drive" >> /cfg/copyparty.conf
+# Append a [/drives] volume over /host/mnt unless the template already defines
+# one. The drive containing FILES_DIR is hidden from the browser listing via
+# unlist so its content doesn't appear twice.
+# Note: unlist is browser-UI only and does not affect WebDAV.
+if ! grep -q '^\[/drives\]' /cfg/copyparty.conf; then
+    _host_mnt="${HOST_MNT_DIR:-/mnt}"
+    _files_rel="${FILES_DIR#${_host_mnt}/}"  # e.g. t7/files
+    _files_drive="${_files_rel%%/*}"          # e.g. t7
+    printf '\n[/drives]\n  /host/mnt\n  accs:\n    r: %s\n  flags:\n    -e2d\n    unlist: ^%s(/|$)\n' \
+        "$COPYPARTY_USER" "$_files_drive" >> /cfg/copyparty.conf
+fi
 
 # Run copyparty with the config file
 exec python3 -m copyparty -c /cfg/copyparty.conf
