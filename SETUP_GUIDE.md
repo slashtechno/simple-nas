@@ -334,7 +334,7 @@ The container will automatically detect your custom template and use it instead 
 
 ### Drives Browser
 
-The host's `/mnt` directory is mounted read-only into the container. Each subdirectory (drive) under `/mnt` gets its own volume at `/drives/<name>` in the Copyparty UI and WebDAV, **except** the drive that contains `FILES_DIR` — that one is already exposed at `/` to avoid duplication. New drives mounted under `/mnt` are visible automatically without a restart.
+The host's `/mnt` directory is mounted read-only into the container. Each subdirectory (drive) under `/mnt` gets its own volume at `/drives/<name>` in the Copyparty UI and WebDAV, **except** the drive that contains `FILES_DIR` — that one is already exposed at `/` to avoid duplication. A `docker compose restart copyparty` is required to pick up drives added or removed while the container is running.
 
 To use a different host directory as the drives root, set `HOST_MNT_DIR` in your `.env` (defaults to `/mnt`).
 
