@@ -9,7 +9,8 @@ services:
     restart: unless-stopped
     # --single-node (Garage v2.3+) auto-configures the cluster on first start —
     # no need to run `garage layout assign` and `garage layout apply` manually.
-    command: ["garage", "server", "--single-node"]
+    # The v2 image is distroless (no shell) — must use full path to the binary.
+    command: ["/garage", "server", "--single-node"]
     volumes:
       - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta
