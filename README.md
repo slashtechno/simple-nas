@@ -40,9 +40,6 @@ ansible-vault encrypt group_vars/nas/vault.yml
 
 # Deploy everything
 ansible-playbook site.yml --ask-vault-pass
-
-# Migrate from old ~/simple-nas/ monolithic setup
-ansible-playbook migrate.yml --ask-vault-pass
 ```
 
 See `ansible/README.md` for full details.
