@@ -1,8 +1,8 @@
 # Copy to vault.yml, fill in values, then encrypt:
 #   ansible-vault encrypt group_vars/nas/vault.yml
 #
-# To edit later:
-#   ansible-vault edit group_vars/nas/vault.yml
+# To edit later (opens in $EDITOR — set to VS Code with the line below):
+#   EDITOR="code --wait" ansible-vault edit group_vars/nas/vault.yml
 
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
