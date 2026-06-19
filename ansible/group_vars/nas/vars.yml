@@ -8,7 +8,7 @@ immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true
 cloudflared_enabled: true
-garage_enabled: false    # off by default — needs post-deploy init (see ansible/README.md)
+garage_enabled: true    # off by default — needs post-deploy init (see ansible/README.md)
 backup_enabled: true
 
 # --- Tailscale ---
