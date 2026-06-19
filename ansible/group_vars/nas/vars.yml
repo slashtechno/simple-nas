@@ -74,6 +74,10 @@ cloudflared_ingress:
     service: "http://gitea:3000"
   - hostname: copyparty.slashtechno.com
     service: "http://copyparty:3923"
+  - hostname: s3.slashtechno.com
+    service: "http://garage:3900"
+  - hostname: garage.slashtechno.com
+    service: "http://garage-webui:3909"
 
 # --- Garage S3 ---
 garage_rpc_secret: "{{ vault_garage_rpc_secret }}"

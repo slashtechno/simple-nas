@@ -143,40 +143,30 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ## Garage S3 post-setup
 
-Before enabling Garage, add these to your vault:
-```bash
-ansible-vault edit group_vars/nas/vault.yml
-# vault_garage_rpc_secret: $(openssl rand -hex 32)
-# vault_garage_webui_user: admin
-# vault_garage_webui_pass: yourpassword
-```
+Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_garage_rpc_secret`, `vault_garage_webui_user`, `vault_garage_webui_pass`), then deploy:
 
-Add a Cloudflare ingress rule in `vars.yml`:
-```yaml
-cloudflared_ingress:
-  - hostname: garage.slashtechno.com
-    service: "http://garage-webui:3909"
-  - hostname: s3.slashtechno.com
-    service: "http://garage:3900"
-```
-
-Set `garage_enabled: true` in `vars.yml`, then deploy:
 ```bash
 ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
 ```
 
-Run once after first deployment to initialize the single-node cluster:
+Then run these three commands once on the Pi to initialize the cluster layout:
 
 ```bash
-ssh yourname@your-pi-ip
-
+# Get this node's ID
 NODE_ID=$(docker exec garage garage node id | head -1 | awk '{print $1}')
+
+# Tell Garage this node exists, is in zone "dc1", with a capacity hint of 100G.
+# The capacity is just a hint for data placement across nodes — it does not
+# reserve or limit actual disk space. On a single node it's largely ignored.
 docker exec garage garage layout assign -z dc1 -c 100G "$NODE_ID"
+
+# Commit the layout. --version 1 is the version number — increment if you ever
+# reassign the layout (e.g. after adding a second node).
 docker exec garage garage layout apply --version 1
 ```
 
-Then open `https://garage.slashtechno.com` — use the web UI to create buckets and access keys. When connecting an app to Garage, use:
-- **Endpoint**: `https://s3.slashtechno.com`
+Then open `https://garage.example.com` — use the web UI to create buckets and access keys. When connecting an app to Garage, use:
+- **Endpoint**: `https://s3.example.com`
 - **Region**: `garage`
 - **Access key / secret**: from the web UI
 
