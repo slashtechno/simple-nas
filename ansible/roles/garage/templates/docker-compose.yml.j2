@@ -28,7 +28,8 @@ services:
       # Points at Garage's admin API and S3 API — both internal to the Docker network
       API_BASE_URL: "http://garage:{{ garage_admin_port | default(3903) }}"
       S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port | default(3900) }}"
-      # Basic auth: format is "username:bcrypt_hash" — set via vault
-      AUTH_USER_PASS: "{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash('bcrypt') }}"
+      # Basic auth: format is "username:bcrypt_hash" — set via vault.
+      # Single quotes prevent Docker Compose from interpreting $ as variable expansion in the hash.
+      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt") }}'
     networks:
       - nas-services

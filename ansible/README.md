@@ -152,17 +152,14 @@ ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
 Then run these three commands once on the Pi to initialize the cluster layout:
 
 ```bash
-# Get this node's ID
-NODE_ID=$(docker exec garage garage node id | head -1 | awk '{print $1}')
+# Get the node ID
+NODE_ID=$(docker exec garage /garage node id | head -1 | awk '{print $1}')
 
 # Tell Garage this node exists, is in zone "dc1", with a capacity hint of 100G.
-# The capacity is just a hint for data placement across nodes — it does not
-# reserve or limit actual disk space. On a single node it's largely ignored.
-docker exec garage garage layout assign -z dc1 -c 100G "$NODE_ID"
+docker exec garage /garage layout assign -z dc1 -c 100G "$NODE_ID"
 
-# Commit the layout. --version 1 is the version number — increment if you ever
-# reassign the layout (e.g. after adding a second node).
-docker exec garage garage layout apply --version 1
+# Commit the layout. 
+docker exec garage /garage layout apply --version 1
 ```
 
 Then open `https://garage.example.com` — use the web UI to create buckets and access keys. When connecting an app to Garage, use:

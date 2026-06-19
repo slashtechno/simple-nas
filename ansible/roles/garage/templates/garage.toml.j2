@@ -4,14 +4,15 @@ data_dir = "/var/lib/garage/data"
 
 # lmdb is the recommended embedded database engine for single-node setups
 db_engine = "lmdb"
+# I was getting OOM on a Pi 4 w/ 4 GB RAM
+lmdb_map_size = "1G"
 
 # 1 = single node, no replication. Increase only if you add more Garage nodes.
 replication_factor = {{ garage_replication_factor | default(1) }}
 
-[rpc_bind_addr]
 # RPC is used for node-to-node communication in multi-node clusters.
 # On a single node this is unused but still required to be configured.
-addr = "0.0.0.0:{{ garage_rpc_port | default(3901) }}"
+rpc_bind_addr = "0.0.0.0:{{ garage_rpc_port | default(3901) }}"
 
 # Shared secret for RPC authentication between nodes. Generate with: openssl rand -hex 32
 rpc_secret = "{{ vault_garage_rpc_secret }}"
