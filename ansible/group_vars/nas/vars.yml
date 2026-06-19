@@ -82,3 +82,4 @@ garage_rpc_port: 3901
 garage_web_port: 3902
 garage_admin_port: 3903
 garage_replication_factor: 1   # 1 = single node, no replication
+garage_webui_user: "{{ vault_garage_webui_user }}"

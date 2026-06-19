@@ -1,25 +1,36 @@
+# Paths inside the container — mapped to {{ garage_data_dir }} on the host via Docker volumes
 metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"
 
+# lmdb is the recommended embedded database engine for single-node setups
 db_engine = "lmdb"
 
+# 1 = single node, no replication. Increase only if you add more Garage nodes.
 replication_factor = {{ garage_replication_factor | default(1) }}
 
 [rpc_bind_addr]
-# Listen on all interfaces inside the container
+# RPC is used for node-to-node communication in multi-node clusters.
+# On a single node this is unused but still required to be configured.
 addr = "0.0.0.0:{{ garage_rpc_port | default(3901) }}"
 
+# Shared secret for RPC authentication between nodes. Generate with: openssl rand -hex 32
 rpc_secret = "{{ vault_garage_rpc_secret }}"
 
 [s3_api]
+# Region name returned in S3 API responses. Apps connecting to Garage should use this value.
 s3_region = "garage"
+# The S3 API endpoint — this is what your apps point at to store/retrieve objects
 api_bind_addr = "0.0.0.0:{{ garage_s3_port | default(3900) }}"
+# Used for virtual-hosted-style bucket URLs (bucket.s3.garage) — only relevant if you
+# expose buckets as subdomains. For path-style access (s3.example.com/bucket) this is unused.
 root_domain = ".s3.garage"
 
 [s3_web]
+# Serves bucket contents as a static website. Useful for public read-only buckets.
 bind_addr = "0.0.0.0:{{ garage_web_port | default(3902) }}"
 root_domain = ".web.garage"
 index = "index.html"
 
 [admin]
+# Admin API used by garage-webui and the `garage` CLI to manage buckets, keys, and layout
 api_bind_addr = "0.0.0.0:{{ garage_admin_port | default(3903) }}"

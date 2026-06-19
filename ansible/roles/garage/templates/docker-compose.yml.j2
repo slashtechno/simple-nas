@@ -19,3 +19,16 @@ services:
       - "{{ garage_rpc_port | default(3901) }}:{{ garage_rpc_port | default(3901) }}"
     networks:
       - nas-services
+
+  garage-webui:
+    image: khairul169/garage-webui:latest
+    container_name: garage-webui
+    restart: unless-stopped
+    environment:
+      # Points at Garage's admin API and S3 API — both internal to the Docker network
+      API_BASE_URL: "http://garage:{{ garage_admin_port | default(3903) }}"
+      S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port | default(3900) }}"
+      # Basic auth: format is "username:bcrypt_hash" — set via vault
+      AUTH_USER_PASS: "{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash('bcrypt') }}"
+    networks:
+      - nas-services

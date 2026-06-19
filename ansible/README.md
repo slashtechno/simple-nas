@@ -143,6 +143,28 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ## Garage S3 post-setup
 
+Before enabling Garage, add these to your vault:
+```bash
+ansible-vault edit group_vars/nas/vault.yml
+# vault_garage_rpc_secret: $(openssl rand -hex 32)
+# vault_garage_webui_user: admin
+# vault_garage_webui_pass: yourpassword
+```
+
+Add a Cloudflare ingress rule in `vars.yml`:
+```yaml
+cloudflared_ingress:
+  - hostname: garage.slashtechno.com
+    service: "http://garage-webui:3909"
+  - hostname: s3.slashtechno.com
+    service: "http://garage:3900"
+```
+
+Set `garage_enabled: true` in `vars.yml`, then deploy:
+```bash
+ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
+```
+
 Run once after first deployment to initialize the single-node cluster:
 
 ```bash
@@ -151,12 +173,12 @@ ssh yourname@your-pi-ip
 NODE_ID=$(docker exec garage garage node id | head -1 | awk '{print $1}')
 docker exec garage garage layout assign -z dc1 -c 100G "$NODE_ID"
 docker exec garage garage layout apply --version 1
-
-docker exec garage garage bucket create mybucket
-docker exec garage garage key create mykey
-docker exec garage garage bucket allow mybucket --read --write --key mykey
-docker exec garage garage key info mykey   # shows Access Key ID and Secret
 ```
+
+Then open `https://garage.slashtechno.com` — use the web UI to create buckets and access keys. When connecting an app to Garage, use:
+- **Endpoint**: `https://s3.slashtechno.com`
+- **Region**: `garage`
+- **Access key / secret**: from the web UI
 
 ---
 

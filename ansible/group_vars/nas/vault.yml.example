@@ -12,6 +12,8 @@ vault_cf_api_token: "your_cloudflare_api_token"
 vault_cf_account_id: "your_cloudflare_account_id"
 vault_cf_zone_id: "your_cloudflare_zone_id"
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
+vault_garage_webui_user: "admin"
+vault_garage_webui_pass: "change-me"
 vault_restic_password: "change-me-generate-with-openssl-rand-base64-32"
 # Generate at: https://login.tailscale.com/admin/settings/keys
 # Use an ephemeral key so the node auto-removes itself if the Pi is wiped
