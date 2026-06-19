@@ -16,15 +16,13 @@ Database dumps land in `/mnt/backup/service-dumps/` and are pruned to the last 3
 
 ## One-time setup: rclone (Google Drive)
 
-Ansible sets up restic automatically, but rclone OAuth needs a browser. Do this once on your Mac, then copy the config to the Pi:
+Ansible sets up restic automatically, but rclone OAuth needs a browser. Run this on the Pi:
 
 ```bash
-brew install rclone
 rclone config
 # n) New remote → name: gdrive-nas → type: Google Drive
-# scope: 3 (files created by rclone only) → authorize in browser
-
-scp ~/.config/rclone/rclone.conf pi@your-pi-ip:~/.config/rclone/rclone.conf
+# scope: 3 (drive.file — rclone-created files only)
+# For the auth step, rclone gives you a URL — open it on your Mac and paste the token back
 ```
 
 ---
