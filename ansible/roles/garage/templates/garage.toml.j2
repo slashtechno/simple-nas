@@ -2,12 +2,13 @@
 metadata_dir = "/var/lib/garage/meta"
 data_dir = "/var/lib/garage/data"
 
-# lmdb is the recommended embedded database engine for single-node setups
+# Engine for the metadata database. lmdb is the recommended embedded option.
 db_engine = "lmdb"
 # I was getting OOM on a Pi 4 w/ 4 GB RAM
 lmdb_map_size = "1G"
 
 # 1 = single node, no replication. Increase only if you add more Garage nodes.
+# (ignored when --single-node is set, but required by the config schema)
 replication_factor = {{ garage_replication_factor | default(1) }}
 
 # RPC is used for node-to-node communication in multi-node clusters.
@@ -35,3 +36,8 @@ index = "index.html"
 [admin]
 # Admin API used by garage-webui and the `garage` CLI to manage buckets, keys, and layout
 api_bind_addr = "0.0.0.0:{{ garage_admin_port | default(3903) }}"
+
+# Required by Garage v2 — the admin API requires an auth token.
+# Generate with: openssl rand -hex 32
+# This is what you put into garage-webui's AUTH_USER_PASS / API_ADMIN_KEY.
+admin_token = "{{ vault_garage_admin_token }}"

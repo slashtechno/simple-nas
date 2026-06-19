@@ -4,9 +4,12 @@ networks:
 
 services:
   garage:
-    image: dxflrs/garage:v1.0.1
+    image: dxflrs/garage:v2
     container_name: garage
     restart: unless-stopped
+    # --single-node (Garage v2.3+) auto-configures the cluster on first start —
+    # no need to run `garage layout assign` and `garage layout apply` manually.
+    command: ["garage", "server", "--single-node"]
     volumes:
       - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta
@@ -32,6 +35,8 @@ services:
       API_BASE_URL: "http://garage:{{ garage_admin_port | default(3903) }}"
       S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port | default(3900) }}"
       CONFIG_PATH: /etc/garage.toml
+      # Admin token for the v2 API — must match admin_token in garage.toml
+      API_ADMIN_KEY: '{{ vault_garage_admin_token | replace("$", "$$") }}'
       # Basic auth: format is "username:bcrypt_hash" — set via vault.
       # $$ escapes the $ in bcrypt hashes so Compose doesn't try to interpolate them as variables.
       # See https://docs.docker.com/compose/compose-file/compose-file-v3/#interpolation

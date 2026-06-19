@@ -143,26 +143,15 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ## Garage S3 post-setup
 
-Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_garage_rpc_secret`, `vault_garage_webui_user`, `vault_garage_webui_pass`), then deploy:
+Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user`, `vault_garage_webui_pass`), then deploy:
 
 ```bash
 ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
 ```
 
-Then run these three commands once on the Pi to initialize the cluster layout:
+The compose file passes `--single-node` to Garage (v2.3+), so the cluster auto-initializes — no layout commands needed. Open `https://garage.example.com` and log in with the web UI credentials. Use the web UI to create buckets and access keys.
 
-```bash
-# Get the node ID
-NODE_ID=$(docker exec garage /garage node id | head -1 | awk '{print $1}')
-
-# Tell Garage this node exists, is in zone "dc1", with a capacity hint of 100G.
-docker exec garage /garage layout assign -z dc1 -c 100G "$NODE_ID"
-
-# Commit the layout. 
-docker exec garage /garage layout apply --version 1
-```
-
-Then open `https://garage.example.com` — use the web UI to create buckets and access keys. When connecting an app to Garage, use:
+When connecting an app to Garage, use:
 - **Endpoint**: `https://s3.example.com`
 - **Region**: `garage`
 - **Access key / secret**: from the web UI
