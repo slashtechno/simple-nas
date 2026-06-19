@@ -24,10 +24,14 @@ services:
     image: khairul169/garage-webui:latest
     container_name: garage-webui
     restart: unless-stopped
+    # webui reads garage.toml to discover the admin API and S3 settings
+    volumes:
+      - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
     environment:
       # Points at Garage's admin API and S3 API — both internal to the Docker network
       API_BASE_URL: "http://garage:{{ garage_admin_port | default(3903) }}"
       S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port | default(3900) }}"
+      CONFIG_PATH: /etc/garage.toml
       # Basic auth: format is "username:bcrypt_hash" — set via vault.
       # $$ escapes the $ in bcrypt hashes so Compose doesn't try to interpolate them as variables.
       # See https://docs.docker.com/compose/compose-file/compose-file-v3/#interpolation
