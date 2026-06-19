@@ -21,7 +21,7 @@ services:
       GITEA__database__PATH: {{ gitea_db_path }}
       GITEA__service__DISABLE_REGISTRATION: "true"
 {% if vault_gitea_runner_token %}
-      GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token }}'
+      GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
 {% endif %}
     ports:
       - "2222:22"
@@ -36,7 +36,7 @@ services:
     restart: unless-stopped
     environment:
       GITEA_INSTANCE_URL: "http://gitea:3000"
-      GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token }}'
+      GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
       GITEA_RUNNER_NAME: "pi-nas-runner"
       GITEA_RUNNER_EPHEMERAL: "1"
     volumes:
