@@ -1,0 +1,167 @@
+---
+# Cleanly removes deployed services from the Pi.
+#
+# By default this ONLY stops containers and removes deployed files.
+# It does NOT touch your data (photos, files, databases).
+#
+# Usage:
+#
+#   # Remove everything
+#   ansible-playbook teardown.yml --ask-vault-pass
+#
+#   # Remove specific services only
+#   ansible-playbook teardown.yml --tags copyparty,garage --ask-vault-pass
+#
+#   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
+#   ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
+
+- name: Tear down NAS services
+  hosts: nas
+  become: true
+
+  vars:
+    remove_data: false   # override with -e remove_data=true to also delete data dirs
+
+  tasks:
+
+    # ── Per-service teardown ───────────────────────────────────────────────
+
+    - name: Stop and remove Immich
+      tags: [immich]
+      block:
+        - name: Down Immich compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/immich"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Immich compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/immich"
+            state: absent
+
+        - name: Wipe Immich data (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "{{ immich_upload_location }}"
+            - "{{ immich_db_data_location }}"
+          when: remove_data | bool
+
+    - name: Stop and remove Copyparty
+      tags: [copyparty]
+      block:
+        - name: Down Copyparty compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/copyparty"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Copyparty compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/copyparty"
+            state: absent
+
+        - name: Wipe Copyparty data (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "{{ copyparty_files_dir }}"
+            - "{{ copyparty_config_dir }}"
+          when: remove_data | bool
+
+    - name: Stop and remove Gitea
+      tags: [gitea]
+      block:
+        - name: Down Gitea compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/gitea"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Gitea compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/gitea"
+            state: absent
+
+        - name: Wipe Gitea data (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ gitea_data_dir }}"
+            state: absent
+          when: remove_data | bool
+
+    - name: Stop and remove Garage
+      tags: [garage]
+      block:
+        - name: Down Garage compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/garage"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Garage compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/garage"
+            state: absent
+
+        - name: Wipe Garage data (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ garage_data_dir }}"
+            state: absent
+          when: remove_data | bool
+
+    - name: Stop and remove Cloudflared
+      tags: [cloudflared]
+      block:
+        - name: Down Cloudflared compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/cloudflared"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Cloudflared compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/cloudflared"
+            state: absent
+
+    - name: Remove backup cron jobs and scripts
+      tags: [backup]
+      block:
+        - name: Remove backup cron jobs
+          ansible.builtin.cron:
+            name: "{{ item }}"
+            state: absent
+          loop:
+            - nas-backup-local
+            - nas-backup-cloud
+            - nas-restic-check
+
+        - name: Remove scripts directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/scripts"
+            state: absent
+
+    # ── Shared infrastructure (only removed when ALL services are gone) ────
+
+    - name: Remove shared Docker network
+      tags: [network]
+      community.docker.docker_network:
+        name: "{{ nas_network }}"
+        state: absent
+        force: true
+      ignore_errors: true
+
+    - name: Remove /opt/nas base directory (only if empty)
+      tags: [always]
+      ansible.builtin.command:
+        cmd: rmdir "{{ nas_base_dir }}"
+      register: rmdir_result
+      changed_when: rmdir_result.rc == 0
+      failed_when: false   # non-empty dir is fine — means some services remain

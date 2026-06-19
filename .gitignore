@@ -67,3 +67,7 @@ cloudflared/config.yml
 
 # Copyparty local overrides
 copyparty/copyparty.conf.template
+
+# Ansible secrets and local inventory (never commit these)
+ansible/group_vars/nas/vault.yml
+ansible/inventory/hosts.yml

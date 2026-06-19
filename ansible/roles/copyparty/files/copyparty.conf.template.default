@@ -1,0 +1,37 @@
+# HOW THIS FILE WORKS
+# -------------------
+# This is the built-in fallback template. At container startup, entrypoint.sh
+# renders it into /cfg/copyparty.conf by substituting ${COPYPARTY_USER} and
+# ${COPYPARTY_PASS} with the values from your vars.yml/vault.yml.
+#
+# The rendered copyparty.conf is ephemeral — it lives on the Pi in the config
+# volume and is regenerated every time the container starts. Never edit it directly.
+#
+# TO CUSTOMIZE (e.g. add accounts, change volume layout):
+#   Place a file named `copyparty.conf.template` (no .default suffix) in
+#   $COPYPARTY_CONFIG on the Pi (default: /mnt/t7/docker/copyparty_config/).
+#   The entrypoint will use yours instead of this one.
+#   ${COPYPARTY_USER} and ${COPYPARTY_PASS} still work as substitution variables.
+
+[global]
+  e2dsa
+  e2ts
+  xff-src: lan,100.64.0.0/10
+  ui-filesz: 5c
+  xff-hdr: cf-connecting-ip
+  rproxy: 1
+  shr: /shares
+
+[accounts]
+  ${COPYPARTY_USER}: ${COPYPARTY_PASS}
+
+[/]
+  /files
+  accs:
+    A: ${COPYPARTY_USER}
+  flags:
+    daw
+
+# entrypoint.sh appends a [/drives] section here at startup — one sub-volume
+# per drive under HOST_MNT_DIR, skipping the drive that contains FILES_DIR.
+# To override this behaviour, add your own [/drives] section to your custom template.

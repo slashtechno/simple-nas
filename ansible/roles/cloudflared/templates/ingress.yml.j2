@@ -1,0 +1,4 @@
+{% for rule in cloudflared_ingress %}
+- hostname: {{ rule.hostname }}
+  service: {{ rule.service }}
+{% endfor %}

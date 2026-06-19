@@ -1,0 +1,84 @@
+# Copy to vars.yml and customize. Secrets go in vault.yml (ansible-vault encrypted).
+
+# --- Enable/disable services ---
+# Set false to skip a service entirely. It won't be deployed or started.
+# To remove a service you previously deployed, run teardown.yml --tags <name> first.
+tailscale_enabled: false # tmp since already deployed
+immich_enabled: true
+copyparty_enabled: true
+gitea_enabled: true
+cloudflared_enabled: true
+garage_enabled: false    # off by default — needs post-deploy init (see ansible/README.md)
+backup_enabled: true
+
+# --- Tailscale ---
+tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
+tailscale_funnel_enabled: false    # set true to expose Copyparty at your ts.net hostname
+tailscale_funnel_port: 3923
+
+# --- General ---
+timezone: America/Chicago
+nas_base_dir: /opt/nas          # where compose projects are deployed on the Pi
+nas_network: nas-services       # shared Docker network name
+
+# --- Storage paths on the Pi ---
+main_drive: /mnt/t7
+backup_drive: /mnt/backup
+
+immich_upload_location: "{{ main_drive }}/photos"
+immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
+copyparty_files_dir: "{{ main_drive }}/files"
+copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
+gitea_data_dir: "{{ main_drive }}/docker/gitea"
+garage_data_dir: "{{ main_drive }}/docker/garage"
+cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
+
+# fstab entries (add as many drives as you need)
+nas_drives:
+  - uuid: "302ffde9-9f40-45d0-a392-a6bcc655edb7"   # Samsung PSSD T7 → /mnt/t7
+    mount: /mnt/t7
+    fstype: ext4
+    options: defaults,nofail
+  - uuid: "7fdfb249-0d0e-46c9-af00-813ff465c77d"   # ST3500418AS → /mnt/backup
+    mount: /mnt/backup
+    fstype: ext4
+    options: defaults,nofail
+
+# --- Immich ---
+immich_version: release
+
+# --- Copyparty ---
+copyparty_user: "{{ vault_copyparty_user }}"
+copyparty_pass: "{{ vault_copyparty_pass }}"
+host_mnt_dir: /mnt
+
+# --- Gitea ---
+gitea_root_url: "https://git.slashtechno.com/"
+gitea_domain: "git.slashtechno.com"
+gitea_ssh_domain: "git.slashtechno.com"
+gitea_ssh_port: "2222"
+gitea_db_type: sqlite3
+gitea_db_path: /data/gitea/gitea.db
+
+# --- Cloudflare Tunnel ---
+cf_tunnel_name: pi-nas-tunnel
+cf_api_token: "{{ vault_cf_api_token }}"
+cf_account_id: "{{ vault_cf_account_id }}"
+cf_zone_id: "{{ vault_cf_zone_id }}"
+
+# Ingress rules for cloudflared (hostname -> internal service URL)
+cloudflared_ingress:
+  - hostname: immich.slashtechno.com
+    service: "http://immich_server:2283"
+  - hostname: git.slashtechno.com
+    service: "http://gitea:3000"
+  - hostname: copyparty.slashtechno.com
+    service: "http://copyparty:3923"
+
+# --- Garage S3 ---
+garage_rpc_secret: "{{ vault_garage_rpc_secret }}"
+garage_s3_port: 3900
+garage_rpc_port: 3901
+garage_web_port: 3902
+garage_admin_port: 3903
+garage_replication_factor: 1   # 1 = single node, no replication

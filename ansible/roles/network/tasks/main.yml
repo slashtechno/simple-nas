@@ -1,0 +1,5 @@
+---
+- name: Create shared Docker network
+  community.docker.docker_network:
+    name: "{{ nas_network }}"
+    state: present

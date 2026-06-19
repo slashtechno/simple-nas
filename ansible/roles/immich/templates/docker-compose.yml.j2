@@ -1,0 +1,68 @@
+networks:
+  nas-services:
+    external: true
+
+services:
+  immich_server:
+    image: ghcr.io/immich-app/immich-server:{{ immich_version | default('release') }}
+    container_name: immich_server
+    restart: unless-stopped
+    command: ["start.sh", "immich"]
+    volumes:
+      - {{ immich_upload_location }}:/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      DB_HOSTNAME: immich_postgres
+      DB_USERNAME: immich
+      DB_PASSWORD: {{ vault_immich_db_password }}
+      DB_DATABASE_NAME: immich
+      TZ: {{ timezone }}
+    ports:
+      - "2283:2283"
+    networks:
+      - nas-services
+    depends_on:
+      - immich_postgres
+      - immich_redis
+      - immich_machine_learning
+
+  immich_machine_learning:
+    image: ghcr.io/immich-app/immich-machine-learning:{{ immich_version | default('release') }}
+    container_name: immich_machine_learning
+    restart: unless-stopped
+    volumes:
+      - model-cache:/cache
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: {{ timezone }}
+    networks:
+      nas-services:
+        aliases:
+          - immich-machine-learning
+
+  immich_postgres:
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    container_name: immich_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: {{ vault_immich_db_password }}
+      POSTGRES_USER: immich
+      POSTGRES_DB: immich
+      POSTGRES_INITDB_ARGS: '--data-checksums'
+    volumes:
+      - {{ immich_db_data_location }}:/var/lib/postgresql/data
+    networks:
+      - nas-services
+
+  immich_redis:
+    image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
+    container_name: immich_redis
+    hostname: redis
+    restart: unless-stopped
+    healthcheck:
+      test: redis-cli ping || exit 1
+    networks:
+      - nas-services
+
+volumes:
+  model-cache:

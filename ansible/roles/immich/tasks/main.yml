@@ -1,0 +1,23 @@
+---
+- name: Create Immich compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/immich"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Render Immich docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/immich/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart Immich
+
+- name: Start Immich
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/immich"
+    state: present
+    pull: missing

@@ -1,0 +1,11 @@
+collections:
+  - name: community.general
+    version: ">=9.0.0"
+  - name: community.docker
+    version: ">=3.0.0"
+  - name: ansible.posix
+    version: ">=1.5.0"
+  - name: artis3n.tailscale
+
+roles:
+  - src: geerlingguy.docker

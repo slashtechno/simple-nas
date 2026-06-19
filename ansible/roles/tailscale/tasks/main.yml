@@ -1,0 +1,24 @@
+---
+# artis3n.tailscale handles: package install, service start, `tailscale up --authkey`
+- name: Install and connect Tailscale
+  ansible.builtin.include_role:
+    name: artis3n.tailscale.tailscale
+  vars:
+    tailscale_authkey: "{{ vault_tailscale_authkey }}"
+    tailscale_args: "{{ tailscale_args }}"
+
+# Funnel has no Ansible module — shell task is the only option.
+# Funnel lets anyone on the internet reach Copyparty at your ts.net hostname.
+# Disabled by default; set tailscale_funnel_enabled: true in vars.yml to turn it on.
+- name: Enable Tailscale Funnel for Copyparty
+  ansible.builtin.command:
+    cmd: tailscale funnel --bg --https=443 http://127.0.0.1:{{ tailscale_funnel_port }}
+  when: tailscale_funnel_enabled | bool
+  changed_when: true
+
+- name: Disable Tailscale Funnel
+  ansible.builtin.command:
+    cmd: tailscale funnel --https=443 off
+  when: not (tailscale_funnel_enabled | bool)
+  changed_when: true
+  failed_when: false   # no-op if funnel was never enabled

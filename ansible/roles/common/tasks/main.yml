@@ -1,0 +1,22 @@
+---
+# Docker is handled via the geerlingguy.docker role dependency in meta/main.yml.
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - git
+      - vim
+      - jq
+      - restic
+      - rclone
+      - python3
+      - python3-docker   # Docker SDK — required by community.docker Ansible modules
+    state: present
+    update_cache: true
+
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ timezone }}"

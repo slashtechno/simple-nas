@@ -1,0 +1,42 @@
+---
+- name: Create Copyparty compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/copyparty"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Copy Copyparty build files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ nas_base_dir }}/copyparty/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop:
+    - Dockerfile
+    - copyparty.conf.template.default
+
+- name: Copy entrypoint.sh (executable)
+  ansible.builtin.copy:
+    src: entrypoint.sh
+    dest: "{{ nas_base_dir }}/copyparty/entrypoint.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Render Copyparty docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/copyparty/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart Copyparty
+
+- name: Build and start Copyparty
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/copyparty"
+    state: present
+    build: always

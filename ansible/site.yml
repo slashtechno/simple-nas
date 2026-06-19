@@ -1,0 +1,48 @@
+---
+# Full NAS deployment playbook.
+# Run with: ansible-playbook site.yml --ask-vault-pass
+#
+# To deploy one service only:  --tags immich
+# To disable services permanently, set <name>_enabled: false in vars.yml
+
+- name: Deploy NAS
+  hosts: nas
+  become: true
+  roles:
+    - role: common
+      tags: [common]
+
+    - role: tailscale
+      tags: [tailscale]
+      when: tailscale_enabled | default(true)
+
+    - role: storage
+      tags: [storage]
+      when: storage_enabled | default(true)
+
+    - role: network
+      tags: [network]
+
+    - role: immich
+      tags: [immich]
+      when: immich_enabled | default(true)
+
+    - role: copyparty
+      tags: [copyparty]
+      when: copyparty_enabled | default(true)
+
+    - role: gitea
+      tags: [gitea]
+      when: gitea_enabled | default(true)
+
+    - role: cloudflared
+      tags: [cloudflared]
+      when: cloudflared_enabled | default(true)
+
+    - role: garage
+      tags: [garage]
+      when: garage_enabled | default(true)
+
+    - role: backup
+      tags: [backup]
+      when: backup_enabled | default(true)

@@ -1,0 +1,8 @@
+all:
+  children:
+    nas:           # group name — matches "hosts: nas" in site.yml
+      hosts:
+        pi:        # nickname shown in Ansible output (not a hostname or DNS name)
+          ansible_host: 123.456.789.109 
+          ansible_user: user       
+          ansible_ssh_private_key_file: ~/.ssh/id_rsa  # run ssh-add ~/.ssh/id_rsa

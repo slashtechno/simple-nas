@@ -1,0 +1,21 @@
+networks:
+  nas-services:
+    external: true
+
+services:
+  garage:
+    image: dxflrs/garage:v1.0.1
+    container_name: garage
+    restart: unless-stopped
+    volumes:
+      - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
+      - {{ garage_data_dir }}/meta:/var/lib/garage/meta
+      - {{ garage_data_dir }}/data:/var/lib/garage/data
+    environment:
+      GARAGE_CONFIG_FILE: /etc/garage.toml
+    ports:
+      - "{{ garage_s3_port | default(3900) }}:{{ garage_s3_port | default(3900) }}"
+      - "{{ garage_admin_port | default(3903) }}:{{ garage_admin_port | default(3903) }}"
+      - "{{ garage_rpc_port | default(3901) }}:{{ garage_rpc_port | default(3901) }}"
+    networks:
+      - nas-services

@@ -1,0 +1,58 @@
+---
+- name: Create mount points
+  ansible.builtin.file:
+    path: "{{ item.mount }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ nas_drives }}"
+
+- name: Add drives to fstab
+  ansible.posix.mount:
+    path: "{{ item.mount }}"
+    src: "UUID={{ item.uuid }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.options }}"
+    state: mounted
+  loop: "{{ nas_drives }}"
+
+- name: Set ownership of mounted drives to ansible user
+  ansible.builtin.file:
+    path: "{{ item.mount }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    state: directory
+  loop: "{{ nas_drives }}"
+
+- name: Create NAS directory structure
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ main_drive }}/docker"
+    - "{{ main_drive }}/photos"
+    - "{{ main_drive }}/files"
+    - "{{ main_drive }}/backups"
+    - "{{ immich_db_data_location }}"
+    - "{{ copyparty_config_dir }}"
+    - "{{ gitea_data_dir }}"
+    - "{{ garage_data_dir }}"
+    - "{{ backup_drive }}/restic-repo"
+    - "{{ backup_drive }}/logs"
+
+- name: Set Postgres data dir ownership (runs as UID 999)
+  ansible.builtin.file:
+    path: "{{ immich_db_data_location }}"
+    owner: "999"
+    group: "999"
+    mode: "0700"
+
+- name: Create /opt/nas base directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"

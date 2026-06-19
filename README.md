@@ -1,94 +1,59 @@
-# Simple NAS: Self-Hosted Photo + File + Git Server  
-Uses two drives and a Pi to make somewhat of a reliable NAS. Basically used AI to glue together a couple services to create a simple, extensible, and backup-friendly home server. No need for port forwarding thanks to Cloudflare Tunnel and Tailscale.
+# Simple NAS
 
-A self-hosted NAS on Raspberry Pi 4 with:
-- **Immich**: Photo library (like Google Photos)
-- **Copyparty**: File sharing
-- **Gitea**: Git server (like GitHub)
-- **Cloudflare Tunnel**: Expose services securely without port forwarding
-- **Tailscale**: Secure remote access
-- **Backup strategy**: Local + Cloud backups for redundancy
+A self-hosted NAS on Raspberry Pi 4 managed by Ansible. Two drives, a Pi, and a handful of Docker services.
 
----
-
-## Design
+- **Immich** — photo library (Google Photos alternative)
+- **Copyparty** — file sharing
+- **Gitea** — Git server
+- **Garage** — S3-compatible object storage
+- **Cloudflare Tunnel** — public hostnames without port forwarding
+- **Tailscale** — private remote access
 
 ```
-Raspberry Pi 4 (headless, WiFi only)
-├─ 64GB microSD (OS boot)
-├─ 500GB SSD (/mnt/t7) - primary data
-└─ 500GB HDD (/mnt/backup) - full backups
+Raspberry Pi 4
+├─ 64GB microSD    (OS)
+├─ 500GB SSD       (/mnt/t7  — primary data)
+└─ 500GB HDD       (/mnt/backup — backups)
 
-Internet → Cloudflare Tunnel (cloudflared) → Services (hostname-based)
-  ├─ immich.example.com → Immich (2283)
-  ├─ gitea.example.com → Gitea (3000)
-  └─ copyparty.example.com → Copyparty (3923)
-
-Note: Services are exposed by hostname via the containerized cloudflared tunnel (see SETUP_GUIDE.md). Copyparty may still be optionally exposed via Tailscale Funnel for convenience.
-
-Local Tailscale IP (private):
-├─ :2283 → Immich (photos)
-├─ :3000 → Gitea (repos)
-└─ :3923 → Copyparty (files)
+Internet → Cloudflare Tunnel
+  ├─ immich.example.com    → Immich      (:2283)
+  ├─ gitea.example.com     → Gitea       (:3000)
+  ├─ copyparty.example.com → Copyparty   (:3923)
+  └─ s3.example.com        → Garage S3   (:3900)
 ```
 
-**Why this design?**
-- Single-user home lab (no multi-tenancy)
-- Works over WiFi (no Ethernet needed)
-- All data encrypted at rest via Tailscale tunnel
-- Backups: local (daily) + cloud (weekly)
-- Storage: SSD for speed, HDD for rotation
-
 ---
 
-## Backup Strategy
-
-**Local (daily)** → 500GB HDD
-- Full backup: all photos, DBs, configs, files
-- Keeps 2-3 rotating copies
-- Space-constrained (can't fit 2 full backups simultaneously)
-
-**Cloud (weekly)** → Google Drive
-- Critical only: databases + configs (highly compressed)
-- Incremental via restic + rclone
-- Disaster recovery (SSD + HDD both fail)
-
----
-
-## Documentation
-
-- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Complete installation & operations
-- **[BACKUPS.md](./BACKUPS.md)** - Backup/restore procedures & space planning
-- **[.env.example](./.env.example)** - Environment configuration template
-
----
-
-## Updating
+## Deploy
 
 ```bash
-git pull && docker compose up -d --build --pull always
+cd ansible/
+
+# First time only
+pip3 install ansible
+ansible-galaxy install -r requirements.yml
+cp inventory/hosts.yml.example inventory/hosts.yml   # add Pi's IP
+cp group_vars/nas/vars.yml.example group_vars/nas/vars.yml
+cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml
+# fill in vault.yml, then:
+ansible-vault encrypt group_vars/nas/vault.yml
+
+# Deploy everything
+ansible-playbook site.yml --ask-vault-pass
+
+# Migrate from old ~/simple-nas/ monolithic setup
+ansible-playbook migrate.yml --ask-vault-pass
 ```
 
-Pulls the latest pre-built images (Immich, Gitea, etc.) and rebuilds custom images (copyparty, cloudflared) in one step. Running containers are replaced with zero manual restarts needed.
+See `ansible/README.md` for full details.
 
 ---
 
-## Quick Restore
+## Backups
 
-If data is corrupted, restore from latest backup (usually within 24 hours):
+Fully automated via Ansible — cron jobs are created on the Pi automatically.
 
-```bash
-BACKUP=$(ls -d /mnt/backup/daily-* | sort -r | head -1)
+- Daily @ 2 AM: full `/mnt/t7` → local HDD (restic)
+- Sunday @ 4 AM: critical paths → Google Drive (rclone + restic)
 
-# Database
-docker compose stop immich_server immich_microservices
-zcat "$BACKUP/immich-db.sql.gz" | docker exec -i immich_postgres psql -U immich
-docker compose start immich_server immich_microservices
-
-# All other data
-docker compose stop gitea && rm -rf /mnt/t7/docker/gitea && \
-  tar -xzf "$BACKUP/gitea.tar.gz" -C / && docker compose start gitea
-rsync -av "$BACKUP/photos/" /mnt/t7/photos/
-```
-
-See [BACKUPS.md](./BACKUPS.md) for complete restore procedures.
+See [BACKUPS.md](./BACKUPS.md) for restore instructions.

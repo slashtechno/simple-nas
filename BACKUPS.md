@@ -1,275 +1,123 @@
-# Backup Strategy for Pi NAS
+# Backups
 
-**Goal**: Incremental backups with restic to 500GB HDD (local) + Google Drive (cloud). Supports multiple versions without extra storage via deduplication.
+Backups are fully automated by the `backup` Ansible role — cron jobs are created on the Pi when you run `ansible-playbook site.yml`. You don't configure cron manually.
+
+## What runs automatically
+
+| Schedule | What it does |
+|---|---|
+| Daily @ 2 AM | Immich DB dump + Gitea dump, then full `/mnt/t7` → local HDD via restic |
+| Sunday @ 4 AM | Same dumps, then critical paths → Google Drive via rclone + restic |
+| Wednesday @ 3 AM | `restic check` — verifies local repo integrity |
+
+Database dumps land in `/mnt/backup/service-dumps/` and are pruned to the last 3 of each type. Logs go to `/mnt/backup/logs/`.
 
 ---
 
-## Setup Instructions
+## One-time setup: rclone (Google Drive)
 
-### 1. Install Restic
-
-Install restic on your Raspberry Pi:
+Ansible sets up restic automatically, but rclone OAuth needs a browser. Do this once on your Mac, then copy the config to the Pi:
 
 ```bash
-sudo apt install -y restic
-restic version
-```
-
-### 2. Set Restic Password
-
-Create a secure password file for restic:
-
-```bash
-openssl rand -base64 32 > ~/.restic-password
-chmod 600 ~/.restic-password
-cat ~/.restic-password  # Save this in a password manager
-```
-
-### 3. Initialize Repositories
-
-#### Local Repository (HDD)
-
-Set up the local repository on your external HDD:
-
-```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-restic init
-```
-
-#### Cloud Repository (Google Drive)
-
-1. Configure rclone on your laptop:
-
-```bash
+brew install rclone
 rclone config
-# n) New remote
-# Name: gdrive-nas
-# Type: Google Drive
-# Use defaults for client ID/secret
-# Scope: 3 (Access to files created by rclone only)
-# Authorize in browser
-```
+# n) New remote → name: gdrive-nas → type: Google Drive
+# scope: 3 (files created by rclone only) → authorize in browser
 
-2. Copy the rclone configuration to your Pi:
-
-```bash
-scp ~/.config/rclone/rclone.conf pi@your-pi:~/.config/rclone/
-```
-
-3. Initialize the cloud repository:
-
-```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-
-restic init
+scp ~/.config/rclone/rclone.conf pi@your-pi-ip:~/.config/rclone/rclone.conf
 ```
 
 ---
 
-## Backup Scripts
+## Checking backup status
 
-### Daily Local Backup
-
-**What**: Full backup of `/mnt/t7` to HDD with deduplication (7 daily + 4 weekly snapshots).
-
-1. Run the script directly from the project (recommended). If you cloned the repo to `~/simple-nas`:
+SSH into the Pi:
 
 ```bash
-# Make executable and run in-place
-chmod +x ~/simple-nas/scripts/backup-restic-local.sh
-~/simple-nas/scripts/backup-restic-local.sh
+ssh pi@your-pi-ip
+
+# See what snapshots exist
+RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo \
+  restic snapshots
+
+# Check recent log
+tail -50 /mnt/backup/logs/backup-cron.log
+
+# Trigger a backup manually right now (same script cron uses)
+/bin/bash /opt/nas/scripts/backup-restic-local.sh
 ```
-
-Note: Root is not required — certain sensitive/inaccessible paths are excluded from the local backup.
-
-### Weekly Cloud Backup
-
-**What**: Selective paths (e.g., service dumps, configs) to Google Drive.
-
-1. Run the cloud backup script directly from the project (recommended). If you cloned the repo to `~/simple-nas`:
-
-```bash
-# Make executable and run in-place
-chmod +x ~/simple-nas/scripts/backup-restic-cloud.sh
-~/simple-nas/scripts/backup-restic-cloud.sh
-```
-
-2. Define critical paths in `~/simple-nas/scripts/backup-paths.txt` or use the default file.
-
-### Service-Aware Backup
-
-The `backup-services.sh` script (Immich DB dump + Gitea dump) is automatically invoked by the local and cloud backup scripts so you don’t have to run it manually. It writes dumps to `/mnt/backup/service-dumps` and prunes to the last 3 of each type.
 
 ---
 
-## Backup Overview
+## Restore: files
 
-| **Backup Type** | **Includes** | **Notes** |
-|------------------|--------------|-----------|
-| **Cloud**       | Service dumps, configs | Smaller, critical items |
-| **Local**       | Full `/mnt/t7` | Fast restore copy |
-
-**Key Notes**:
-- Use logical dumps for databases (e.g., `backup-services.sh`).
-- Avoid raw database directories in cloud backups.
-
----
-
-## Restore Instructions
-
-### From Local Backup
-
-Restore from the local repository:
+Restore any file or directory from any restic snapshot:
 
 ```bash
+ssh pi@your-pi-ip
+
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
 
-# List all snapshots
+# List snapshots — each has an ID like `a1b2c3d4`
 restic snapshots
 
-# Restore latest snapshot to original paths
+# Restore a single directory to inspect it first (safe)
+restic restore latest --include /mnt/t7/files --target /tmp/restore
+ls /tmp/restore/mnt/t7/files
+
+# Restore everything to original paths (replaces current files)
 restic restore latest --target /
-
-# Restore specific file or directory
-restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/restore
-
-# Restore specific snapshot by ID
-restic restore <snapshot-id> --target /
 ```
 
-### From Cloud Backup
-
-Restore from the cloud repository:
-
+For Google Drive snapshots, swap the repository:
 ```bash
-export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-
-# List cloud snapshots
-restic snapshots
-
-# Restore critical configs to a temporary location
-restic restore latest --target /tmp/cloud-restore
-
-# Restore specific file or directory
-restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/cloud-restore
-```
-
-### Restore Service Dumps
-
-#### Option 1: Use Helper Script
-
-Restore Immich or Gitea dumps using the helper script (run from the cloned repo):
-
-```bash
-~/simple-nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-YYYYMMDDTHHMMSS.sql.gz
-~/simple-nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-YYYYMMDDTHHMMSS.zip
-```
-
-#### Option 2: Manual Restore
-
-**Immich Database:**
-
-```bash
-# Find the dump in restic
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-restic restore latest --include "/mnt/backup/service-dumps" --target /tmp/restore
-
-# Restore the database
-gunzip -c /tmp/restore/mnt/backup/service-dumps/immich-db-*.sql.gz | \
-  docker exec -i immich_postgres psql -U postgres postgres
-```
-
-**Gitea:**
-
-Best practice is to restore from a `gitea dump` ZIP with Gitea stopped (Docker rootless paths). Our helper script automates this:
-
-- Stop `gitea` to ensure consistency
-- Unpack and place files:
-  - `data/conf/app.ini` → `/etc/gitea/app.ini`
-  - `data/*` → `/var/lib/gitea/`
-  - `repos/*` → `/var/lib/gitea/git/repositories/`
-- `chown -R git:git /etc/gitea /var/lib/gitea`
-- Regenerate hooks: `gitea admin regenerate hooks`
-- Start `gitea`
-
-SQLite note: The `gitea dump` includes the SQLite database file inside `data/`. Our restore script copies that file into `/data/gitea/` automatically and skips importing `gitea-db.sql` to avoid duplicate schema/data errors. You generally do not need to run a manual import for SQLite.
-
----
-
-## Schedule Backups with Cron
-
-Cron does not expand shell constructs in the command field (no $(...), no ~, no unexpanded $VAR). Use absolute paths.
-
-**IMPORTANT: replace `user` with your actual username in these examples.**
-
-```cron
-# Daily local backup @ 2 AM
-0 2 * * * /bin/bash /home/user/simple-nas/scripts/backup-restic-local.sh >> /mnt/backup/logs/backup-cron.log 2>&1
-
-# Weekly cloud backup @ Sunday 4 AM
-0 4 * * 0 /bin/bash /home/user/simple-nas/scripts/backup-restic-cloud.sh >> /mnt/backup/logs/backup-cron.log 2>&1
-
-# Weekly integrity check @ Wednesday 3 AM (advanced)
-0 3 * * 3 /bin/bash -lc 'export RESTIC_PASSWORD_FILE=/home/user/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo && restic check' >> /mnt/backup/logs/restic-check.log 2>&1
-```
-
-- Quick checklist:
-- Either: `chmod +x /home/user/simple-nas/scripts/backup-restic-local.sh` so the script is directly executable
-- Or: keep the script without the +x bit and call it from cron with `/bin/bash /home/user/simple-nas/scripts/backup-restic-local.sh` (recommended for cron)
-- Test-run as the target user
-- Ensure /mnt/backup is mounted and RESTIC_PASSWORD_FILE exists
-- Check /mnt/backup/logs for output
-
-Note: `$USER` or `~` is fine inside scripts or files read at runtime (e.g., [`scripts/backup-paths.txt`](scripts/backup-paths.txt:1)), but not in the crontab command field.
-
----
-
-## Additional Commands
-
-### Check Status
-
-Monitor the status of your backups:
-
-```bash
-# Set environment variables
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-# List snapshots
-restic snapshots
-
-# Repository stats
-restic stats
-
-# Verify integrity
-restic check
-```
-
-### Space Management
-
-Free up space by removing old snapshots:
-
-```bash
-# Set environment variables
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-# Remove old snapshots
-restic forget --keep-daily 3 --keep-weekly 2 --prune
 ```
 
 ---
 
-## Troubleshooting
+## Restore: Immich database
 
-| Problem                  | Fix                                      |
-|--------------------------|------------------------------------------|
-| "Failed to create lock"  | Wait or kill other restic processes      |
-| "Permission denied"      | Check file permissions                  |
-| Restore fails            | Verify repository integrity with `check` |
+Stop Immich first, restore the dump, then restart:
+
+```bash
+ssh pi@your-pi-ip
+
+# Find the dump you want
+ls -lh /mnt/backup/service-dumps/immich-db-*.sql.gz
+
+# Restore (script stops/restarts nothing automatically — Immich keeps running,
+# but you should stop it first for a clean restore)
+cd /opt/nas/immich && docker compose stop immich_server
+/opt/nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-<timestamp>.sql.gz
+docker compose start immich_server
+```
+
+---
+
+## Restore: Gitea
+
+The restore script stops Gitea, replaces all data, then restarts it:
+
+```bash
+ssh pi@your-pi-ip
+
+ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
+
+/opt/nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-<timestamp>.zip
+# Gitea is automatically stopped before restore and started after
+```
+
+---
+
+## Disaster recovery (both drives fail)
+
+1. Re-flash Pi OS, re-run `ansible-playbook site.yml`
+2. Pull from Google Drive:
+   ```bash
+   export RESTIC_PASSWORD_FILE=~/.restic-password
+   export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
+   restic restore latest --target /
+   ```
+3. Restore Immich and Gitea databases from the service-dumps that were restored in step 2

@@ -1,0 +1,88 @@
+# Copy to vars.yml and fill in your values.
+# Secrets (passwords, tokens) go in vault.yml — never in this file.
+
+# --- Enable/disable services ---
+# Set false to skip a service. To remove one already deployed: teardown.yml --tags <name>
+tailscale_enabled: true
+storage_enabled: true   # set false if drives already mounted (e.g. migrating existing setup)
+immich_enabled: true
+copyparty_enabled: true
+gitea_enabled: true
+cloudflared_enabled: true
+garage_enabled: false   # needs manual init after first deploy (see README.md)
+backup_enabled: true
+
+# --- Tailscale ---
+tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
+tailscale_funnel_enabled: false    # expose Copyparty publicly at your ts.net hostname
+tailscale_funnel_port: 3923
+
+# --- General ---
+timezone: America/New_York         # timedatectl list-timezones
+nas_base_dir: /opt/nas             # where compose projects are deployed on the Pi
+nas_network: nas-services          # shared Docker network name
+
+# --- Storage ---
+main_drive: /mnt/t7
+backup_drive: /mnt/backup
+
+immich_upload_location: "{{ main_drive }}/photos"
+immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
+copyparty_files_dir: "{{ main_drive }}/files"
+copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
+gitea_data_dir: "{{ main_drive }}/docker/gitea"
+garage_data_dir: "{{ main_drive }}/docker/garage"
+cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
+
+# fstab entries — idempotent, no-ops if drives already mounted.
+# Find UUIDs on the Pi: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
+nas_drives:
+  - uuid: "your-main-drive-uuid"
+    mount: /mnt/t7
+    fstype: ext4
+    options: defaults,nofail   # nofail = Pi still boots if drive is unplugged
+  - uuid: "your-backup-drive-uuid"
+    mount: /mnt/backup
+    fstype: ext4
+    options: defaults,nofail
+
+# --- Immich ---
+immich_version: release   # or pin to e.g. v1.130.0
+
+# --- Copyparty ---
+copyparty_user: "{{ vault_copyparty_user }}"
+copyparty_pass: "{{ vault_copyparty_pass }}"
+host_mnt_dir: /mnt   # host directory browsable under /drives in Copyparty UI
+
+# --- Gitea ---
+gitea_root_url: "https://gitea.example.com/"
+gitea_domain: "gitea.example.com"
+gitea_ssh_domain: "gitea.example.com"
+gitea_ssh_port: "2222"
+gitea_db_type: sqlite3
+gitea_db_path: /data/gitea/gitea.db
+
+# --- Cloudflare Tunnel ---
+cf_tunnel_name: pi-nas-tunnel
+cf_api_token: "{{ vault_cf_api_token }}"
+cf_account_id: "{{ vault_cf_account_id }}"
+cf_zone_id: "{{ vault_cf_zone_id }}"
+
+# One entry per public hostname. The service value is the internal Docker address.
+cloudflared_ingress:
+  - hostname: immich.example.com
+    service: "http://immich_server:2283"
+  - hostname: gitea.example.com
+    service: "http://gitea:3000"
+  - hostname: copyparty.example.com
+    service: "http://copyparty:3923"
+  - hostname: s3.example.com
+    service: "http://garage:3900"
+
+# --- Garage S3 ---
+garage_rpc_secret: "{{ vault_garage_rpc_secret }}"
+garage_s3_port: 3900
+garage_rpc_port: 3901
+garage_web_port: 3902
+garage_admin_port: 3903
+garage_replication_factor: 1   # 1 = single node, no replication

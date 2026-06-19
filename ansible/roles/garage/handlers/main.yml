@@ -1,0 +1,5 @@
+---
+- name: Restart Garage
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/garage"
+    state: restarted

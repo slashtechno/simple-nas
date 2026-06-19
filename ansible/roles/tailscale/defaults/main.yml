@@ -1,0 +1,7 @@
+---
+# Extra flags passed to `tailscale up`, e.g. "--advertise-exit-node"
+tailscale_args: ""
+
+# Set to true to expose Copyparty publicly via Tailscale Funnel (https://your-machine.ts.net)
+tailscale_funnel_enabled: false
+tailscale_funnel_port: 3923

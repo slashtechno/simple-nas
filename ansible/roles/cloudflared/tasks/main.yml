@@ -1,0 +1,66 @@
+---
+# If migrating, copy tunnel credentials from the old location so the init
+# container reuses the existing tunnel instead of trying to create a new one.
+- name: Check for existing tunnel credentials in new location
+  ansible.builtin.find:
+    paths: "{{ nas_base_dir }}/cloudflared"
+    patterns: "*.json"
+  register: existing_creds
+
+- name: Migrate tunnel credentials from old location (skips if already present)
+  ansible.builtin.shell: |
+    find /home/{{ ansible_user }}/simple-nas/cloudflared \
+      -maxdepth 1 -name '*.json' -exec cp {} {{ nas_base_dir }}/cloudflared/ \;
+  when: existing_creds.matched == 0
+  ignore_errors: true   # no-op if old dir doesn't exist
+
+- name: Create cloudflared directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/cloudflared"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Copy cloudflared build files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ nas_base_dir }}/cloudflared/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop:
+    - Dockerfile.init
+    - Dockerfile.runtime
+
+- name: Copy create_tunnel.sh (executable)
+  ansible.builtin.copy:
+    src: create_tunnel.sh
+    dest: "{{ nas_base_dir }}/cloudflared/create_tunnel.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Render ingress.yml
+  ansible.builtin.template:
+    src: ingress.yml.j2
+    dest: "{{ nas_base_dir }}/cloudflared/ingress.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify: Reinit cloudflared
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/cloudflared/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Reinit cloudflared
+
+- name: Start cloudflared
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/cloudflared"
+    state: present
+    build: always

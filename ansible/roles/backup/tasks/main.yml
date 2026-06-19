@@ -1,0 +1,86 @@
+---
+- name: Create scripts directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/scripts"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy backup scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ nas_base_dir }}/scripts/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - backup-restic-local.sh
+    - backup-restic-cloud.sh
+    - backup-services.sh
+    - restore-services.sh
+    - copyparty-funnel.sh
+
+- name: Render backup-paths.txt
+  ansible.builtin.template:
+    src: backup-paths.txt.j2
+    dest: "{{ nas_base_dir }}/scripts/backup-paths.txt"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+- name: Write restic password file
+  ansible.builtin.copy:
+    content: "{{ vault_restic_password }}"
+    dest: "/home/{{ ansible_user }}/.restic-password"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Initialize local restic repository (idempotent)
+  ansible.builtin.command:
+    cmd: restic init
+  environment:
+    RESTIC_PASSWORD_FILE: "/home/{{ ansible_user }}/.restic-password"
+    RESTIC_REPOSITORY: "{{ backup_drive }}/restic-repo"
+  register: restic_init
+  changed_when: "'created restic repository' in restic_init.stdout"
+  failed_when:
+    - restic_init.rc != 0
+    - "'already exists' not in restic_init.stderr"
+  become_user: "{{ ansible_user }}"
+
+- name: Schedule daily local backup (2 AM)
+  ansible.builtin.cron:
+    name: nas-backup-local
+    user: "{{ ansible_user }}"
+    minute: "0"
+    hour: "2"
+    job: >-
+      BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
+      /bin/bash {{ nas_base_dir }}/scripts/backup-restic-local.sh
+      >> {{ backup_drive }}/logs/backup-cron.log 2>&1
+
+- name: Schedule weekly cloud backup (Sunday 4 AM)
+  ansible.builtin.cron:
+    name: nas-backup-cloud
+    user: "{{ ansible_user }}"
+    minute: "0"
+    hour: "4"
+    weekday: "0"
+    job: >-
+      BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
+      /bin/bash {{ nas_base_dir }}/scripts/backup-restic-cloud.sh
+      >> {{ backup_drive }}/logs/backup-cron.log 2>&1
+
+- name: Schedule weekly restic integrity check (Wednesday 3 AM)
+  ansible.builtin.cron:
+    name: nas-restic-check
+    user: "{{ ansible_user }}"
+    minute: "0"
+    hour: "3"
+    weekday: "3"
+    job: >-
+      RESTIC_PASSWORD_FILE=/home/{{ ansible_user }}/.restic-password
+      RESTIC_REPOSITORY={{ backup_drive }}/restic-repo
+      restic check >> {{ backup_drive }}/logs/restic-check.log 2>&1

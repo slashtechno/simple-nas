@@ -1,0 +1,34 @@
+networks:
+  nas-services:
+    external: true
+
+services:
+  cloudflared-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.init
+    container_name: cloudflared-init
+    restart: "no"
+    volumes:
+      - .:/etc/cloudflared:rw
+    environment:
+      CF_API_TOKEN: {{ cf_api_token }}
+      CF_ACCOUNT_ID: {{ cf_account_id }}
+      CF_ZONE_ID: {{ cf_zone_id }}
+      CF_TUNNEL_NAME: {{ cf_tunnel_name }}
+    networks:
+      - nas-services
+
+  cloudflared:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - .:/etc/cloudflared:rw
+    networks:
+      - nas-services
+    depends_on:
+      - cloudflared-init

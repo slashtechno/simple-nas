@@ -1,0 +1,43 @@
+---
+- name: Create Garage compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/garage"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Create Garage data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ garage_data_dir }}/meta"
+    - "{{ garage_data_dir }}/data"
+
+- name: Render garage.toml
+  ansible.builtin.template:
+    src: garage.toml.j2
+    dest: "{{ nas_base_dir }}/garage/garage.toml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart Garage
+
+- name: Render Garage docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/garage/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart Garage
+
+- name: Start Garage
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/garage"
+    state: present
+    pull: missing

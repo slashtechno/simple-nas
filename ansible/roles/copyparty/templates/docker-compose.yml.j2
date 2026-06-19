@@ -1,0 +1,23 @@
+networks:
+  nas-services:
+    external: true
+
+services:
+  copyparty:
+    build: .
+    container_name: copyparty
+    restart: unless-stopped
+    volumes:
+      - {{ copyparty_files_dir }}:/files:rw
+      - {{ copyparty_config_dir }}:/cfg:rw
+      - {{ host_mnt_dir | default('/mnt') }}:/host/mnt:ro,rslave
+    environment:
+      TZ: {{ timezone }}
+      COPYPARTY_USER: {{ copyparty_user }}
+      COPYPARTY_PASS: {{ copyparty_pass }}
+      FILES_DIR: {{ copyparty_files_dir }}
+      HOST_MNT_DIR: {{ host_mnt_dir | default('/mnt') }}
+    ports:
+      - "3923:3923"
+    networks:
+      - nas-services
