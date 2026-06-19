@@ -128,31 +128,6 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ---
 
-## Migrate from old ~/simple-nas/ setup
-
-Both stacks use the same data paths — nothing moves. Migration is a compose project swap.
-
-```bash
-# 1. Stop old stack to free ports
-ssh yourname@your-pi "cd ~/simple-nas && docker compose stop"
-
-# 2. Deploy new stack
-ansible-playbook site.yml --ask-vault-pass
-
-# 3. Verify everything works
-
-# 4. Archive and remove old directory
-ansible-playbook migrate.yml --ask-vault-pass
-```
-
-**Rollback** (before step 4, old stack is untouched):
-```bash
-ansible-playbook teardown.yml --ask-vault-pass
-ssh yourname@your-pi "cd ~/simple-nas && docker compose up -d"
-```
-
----
-
 ## Add a new service
 
 1. `mkdir -p roles/myservice/{tasks,templates,handlers,files}`
