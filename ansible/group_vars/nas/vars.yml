@@ -80,6 +80,7 @@ cloudflared_ingress:
     service: "http://garage-webui:3909"
 
 # --- Garage S3 ---
+garage_version: v2.3.0
 garage_rpc_secret: "{{ vault_garage_rpc_secret }}"
 garage_s3_port: 3900
 garage_rpc_port: 3901

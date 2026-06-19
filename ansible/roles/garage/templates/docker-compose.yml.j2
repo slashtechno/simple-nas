@@ -4,7 +4,7 @@ networks:
 
 services:
   garage:
-    image: dxflrs/garage:v2
+    image: dxflrs/garage:{{ garage_version | default('v2.3.0') }}
     container_name: garage
     restart: unless-stopped
     # --single-node (Garage v2.3+) auto-configures the cluster on first start —
