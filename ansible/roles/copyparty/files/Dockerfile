@@ -3,8 +3,8 @@ FROM copyparty/ac
 # Install system dependencies for thumbnail generation
 # ffmpeg: video/audio thumbnails
 # vips: high-performance image processing (HEIF, AVIF, JXL)
-# libraw: for rawpy
-# build-base, python3-dev: for compiling python packages
+# libraw: for rawpy (RAW camera file decoding)
+# build-base, python3-dev, cmake, git: for compiling rawpy from source
 RUN apk add --no-cache \
     ffmpeg \
     vips-dev \
@@ -18,21 +18,19 @@ RUN apk add --no-cache \
     libwebp-dev \
     py3-pip \
     git \
-    cmake \
-    pkgconf
+    cmake
 
 # Install Python packages
+# rawpy: RAW image processing (compiled from git; MAKEFLAGS parallelizes)
 # pyvips: python bindings for vips
-# rawpy: RAW image processing (installed from git because PyPI lacks sdist)
 # pillow-heif, pillow-avif-plugin: extended format support for Pillow
-RUN python3 -m pip install --no-cache-dir --break-system-packages cython numpy && \
-    python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation git+https://github.com/letmaik/rawpy.git && \
+RUN MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages cython numpy && \
+    MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation git+https://github.com/letmaik/rawpy.git && \
     python3 -m pip install --no-cache-dir --break-system-packages \
     pyvips \
     pillow-heif \
     pillow-avif-plugin
 
-COPY copyparty.conf.template.default /etc/copyparty/copyparty.conf.template.default
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

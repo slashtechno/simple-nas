@@ -46,6 +46,15 @@
     mode: "0640"
   notify: Restart Garage
 
+- name: Render Caddyfile for CORS proxy
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ nas_base_dir }}/garage/Caddyfile"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify: Reload Caddy CORS proxy
+
 - name: Start Garage
   community.docker.docker_compose_v2:
     project_src: "{{ nas_base_dir }}/garage"

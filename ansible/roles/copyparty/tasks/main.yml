@@ -7,24 +7,25 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-- name: Copy Copyparty build files
+- name: Copy Docker build files
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "{{ nas_base_dir }}/copyparty/{{ item }}"
+    src: "{{ item.src }}"
+    dest: "{{ nas_base_dir }}/copyparty/{{ item.dest }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: Dockerfile, dest: Dockerfile, mode: "0644" }
+    - { src: entrypoint.sh, dest: entrypoint.sh, mode: "0755" }
+
+- name: Render full copyparty config directly (no runtime sed processing)
+  ansible.builtin.template:
+    src: copyparty.conf.j2
+    dest: "{{ copyparty_config_dir }}/copyparty.conf"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
-  loop:
-    - Dockerfile
-    - copyparty.conf.template.default
-
-- name: Copy entrypoint.sh (executable)
-  ansible.builtin.copy:
-    src: entrypoint.sh
-    dest: "{{ nas_base_dir }}/copyparty/entrypoint.sh"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
+  notify: Restart Copyparty
 
 - name: Render Copyparty docker-compose.yml
   ansible.builtin.template:

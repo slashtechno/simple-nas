@@ -34,6 +34,7 @@
     - "{{ main_drive }}/docker"
     - "{{ main_drive }}/photos"
     - "{{ main_drive }}/files"
+    - "{{ copyparty_collab_dir }}"
     - "{{ main_drive }}/backups"
     - "{{ immich_db_data_location }}"
     - "{{ copyparty_config_dir }}"

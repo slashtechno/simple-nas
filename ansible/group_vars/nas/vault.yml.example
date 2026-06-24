@@ -7,6 +7,12 @@
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
 vault_copyparty_pass: "yourpassword"
+# Friends who can access /collab via WebDAV:
+vault_copyparty_collab_users:
+  - user: "friend1"
+    pass: "change-me-generate-with-openssl-rand-base64-32"
+  - user: "friend2"
+    pass: "change-me-generate-with-openssl-rand-base64-32"
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
 vault_cf_api_token: "your_cloudflare_api_token"
 vault_cf_account_id: "your_cloudflare_account_id"

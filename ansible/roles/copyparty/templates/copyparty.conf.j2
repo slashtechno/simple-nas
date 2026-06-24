@@ -1,0 +1,52 @@
+# Ansible-managed — rendered directly by Ansible at deploy time.
+# All accounts, volumes, and drives are baked in.
+# To change: edit vars.yml/vault.yml and re-deploy.
+
+[global]
+  e2dsa
+  e2ts
+  xff-src: lan,100.64.0.0/10
+  ui-filesz: 5c
+  xff-hdr: cf-connecting-ip
+  rproxy: 1
+  shr: /shares
+
+[accounts]
+  {{ copyparty_user }}: {{ copyparty_pass }}
+{% for u in vault_copyparty_collab_users | default([]) %}
+  {{ u.user }}: {{ u.pass }}
+{% endfor %}
+
+[/]
+  /files
+  accs:
+    A: {{ copyparty_user }}
+  flags:
+    daw
+
+{% if vault_copyparty_collab_users is defined and vault_copyparty_collab_users %}
+[/collab]
+  /collab
+  accs:
+    A: {{ copyparty_user }}
+{% for u in vault_copyparty_collab_users %}
+    rw: {{ u.user }}
+{% endfor %}
+  flags:
+    daw
+{% endif %}
+
+[/drives]
+  /tmp/drives-root
+  accs:
+    r: {{ copyparty_user }}
+  flags:
+    -e2d
+{% for drive in nas_drives if drive.mount != main_drive %}
+[/drives/{{ drive.mount | basename }}]
+  /host/mnt/{{ drive.mount | basename }}
+  accs:
+    r: {{ copyparty_user }}
+  flags:
+    -e2d
+{% endfor %}

@@ -18,9 +18,21 @@ services:
     environment:
       GARAGE_CONFIG_FILE: /etc/garage.toml
     ports:
-      - "{{ garage_s3_port | default(3900) }}:{{ garage_s3_port | default(3900) }}"
+      # S3 port is intentionally not exposed on the host — all external S3 traffic
+      # goes through garage-cors-proxy which handles CORS and proxies to garage:3900 internally.
       - "{{ garage_admin_port | default(3903) }}:{{ garage_admin_port | default(3903) }}"
       - "{{ garage_rpc_port | default(3901) }}:{{ garage_rpc_port | default(3901) }}"
+    networks:
+      - nas-services
+
+  garage-cors-proxy:
+    image: caddy:alpine
+    container_name: garage-cors-proxy
+    restart: unless-stopped
+    volumes:
+      - {{ nas_base_dir }}/garage/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "{{ garage_s3_port | default(3900) }}:{{ garage_s3_port | default(3900) }}"
     networks:
       - nas-services
 

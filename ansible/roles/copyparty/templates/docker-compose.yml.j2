@@ -11,12 +11,11 @@ services:
       - {{ copyparty_files_dir }}:/files:rw
       - {{ copyparty_config_dir }}:/cfg:rw
       - {{ host_mnt_dir | default('/mnt') }}:/host/mnt:ro,rslave
+{% if copyparty_collab_dir is defined and copyparty_collab_dir %}
+      - {{ copyparty_collab_dir }}:/collab:rw
+{% endif %}
     environment:
       TZ: {{ timezone }}
-      COPYPARTY_USER: {{ copyparty_user }}
-      COPYPARTY_PASS: {{ copyparty_pass }}
-      FILES_DIR: {{ copyparty_files_dir }}
-      HOST_MNT_DIR: {{ host_mnt_dir | default('/mnt') }}
     ports:
       - "3923:3923"
     networks:

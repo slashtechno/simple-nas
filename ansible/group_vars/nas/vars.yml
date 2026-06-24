@@ -50,6 +50,7 @@ immich_version: release
 # --- Copyparty ---
 copyparty_user: "{{ vault_copyparty_user }}"
 copyparty_pass: "{{ vault_copyparty_pass }}"
+copyparty_collab_dir: "{{ main_drive }}/collab"
 host_mnt_dir: /mnt
 
 # --- Gitea ---

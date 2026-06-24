@@ -86,12 +86,11 @@ ansible-playbook site.yml --tags <service> --ask-vault-pass
 
 ### Copyparty: add users or change volume layout
 
-The built-in config template is `roles/copyparty/files/copyparty.conf.template.default`. At container startup, `entrypoint.sh` renders it into `/cfg/copyparty.conf` (substituting `$COPYPARTY_USER` / `$COPYPARTY_PASS`). That rendered file is ephemeral — never edit it directly.
+The copyparty config is rendered directly by Ansible from `roles/copyparty/templates/copyparty.conf.j2` into the config volume. Accounts use `{{ copyparty_user }}` / `{{ copyparty_pass }}` from vars, and collab friends are defined via `vault_copyparty_collab_users` in the vault.
 
-To customize beyond username/password:
-1. Copy the `.default` file to `/mnt/t7/docker/copyparty_config/copyparty.conf.template` on the Pi
-2. Edit it — the entrypoint uses yours instead of the built-in one; `${COPYPARTY_USER}` substitution still works
-3. Re-run `--tags copyparty`
+To customize:
+1. Edit `copyparty.conf.j2` or add vars to `vars.yml`/`vault.yml`
+2. Re-run `ansible-playbook site.yml --tags copyparty --ask-vault-pass`
 
 ### Cloudflare: add a public hostname for a new service
 
