@@ -18,6 +18,16 @@
     - "{{ garage_data_dir }}/meta"
     - "{{ garage_data_dir }}/data"
 
+- name: Check if Garage meta directory already has data (i.e., cluster was already bootstrapped)
+  ansible.builtin.find:
+    path: "{{ garage_data_dir }}/meta"
+    file_type: any
+  register: garage_meta_contents
+
+- name: Set fact for first deploy detection
+  ansible.builtin.set_fact:
+    garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"
+
 - name: Render garage.toml
   ansible.builtin.template:
     src: garage.toml.j2

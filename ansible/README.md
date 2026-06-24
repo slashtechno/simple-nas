@@ -149,7 +149,7 @@ Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_gara
 ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
 ```
 
-The compose file passes `--single-node` to Garage (v2.3+), so the cluster auto-initializes — no layout commands needed. Open `https://garage.example.com` and log in with the web UI credentials. Use the web UI to create buckets and access keys.
+Ansible automatically detects whether this is a first deploy by checking if the `meta/` data directory is empty. If it is (fresh install), `--single-node` is injected into the compose command to auto-bootstrap the cluster layout. On subsequent runs, the flag is omitted automatically. Open `https://garage.example.com` and log in with the web UI credentials. Use the web UI to create buckets and access keys.
 
 When connecting an app to Garage, use:
 - **Endpoint**: `https://s3.example.com`

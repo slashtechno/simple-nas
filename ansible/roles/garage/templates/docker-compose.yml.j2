@@ -7,10 +7,10 @@ services:
     image: dxflrs/garage:{{ garage_version | default('v2.3.0') }}
     container_name: garage
     restart: unless-stopped
-    # --single-node (Garage v2.3+) auto-configures the cluster on first start —
-    # no need to run `garage layout assign` and `garage layout apply` manually.
-    # The v2 image is distroless (no shell) — must use full path to the binary.
-    command: ["/garage", "server", "--single-node"]
+    # --single-node (Garage v2.3+) is only needed on first deploy to auto-configure
+    # the cluster layout. Ansible detects first deploy (empty meta dir) and
+    # injects the flag automatically; subsequent runs omit it.
+    command: ["/garage", "server"{% if garage_is_first_deploy | default(True) %}, "--single-node"{% endif %}]
     volumes:
       - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta
