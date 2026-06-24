@@ -30,7 +30,7 @@
   accs:
     A: {{ copyparty_user }}
 {% for u in vault_copyparty_collab_users %}
-    rw: {{ u.user }}
+    A: {{ u.user }}
 {% endfor %}
   flags:
     daw
