@@ -21,18 +21,10 @@
     # Specific origins: reflect the request Origin only if it's in the allowlist.
     # Required for credentialed requests (cookies/auth headers) since browsers
     # reject Access-Control-Allow-Origin: * when credentials: 'include' is set.
-    @cors_origin {
-{% for origin in garage_cors_allowed_origins %}
-        header Origin "{{ origin }}"
-{% endfor %}
-    }
+    # Uses CEL expression matcher so multiple origins are OR'd, not AND'd.
+    @cors_origin expression `{http.request.header.Origin} in [{{ garage_cors_allowed_origins | map('tojson') | join(', ') }}]`
 
-    @options_allowed {
-        method OPTIONS
-{% for origin in garage_cors_allowed_origins %}
-        header Origin "{{ origin }}"
-{% endfor %}
-    }
+    @options_allowed expression `{method} == "OPTIONS" && {http.request.header.Origin} in [{{ garage_cors_allowed_origins | map('tojson') | join(', ') }}]`
 
     @options_other {
         method OPTIONS
