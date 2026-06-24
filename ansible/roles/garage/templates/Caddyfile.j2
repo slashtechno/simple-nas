@@ -1,20 +1,63 @@
 :{{ garage_s3_port | default(3900) }} {
+{% if garage_cors_allowed_origins | default(['*']) == ['*'] %}
+    # Wildcard: set static header — no per-origin reflection needed.
     @options {
         method OPTIONS
     }
 
-    # Respond to CORS preflights immediately — never forward to Garage.
     handle @options {
-        header Access-Control-Allow-Origin "{{ garage_cors_allowed_origin | default('*') }}"
+        header Access-Control-Allow-Origin "*"
         header Access-Control-Allow-Methods "GET, PUT, DELETE, HEAD"
         header Access-Control-Allow-Headers "*"
         header Access-Control-Max-Age "3600"
         respond 200
     }
 
-    # All other requests: proxy to Garage and inject CORS header on the way back.
     handle {
         reverse_proxy garage:{{ garage_s3_port | default(3900) }}
-        header Access-Control-Allow-Origin "{{ garage_cors_allowed_origin | default('*') }}"
+        header Access-Control-Allow-Origin "*"
     }
+{% else %}
+    # Specific origins: reflect the request Origin only if it's in the allowlist.
+    # Required for credentialed requests (cookies/auth headers) since browsers
+    # reject Access-Control-Allow-Origin: * when credentials: 'include' is set.
+    @cors_origin {
+{% for origin in garage_cors_allowed_origins %}
+        header Origin "{{ origin }}"
+{% endfor %}
+    }
+
+    @options_allowed {
+        method OPTIONS
+{% for origin in garage_cors_allowed_origins %}
+        header Origin "{{ origin }}"
+{% endfor %}
+    }
+
+    @options_other {
+        method OPTIONS
+    }
+
+    handle @options_allowed {
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+        header Access-Control-Allow-Methods "GET, PUT, DELETE, HEAD"
+        header Access-Control-Allow-Headers "*"
+        header Access-Control-Max-Age "3600"
+        respond 200
+    }
+
+    # Preflight from unknown origin — reject with 403.
+    handle @options_other {
+        respond 403
+    }
+
+    handle @cors_origin {
+        reverse_proxy garage:{{ garage_s3_port | default(3900) }}
+        header Access-Control-Allow-Origin "{http.request.header.Origin}"
+    }
+
+    handle {
+        reverse_proxy garage:{{ garage_s3_port | default(3900) }}
+    }
+{% endif %}
 }

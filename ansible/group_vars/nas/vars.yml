@@ -76,7 +76,7 @@ cloudflared_ingress:
   - hostname: copyparty.slashtechno.com
     service: "http://copyparty:3923"
   - hostname: s3.slashtechno.com
-    service: "http://garage:3900"
+    service: "http://garage-cors-proxy:3900"
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
 
@@ -89,3 +89,5 @@ garage_web_port: 3902
 garage_admin_port: 3903
 garage_replication_factor: 1   # 1 = single node, no replication
 garage_webui_user: "{{ vault_garage_webui_user }}"
+garage_cors_allowed_origins:
+  - "*"

@@ -93,4 +93,6 @@ garage_web_port: 3902
 garage_admin_port: 3903
 garage_replication_factor: 1   # 1 = single node, no replication
 garage_webui_user: "{{ vault_garage_webui_user }}"
-garage_cors_allowed_origin: "*"  # or e.g. https://myapp.example.com
+garage_cors_allowed_origins:
+  - "*"           # wildcard — static header, works for non-credentialed requests
+  # - "https://myapp.example.com"   # specific origin — reflected per-request (required for credentials: 'include')
