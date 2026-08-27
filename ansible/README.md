@@ -142,9 +142,7 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ## Homebridge
 
-Runs with `network_mode: host` (required for HomeKit's mDNS discovery), so it can't join `nas-services` and is deliberately left out of `cloudflared_ingress`. Access the UI over Tailscale: `http://<pi-tailscale-ip>:8581`.
-
-Remote Apple Home access doesn't need Homebridge exposed to the internet — it goes through a HomeKit hub (Apple TV/HomePod) on your LAN; HAP isn't HTTP and can't be tunneled anyway. Without a hub, Homebridge only works on the same network (or over Tailscale).
+Runs with `network_mode: host` (required for HomeKit's mDNS discovery), so it can't join `nas-services` and is deliberately left out of `cloudflared_ingress`. Remote Apple Home access (and widgets) needs a real HomeKit hub — Apple TV or HomePod — on your LAN; **Tailscale doesn't substitute**, since HomeKit gates local-vs-remote by Wi-Fi network identity and multicast mDNS discovery, not IP reachability (MagicDNS is unicast name resolution, a different thing) — off Wi-Fi, the Home app shows the bridge offline even with Tailscale connected. Tailscale does still reach Homebridge's own admin UI fine (`http://<pi-tailscale-ip>:8581`), since that's a plain HTTP page unrelated to HAP.
 
 The role only deploys the container — the image bootstraps its own `config.json`/`auth.json` on first start. Log in with `admin`/`admin` and **change the password immediately**; the HomeKit PIN and plugins (Kasa, Google Smart Home, etc.) are also configured there and persist across re-deploys.
 
