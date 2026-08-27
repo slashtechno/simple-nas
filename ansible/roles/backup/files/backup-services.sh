@@ -5,6 +5,14 @@ set -euo pipefail
 # Keeps last 3 dumps of each type. Called automatically by restic backup scripts.
 
 DUMP_DIR="${DUMP_DIR:-/mnt/backup/service-dumps}"
+
+# Refuse to run if the backup drive isn't mounted — otherwise this silently
+# creates $DUMP_DIR (and writes DB dumps into it) on the root filesystem.
+if ! mountpoint -q /mnt/backup; then
+  echo "ERROR: /mnt/backup is not a mounted filesystem — refusing to write dumps onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
+  exit 1
+fi
+
 mkdir -p "$DUMP_DIR"
 timestamp() { date +%Y%m%dT%H%M%S; }
 

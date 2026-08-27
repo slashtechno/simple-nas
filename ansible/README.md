@@ -140,6 +140,29 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ---
 
+## Homebridge
+
+Runs with `network_mode: host` (required for HomeKit's mDNS discovery), so it can't join `nas-services` and is deliberately left out of `cloudflared_ingress`. Access the UI over Tailscale: `http://<pi-tailscale-ip>:8581`.
+
+Remote Apple Home access doesn't need Homebridge exposed to the internet — it goes through a HomeKit hub (Apple TV/HomePod) on your LAN; HAP isn't HTTP and can't be tunneled anyway. Without a hub, Homebridge only works on the same network (or over Tailscale).
+
+The role only deploys the container — the image bootstraps its own `config.json`/`auth.json` on first start. Log in with `admin`/`admin` and **change the password immediately**; the HomeKit PIN and plugins (Kasa, Google Smart Home, etc.) are also configured there and persist across re-deploys.
+
+---
+
+## Backups: if the backup drive disconnects
+
+`fstab`'s `nofail` only covers mount-at-boot — it doesn't auto-remount a drive that drops out later, so `/mnt/backup` silently becomes a plain (small) directory on root instead. This happened once, caused by a Pi-side USB brown-out, not the drive itself; see `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` if it recurs — undervoltage there points at the Pi's power delivery (PSU/cable/hub), not the enclosure.
+
+Two guards now cover it:
+
+1. **Loud failure** — `backup-restic-local.sh`, `backup-restic-cloud.sh`, `backup-services.sh`, and the `restic check` cron job all check `mountpoint -q /mnt/backup` first and log to `journalctl -t nas-backup` instead of writing onto root.
+2. **Self-healing** — `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` via a oneshot systemd service whenever any filesystem reappears, so a reconnected drive remounts within seconds.
+
+Check with: `mountpoint /mnt/backup`, `journalctl -t nas-backup`, `systemctl status nas-drive-remount.service`.
+
+---
+
 ## Garage S3 post-setup
 
 Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user`, `vault_garage_webui_pass`), then deploy:

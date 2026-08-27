@@ -8,6 +8,7 @@ storage_enabled: true   # set false if drives already mounted (e.g. migrating ex
 immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true
+homebridge_enabled: true
 cloudflared_enabled: true
 garage_enabled: false   # needs manual init after first deploy (see README.md)
 backup_enabled: true
@@ -31,6 +32,7 @@ immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ main_drive }}/files"
 copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
 gitea_data_dir: "{{ main_drive }}/docker/gitea"
+homebridge_config_dir: "{{ main_drive }}/docker/homebridge"
 garage_data_dir: "{{ main_drive }}/docker/garage"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
 
@@ -62,6 +64,12 @@ gitea_ssh_domain: "gitea.example.com"
 gitea_ssh_port: "2222"
 gitea_db_type: sqlite3
 gitea_db_path: /data/gitea/gitea.db
+
+# --- Homebridge ---
+# network_mode: host (required for HomeKit/mDNS) — not on nas-services, not in
+# cloudflared_ingress. Access over Tailscale: http://<pi-tailscale-ip>:8581
+# Config UI X seeds its own config.json/auth.json on first boot (default login
+# admin/admin — change it immediately). See README.md for details.
 
 # --- Cloudflare Tunnel ---
 cf_tunnel_name: pi-nas-tunnel

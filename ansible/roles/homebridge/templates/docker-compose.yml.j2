@@ -1,0 +1,22 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
+#
+# network_mode: host is required for HomeKit accessory discovery (mDNS/Bonjour) —
+# Homebridge must appear on the same L2 segment as your iOS devices. This means it
+# cannot join the nas-services bridge network and is not reachable by container
+# name from cloudflared; it is intentionally left out of cloudflared_ingress.
+# Reach the UI over Tailscale instead: http://<pi-tailscale-ip>:8581
+services:
+  homebridge:
+    image: homebridge/homebridge:latest
+    container_name: homebridge
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - {{ homebridge_config_dir }}:/homebridge
+    environment:
+      TZ: {{ timezone }}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "1"

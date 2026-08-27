@@ -23,6 +23,24 @@
     state: directory
   loop: "{{ nas_drives }}"
 
+- name: Install udev rule to trigger a remount when a drive reappears
+  ansible.builtin.copy:
+    src: 99-nas-drive-remount.rules
+    dest: /etc/udev/rules.d/99-nas-drive-remount.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload udev rules
+
+- name: Install remount systemd service (self-heals a drive that drops offline and reconnects)
+  ansible.builtin.copy:
+    src: nas-drive-remount.service
+    dest: /etc/systemd/system/nas-drive-remount.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd daemon
+
 - name: Create NAS directory structure
   ansible.builtin.file:
     path: "{{ item }}"
@@ -39,6 +57,7 @@
     - "{{ immich_db_data_location }}"
     - "{{ copyparty_config_dir }}"
     - "{{ gitea_data_dir }}"
+    - "{{ homebridge_config_dir }}"
     - "{{ garage_data_dir }}"
     - "{{ backup_drive }}/restic-repo"
     - "{{ backup_drive }}/logs"

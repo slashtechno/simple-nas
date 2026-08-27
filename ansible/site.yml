@@ -35,6 +35,10 @@
       tags: [gitea]
       when: gitea_enabled | default(true)
 
+    - role: homebridge
+      tags: [homebridge]
+      when: homebridge_enabled | default(true)
+
     - role: cloudflared
       tags: [cloudflared]
       when: cloudflared_enabled | default(true)

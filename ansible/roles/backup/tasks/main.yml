@@ -59,7 +59,8 @@
     job: >-
       BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
       /bin/bash {{ nas_base_dir }}/scripts/backup-restic-local.sh
-      >> {{ backup_drive }}/logs/backup-cron.log 2>&1
+      >> {{ backup_drive }}/logs/backup-cron.log 2>&1 ||
+      logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly cloud backup (Sunday 4 AM)
   ansible.builtin.cron:
@@ -71,7 +72,8 @@
     job: >-
       BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
       /bin/bash {{ nas_base_dir }}/scripts/backup-restic-cloud.sh
-      >> {{ backup_drive }}/logs/backup-cron.log 2>&1
+      >> {{ backup_drive }}/logs/backup-cron.log 2>&1 ||
+      logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly restic integrity check (Wednesday 3 AM)
   ansible.builtin.cron:
@@ -81,6 +83,8 @@
     hour: "3"
     weekday: "3"
     job: >-
+      if mountpoint -q {{ backup_drive }}; then
       RESTIC_PASSWORD_FILE=/home/{{ ansible_user }}/.restic-password
       RESTIC_REPOSITORY={{ backup_drive }}/restic-repo
-      restic check >> {{ backup_drive }}/logs/restic-check.log 2>&1
+      restic check >> {{ backup_drive }}/logs/restic-check.log 2>&1;
+      else logger -t nas-backup "ERROR: {{ backup_drive }} not mounted, skipped restic check"; fi

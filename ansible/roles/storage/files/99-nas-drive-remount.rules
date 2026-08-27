@@ -1,0 +1,5 @@
+# Ansible-managed. When any filesystem-bearing block device appears (e.g. a USB
+# drive reconnecting after dropping offline), ask systemd to try `mount -a`.
+# `mount -a` only touches fstab entries that aren't already mounted, so this is
+# a no-op for unrelated devices and safe to fire on every add event.
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_FS_UUID}=="?*", RUN+="/usr/bin/systemctl --no-block start nas-drive-remount.service"

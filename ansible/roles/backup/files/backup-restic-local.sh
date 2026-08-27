@@ -1,6 +1,15 @@
 #!/bin/bash
 set -o pipefail
 
+# Refuse to run if the backup drive isn't actually mounted at /mnt/backup —
+# otherwise this silently writes multi-GB restic data onto the root filesystem
+# until it fills up (this has happened: a USB dropout unmounted the drive
+# mid-write, and cron kept "succeeding" against the bare mountpoint directory).
+if ! mountpoint -q /mnt/backup; then
+  echo "ERROR: /mnt/backup is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
+  exit 1
+fi
+
 ## RESTIC_PASSWORD_FILE selection
 # Default to caller's home file, but when running under sudo/root prefer the
 # calling user's file if present. This avoids failures when calling via sudo

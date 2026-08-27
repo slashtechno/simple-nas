@@ -1,6 +1,15 @@
 #!/bin/bash
 set -o pipefail
 
+# Refuse to run if the backup drive isn't actually mounted at /mnt/backup —
+# otherwise this silently writes onto the root filesystem until it fills up
+# (this has happened: a USB dropout unmounted the drive mid-write, and cron
+# kept "succeeding" against the bare mountpoint directory).
+if ! mountpoint -q /mnt/backup; then
+  echo "ERROR: /mnt/backup is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
+  exit 1
+fi
+
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
 

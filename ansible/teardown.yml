@@ -95,6 +95,27 @@
             state: absent
           when: remove_data | bool
 
+    - name: Stop and remove Homebridge
+      tags: [homebridge]
+      block:
+        - name: Down Homebridge compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/homebridge"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Homebridge compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/homebridge"
+            state: absent
+
+        - name: Wipe Homebridge data (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ homebridge_config_dir }}"
+            state: absent
+          when: remove_data | bool
+
     - name: Stop and remove Garage
       tags: [garage]
       block:

@@ -1,0 +1,23 @@
+---
+- name: Create Homebridge compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/homebridge"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Render Homebridge docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/homebridge/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart Homebridge
+
+- name: Start Homebridge
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/homebridge"
+    state: present
+    pull: missing

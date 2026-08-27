@@ -7,6 +7,7 @@ tailscale_enabled: false # tmp since already deployed
 immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true
+homebridge_enabled: true
 cloudflared_enabled: true
 garage_enabled: true    # off by default — needs post-deploy init (see ansible/README.md)
 backup_enabled: true
@@ -30,6 +31,7 @@ immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ main_drive }}/files"
 copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
 gitea_data_dir: "{{ main_drive }}/docker/gitea"
+homebridge_config_dir: "{{ main_drive }}/docker/homebridge"
 garage_data_dir: "{{ main_drive }}/docker/garage"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
 
