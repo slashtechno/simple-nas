@@ -84,6 +84,17 @@ Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then re-run with th
 ansible-playbook site.yml --tags <service> --ask-vault-pass
 ```
 
+### Update service images
+
+Gitea, Immich, Homebridge, and Garage track floating tags (`latest`/`release`/version vars), but deploys default to `pull: missing` (idempotent — only pulls if the image isn't already local). To pull and restart with newer images:
+
+```bash
+ansible-playbook site.yml -e docker_pull_policy=always --ask-vault-pass          # everything
+ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass   # one service
+```
+
+Copyparty and cloudflared build their own images from local Dockerfiles (`build: always`) and always rebuild, so this doesn't apply to them.
+
 ### Copyparty: add users or change volume layout
 
 The copyparty config is rendered directly by Ansible from `roles/copyparty/templates/copyparty.conf.j2` into the config volume. Accounts use `{{ copyparty_user }}` / `{{ copyparty_pass }}` from vars, and collab friends are defined via `vault_copyparty_collab_users` in the vault.

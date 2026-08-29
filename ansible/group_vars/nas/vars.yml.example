@@ -22,6 +22,7 @@ tailscale_funnel_port: 3923
 timezone: America/New_York         # timedatectl list-timezones
 nas_base_dir: /opt/nas             # where compose projects are deployed on the Pi
 nas_network: nas-services          # shared Docker network name
+docker_pull_policy: missing        # "always" to pull newer images on every run — see README.md#update-service-images
 
 # --- Storage ---
 main_drive: /mnt/t7

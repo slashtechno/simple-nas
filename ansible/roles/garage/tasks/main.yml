@@ -59,4 +59,4 @@
   community.docker.docker_compose_v2:
     project_src: "{{ nas_base_dir }}/garage"
     state: present
-    pull: missing
+    pull: "{{ docker_pull_policy }}"
