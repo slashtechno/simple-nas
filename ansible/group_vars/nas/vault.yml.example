@@ -13,6 +13,10 @@ vault_copyparty_collab_users:
     pass: "change-me-generate-with-openssl-rand-base64-32"
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
+# Only used if pocketpi_sftp_enabled is true (vars.yml) -- the scoped
+# SFTP account for pocketpi's NAS sync, read/write on /files only:
+vault_pocketpi_nas_user: "pocketpi"
+vault_pocketpi_nas_pass: "change-me-generate-with-openssl-rand-base64-32"
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
 vault_cf_api_token: "your_cloudflare_api_token"
 vault_cf_account_id: "your_cloudflare_account_id"

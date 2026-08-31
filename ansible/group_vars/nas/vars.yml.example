@@ -58,6 +58,18 @@ copyparty_pass: "{{ vault_copyparty_pass }}"
 copyparty_collab_dir: "{{ main_drive }}/collab"   # shared directory for friends
 host_mnt_dir: /mnt   # host directory browsable under /drives in Copyparty UI
 
+# pocketpi_sftp_enabled (default false): turns on Copyparty's SFTP
+# listener, scoped to a dedicated read/write account on /files, so the
+# separate pocketpi project (local/pocketpi in the same lab repo) can
+# sync explicitly-selected files for offline access while traveling.
+# rclone (pocketpi's sync tool) needs real modtimes to sync correctly,
+# which Copyparty's WebDAV doesn't provide -- SFTP does. This is the
+# only simple-nas change pocketpi's NAS sync needs: one config flag +
+# one scoped account, nothing else here is touched by that project. See
+# lab/local/pocketpi/plans/v4-architecture.md for the full design.
+pocketpi_sftp_enabled: false
+pocketpi_sftp_port: 3922
+
 # --- Gitea ---
 gitea_root_url: "https://gitea.example.com/"
 gitea_domain: "gitea.example.com"

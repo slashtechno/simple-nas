@@ -18,5 +18,8 @@ services:
       TZ: {{ timezone }}
     ports:
       - "3923:3923"
+{% if pocketpi_sftp_enabled | default(false) | bool %}
+      - "{{ pocketpi_sftp_port | default(3922) }}:{{ pocketpi_sftp_port | default(3922) }}"
+{% endif %}
     networks:
       - nas-services
