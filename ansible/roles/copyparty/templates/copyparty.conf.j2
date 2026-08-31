@@ -30,7 +30,7 @@
   accs:
     A: {{ copyparty_user }}
 {% if sftp_enabled | default(false) | bool %}
-    rw: {{ vault_pocketpi_nas_user }}
+    rwmd: {{ vault_pocketpi_nas_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
   flags:
     daw
