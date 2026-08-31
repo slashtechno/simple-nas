@@ -10,13 +10,9 @@
   xff-hdr: cf-connecting-ip
   rproxy: 1
   shr: /shares
-{% if pocketpi_sftp_enabled | default(false) | bool %}
-  # pocketpi's NAS-aware offline sync reads/writes /files over SFTP
-  # (not WebDAV -- rclone bisync needs real modtimes, which copyparty's
-  # plain WebDAV doesn't give it). --sftp-pw reuses the [accounts]
-  # entries below, no separate credential store. See
-  # lab/local/pocketpi/plans/v4-architecture.md.
-  sftp: {{ pocketpi_sftp_port | default(3922) }}
+{% if sftp_enabled | default(false) | bool %}
+  # sftp-pw reuses [accounts] below, no separate credential store.
+  sftp: {{ sftp_port | default(3922) }}
   sftp-pw
 {% endif %}
 
@@ -25,7 +21,7 @@
 {% for u in vault_copyparty_collab_users | default([]) %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
-{% if pocketpi_sftp_enabled | default(false) | bool %}
+{% if sftp_enabled | default(false) | bool %}
   {{ vault_pocketpi_nas_user }}: {{ vault_pocketpi_nas_pass }}
 {% endif %}
 
@@ -33,7 +29,7 @@
   /files
   accs:
     A: {{ copyparty_user }}
-{% if pocketpi_sftp_enabled | default(false) | bool %}
+{% if sftp_enabled | default(false) | bool %}
     rw: {{ vault_pocketpi_nas_user }}
 {% endif %}
   flags:
