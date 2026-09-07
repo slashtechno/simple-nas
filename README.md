@@ -59,7 +59,7 @@ See [BACKUPS.md](./BACKUPS.md) for restore instructions.
 
 ## Direct Ethernet link
 
-For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs on wifi) can be cabled straight to a laptop, bypassing wifi entirely. The Pi's side is a fixed static IP (`10.10.20.1`); the laptop's IP (`10.10.20.2`) is handed out automatically by a scoped DHCP server on that port — just the two of them, no room for anything else on that cable.
+For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs on wifi) can be cabled straight to a laptop, bypassing wifi entirely. The Pi's side is a fixed static IP (`10.10.20.1`); the laptop's IP (`10.10.20.2`) is handed out automatically by a scoped DHCP server on that port — just the two of them, no room for anything else on that cable. Measured: ~117MB/s direct vs. ~4.3MB/s over Tailscale/wifi — about 27x faster.
 
 **Setup:**
 1. Set `direct_link_enabled: true` in `vars.yml`, then deploy (`ansible-playbook site.yml --ask-vault-pass --tags network`). This configures both the static IP and the auto-assign DHCP on the Pi's side.
