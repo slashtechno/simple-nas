@@ -5,25 +5,47 @@
     state: present
 
 # Direct Ethernet link to a laptop (see README.md#direct-ethernet-link).
-# The Pi ships with a default DHCP profile on eth0 ("Wired connection 1"); it's
-# turned off so it can never race our static one for the port.
-- name: Disable auto-connect on the default eth0 DHCP profile
-  community.general.nmcli:
-    type: ethernet
-    conn_name: "Wired connection 1"
-    ifname: eth0
-    autoconnect: false
-    state: present
+# Assumes eth0 is idle (Pi runs on wifi) — if eth0 is ever your Ansible
+# management connection instead, enabling this will drop that connection.
+- name: Set up direct Ethernet link on eth0
   when: direct_link_enabled | default(false)
+  block:
+    - name: Configure static direct-link IP on eth0 (no gateway — can't route internet traffic)
+      community.general.nmcli:
+        type: ethernet
+        conn_name: direct-link
+        ifname: eth0
+        ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
+        method4: manual
+        autoconnect: true
+        state: present
 
-- name: Configure static direct-link IP on eth0 (no gateway — can't route internet traffic)
-  community.general.nmcli:
-    type: ethernet
-    conn_name: direct-link
-    ifname: eth0
-    ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
-    gw4: ""
-    method4: manual
-    autoconnect: true
-    state: present
-  when: direct_link_enabled | default(false)
+    # The Pi ships with a default DHCP profile on eth0 ("Wired connection 1");
+    # it's turned off so it can never race our static one for the port.
+    - name: Disable auto-connect on the default eth0 DHCP profile
+      community.general.nmcli:
+        type: ethernet
+        conn_name: "Wired connection 1"
+        ifname: eth0
+        autoconnect: false
+        state: present
+
+# Symmetric revert: flipping direct_link_enabled back to false and redeploying
+# undoes the block above, without needing the full destructive teardown.yml.
+- name: Tear down direct Ethernet link on eth0
+  when: not (direct_link_enabled | default(false))
+  block:
+    - name: Remove static direct-link profile
+      community.general.nmcli:
+        conn_name: direct-link
+        state: absent
+      ignore_errors: true
+
+    - name: Re-enable auto-connect on the default eth0 DHCP profile
+      community.general.nmcli:
+        type: ethernet
+        conn_name: "Wired connection 1"
+        ifname: eth0
+        autoconnect: true
+        state: present
+      ignore_errors: true
