@@ -1,3 +1,4 @@
+# SigV4 S3 clients that sign Accept-Encoding (e.g. rclone) get "Invalid signature" through the Cloudflare Tunnel in front of this -- Cloudflare rewrites that header in transit; client-side fix is excluding it from the signature (rclone: sign_accept_encoding = false), see git.deuxfleurs.fr/Deuxfleurs/garage/issues/895.
 :{{ garage_s3_port | default(3900) }} {
 {% if garage_cors_allowed_origins | default(['*']) == ['*'] %}
     # Wildcard: set static header — no per-origin reflection needed.
