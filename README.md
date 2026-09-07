@@ -64,14 +64,14 @@ For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs 
 **Setup:**
 1. Set `direct_link_enabled: true` in `vars.yml`, then deploy (`ansible-playbook site.yml --ask-vault-pass --tags network`). This configures both the static IP and the auto-assign DHCP on the Pi's side.
 2. Plug the cable into the Pi and the laptop — the laptop picks up `10.10.20.2` automatically, no manual TCP/IP config needed.
-3. Visit `http://10.10.20.1:3923` for Copyparty directly over the cable.
+3. Visit `https://10.10.20.1:3923` for Copyparty directly over the cable (expect a cert warning — see below).
 
 <details>
 <summary>Why the link can't leak onto the internet or collide with a VPN</summary>
 
-- The Pi's IP is static so it's always the same to bookmark (`http://10.10.20.1:3923`). The laptop's IP is auto-assigned via a `dnsmasq` instance scoped strictly to `eth0` — DHCP only, its DNS-proxy function is disabled (`port=0`), and it never hands out a gateway or DNS servers, so it can't route anything beyond the two ends of the cable.
-- Neither end is told about a gateway, so this link has no path to the internet at all — plugging in can't accidentally reroute general browsing traffic through the Pi, even though wired connections are normally preferred over wifi.
-- Collision risk with a VPN: `10.10.20.1`/`10.10.20.2` is a `/30` — a block of only 4 addresses, 2 of which are usable (the network/broadcast addresses at the ends aren't). In practice: a VPN route only conflicts if it covers this *exact* tiny 4-address block, not just "some `10.x` address somewhere." Common VPN defaults like `10.8.0.0/24` (OpenVPN, 256 addresses) or home routers like `192.168.0.1`/`192.168.1.1` live nowhere near `10.10.20.0`–`10.10.20.3`, so there's nothing to overlap with.
-- Copyparty encrypts even this direct connection: it ships a built-in self-signed cert and auto-detects HTTPS vs HTTP on the same port, no config needed (`https://10.10.20.1:3923` works out of the box — expect a browser cert warning, since the cert is copyparty's public default, not unique to your instance).
+- The laptop's IP comes from a `dnsmasq` instance scoped strictly to `eth0` — DHCP only, no DNS or gateway handed out — so nothing here can route beyond the two ends of the cable.
+- Neither end has a gateway configured, so there's no path to the internet to accidentally leak onto.
+- `10.10.20.1`/`10.10.20.2` is a `/30` (4 addresses, 2 usable) — too small and obscure to overlap with real-world VPN ranges like `10.8.0.0/24` (OpenVPN) or `192.168.0.1`/`192.168.1.1` (home routers).
+- `https://` works with no cert setup on our end — Copyparty ships a built-in self-signed cert and auto-detects HTTPS vs HTTP on the same port. The browser warning is expected (it's copyparty's public default cert, not unique to this box).
 
 </details>
