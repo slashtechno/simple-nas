@@ -6,3 +6,8 @@ bind-interfaces
 except-interface=lo
 port=0
 dhcp-range={{ direct_link_peer_ip }},{{ direct_link_peer_ip }},255.255.255.252,12h
+# dnsmasq defaults to advertising itself as the router if you don't say
+# otherwise -- these explicitly suppress that (and DNS) so no gateway is
+# ever handed out.
+dhcp-option=3
+dhcp-option=6
