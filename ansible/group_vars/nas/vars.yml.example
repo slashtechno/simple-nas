@@ -112,3 +112,10 @@ garage_webui_user: "{{ vault_garage_webui_user }}"
 garage_cors_allowed_origins:
   - "*"           # wildcard — static header, works for non-credentialed requests
   # - "https://myapp.example.com"   # specific origin — reflected per-request (required for credentials: 'include')
+
+# --- Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers) ---
+# Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
+# so it can't route internet traffic. See README.md#direct-ethernet-link.
+direct_link_enabled: false
+direct_link_ip: 10.10.20.1     # Pi's address on the link; use 10.10.20.2 on the laptop
+direct_link_prefix: 30         # /30 = just these two addresses, nothing else fits

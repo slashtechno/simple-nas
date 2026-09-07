@@ -57,9 +57,15 @@ See [BACKUPS.md](./BACKUPS.md) for restore instructions.
 
 ---
 
-## Direct Ethernet link (proposed, not implemented)
+## Direct Ethernet link
 
 For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs on wifi) can be cabled straight to a laptop, bypassing wifi entirely. Static IPs (not DHCP/auto-assigned), so the address never changes: Pi `eth0` = `10.10.20.1`, laptop = `10.10.20.2` — just the two of them, no room for anything else on that cable.
+
+**Setup:**
+1. Set `direct_link_enabled: true` in `vars.yml`, then deploy (`ansible-playbook site.yml --ask-vault-pass --tags network`). This configures the Pi's side automatically.
+2. On the laptop, plug in the cable, then set a manual IP on that Ethernet connection:
+   **macOS:** System Settings → Network → (the new Ethernet entry) → Details → TCP/IP → Configure IPv4: *Manually* → IP Address `10.10.20.2`, Subnet Mask `255.255.255.252`, Router: *(leave blank)*.
+3. Visit `http://10.10.20.1:3923` for Copyparty directly over the cable.
 
 <details>
 <summary>Why static, and why the link can't leak onto the internet or collide with a VPN</summary>
