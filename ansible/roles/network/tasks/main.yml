@@ -30,6 +30,26 @@
         autoconnect: false
         state: present
 
+    # Auto-assigns the laptop's IP so it doesn't need manual TCP/IP config.
+    # DHCP only (port=0 disables dnsmasq's DNS proxy) and scoped to eth0 only
+    # (bind-interfaces), so it can't affect wifi or hand out a gateway/DNS —
+    # NetworkManager's built-in "shared" mode was considered instead, but it
+    # also enables NAT/forwarding, which would open exactly the internet path
+    # this link is designed not to have.
+    - name: Install dnsmasq
+      ansible.builtin.apt:
+        name: dnsmasq
+        state: present
+
+    - name: Configure dnsmasq to auto-assign the laptop's IP on eth0
+      ansible.builtin.template:
+        src: direct-link-dnsmasq.conf.j2
+        dest: /etc/dnsmasq.d/direct-link.conf
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart direct-link dnsmasq
+
 # Symmetric revert: flipping direct_link_enabled back to false and redeploying
 # undoes the block above, without needing the full destructive teardown.yml.
 - name: Tear down direct Ethernet link on eth0
@@ -48,4 +68,18 @@
         ifname: eth0
         autoconnect: true
         state: present
+      ignore_errors: true
+
+    - name: Remove direct-link dnsmasq config
+      ansible.builtin.file:
+        path: /etc/dnsmasq.d/direct-link.conf
+        state: absent
+
+    # dnsmasq package is left installed (matches how other roles handle
+    # packages) but stopped, so it's not idling with no config to serve.
+    - name: Stop and disable dnsmasq
+      ansible.builtin.systemd:
+        name: dnsmasq
+        state: stopped
+        enabled: false
       ignore_errors: true

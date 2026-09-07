@@ -1,0 +1,8 @@
+# Managed by Ansible (network role) — hands the laptop an IP on the direct
+# Ethernet link automatically. DHCP only: no DNS proxying, no gateway handed
+# out, so this can't become an internet path or interfere with other DNS.
+interface=eth0
+bind-interfaces
+except-interface=lo
+port=0
+dhcp-range={{ direct_link_peer_ip }},{{ direct_link_peer_ip }},255.255.255.252,12h

@@ -238,6 +238,19 @@
             state: present
           ignore_errors: true
 
+        - name: Remove direct-link dnsmasq config
+          ansible.builtin.file:
+            path: /etc/dnsmasq.d/direct-link.conf
+            state: absent
+          ignore_errors: true
+
+        - name: Stop and disable dnsmasq
+          ansible.builtin.systemd:
+            name: dnsmasq
+            state: stopped
+            enabled: false
+          ignore_errors: true
+
     # ── Shared infrastructure (only removed when ALL services are gone) ────
 
     - name: Remove shared Docker network

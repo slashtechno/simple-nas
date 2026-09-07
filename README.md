@@ -59,18 +59,18 @@ See [BACKUPS.md](./BACKUPS.md) for restore instructions.
 
 ## Direct Ethernet link
 
-For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs on wifi) can be cabled straight to a laptop, bypassing wifi entirely. Static IPs (not DHCP/auto-assigned), so the address never changes: Pi `eth0` = `10.10.20.1`, laptop = `10.10.20.2` — just the two of them, no room for anything else on that cable.
+For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs on wifi) can be cabled straight to a laptop, bypassing wifi entirely. The Pi's side is a fixed static IP (`10.10.20.1`); the laptop's IP (`10.10.20.2`) is handed out automatically by a scoped DHCP server on that port — just the two of them, no room for anything else on that cable.
 
 **Setup:**
-1. Set `direct_link_enabled: true` in `vars.yml`, then deploy (`ansible-playbook site.yml --ask-vault-pass --tags network`). This configures the Pi's side automatically.
-2. On the laptop, plug in the cable, then set a manual IP on that Ethernet connection:
-   **macOS:** System Settings → Network → (the new Ethernet entry) → Details → TCP/IP → Configure IPv4: *Manually* → IP Address `10.10.20.2`, Subnet Mask `255.255.255.252`, Router: *(leave blank)*.
+1. Set `direct_link_enabled: true` in `vars.yml`, then deploy (`ansible-playbook site.yml --ask-vault-pass --tags network`). This configures both the static IP and the auto-assign DHCP on the Pi's side.
+2. Plug the cable into the Pi and the laptop — the laptop picks up `10.10.20.2` automatically, no manual TCP/IP config needed.
 3. Visit `http://10.10.20.1:3923` for Copyparty directly over the cable.
 
 <details>
-<summary>Why static, and why the link can't leak onto the internet or collide with a VPN</summary>
+<summary>Why static (not fully auto) on the Pi's side, how the laptop's address stays automatic without opening an internet path, and why it can't collide with a VPN</summary>
 
-- Static beats auto-assigned addressing here because an auto-assigned address changes every time and you'd need extra tooling just to find it. Static means the IP is always the same, so you can bookmark `http://10.10.20.1:3923` for Copyparty.
+- The Pi's IP is static so it's always the same to bookmark (`http://10.10.20.1:3923`). The laptop's IP is auto-assigned via a `dnsmasq` instance scoped strictly to `eth0` — DHCP only, its DNS-proxy function is disabled (`port=0`), and it never hands out a gateway or DNS servers, so it can't route anything beyond the two ends of the cable.
+- NetworkManager has a built-in "shared connection" mode that also auto-assigns a peer IP, but it does so by also enabling NAT/IP forwarding — exactly the internet path this link isn't supposed to have. `dnsmasq` was used instead specifically because it does DHCP without touching routing at all.
 - Neither end is told about a gateway, so this link has no path to the internet at all — plugging in can't accidentally reroute general browsing traffic through the Pi, even though wired connections are normally preferred over wifi.
 - Collision risk with a VPN: `10.10.20.1`/`10.10.20.2` is a `/30` — a block of only 4 addresses, 2 of which are usable (the network/broadcast addresses at the ends aren't). In practice: a VPN route only conflicts if it covers this *exact* tiny 4-address block, not just "some `10.x` address somewhere." Common VPN defaults like `10.8.0.0/24` (OpenVPN, 256 addresses) or home routers like `192.168.0.1`/`192.168.1.1` live nowhere near `10.10.20.0`–`10.10.20.3`, so there's nothing to overlap with.
 
