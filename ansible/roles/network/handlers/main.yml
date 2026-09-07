@@ -4,3 +4,4 @@
     name: dnsmasq
     state: restarted
     enabled: true
+  when: not ansible_check_mode   # dnsmasq install is only simulated under --check
