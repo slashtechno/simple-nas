@@ -169,6 +169,24 @@
             path: "{{ nas_base_dir }}/scripts"
             state: absent
 
+    - name: Remove direct Ethernet link config
+      tags: [network]
+      block:
+        - name: Remove static direct-link profile
+          community.general.nmcli:
+            conn_name: direct-link
+            state: absent
+          ignore_errors: true
+
+        - name: Re-enable auto-connect on the default eth0 DHCP profile
+          community.general.nmcli:
+            type: ethernet
+            conn_name: "Wired connection 1"
+            ifname: eth0
+            autoconnect: true
+            state: present
+          ignore_errors: true
+
     # ── Shared infrastructure (only removed when ALL services are gone) ────
 
     - name: Remove shared Docker network
