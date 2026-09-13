@@ -25,6 +25,26 @@ rclone config
 # For the auth step, rclone gives you a URL — open it on your Mac and paste the token back
 ```
 
+By default this uses rclone's shared Google OAuth client, whose request quota is
+split across every rclone user worldwide — the cloud backup script already
+throttles requests (`restic_cloud_rclone_args`, `--tpslimit=10`) to stay under
+it, but a large first backup can still hit `403 RATE_LIMIT_EXCEEDED` from
+Google Drive. If that happens, get your own private quota instead:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a
+   project, enable the **Google Drive API**, then create an **OAuth client ID**
+   (type: Desktop app). Note the Client ID and Client Secret.
+2. Re-edit the existing remote (not a new one) on the Pi:
+   ```bash
+   rclone config
+   # e) Edit existing remote → gdrive-nas
+   # "Google Application Client Id" → paste your client ID
+   # "Client Secret" → paste your client secret
+   # leave scope/other answers as they were
+   ```
+3. Changing the OAuth client forces a new consent flow — same browser/paste-token
+   step as the original setup, just once.
+
 ---
 
 ## Web dashboard (read-only)
