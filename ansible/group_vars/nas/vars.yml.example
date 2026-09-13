@@ -34,6 +34,8 @@ restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
 backup_logs_dir: "{{ backup_drive }}/logs"
 service_dumps_dir: "{{ backup_drive }}/service-dumps"
+restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
+restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 
 immich_upload_location: "{{ main_drive }}/photos"
 immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"

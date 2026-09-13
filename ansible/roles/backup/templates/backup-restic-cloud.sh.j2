@@ -102,7 +102,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
     else
       echo "Cloud backup successful. Removing old snapshots..."
     fi
-    restic forget --keep-weekly 12 --keep-monthly 6 --prune
+    restic forget {{ restic_cloud_retention }} --prune
 
     echo "Cloud repository stats:"
     restic stats

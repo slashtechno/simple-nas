@@ -65,8 +65,7 @@ done
     else
       echo "Backup successful. Removing old snapshots..."
     fi
-    # Keep last 7 daily + 4 weekly + 1 monthly snapshots
-    /usr/bin/restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 1 --prune
+    /usr/bin/restic forget {{ restic_local_retention }} --prune
 
     echo "Repository stats:"
     /usr/bin/restic stats

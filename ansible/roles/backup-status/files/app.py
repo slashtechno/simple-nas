@@ -38,6 +38,10 @@ NAS_SSH_USER = os.environ["NAS_SSH_USER"]
 HOST_BACKUP_DRIVE = os.environ["HOST_BACKUP_DRIVE"]
 HOST_RESTIC_REPO_PATH = os.environ["HOST_RESTIC_REPO_PATH"]
 HOST_RESTIC_PASSWORD_FILE = os.environ["HOST_RESTIC_PASSWORD_FILE"]
+HOST_RESTIC_CLOUD_REPOSITORY = os.environ["HOST_RESTIC_CLOUD_REPOSITORY"]
+HOST_RESTIC_LOCAL_RETENTION = os.environ["HOST_RESTIC_LOCAL_RETENTION"]
+HOST_RESTIC_CLOUD_RETENTION = os.environ["HOST_RESTIC_CLOUD_RETENTION"]
+HOST_SCRIPTS_DIR = os.environ["HOST_SCRIPTS_DIR"]
 
 PORT = int(os.environ.get("PORT", "8080"))
 CACHE_TTL_SECONDS = 30
@@ -58,6 +62,24 @@ def cached(key, build):
     with _cache_lock:
         _cache[key] = (time.monotonic() + CACHE_TTL_SECONDS, value)
     return value
+
+
+def run_restic_lines(args, timeout=20):
+    """For subcommands like `list locks` that print one ID per line, not JSON
+    — even with --json, `restic list` emits JSON Lines, not a single
+    document, so json.loads() on the whole output would fail."""
+    env = dict(os.environ)
+    env["RESTIC_REPOSITORY"] = RESTIC_REPO_PATH
+    env["RESTIC_PASSWORD_FILE"] = RESTIC_PASSWORD_FILE
+    result = subprocess.run(
+        ["restic", "--no-lock", *args],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        check=True,
+    )
+    return [line for line in result.stdout.splitlines() if line.strip()]
 
 
 def run_restic(args, timeout=20):
@@ -169,7 +191,17 @@ def build_status():
         drive["free_human"] = None
         drive["detail_human"] = "check the USB connection, then: sudo mount -a"
 
-    return {"jobs": jobs, "drive": drive}
+    # A stale lock (e.g. left behind by a run interrupted when the drive
+    # dropped) silently blocks forget/prune while backup itself can still
+    # succeed — surfacing this saves a manual `restic list locks` SSH trip.
+    lock_count = 0
+    if mounted:
+        try:
+            lock_count = len(cached("restic_locks", lambda: run_restic_lines(["list", "locks"])))
+        except Exception:
+            lock_count = -1  # couldn't tell — don't claim "0 locks" when unsure
+
+    return {"jobs": jobs, "drive": drive, "lock_count": lock_count}
 
 
 def build_snapshots():
@@ -221,6 +253,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
             html.replace("__NAS_SSH_USER__", NAS_SSH_USER)
             .replace("__HOST_RESTIC_REPO_PATH__", HOST_RESTIC_REPO_PATH)
             .replace("__HOST_RESTIC_PASSWORD_FILE__", HOST_RESTIC_PASSWORD_FILE)
+            .replace("__HOST_RESTIC_CLOUD_REPOSITORY__", HOST_RESTIC_CLOUD_REPOSITORY)
+            .replace("__HOST_RESTIC_LOCAL_RETENTION__", HOST_RESTIC_LOCAL_RETENTION)
+            .replace("__HOST_RESTIC_CLOUD_RETENTION__", HOST_RESTIC_CLOUD_RETENTION)
+            .replace("__HOST_SCRIPTS_DIR__", HOST_SCRIPTS_DIR)
         )
         body = html.encode()
         self.send_response(200)

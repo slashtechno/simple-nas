@@ -98,6 +98,18 @@
     The dashboard has no SSH key, no restic password beyond a read-only mount, and no code path that can write to a repository.
   </blockquote>
 
+  <article id="lockWarning" style="display:none">
+    <span class="pill warn">lock found</span>
+    <p><strong id="lockWarningText"></strong></p>
+    <p><small>This blocks <code>forget</code>/<code>prune</code> from running until cleared. Only run <code>unlock</code> if you're sure no backup is genuinely in progress.</small></p>
+    <pre><code id="unlockCmd"></code></pre>
+  </article>
+
+  <details>
+    <summary>Manual operations</summary>
+    <div id="manualOps"></div>
+  </details>
+
 </main>
 
 <dialog id="overlay">
@@ -124,6 +136,10 @@
     sshUser: "__NAS_SSH_USER__",
     resticRepoPath: "__HOST_RESTIC_REPO_PATH__",
     resticPasswordFile: "__HOST_RESTIC_PASSWORD_FILE__",
+    resticCloudRepository: "__HOST_RESTIC_CLOUD_REPOSITORY__",
+    resticLocalRetention: "__HOST_RESTIC_LOCAL_RETENTION__",
+    resticCloudRetention: "__HOST_RESTIC_CLOUD_RETENTION__",
+    scriptsDir: "__HOST_SCRIPTS_DIR__",
   };
 
   const sshHostEl = document.getElementById('sshHost');
@@ -144,6 +160,7 @@
   document.getElementById('hostLabel').textContent = sshHost;
   document.getElementById('sshUser').textContent = NAS_CONFIG.sshUser;
   document.getElementById('repoLabel').textContent = NAS_CONFIG.resticRepoPath;
+  renderManualOps();
 
   let state = null;
 
@@ -174,18 +191,54 @@
   document.getElementById('modalClose').addEventListener('click', () => overlay.close());
   document.getElementById('cancelBtn').addEventListener('click', () => overlay.close());
 
-  copyBtn.addEventListener('click', async () => {
+  async function copyText(text, el) {
     try {
-      await navigator.clipboard.writeText(cmdBox.textContent);
+      await navigator.clipboard.writeText(text);
     } catch (err) {
       const range = document.createRange();
-      range.selectNodeContents(cmdBox);
+      range.selectNodeContents(el);
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
     }
+  }
+
+  copyBtn.addEventListener('click', async () => {
+    await copyText(cmdBox.textContent, cmdBox);
     copiedFlag.classList.add('show');
     setTimeout(() => copiedFlag.classList.remove('show'), 1400);
+  });
+
+  // Manual operations — same idea as the modal commands: this dashboard
+  // only ever hands you a command to run yourself, never runs it for you.
+  function renderManualOps() {
+    const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
+    const localBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
+    const cloudBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticCloudRepository}`;
+    const ops = [
+      ['Run local backup now', `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-local.sh'`],
+      ['Run cloud backup now', `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-cloud.sh'`],
+      ['Preview local prune (dry run — shows what would be removed, deletes nothing)',
+        `ssh ${target} '${localBase} restic forget ${NAS_CONFIG.resticLocalRetention} --dry-run'`],
+      ['Preview cloud prune (dry run)',
+        `ssh ${target} '${cloudBase} restic forget ${NAS_CONFIG.resticCloudRetention} --dry-run'`],
+      ['Run integrity check now', `ssh ${target} '${localBase} restic check'`],
+    ];
+    document.getElementById('manualOps').innerHTML = ops.map(([label, cmd], i) => `
+      <p style="margin-bottom:0.25rem"><small>${label}</small></p>
+      <pre><code id="manualCmd${i}">${cmd}</code></pre>
+      <button class="outline secondary" data-copy-target="manualCmd${i}" style="width:auto;margin-bottom:1rem">Copy</button>
+    `).join('');
+  }
+
+  document.getElementById('manualOps').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-copy-target]');
+    if (!btn) return;
+    const code = document.getElementById(btn.dataset.copyTarget);
+    await copyText(code.textContent, code);
+    const original = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = original; }, 1400);
   });
 
   function pillClass(ok) {
@@ -219,6 +272,18 @@
       <small>${drive.detail_human || ''}</small>
     </article>`);
     grid.innerHTML = cards.join('');
+
+    const lockWarning = document.getElementById('lockWarning');
+    if (data.lock_count > 0) {
+      const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
+      const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
+      document.getElementById('lockWarningText').textContent =
+        `${data.lock_count} lock${data.lock_count === 1 ? '' : 's'} found on the local repo`;
+      document.getElementById('unlockCmd').textContent = `ssh ${target} '${base} restic unlock'`;
+      lockWarning.style.display = '';
+    } else {
+      lockWarning.style.display = 'none';
+    }
   }
 
   function renderSnapshots(data) {
