@@ -59,6 +59,31 @@
     - "'already exists' not in restic_init.stderr"
   become_user: "{{ ansible_user }}"
 
+# The cloud repo needs rclone's one-time OAuth setup first (see BACKUPS.md) —
+# on a fresh Pi that hasn't done that yet, skip init rather than fail the
+# whole deploy; it'll pick up automatically on a later run once configured.
+- name: Check whether the gdrive-nas rclone remote is configured
+  ansible.builtin.command:
+    cmd: rclone listremotes
+  register: rclone_remotes
+  changed_when: false
+  failed_when: false
+  become_user: "{{ ansible_user }}"
+
+- name: Initialize cloud restic repository (idempotent)
+  ansible.builtin.command:
+    cmd: restic init
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+    RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"
+  register: restic_cloud_init
+  changed_when: "'created restic repository' in restic_cloud_init.stdout"
+  failed_when:
+    - restic_cloud_init.rc != 0
+    - "'already exists' not in restic_cloud_init.stderr"
+  become_user: "{{ ansible_user }}"
+  when: "'gdrive-nas:' in rclone_remotes.stdout"
+
 - name: Schedule daily local backup (2 AM)
   ansible.builtin.cron:
     name: nas-backup-local
