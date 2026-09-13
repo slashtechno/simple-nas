@@ -95,8 +95,16 @@ def newest_matching(pattern):
     return max(matches, key=os.path.getmtime) if matches else None
 
 
-def parse_dated_job_log(glob_pattern, success_marker, failure_marker, stale_after):
-    """Parse a backup-restic-{local,cloud}.sh.j2-style dated log file."""
+def parse_dated_job_log(glob_pattern, stale_after):
+    """Parse a backup-restic-{local,cloud}.sh.j2-style dated log file.
+
+    Success is judged by whether the script reached its final "=== Complete"
+    line, not by matching specific wording — both the clean-success and the
+    partial-success (some source files unreadable, restic exit 3) paths print
+    different text but both fall through to "=== Complete"; a real failure
+    calls `exit 1` before ever reaching it. This is tied to control flow, not
+    prose, so it doesn't need updating if the scripts' log messages change.
+    """
     path = newest_matching(glob_pattern)
     if not path:
         return {"ok": None, "stale": True, "last_run_human": None, "detail_human": "no log yet"}
@@ -106,12 +114,7 @@ def parse_dated_job_log(glob_pattern, success_marker, failure_marker, stale_afte
     with open(path, "r", errors="replace") as f:
         content = f.read()
 
-    if success_marker in content:
-        ok = True
-    elif failure_marker in content:
-        ok = False
-    else:
-        ok = None  # log exists but neither marker found — still running or truncated
+    ok = "=== Complete:" in content
 
     return {
         "ok": ok,
@@ -146,14 +149,10 @@ def build_status():
     jobs = {
         "local_daily": parse_dated_job_log(
             os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"),
-            "Backup successful.",
-            "ERROR: Backup failed!",
             LOCAL_STALE_AFTER_SECONDS,
         ),
         "cloud_weekly": parse_dated_job_log(
             os.path.join(BACKUP_LOGS_DIR, "restic-cloud-*.log"),
-            "Cloud backup successful.",
-            "ERROR: Cloud backup failed!",
             WEEKLY_STALE_AFTER_SECONDS,
         ),
         "integrity_check": parse_integrity_log(WEEKLY_STALE_AFTER_SECONDS),

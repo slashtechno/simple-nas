@@ -51,18 +51,29 @@ done
     "${EXCLUDE_ARGS[@]}" \
     --tag daily \
     --verbose
-  
-  if [ $? -eq 0 ]; then
-    echo "Backup successful. Removing old snapshots..."
+  backup_rc=$?
+
+  # restic's exit codes: 0 = clean success, 3 = the snapshot was still saved
+  # but some source files couldn't be read (e.g. a socket, a file that
+  # changed mid-scan) — a partial success, not a failure. Treating exit 3 as
+  # a hard failure (as this script used to) meant a handful of unreadable
+  # files would silently skip forget/prune on an otherwise-good backup,
+  # letting old snapshots accumulate indefinitely.
+  if [ "$backup_rc" -eq 0 ] || [ "$backup_rc" -eq 3 ]; then
+    if [ "$backup_rc" -eq 3 ]; then
+      echo "Backup completed with some unreadable source files (exit 3) — snapshot saved, pruning anyway."
+    else
+      echo "Backup successful. Removing old snapshots..."
+    fi
     # Keep last 7 daily + 4 weekly + 1 monthly snapshots
     /usr/bin/restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 1 --prune
-    
+
     echo "Repository stats:"
     /usr/bin/restic stats
     echo "Free space on HDD:"
     df -h {{ backup_drive }}
   else
-    echo "ERROR: Backup failed!"
+    echo "ERROR: Backup failed (restic exit code $backup_rc)!"
     exit 1
   fi
   
