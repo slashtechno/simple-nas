@@ -85,10 +85,10 @@
   <figure>
     <table>
       <thead>
-        <tr><th>ID</th><th>Taken</th><th>Tag</th><th style="text-align:right">Size</th><th></th></tr>
+        <tr><th>ID</th><th>Taken</th><th>Tag</th><th></th></tr>
       </thead>
       <tbody id="snapRows">
-        <tr><td colspan="5" aria-busy="true">Loading snapshots&hellip;</td></tr>
+        <tr><td colspan="4" aria-busy="true">Loading snapshots&hellip;</td></tr>
       </tbody>
     </table>
   </figure>
@@ -203,7 +203,7 @@
     ];
     const cards = jobs.map(([key, label]) => {
       const j = data.jobs[key] || {};
-      const pill = j.last_run ? (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed')) : 'no data';
+      const pill = !j.last_run_human ? 'no data' : (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed'));
       return `<article>
         <span class="pill ${pillClass(j.stale ? null : j.ok)}">${pill}</span>
         <small>${label}</small>
@@ -224,7 +224,7 @@
   function renderSnapshots(data) {
     const rows = document.getElementById('snapRows');
     if (!data.snapshots.length) {
-      rows.innerHTML = `<tr><td colspan="5">No snapshots found.</td></tr>`;
+      rows.innerHTML = `<tr><td colspan="4">No snapshots found.</td></tr>`;
       return;
     }
     rows.innerHTML = data.snapshots.map((s) => `
@@ -232,7 +232,6 @@
         <td><code>${s.id}</code></td>
         <td>${s.time_human}</td>
         <td><mark>${s.tag}</mark></td>
-        <td style="text-align:right">${s.size_human}</td>
         <td>
           <button class="outline secondary" data-action="restore">Restore</button>
           <button class="outline contrast" data-action="delete">Delete</button>
@@ -240,18 +239,32 @@
       </tr>`).join('');
   }
 
-  async function refresh() {
-    try {
-      const [status, snapshots] = await Promise.all([
-        fetch('/api/status').then((r) => r.json()),
-        fetch('/api/snapshots').then((r) => r.json()),
-      ]);
-      renderStatus(status);
-      renderSnapshots(snapshots);
-    } catch (err) {
-      document.getElementById('statusGrid').innerHTML =
-        `<article><p>Couldn't load status: ${err}</p></article>`;
-    }
+  // Fetched independently — a slow or failing snapshots call (it shells out
+  // to restic, which can take a while on a slow disk) shouldn't also freeze
+  // the status card, which comes from fast local log parsing.
+  function refreshStatus() {
+    fetch('/api/status')
+      .then((r) => r.json())
+      .then(renderStatus)
+      .catch((err) => {
+        document.getElementById('statusGrid').innerHTML =
+          `<article><p>Couldn't load status: ${err}</p></article>`;
+      });
+  }
+
+  function refreshSnapshots() {
+    fetch('/api/snapshots')
+      .then((r) => r.json())
+      .then(renderSnapshots)
+      .catch((err) => {
+        document.getElementById('snapRows').innerHTML =
+          `<tr><td colspan="4">Couldn't load snapshots: ${err}</td></tr>`;
+      });
+  }
+
+  function refresh() {
+    refreshStatus();
+    refreshSnapshots();
   }
 
   refresh();

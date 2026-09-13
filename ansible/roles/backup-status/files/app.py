@@ -174,23 +174,21 @@ def build_status():
 
 
 def build_snapshots():
+    # Deliberately metadata-only (no per-snapshot `restic stats`): stats in
+    # restore-size mode walks the whole snapshot tree, which over a slow disk
+    # with a large repo can take much longer than a page load should wait —
+    # this was measured taking 30s+ per snapshot in practice, hanging the page.
     snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
     result = []
     for snap in snapshots:
-        short_id = snap["short_id"]
         tag = (snap.get("tags") or ["untagged"])[0]
         time_human = time.strftime(
             "%b %d, %H:%M", time.strptime(snap["time"][:19], "%Y-%m-%dT%H:%M:%S")
         )
-        stats = cached(
-            f"restic_stats_{short_id}",
-            lambda sid=short_id: run_restic(["stats", sid, "--mode", "restore-size"]),
-        )
         result.append({
-            "id": short_id,
+            "id": snap["short_id"],
             "time_human": time_human,
             "tag": tag,
-            "size_human": human_bytes(stats.get("total_size", 0)),
         })
     result.sort(key=lambda s: s["time_human"], reverse=True)
     return {"snapshots": result}
