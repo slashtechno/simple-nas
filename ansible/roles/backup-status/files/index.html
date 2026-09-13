@@ -85,13 +85,14 @@
   <figure>
     <table>
       <thead>
-        <tr><th>ID</th><th>Taken</th><th>Tag</th><th></th></tr>
+        <tr><th>ID</th><th>Taken</th><th>Tag</th><th>Repo</th><th></th></tr>
       </thead>
       <tbody id="snapRows">
-        <tr><td colspan="4" aria-busy="true">Loading snapshots&hellip;</td></tr>
+        <tr><td colspan="5" aria-busy="true">Loading snapshots&hellip;</td></tr>
       </tbody>
     </table>
   </figure>
+  <p><small>Cloud rows come from a cache file the weekly cloud backup writes — this dashboard has no cloud credentials of its own, so cloud data is only as fresh as the last cloud run, not live.</small></p>
 
   <blockquote>
     Every action here — restore, delete, forget, prune — opens a command for you to copy and run over SSH yourself.
@@ -166,7 +167,8 @@
 
   function commandFor(action, row) {
     const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
-    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
+    const repoPath = row.dataset.repo === 'cloud' ? NAS_CONFIG.resticCloudRepository : NAS_CONFIG.resticRepoPath;
+    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
     if (action === 'delete') {
       return `ssh ${target} '${base} restic forget ${row.dataset.id} --prune'`;
     }
@@ -176,7 +178,7 @@
   function openModal(action, row) {
     state = { action, row };
     modalTitle.textContent = action === 'delete' ? 'Delete snapshot' : 'Restore snapshot (preview)';
-    modalSub.textContent = `${row.dataset.id} · ${row.dataset.when} · ${row.dataset.tag}`;
+    modalSub.textContent = `${row.dataset.id} · ${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
     cmdBox.textContent = commandFor(action, row);
     copiedFlag.classList.remove('show');
     overlay.showModal();
@@ -289,14 +291,15 @@
   function renderSnapshots(data) {
     const rows = document.getElementById('snapRows');
     if (!data.snapshots.length) {
-      rows.innerHTML = `<tr><td colspan="4">No snapshots found.</td></tr>`;
+      rows.innerHTML = `<tr><td colspan="5">No snapshots found.</td></tr>`;
       return;
     }
     rows.innerHTML = data.snapshots.map((s) => `
-      <tr data-id="${s.id}" data-tag="${s.tag}" data-when="${s.time_human}">
+      <tr data-id="${s.id}" data-tag="${s.tag}" data-when="${s.time_human}" data-repo="${s.repo}">
         <td><code>${s.id}</code></td>
         <td>${s.time_human}</td>
         <td><mark>${s.tag}</mark></td>
+        <td>${s.repo}</td>
         <td>
           <button class="outline secondary" data-action="restore">Restore</button>
           <button class="outline contrast" data-action="delete">Delete</button>
@@ -323,7 +326,7 @@
       .then(renderSnapshots)
       .catch((err) => {
         document.getElementById('snapRows').innerHTML =
-          `<tr><td colspan="4">Couldn't load snapshots: ${err}</td></tr>`;
+          `<tr><td colspan="5">Couldn't load snapshots: ${err}</td></tr>`;
       });
   }
 

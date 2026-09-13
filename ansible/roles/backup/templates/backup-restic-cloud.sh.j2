@@ -106,6 +106,14 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
     echo "Cloud repository stats:"
     restic stats
+
+    # The backup-status dashboard has no cloud credentials of its own (by
+    # design — see its README section); this cache file is how it shows
+    # cloud snapshots anyway, without needing any. Best-effort: a failure
+    # here shouldn't fail an otherwise-successful backup.
+    restic snapshots --json > "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" \
+      && mv "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" "{{ backup_logs_dir }}/cloud-snapshots.json" \
+      || echo "Warning: could not refresh cloud-snapshots.json cache for the dashboard"
   else
     echo "ERROR: Cloud backup failed!"
     exit 1

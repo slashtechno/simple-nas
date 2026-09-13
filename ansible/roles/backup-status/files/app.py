@@ -12,6 +12,7 @@ SSH command in the UI for a human to run themselves.
 No framework: two GET endpoints and two static files don't need one.
 """
 
+import datetime
 import glob
 import http.server
 import json
@@ -117,6 +118,19 @@ def newest_matching(pattern):
     return max(matches, key=os.path.getmtime) if matches else None
 
 
+def parse_restic_time(ts):
+    """Parse restic's RFC3339Nano snapshot timestamp into an aware datetime.
+
+    Go emits up to 9 fractional digits; Python's fromisoformat wants at most
+    6, so trim rather than risk a version-dependent parse failure. Returns
+    a timezone-aware datetime — comparing/subtracting these is safe
+    regardless of what timezone this container itself happens to be in,
+    unlike naively using time.mktime on a naive struct_time.
+    """
+    ts = re.sub(r"(\.\d{6})\d*", r"\1", ts)
+    return datetime.datetime.fromisoformat(ts)
+
+
 def parse_dated_job_log(glob_pattern, stale_after):
     """Parse a backup-restic-{local,cloud}.sh.j2-style dated log file.
 
@@ -146,6 +160,49 @@ def parse_dated_job_log(glob_pattern, stale_after):
     }
 
 
+def build_local_daily_status(stale_after):
+    """Derived from the actual local repo, not a log file — this container
+    has direct read access to it, so "when did the last daily snapshot
+    really land" is directly knowable rather than inferred from whatever
+    the last script invocation happened to log. A manual `restic forget`
+    or `backup` run outside the script shows up here immediately, where a
+    log-based check would miss it entirely.
+
+    Log parsing is still the only option for the cloud and integrity-check
+    jobs — see parse_dated_job_log and parse_integrity_log — since this
+    container has no cloud credentials and restic check leaves no queryable
+    trace of having run.
+    """
+    snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
+    daily_times = [
+        parse_restic_time(s["time"]) for s in snapshots if "daily" in (s.get("tags") or [])
+    ]
+    if not daily_times:
+        return {"ok": None, "stale": True, "last_run_human": None, "detail_human": "no snapshots yet"}
+
+    latest = max(daily_times)
+    now = datetime.datetime.now(latest.tzinfo)
+    age = (now - latest).total_seconds()
+    stale = age > stale_after
+    detail = latest.strftime("%a %H:%M")
+
+    # If a script attempt happened more recently than the latest snapshot
+    # and didn't complete, that's worth surfacing even though older data
+    # still exists — otherwise a currently-broken job could look fine.
+    log_path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"))
+    if log_path and os.path.getmtime(log_path) > latest.timestamp():
+        with open(log_path, "r", errors="replace") as f:
+            if "=== Complete:" not in f.read():
+                detail += " · a more recent attempt failed"
+
+    return {
+        "ok": not stale,
+        "stale": stale,
+        "last_run_human": human_ago(age),
+        "detail_human": detail,
+    }
+
+
 def parse_integrity_log(stale_after):
     path = os.path.join(BACKUP_LOGS_DIR, "restic-check.log")
     if not os.path.isfile(path):
@@ -169,10 +226,7 @@ def parse_integrity_log(stale_after):
 
 def build_status():
     jobs = {
-        "local_daily": parse_dated_job_log(
-            os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"),
-            LOCAL_STALE_AFTER_SECONDS,
-        ),
+        "local_daily": build_local_daily_status(LOCAL_STALE_AFTER_SECONDS),
         "cloud_weekly": parse_dated_job_log(
             os.path.join(BACKUP_LOGS_DIR, "restic-cloud-*.log"),
             WEEKLY_STALE_AFTER_SECONDS,
@@ -204,24 +258,48 @@ def build_status():
     return {"jobs": jobs, "drive": drive, "lock_count": lock_count}
 
 
+def read_cloud_snapshots_cache():
+    """The dashboard has no cloud (rclone/Google Drive) credentials of its
+    own — by design, matching the local repo's read-only-mount model. The
+    cloud backup script writes this file after each successful weekly run,
+    since it already legitimately holds those credentials at that point;
+    the dashboard just reads what it left behind. Freshness is therefore
+    bounded by the weekly cloud-backup cadence, not live — which matches
+    how often that data actually changes anyway.
+    """
+    path = os.path.join(BACKUP_LOGS_DIR, "cloud-snapshots.json")
+    if not os.path.isfile(path):
+        return []
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return []  # a half-written or corrupt cache shouldn't break the page
+
+
+def _snapshot_row(snap, repo):
+    return {
+        "id": snap["short_id"],
+        "time_human": parse_restic_time(snap["time"]).strftime("%b %d, %H:%M"),
+        "tag": (snap.get("tags") or ["untagged"])[0],
+        "repo": repo,
+        "_sort_time": parse_restic_time(snap["time"]).timestamp(),
+    }
+
+
 def build_snapshots():
     # Deliberately metadata-only (no per-snapshot `restic stats`): stats in
     # restore-size mode walks the whole snapshot tree, which over a slow disk
     # with a large repo can take much longer than a page load should wait —
     # this was measured taking 30s+ per snapshot in practice, hanging the page.
-    snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
-    result = []
-    for snap in snapshots:
-        tag = (snap.get("tags") or ["untagged"])[0]
-        time_human = time.strftime(
-            "%b %d, %H:%M", time.strptime(snap["time"][:19], "%Y-%m-%dT%H:%M:%S")
-        )
-        result.append({
-            "id": snap["short_id"],
-            "time_human": time_human,
-            "tag": tag,
-        })
-    result.sort(key=lambda s: s["time_human"], reverse=True)
+    local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
+    cloud_snapshots = read_cloud_snapshots_cache()
+
+    result = [_snapshot_row(s, "local") for s in local_snapshots]
+    result += [_snapshot_row(s, "cloud") for s in cloud_snapshots]
+    result.sort(key=lambda s: s["_sort_time"], reverse=True)
+    for row in result:
+        del row["_sort_time"]
     return {"snapshots": result}
 
 
