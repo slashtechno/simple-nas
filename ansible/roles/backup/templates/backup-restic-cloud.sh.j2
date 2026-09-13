@@ -13,6 +13,11 @@ fi
 export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
 
+# rclone's shared default Google OAuth client hits Drive's per-minute quota
+# fast on a burst of small-file uploads — this throttles request rate to
+# stay under it. See the restic_cloud_rclone_args comment in group_vars.
+RESTIC_RCLONE_OPT=(-o "rclone.args={{ restic_cloud_rclone_args }}")
+
 ## Load backup paths from a newline-delimited file next to this script.
 ## This avoids sourcing arbitrary shell code. Optionally set
 ## BACKUP_PATHS_FILE to point to a different file.
@@ -54,7 +59,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
   # Backup service dumps first
   if [ -d "{{ service_dumps_dir }}" ]; then
-    restic backup "{{ service_dumps_dir }}" --tag weekly --verbose
+    restic "${RESTIC_RCLONE_OPT[@]}" backup "{{ service_dumps_dir }}" --tag weekly --verbose
     rc=$?
     [ "$rc" -eq 3 ] && any_partial=true
     [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && cloud_backup_failed=true
@@ -87,7 +92,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
     if [ -d "$expanded_path" ]; then
       echo "Backing up $expanded_path..."
-      restic backup "$expanded_path" --tag weekly --verbose
+      restic "${RESTIC_RCLONE_OPT[@]}" backup "$expanded_path" --tag weekly --verbose
       rc=$?
       [ "$rc" -eq 3 ] && any_partial=true
       [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && cloud_backup_failed=true
@@ -102,16 +107,16 @@ mkdir -p "$(dirname "$LOG_FILE")"
     else
       echo "Cloud backup successful. Removing old snapshots..."
     fi
-    restic forget {{ restic_cloud_retention }} --prune
+    restic "${RESTIC_RCLONE_OPT[@]}" forget {{ restic_cloud_retention }} --prune
 
     echo "Cloud repository stats:"
-    restic stats
+    restic "${RESTIC_RCLONE_OPT[@]}" stats
 
     # The backup-status dashboard has no cloud credentials of its own (by
     # design — see its README section); this cache file is how it shows
     # cloud snapshots anyway, without needing any. Best-effort: a failure
     # here shouldn't fail an otherwise-successful backup.
-    restic snapshots --json > "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" \
+    restic "${RESTIC_RCLONE_OPT[@]}" snapshots --json > "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" \
       && mv "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" "{{ backup_logs_dir }}/cloud-snapshots.json" \
       || echo "Warning: could not refresh cloud-snapshots.json cache for the dashboard"
   else

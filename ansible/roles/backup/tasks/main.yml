@@ -72,7 +72,8 @@
 
 - name: Initialize cloud restic repository (idempotent)
   ansible.builtin.command:
-    cmd: restic init
+    cmd: >-
+      restic -o "rclone.args={{ restic_cloud_rclone_args }}" init
   environment:
     RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
     RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"

@@ -35,6 +35,13 @@ backup_logs_dir: "{{ backup_drive }}/logs"
 service_dumps_dir: "{{ backup_drive }}/service-dumps"
 restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
+# rclone's default Google Drive OAuth client is shared across every rclone
+# user, so its request quota gets exhausted fast during a burst of small-file
+# uploads (seen in practice: 403 RATE_LIMIT_EXCEEDED on the first cloud
+# backup). Throttling here works around it; making your own Google Cloud
+# OAuth client (see rclone's docs) is the more permanent fix if this isn't
+# enough.
+restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 
 immich_upload_location: "{{ main_drive }}/photos"
 immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
