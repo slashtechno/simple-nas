@@ -14,7 +14,7 @@
       community.general.nmcli:
         type: ethernet
         conn_name: direct-link
-        ifname: eth0
+        ifname: "{{ direct_link_iface }}"
         ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
         method4: manual
         autoconnect: true
@@ -26,7 +26,7 @@
       community.general.nmcli:
         type: ethernet
         conn_name: "Wired connection 1"
-        ifname: eth0
+        ifname: "{{ direct_link_iface }}"
         autoconnect: false
         state: present
 
@@ -65,7 +65,7 @@
       community.general.nmcli:
         type: ethernet
         conn_name: "Wired connection 1"
-        ifname: eth0
+        ifname: "{{ direct_link_iface }}"
         autoconnect: true
         state: present
       ignore_errors: true

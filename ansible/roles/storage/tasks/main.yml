@@ -59,8 +59,9 @@
     - "{{ gitea_data_dir }}"
     - "{{ homebridge_config_dir }}"
     - "{{ garage_data_dir }}"
-    - "{{ backup_drive }}/restic-repo"
-    - "{{ backup_drive }}/logs"
+    - "{{ restic_repo_path }}"
+    - "{{ backup_logs_dir }}"
+    - "{{ service_dumps_dir }}"
 
 - name: Set Postgres data dir ownership (runs as UID 999)
   ansible.builtin.file:

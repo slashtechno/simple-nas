@@ -52,6 +52,8 @@ Fully automated via Ansible — cron jobs are created on the Pi automatically.
 
 - Daily @ 2 AM: full `/mnt/t7` → local HDD (restic)
 - Sunday @ 4 AM: critical paths → Google Drive (rclone + restic)
+- Read-only status dashboard (Tailscale-only, no login) — see
+  [BACKUPS.md#web-dashboard-read-only](./BACKUPS.md#web-dashboard-read-only)
 
 See [BACKUPS.md](./BACKUPS.md) for restore instructions.
 

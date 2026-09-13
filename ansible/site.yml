@@ -50,3 +50,7 @@
     - role: backup
       tags: [backup]
       when: backup_enabled | default(true)
+
+    - role: backup-status
+      tags: [backup-status]
+      when: backup_status_enabled | default(true)

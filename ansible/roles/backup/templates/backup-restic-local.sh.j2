@@ -1,0 +1,70 @@
+#!/bin/bash
+set -o pipefail
+
+# Refuse to run if the backup drive isn't actually mounted at {{ backup_drive }} —
+# otherwise this silently writes multi-GB restic data onto the root filesystem
+# until it fills up (this has happened: a USB dropout unmounted the drive
+# mid-write, and cron kept "succeeding" against the bare mountpoint directory).
+if ! mountpoint -q {{ backup_drive }}; then
+  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
+  exit 1
+fi
+
+# Ansible bakes in this deployment's real password-file path; the env var
+# override stays so a manual run can still point elsewhere for testing.
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
+export RESTIC_REPOSITORY="{{ restic_repo_path }}"
+
+LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Directories to exclude from backups. Keep as an immutable list so callers
+# can review or extend in one place. These exclude patterns avoid permission
+# errors for socket/DB/ssh dirs and skip filesystem junk like lost+found.
+readonly EXCLUDES=(
+  "{{ gitea_data_dir }}/ssh"
+  "{{ immich_db_data_location }}"
+  "{{ copyparty_config_dir }}/copyparty"
+  "{{ main_drive }}/lost+found"
+)
+
+# Build restic-friendly exclude arguments from the `EXCLUDES` array
+EXCLUDE_ARGS=()
+for p in "${EXCLUDES[@]}"; do
+  EXCLUDE_ARGS+=( --exclude "$p" )
+done
+
+{
+  echo "=== Local Backup: $(date) ==="
+  # Create service dumps (Immich DB, Gitea)
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+  # If the service dump helper exists, always invoke it with bash. This
+  # avoids relying on the executable bit and ensures a consistent shell.
+  if [ -f "$SCRIPT_DIR/backup-services.sh" ]; then
+    bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
+  fi
+
+  # Backup {{ main_drive }} and {{ service_dumps_dir }}
+  /usr/bin/restic backup {{ main_drive }} {{ service_dumps_dir }} \
+    --exclude "{{ main_drive }}/immich_model_cache" \
+    --exclude "{{ main_drive }}/**/.cache" \
+    "${EXCLUDE_ARGS[@]}" \
+    --tag daily \
+    --verbose
+  
+  if [ $? -eq 0 ]; then
+    echo "Backup successful. Removing old snapshots..."
+    # Keep last 7 daily + 4 weekly + 1 monthly snapshots
+    /usr/bin/restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 1 --prune
+    
+    echo "Repository stats:"
+    /usr/bin/restic stats
+    echo "Free space on HDD:"
+    df -h {{ backup_drive }}
+  else
+    echo "ERROR: Backup failed!"
+    exit 1
+  fi
+  
+  echo "=== Complete: $(date) ==="
+} | tee -a "$LOG_FILE"

@@ -1,5 +1,5 @@
 networks:
-  nas-services:
+  {{ nas_network }}:
     external: true
 
 services:
@@ -23,7 +23,7 @@ services:
       - "{{ garage_admin_port | default(3903) }}:{{ garage_admin_port | default(3903) }}"
       - "{{ garage_rpc_port | default(3901) }}:{{ garage_rpc_port | default(3901) }}"
     networks:
-      - nas-services
+      - {{ nas_network }}
 
   garage-cors-proxy:
     image: caddy:alpine
@@ -34,7 +34,7 @@ services:
     ports:
       - "{{ garage_s3_port | default(3900) }}:{{ garage_s3_port | default(3900) }}"
     networks:
-      - nas-services
+      - {{ nas_network }}
 
   garage-webui:
     image: khairul169/garage-webui:latest
@@ -55,4 +55,4 @@ services:
       # See https://docs.docker.com/compose/compose-file/compose-file-v3/#interpolation
       AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt") | replace("$", "$$") }}'
     networks:
-      - nas-services
+      - {{ nas_network }}

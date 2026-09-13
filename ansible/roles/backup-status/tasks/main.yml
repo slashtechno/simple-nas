@@ -1,0 +1,37 @@
+---
+- name: Create backup-status compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/backup-status"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy backup-status app files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ nas_base_dir }}/backup-status/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop:
+    - app.py
+    - index.html
+    - pico.min.css
+    - Dockerfile
+  notify: Restart backup-status
+
+- name: Render backup-status docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/backup-status/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart backup-status
+
+- name: Build and start backup-status
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/backup-status"
+    state: present
+    build: always

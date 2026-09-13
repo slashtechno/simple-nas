@@ -1,5 +1,5 @@
 networks:
-  nas-services:
+  {{ nas_network }}:
     external: true
 
 services:
@@ -17,7 +17,7 @@ services:
       CF_ZONE_ID: {{ cf_zone_id }}
       CF_TUNNEL_NAME: {{ cf_tunnel_name }}
     networks:
-      - nas-services
+      - {{ nas_network }}
 
   cloudflared:
     build:
@@ -29,6 +29,6 @@ services:
     volumes:
       - .:/etc/cloudflared:rw
     networks:
-      - nas-services
+      - {{ nas_network }}
     depends_on:
       - cloudflared-init

@@ -1,0 +1,26 @@
+networks:
+  {{ nas_network }}:
+    external: true
+
+services:
+  backup-status:
+    build: .
+    container_name: backup-status
+    restart: unless-stopped
+    # Both mounts are read-only — this container can list/read the repo and
+    # log files but has no path that can write to or delete a backup.
+    volumes:
+      - {{ backup_drive }}:/data/backup:ro
+      - {{ restic_password_file }}:/data/restic-password:ro
+    environment:
+      NAS_SSH_USER: "{{ ansible_user }}"
+      RESTIC_REPO_PATH: /data/backup/restic-repo
+      BACKUP_LOGS_DIR: /data/backup/logs
+      RESTIC_PASSWORD_FILE: /data/restic-password
+      HOST_BACKUP_DRIVE: "{{ backup_drive }}"
+      HOST_RESTIC_REPO_PATH: "{{ restic_repo_path }}"
+      HOST_RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+    ports:
+      - "{{ backup_status_port }}:8080"
+    networks:
+      - {{ nas_network }}

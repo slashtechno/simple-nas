@@ -1,0 +1,259 @@
+<meta charset="utf-8">
+<title>Snapshot Deck</title>
+<link rel="stylesheet" href="pico.min.css">
+<style>
+  :root {
+    --pico-primary: #0f7f88;
+    --pico-primary-background: #0f7f88;
+    --pico-primary-border: #0f7f88;
+    --pico-primary-hover: #0c6b73;
+    --pico-primary-hover-background: #0c6b73;
+    --pico-primary-hover-border: #0c6b73;
+    --pico-primary-underline: rgba(15, 127, 136, 0.5);
+    --pico-primary-focus: rgba(15, 127, 136, 0.25);
+    --ok: #2b8a4e; --ok-soft: #e1f3e6;
+    --warn: #b6791a; --warn-soft: #faedd8;
+    --crit: #c33d3d; --crit-soft: #fbe4e2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pico-primary: #4dd3dc;
+      --pico-primary-background: #1c7d84;
+      --pico-primary-border: #1c7d84;
+      --pico-primary-hover: #6fe0e7;
+      --pico-primary-hover-background: #226f76;
+      --pico-primary-hover-border: #226f76;
+      --ok: #57c97c; --ok-soft: #142a1c;
+      --warn: #e0a63f; --warn-soft: #2e2312;
+      --crit: #ea6f68; --crit-soft: #331a18;
+    }
+  }
+  [data-theme="dark"] {
+    --pico-primary: #4dd3dc;
+    --pico-primary-background: #1c7d84;
+    --pico-primary-border: #1c7d84;
+    --pico-primary-hover: #6fe0e7;
+    --pico-primary-hover-background: #226f76;
+    --pico-primary-hover-border: #226f76;
+    --ok: #57c97c; --ok-soft: #142a1c;
+    --warn: #e0a63f; --warn-soft: #2e2312;
+    --crit: #ea6f68; --crit-soft: #331a18;
+  }
+
+  /* Everything below has no Pico equivalent: a card grid, semantic status
+     color, and horizontal scroll for the table on narrow screens. */
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--pico-spacing); }
+  .status-grid article { margin: 0; }
+
+  .pill {
+    float: right; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem;
+    border-radius: 999px; white-space: nowrap;
+  }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.crit { background: var(--crit-soft); color: var(--crit); }
+
+  figure { overflow-x: auto; }
+  .copied-flag { color: var(--ok); font-weight: 600; opacity: 0; transition: opacity 0.15s ease; }
+  .copied-flag.show { opacity: 1; }
+</style>
+
+<main class="container">
+
+  <hgroup>
+    <h1>Snapshot Deck <small>/ <span id="hostLabel">&hellip;</span></small></h1>
+    <p>Read-only view of restic backups. Nothing on this page runs a command for you.</p>
+  </hgroup>
+
+  <article>
+    <p style="margin:0">
+      connects as <code id="sshUser">&hellip;</code>
+      @ <code id="sshHost">&hellip;</code>
+    </p>
+    <small>Both come from this deployment's config — nothing here is guessed or hardcoded.</small>
+  </article>
+
+  <section class="status-grid" aria-label="Job status" id="statusGrid">
+    <article><p aria-busy="true">Loading status&hellip;</p></article>
+  </section>
+
+  <hgroup>
+    <h2>Snapshots</h2>
+    <p id="repoLabel">&hellip;</p>
+  </hgroup>
+
+  <figure>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Taken</th><th>Tag</th><th style="text-align:right">Size</th><th></th></tr>
+      </thead>
+      <tbody id="snapRows">
+        <tr><td colspan="5" aria-busy="true">Loading snapshots&hellip;</td></tr>
+      </tbody>
+    </table>
+  </figure>
+
+  <blockquote>
+    Every action here — restore, delete, forget, prune — opens a command for you to copy and run over SSH yourself.
+    The dashboard has no SSH key, no restic password beyond a read-only mount, and no code path that can write to a repository.
+  </blockquote>
+
+</main>
+
+<dialog id="overlay">
+  <article>
+    <header>
+      <button aria-label="Close" rel="prev" id="modalClose"></button>
+      <strong id="modalTitle">Delete snapshot</strong>
+      <p id="modalSub"><small>&hellip;</small></p>
+    </header>
+    <p><small>Run on <span id="modalHost">&hellip;</span> over SSH</small></p>
+    <pre><code id="cmdBox"></code></pre>
+    <footer>
+      <span class="copied-flag" id="copiedFlag">copied</span>
+      <button class="secondary" id="cancelBtn">Close</button>
+      <button id="copyBtn">Copy command</button>
+    </footer>
+  </article>
+</dialog>
+
+<script>
+  // Filled in by the server from its own deployment config (Ansible vars) —
+  // never guessed or hardcoded client-side. See app.py's index() handler.
+  const NAS_CONFIG = {
+    sshUser: "__NAS_SSH_USER__",
+    resticRepoPath: "__HOST_RESTIC_REPO_PATH__",
+    resticPasswordFile: "__HOST_RESTIC_PASSWORD_FILE__",
+  };
+
+  const sshHostEl = document.getElementById('sshHost');
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalSub = document.getElementById('modalSub');
+  const modalHost = document.getElementById('modalHost');
+  const cmdBox = document.getElementById('cmdBox');
+  const copyBtn = document.getElementById('copyBtn');
+  const copiedFlag = document.getElementById('copiedFlag');
+
+  // The host is wherever this page was loaded from — the address used to
+  // reach the dashboard IS the address you'd SSH to, so it's read from the
+  // browser rather than configured anywhere.
+  const sshHost = window.location.hostname;
+  sshHostEl.textContent = sshHost;
+  modalHost.textContent = sshHost;
+  document.getElementById('hostLabel').textContent = sshHost;
+  document.getElementById('sshUser').textContent = NAS_CONFIG.sshUser;
+  document.getElementById('repoLabel').textContent = NAS_CONFIG.resticRepoPath;
+
+  let state = null;
+
+  function commandFor(action, row) {
+    const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
+    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
+    if (action === 'delete') {
+      return `ssh ${target} '${base} restic forget ${row.dataset.id} --prune'`;
+    }
+    return `ssh ${target} '${base} restic restore ${row.dataset.id} --target /tmp/restore-${row.dataset.id}'`;
+  }
+
+  function openModal(action, row) {
+    state = { action, row };
+    modalTitle.textContent = action === 'delete' ? 'Delete snapshot' : 'Restore snapshot (preview)';
+    modalSub.textContent = `${row.dataset.id} · ${row.dataset.when} · ${row.dataset.tag}`;
+    cmdBox.textContent = commandFor(action, row);
+    copiedFlag.classList.remove('show');
+    overlay.showModal();
+  }
+
+  document.getElementById('snapRows').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    openModal(btn.dataset.action, btn.closest('tr'));
+  });
+
+  document.getElementById('modalClose').addEventListener('click', () => overlay.close());
+  document.getElementById('cancelBtn').addEventListener('click', () => overlay.close());
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(cmdBox.textContent);
+    } catch (err) {
+      const range = document.createRange();
+      range.selectNodeContents(cmdBox);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    copiedFlag.classList.add('show');
+    setTimeout(() => copiedFlag.classList.remove('show'), 1400);
+  });
+
+  function pillClass(ok) {
+    if (ok === true) return 'ok';
+    if (ok === false) return 'crit';
+    return 'warn';
+  }
+
+  function renderStatus(data) {
+    const grid = document.getElementById('statusGrid');
+    const jobs = [
+      ['local_daily', 'Local · daily'],
+      ['cloud_weekly', 'Cloud · weekly'],
+      ['integrity_check', 'Integrity check'],
+    ];
+    const cards = jobs.map(([key, label]) => {
+      const j = data.jobs[key] || {};
+      const pill = j.last_run ? (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed')) : 'no data';
+      return `<article>
+        <span class="pill ${pillClass(j.stale ? null : j.ok)}">${pill}</span>
+        <small>${label}</small>
+        <p><strong>${j.last_run_human || '—'}</strong></p>
+        <small>${j.detail_human || ''}</small>
+      </article>`;
+    });
+    const drive = data.drive;
+    cards.push(`<article>
+      <span class="pill ${drive.mounted ? 'ok' : 'crit'}">${drive.mounted ? 'mounted' : 'not mounted'}</span>
+      <small>${drive.label} drive</small>
+      <p><strong>${drive.free_human || '—'}</strong></p>
+      <small>${drive.detail_human || ''}</small>
+    </article>`);
+    grid.innerHTML = cards.join('');
+  }
+
+  function renderSnapshots(data) {
+    const rows = document.getElementById('snapRows');
+    if (!data.snapshots.length) {
+      rows.innerHTML = `<tr><td colspan="5">No snapshots found.</td></tr>`;
+      return;
+    }
+    rows.innerHTML = data.snapshots.map((s) => `
+      <tr data-id="${s.id}" data-tag="${s.tag}" data-when="${s.time_human}">
+        <td><code>${s.id}</code></td>
+        <td>${s.time_human}</td>
+        <td><mark>${s.tag}</mark></td>
+        <td style="text-align:right">${s.size_human}</td>
+        <td>
+          <button class="outline secondary" data-action="restore">Restore</button>
+          <button class="outline contrast" data-action="delete">Delete</button>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function refresh() {
+    try {
+      const [status, snapshots] = await Promise.all([
+        fetch('/api/status').then((r) => r.json()),
+        fetch('/api/snapshots').then((r) => r.json()),
+      ]);
+      renderStatus(status);
+      renderSnapshots(snapshots);
+    } catch (err) {
+      document.getElementById('statusGrid').innerHTML =
+        `<article><p>Couldn't load status: ${err}</p></article>`;
+    }
+  }
+
+  refresh();
+  setInterval(refresh, 30000);
+</script>

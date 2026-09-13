@@ -12,6 +12,7 @@ homebridge_enabled: true
 cloudflared_enabled: true
 garage_enabled: false   # needs manual init after first deploy (see README.md)
 backup_enabled: true
+backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # --- Tailscale ---
 tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
@@ -27,6 +28,12 @@ docker_pull_policy: missing        # "always" to pull newer images on every run 
 # --- Storage ---
 main_drive: /mnt/t7
 backup_drive: /mnt/backup
+
+restic_repo_path: "{{ backup_drive }}/restic-repo"
+restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
+restic_password_file: "/home/{{ ansible_user }}/.restic-password"
+backup_logs_dir: "{{ backup_drive }}/logs"
+service_dumps_dir: "{{ backup_drive }}/service-dumps"
 
 immich_upload_location: "{{ main_drive }}/photos"
 immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
@@ -57,6 +64,7 @@ copyparty_user: "{{ vault_copyparty_user }}"
 copyparty_pass: "{{ vault_copyparty_pass }}"
 copyparty_collab_dir: "{{ main_drive }}/collab"   # shared directory for friends
 host_mnt_dir: /mnt   # host directory browsable under /drives in Copyparty UI
+copyparty_port: 3923
 
 # sftp_enabled (default false): turns on Copyparty's SFTP listener.
 # Used by the pocketpi project (lab/local/pocketpi) for its NAS sync,
@@ -70,6 +78,7 @@ gitea_root_url: "https://gitea.example.com/"
 gitea_domain: "gitea.example.com"
 gitea_ssh_domain: "gitea.example.com"
 gitea_ssh_port: "2222"
+gitea_port: 3000
 gitea_db_type: sqlite3
 gitea_db_path: /data/gitea/gitea.db
 
@@ -119,6 +128,13 @@ garage_cors_allowed_origins:
 # scoped dnsmasq (DHCP only, no DNS/gateway) — no manual laptop config needed.
 # See README.md#direct-ethernet-link.
 direct_link_enabled: false
+direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link
 direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
 direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
+
+# --- Backup status dashboard ---
+# Read-only web UI for restic backup status/snapshots (Tailscale-only, no auth —
+# see plans/ for the design rationale). Destructive actions only ever render an
+# SSH command to copy and run yourself; the app never executes anything.
+backup_status_port: 8091

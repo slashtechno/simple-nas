@@ -27,12 +27,33 @@ rclone config
 
 ---
 
+## Web dashboard (read-only)
+
+The `backup-status` Ansible role deploys a small read-only dashboard — last-run
+status for each job, whether the backup drive is mounted, and the local restic
+snapshot list. It's Tailscale-only (no `cloudflared_ingress` entry) and needs no
+login: the container only ever gets a **read-only** bind mount of the repo and
+password file, so there's no code path in it that could write to or delete a
+backup.
+
+```
+http://<your-pi-tailscale-host>:<backup_status_port>
+```
+
+(`backup_status_port` defaults to `8091` — see `group_vars/nas/vars.yml`.)
+
+Every destructive action (restore, delete/`forget`) only ever opens a modal with
+the exact SSH command to copy and run yourself, using the same `restic` commands
+as this doc. Disable it entirely with `backup_status_enabled: false`.
+
+---
+
 ## Checking backup status
 
 SSH into the Pi:
 
 ```bash
-ssh pi@your-pi-ip
+ssh your-user@your-pi-ip
 
 # See what snapshots exist
 RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo \
@@ -52,7 +73,7 @@ tail -50 /mnt/backup/logs/backup-cron.log
 Restore any file or directory from any restic snapshot:
 
 ```bash
-ssh pi@your-pi-ip
+ssh your-user@your-pi-ip
 
 export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo
@@ -80,7 +101,7 @@ export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
 Stop Immich first, restore the dump, then restart:
 
 ```bash
-ssh pi@your-pi-ip
+ssh your-user@your-pi-ip
 
 # Find the dump you want
 ls -lh /mnt/backup/service-dumps/immich-db-*.sql.gz
@@ -99,7 +120,7 @@ docker compose start immich_server
 The restore script stops Gitea, replaces all data, then restarts it:
 
 ```bash
-ssh pi@your-pi-ip
+ssh your-user@your-pi-ip
 
 ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 

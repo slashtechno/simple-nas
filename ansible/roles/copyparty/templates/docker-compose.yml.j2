@@ -1,5 +1,5 @@
 networks:
-  nas-services:
+  {{ nas_network }}:
     external: true
 
 services:
@@ -17,9 +17,9 @@ services:
     environment:
       TZ: {{ timezone }}
     ports:
-      - "3923:3923"
+      - "{{ copyparty_port }}:3923"
 {% if sftp_enabled | default(false) | bool %}
       - "{{ sftp_port | default(3922) }}:{{ sftp_port | default(3922) }}"
 {% endif %}
     networks:
-      - nas-services
+      - {{ nas_network }}

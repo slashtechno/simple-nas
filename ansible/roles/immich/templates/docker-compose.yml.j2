@@ -1,5 +1,5 @@
 networks:
-  nas-services:
+  {{ nas_network }}:
     external: true
 
 services:
@@ -20,7 +20,7 @@ services:
     ports:
       - "2283:2283"
     networks:
-      - nas-services
+      - {{ nas_network }}
     depends_on:
       - immich_postgres
       - immich_redis
@@ -36,7 +36,7 @@ services:
     environment:
       TZ: {{ timezone }}
     networks:
-      nas-services:
+      {{ nas_network }}:
         aliases:
           - immich-machine-learning
 
@@ -52,7 +52,7 @@ services:
     volumes:
       - {{ immich_db_data_location }}:/var/lib/postgresql/data
     networks:
-      - nas-services
+      - {{ nas_network }}
 
   immich_redis:
     image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
@@ -62,7 +62,7 @@ services:
     healthcheck:
       test: redis-cli ping || exit 1
     networks:
-      - nas-services
+      - {{ nas_network }}
 
 volumes:
   model-cache:
