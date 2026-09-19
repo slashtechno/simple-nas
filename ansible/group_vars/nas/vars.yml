@@ -42,6 +42,12 @@ restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 # OAuth client (see rclone's docs) is the more permanent fix if this isn't
 # enough.
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
+# Every restic invocation in the backup scripts is wrapped in `timeout` with
+# this value. Without it, a stalled rclone/network pipe can deadlock restic
+# indefinitely while holding the repo lock — seen in practice: a cloud backup
+# hung for 6 days straight (2m of CPU time burned across the whole span),
+# silently blocking every later cloud backup/prune behind its stale lock.
+restic_command_timeout: "2h"
 
 immich_upload_location: "{{ main_drive }}/photos"
 immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"

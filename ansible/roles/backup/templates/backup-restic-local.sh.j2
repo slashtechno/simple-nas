@@ -15,6 +15,11 @@ fi
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
 
+# See the matching comment in backup-restic-cloud.sh.j2 — guards against the
+# same class of hang, even though it's the cloud script (network-dependent)
+# that has actually deadlocked in practice.
+restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+
 LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -45,7 +50,7 @@ done
   fi
 
   # Backup {{ main_drive }} and {{ service_dumps_dir }}
-  /usr/bin/restic backup {{ main_drive }} {{ service_dumps_dir }} \
+  restic backup {{ main_drive }} {{ service_dumps_dir }} \
     --exclude "{{ main_drive }}/immich_model_cache" \
     --exclude "{{ main_drive }}/**/.cache" \
     "${EXCLUDE_ARGS[@]}" \
@@ -65,10 +70,10 @@ done
     else
       echo "Backup successful. Removing old snapshots..."
     fi
-    /usr/bin/restic forget {{ restic_local_retention }} --prune
+    restic forget {{ restic_local_retention }} --prune
 
     echo "Repository stats:"
-    /usr/bin/restic stats
+    restic stats
     echo "Free space on HDD:"
     df -h {{ backup_drive }}
   else

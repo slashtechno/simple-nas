@@ -204,24 +204,23 @@ def build_local_daily_status(stale_after):
 
 
 def parse_integrity_log(stale_after):
-    path = os.path.join(BACKUP_LOGS_DIR, "restic-check.log")
-    if not os.path.isfile(path):
-        return {"ok": None, "stale": True, "last_run_human": None, "detail_human": "no log yet"}
-
-    mtime = os.path.getmtime(path)
-    age = time.time() - mtime
-    with open(path, "r", errors="replace") as f:
-        content = f.read()
-
-    ok = "error" not in content.lower() and content.strip() != ""
-    error_count = len(re.findall(r"error", content, re.IGNORECASE))
-
-    return {
-        "ok": ok,
-        "stale": age > stale_after,
-        "last_run_human": human_ago(age),
-        "detail_human": f"read errors: {error_count}",
-    }
+    """restic-check.sh.j2 writes one dated log file per run (like the local/
+    cloud scripts) and its success is judged by the same "=== Complete"
+    control-flow marker — not by grepping for the word "error", which used
+    to always false-positive: restic's own success line reads "no errors
+    were found", so a naive case-insensitive search for "error" matched
+    every clean run too and this status was permanently stuck on "failed".
+    """
+    result = parse_dated_job_log(
+        os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log"), stale_after
+    )
+    if result["ok"] is False:
+        path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log"))
+        with open(path, "r", errors="replace") as f:
+            content = f.read()
+        error_lines = len(re.findall(r"^error:", content, re.IGNORECASE | re.MULTILINE))
+        result["detail_human"] = f"failed · {error_lines} error line(s), see log"
+    return result
 
 
 def build_status():
@@ -297,6 +296,17 @@ def build_snapshots():
 
     result = [_snapshot_row(s, "local") for s in local_snapshots]
     result += [_snapshot_row(s, "cloud") for s in cloud_snapshots]
+
+    # `restic diff` takes two snapshot IDs from the same repository, so the
+    # UI needs to know each snapshot's chronological predecessor within its
+    # own repo to offer a one-click "what changed since last time" command.
+    for repo in ("local", "cloud"):
+        repo_rows = sorted(
+            (r for r in result if r["repo"] == repo), key=lambda r: r["_sort_time"]
+        )
+        for i, row in enumerate(repo_rows):
+            row["prev_id"] = repo_rows[i - 1]["id"] if i > 0 else None
+
     result.sort(key=lambda s: s["_sort_time"], reverse=True)
     for row in result:
         del row["_sort_time"]

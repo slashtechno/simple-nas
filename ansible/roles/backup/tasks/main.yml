@@ -19,6 +19,7 @@
     - backup-restic-cloud.sh
     - backup-services.sh
     - copyparty-funnel.sh
+    - restic-check.sh
 
 - name: Deploy backup scripts with no deployment-specific paths
   ansible.builtin.copy:
@@ -118,8 +119,6 @@
     hour: "3"
     weekday: "3"
     job: >-
-      if mountpoint -q {{ backup_drive }}; then
-      RESTIC_PASSWORD_FILE={{ restic_password_file }}
-      RESTIC_REPOSITORY={{ restic_repo_path }}
-      restic check >> {{ backup_logs_dir }}/restic-check.log 2>&1;
-      else logger -t nas-backup "ERROR: {{ backup_drive }} not mounted, skipped restic check"; fi
+      /bin/bash {{ nas_base_dir }}/scripts/restic-check.sh
+      >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
+      logger -t nas-backup "restic-check failed or {{ backup_drive }} not mounted"

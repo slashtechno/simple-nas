@@ -18,6 +18,12 @@ export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
 # stay under it. See the restic_cloud_rclone_args comment in group_vars.
 RESTIC_RCLONE_OPT=(-o "rclone.args={{ restic_cloud_rclone_args }}")
 
+# A stalled rclone/network pipe can deadlock restic indefinitely while it
+# still holds the repo lock (seen in practice: 6 days stuck, ~2m of actual
+# CPU time). `timeout` guarantees a hang becomes a normal failed cron run
+# instead of silently blocking every later cloud backup/prune.
+restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+
 ## Load backup paths from a newline-delimited file next to this script.
 ## This avoids sourcing arbitrary shell code. Optionally set
 ## BACKUP_PATHS_FILE to point to a different file.

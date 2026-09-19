@@ -1,0 +1,33 @@
+#!/bin/bash
+set -o pipefail
+
+if ! mountpoint -q {{ backup_drive }}; then
+  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — skipping integrity check." >&2
+  exit 1
+fi
+
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
+export RESTIC_REPOSITORY="{{ restic_repo_path }}"
+
+# See the matching comment in backup-restic-cloud.sh.j2 — a stalled check
+# should become a failed cron run, not a lock held forever.
+restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+
+# One log file per run (not a single ever-growing file): the dashboard needs
+# to tell "did the most recent check pass" apart from "did any check ever
+# pass", and restic's own success line ("no errors were found") contains the
+# substring "error" — a naive grep across a cumulative log always matches it.
+LOG_FILE="{{ backup_logs_dir }}/restic-check-$(date +%Y-%m-%d).log"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+{
+  echo "=== Integrity Check: $(date) ==="
+  restic check
+  check_rc=$?
+  if [ "$check_rc" -eq 0 ]; then
+    echo "=== Complete: $(date) ==="
+  else
+    echo "ERROR: restic check failed (exit $check_rc)!"
+    exit 1
+  fi
+} | tee -a "$LOG_FILE"

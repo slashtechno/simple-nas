@@ -10,7 +10,9 @@ Backups are fully automated by the `backup` Ansible role — cron jobs are creat
 | Sunday @ 4 AM | Same dumps, then critical paths → Google Drive via rclone + restic |
 | Wednesday @ 3 AM | `restic check` — verifies local repo integrity |
 
-Database dumps land in `/mnt/backup/service-dumps/` and are pruned to the last 3 of each type. Logs go to `/mnt/backup/logs/`.
+Database dumps land in `/mnt/backup/service-dumps/` and are pruned to the last 3 of each type. Logs go to `/mnt/backup/logs/`, one dated file per run.
+
+Every restic call the scripts make is wrapped in a timeout (`restic_command_timeout`, default 2h) — a stalled network/rclone pipe becomes a normal failed cron run instead of hanging indefinitely while holding the repo lock.
 
 ---
 
@@ -50,8 +52,8 @@ Google Drive. If that happens, get your own private quota instead:
 ## Web dashboard (read-only)
 
 The `backup-status` Ansible role deploys a small read-only dashboard — last-run
-status for each job, whether the backup drive is mounted, and the local restic
-snapshot list. It's Tailscale-only (no `cloudflared_ingress` entry) and needs no
+status for each job, whether the backup drive is mounted, and the snapshot list
+for both repos. It's Tailscale-only (no `cloudflared_ingress` entry) and needs no
 login: the container only ever gets a **read-only** bind mount of the repo and
 password file, so there's no code path in it that could write to or delete a
 backup.
@@ -62,56 +64,75 @@ http://<your-pi-tailscale-host>:<backup_status_port>
 
 (`backup_status_port` defaults to `8091` — see `group_vars/nas/vars.yml`.)
 
-Every destructive action (restore, delete/`forget`) only ever opens a modal with
-the exact SSH command to copy and run yourself, using the same `restic` commands
-as this doc. Disable it entirely with `backup_status_enabled: false`.
+Every command on the dashboard — run a job, preview a prune, inspect/restore/delete
+a snapshot — only ever opens with the exact SSH command to copy and run yourself,
+matching the commands documented below. Disable it entirely with `backup_status_enabled: false`.
+
+---
+
+## Connecting
+
+Every command below assumes you've SSH'd in and set these once per session:
+
+```bash
+ssh your-user@your-pi-ip
+
+export RESTIC_PASSWORD_FILE=~/.restic-password
+export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (default below)
+```
+
+For the Google Drive repo instead of local, use this `RESTIC_REPOSITORY` instead:
+```bash
+export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
+```
 
 ---
 
 ## Checking backup status
 
-SSH into the Pi:
-
 ```bash
-ssh your-user@your-pi-ip
+# List snapshots (add --tag daily or --tag weekly to filter)
+restic snapshots
 
-# See what snapshots exist
-RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo \
-  restic snapshots
-
-# Check recent log
+# Recent combined cron log
 tail -50 /mnt/backup/logs/backup-cron.log
 
 # Trigger a backup manually right now (same script cron uses)
-/bin/bash /opt/nas/scripts/backup-restic-local.sh
+/bin/bash /opt/nas/scripts/backup-restic-local.sh    # or backup-restic-cloud.sh, restic-check.sh
+```
+
+---
+
+## Inspecting a snapshot
+
+Get an ID from `restic snapshots` above (or the dashboard) — every restic
+command below accepts `latest` in place of an ID too.
+
+```bash
+# List every file/directory the snapshot contains
+restic ls <snapshot-id>
+
+# See what changed between two snapshots
+restic diff <snapshot-id-1> <snapshot-id-2>
+
+# Find which snapshot(s) contain a file — glob patterns work (*.jpg, etc.)
+restic find <pattern>
+
+# Extract a single file without restoring the whole snapshot
+restic dump <snapshot-id> <path-in-snapshot> > recovered-file
 ```
 
 ---
 
 ## Restore: files
 
-Restore any file or directory from any restic snapshot:
-
 ```bash
-ssh your-user@your-pi-ip
-
-export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo
-
-# List snapshots — each has an ID like `a1b2c3d4`
-restic snapshots
-
 # Restore a single directory to inspect it first (safe)
 restic restore latest --include /mnt/t7/files --target /tmp/restore
 ls /tmp/restore/mnt/t7/files
 
 # Restore everything to original paths (replaces current files)
 restic restore latest --target /
-```
-
-For Google Drive snapshots, swap the repository:
-```bash
-export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
 ```
 
 ---
@@ -121,8 +142,6 @@ export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
 Stop Immich first, restore the dump, then restart:
 
 ```bash
-ssh your-user@your-pi-ip
-
 # Find the dump you want
 ls -lh /mnt/backup/service-dumps/immich-db-*.sql.gz
 
@@ -140,8 +159,6 @@ docker compose start immich_server
 The restore script stops Gitea, replaces all data, then restarts it:
 
 ```bash
-ssh your-user@your-pi-ip
-
 ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 /opt/nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-<timestamp>.zip

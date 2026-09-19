@@ -45,6 +45,14 @@
   .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--pico-spacing); }
   .status-grid article { margin: 0; }
 
+  /* Three short command groups side by side instead of one long list. */
+  .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--pico-spacing); margin-bottom: var(--pico-spacing); }
+  .ops-grid > details { margin: 0; }
+
+  .cmd-section + .cmd-section { margin-top: 1rem; }
+  .cmd-section > small { display: block; margin-bottom: 0.25rem; }
+  .cmd-section button { width: auto; margin: 0; }
+
   .pill {
     float: right; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem;
     border-radius: 999px; white-space: nowrap;
@@ -54,8 +62,6 @@
   .pill.crit { background: var(--crit-soft); color: var(--crit); }
 
   figure { overflow-x: auto; }
-  .copied-flag { color: var(--ok); font-weight: 600; opacity: 0; transition: opacity 0.15s ease; }
-  .copied-flag.show { opacity: 1; }
 </style>
 
 <main class="container">
@@ -77,6 +83,34 @@
     <article><p aria-busy="true">Loading status&hellip;</p></article>
   </section>
 
+  <article id="lockWarning" style="display:none">
+    <span class="pill warn">lock found</span>
+    <p><strong id="lockWarningText"></strong></p>
+    <p><small>This blocks <code>forget</code>/<code>prune</code> from running until cleared. Only run <code>unlock</code> if you're sure no backup is genuinely in progress.</small></p>
+    <pre><code id="unlockCmd"></code></pre>
+  </article>
+
+  <blockquote>
+    Every command on this page — run a job, preview a prune, inspect or delete a snapshot — is shown for you to
+    copy and run over SSH yourself. The dashboard has no SSH key, no restic password beyond a read-only mount,
+    and no code path that can write to a repository.
+  </blockquote>
+
+  <div class="ops-grid">
+    <details>
+      <summary>Run a job now</summary>
+      <div id="opsRun"></div>
+    </details>
+    <details>
+      <summary>Preview a prune (dry run)</summary>
+      <div id="opsPreview"></div>
+    </details>
+    <details>
+      <summary>Search all snapshots</summary>
+      <div id="opsSearch"></div>
+    </details>
+  </div>
+
   <hgroup>
     <h2>Snapshots</h2>
     <p id="repoLabel">&hellip;</p>
@@ -94,38 +128,19 @@
   </figure>
   <p><small>Cloud rows come from a cache file the weekly cloud backup writes — this dashboard has no cloud credentials of its own, so cloud data is only as fresh as the last cloud run, not live.</small></p>
 
-  <blockquote>
-    Every action here — restore, delete, forget, prune — opens a command for you to copy and run over SSH yourself.
-    The dashboard has no SSH key, no restic password beyond a read-only mount, and no code path that can write to a repository.
-  </blockquote>
-
-  <article id="lockWarning" style="display:none">
-    <span class="pill warn">lock found</span>
-    <p><strong id="lockWarningText"></strong></p>
-    <p><small>This blocks <code>forget</code>/<code>prune</code> from running until cleared. Only run <code>unlock</code> if you're sure no backup is genuinely in progress.</small></p>
-    <pre><code id="unlockCmd"></code></pre>
-  </article>
-
-  <details>
-    <summary>Manual operations</summary>
-    <div id="manualOps"></div>
-  </details>
-
 </main>
 
 <dialog id="overlay">
   <article>
     <header>
       <button aria-label="Close" rel="prev" id="modalClose"></button>
-      <strong id="modalTitle">Delete snapshot</strong>
+      <strong id="modalTitle">Snapshot commands</strong>
       <p id="modalSub"><small>&hellip;</small></p>
     </header>
     <p><small>Run on <span id="modalHost">&hellip;</span> over SSH</small></p>
-    <pre><code id="cmdBox"></code></pre>
+    <div id="modalBody"></div>
     <footer>
-      <span class="copied-flag" id="copiedFlag">copied</span>
       <button class="secondary" id="cancelBtn">Close</button>
-      <button id="copyBtn">Copy command</button>
     </footer>
   </article>
 </dialog>
@@ -148,9 +163,7 @@
   const modalTitle = document.getElementById('modalTitle');
   const modalSub = document.getElementById('modalSub');
   const modalHost = document.getElementById('modalHost');
-  const cmdBox = document.getElementById('cmdBox');
-  const copyBtn = document.getElementById('copyBtn');
-  const copiedFlag = document.getElementById('copiedFlag');
+  const modalBody = document.getElementById('modalBody');
 
   // The host is wherever this page was loaded from — the address used to
   // reach the dashboard IS the address you'd SSH to, so it's read from the
@@ -161,33 +174,74 @@
   document.getElementById('hostLabel').textContent = sshHost;
   document.getElementById('sshUser').textContent = NAS_CONFIG.sshUser;
   document.getElementById('repoLabel').textContent = NAS_CONFIG.resticRepoPath;
-  renderManualOps();
 
-  let state = null;
+  const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
+  const localBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
+  const cloudBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticCloudRepository}`;
 
-  function commandFor(action, row) {
-    const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
-    const repoPath = row.dataset.repo === 'cloud' ? NAS_CONFIG.resticCloudRepository : NAS_CONFIG.resticRepoPath;
-    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
-    if (action === 'delete') {
-      return `ssh ${target} '${base} restic forget ${row.dataset.id} --prune'`;
-    }
-    return `ssh ${target} '${base} restic restore ${row.dataset.id} --target /tmp/restore-${row.dataset.id}'`;
+  // Renders a list of {note, cmd} pairs as copy-ready blocks, shared by the
+  // three "Manual operations" groups and the per-snapshot modal.
+  function renderCmdBlocks(container, blocks, idPrefix) {
+    container.innerHTML = blocks.map(({ note, cmd, danger }, i) => `
+      <div class="cmd-section">
+        <small>${note}</small>
+        <pre><code id="${idPrefix}${i}">${cmd}</code></pre>
+        <button class="outline ${danger ? 'contrast' : 'secondary'}" data-copy-target="${idPrefix}${i}">Copy</button>
+      </div>
+    `).join('');
   }
 
-  function openModal(action, row) {
-    state = { action, row };
-    modalTitle.textContent = action === 'delete' ? 'Delete snapshot' : 'Restore snapshot (preview)';
-    modalSub.textContent = `${row.dataset.id} · ${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
-    cmdBox.textContent = commandFor(action, row);
-    copiedFlag.classList.remove('show');
+  renderCmdBlocks(document.getElementById('opsRun'), [
+    { note: 'Local backup (daily job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-local.sh'` },
+    { note: 'Cloud backup (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-cloud.sh'` },
+    { note: 'Integrity check (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/restic-check.sh'` },
+  ], 'opRun');
+
+  renderCmdBlocks(document.getElementById('opsPreview'), [
+    { note: `Local — shows what ${NAS_CONFIG.resticLocalRetention} would remove, deletes nothing`,
+      cmd: `ssh ${target} '${localBase} restic forget ${NAS_CONFIG.resticLocalRetention} --dry-run'` },
+    { note: `Cloud — shows what ${NAS_CONFIG.resticCloudRetention} would remove, deletes nothing`,
+      cmd: `ssh ${target} '${cloudBase} restic forget ${NAS_CONFIG.resticCloudRetention} --dry-run'` },
+  ], 'opPreview');
+
+  renderCmdBlocks(document.getElementById('opsSearch'), [
+    { note: 'Find a file/path by name across every snapshot — replace &lt;pattern&gt; first (glob, e.g. *.jpg works too)',
+      cmd: `ssh ${target} '${localBase} restic find &lt;pattern&gt;'` },
+  ], 'opSearch');
+
+  function openModal(row) {
+    const id = row.dataset.id;
+    const prevId = row.dataset.prevId;
+    const repoPath = row.dataset.repo === 'cloud' ? NAS_CONFIG.resticCloudRepository : NAS_CONFIG.resticRepoPath;
+    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
+
+    modalTitle.textContent = `Snapshot ${id}`;
+    modalSub.textContent = `${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
+
+    const blocks = [
+      { note: 'List every file this snapshot contains',
+        cmd: `ssh ${target} '${base} restic ls ${id}'` },
+    ];
+    if (prevId && prevId !== 'null') {
+      blocks.push({ note: `What changed since the previous snapshot (${prevId})`,
+        cmd: `ssh ${target} '${base} restic diff ${prevId} ${id}'` });
+    }
+    blocks.push(
+      { note: 'Extract a single file — replace &lt;path&gt; with one from `restic ls` above; prints to stdout',
+        cmd: `ssh ${target} '${base} restic dump ${id} &lt;path&gt;'` },
+      { note: `Restore everything into /tmp/restore-${id} — leaves the originals untouched`,
+        cmd: `ssh ${target} '${base} restic restore ${id} --target /tmp/restore-${id}'` },
+      { note: 'Permanently delete this snapshot and prune its data',
+        cmd: `ssh ${target} '${base} restic forget ${id} --prune'`, danger: true },
+    );
+    renderCmdBlocks(modalBody, blocks, 'modalCmd');
     overlay.showModal();
   }
 
   document.getElementById('snapRows').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-action]');
+    const btn = e.target.closest('button[data-action="commands"]');
     if (!btn) return;
-    openModal(btn.dataset.action, btn.closest('tr'));
+    openModal(btn.closest('tr'));
   });
 
   document.getElementById('modalClose').addEventListener('click', () => overlay.close());
@@ -205,35 +259,10 @@
     }
   }
 
-  copyBtn.addEventListener('click', async () => {
-    await copyText(cmdBox.textContent, cmdBox);
-    copiedFlag.classList.add('show');
-    setTimeout(() => copiedFlag.classList.remove('show'), 1400);
-  });
-
-  // Manual operations — same idea as the modal commands: this dashboard
-  // only ever hands you a command to run yourself, never runs it for you.
-  function renderManualOps() {
-    const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
-    const localBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
-    const cloudBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticCloudRepository}`;
-    const ops = [
-      ['Run local backup now', `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-local.sh'`],
-      ['Run cloud backup now', `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-cloud.sh'`],
-      ['Preview local prune (dry run — shows what would be removed, deletes nothing)',
-        `ssh ${target} '${localBase} restic forget ${NAS_CONFIG.resticLocalRetention} --dry-run'`],
-      ['Preview cloud prune (dry run)',
-        `ssh ${target} '${cloudBase} restic forget ${NAS_CONFIG.resticCloudRetention} --dry-run'`],
-      ['Run integrity check now', `ssh ${target} '${localBase} restic check'`],
-    ];
-    document.getElementById('manualOps').innerHTML = ops.map(([label, cmd], i) => `
-      <p style="margin-bottom:0.25rem"><small>${label}</small></p>
-      <pre><code id="manualCmd${i}">${cmd}</code></pre>
-      <button class="outline secondary" data-copy-target="manualCmd${i}" style="width:auto;margin-bottom:1rem">Copy</button>
-    `).join('');
-  }
-
-  document.getElementById('manualOps').addEventListener('click', async (e) => {
+  // One delegated listener handles every copy button on the page — the
+  // three "Manual operations" groups and the per-snapshot modal all render
+  // their command blocks the same way (renderCmdBlocks), so they share it.
+  document.body.addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-copy-target]');
     if (!btn) return;
     const code = document.getElementById(btn.dataset.copyTarget);
@@ -295,15 +324,12 @@
       return;
     }
     rows.innerHTML = data.snapshots.map((s) => `
-      <tr data-id="${s.id}" data-tag="${s.tag}" data-when="${s.time_human}" data-repo="${s.repo}">
+      <tr data-id="${s.id}" data-tag="${s.tag}" data-when="${s.time_human}" data-repo="${s.repo}" data-prev-id="${s.prev_id}">
         <td><code>${s.id}</code></td>
         <td>${s.time_human}</td>
         <td><mark>${s.tag}</mark></td>
         <td>${s.repo}</td>
-        <td>
-          <button class="outline secondary" data-action="restore">Restore</button>
-          <button class="outline contrast" data-action="delete">Delete</button>
-        </td>
+        <td><button class="outline secondary" data-action="commands">Commands</button></td>
       </tr>`).join('');
   }
 
