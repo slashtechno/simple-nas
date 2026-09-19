@@ -139,6 +139,33 @@ ls /mnt/t7/restore-scratch/mnt/t7/files
 restic restore latest --target /
 ```
 
+### Restore straight to another machine (skip the Pi's disk entirely)
+
+If you'd rather restore onto a USB/external drive on your Mac (or any other
+machine) than find space on the Pi, stream the snapshot as a tar file over the
+same SSH connection instead — nothing is written to the Pi at any point:
+
+```bash
+ssh your-user@your-pi-ip 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo restic dump latest / --archive tar' \
+  > /Volumes/YourDrive/snapshot.tar
+
+tar -xf /Volumes/YourDrive/snapshot.tar -C /Volumes/YourDrive/restored/
+```
+
+This runs entirely over your existing SSH setup — no need for Tailscale's
+`tailcat` or installing restic locally, since restic only ever needs to run on
+the Pi (where the password file already lives) and the data just streams
+through the SSH pipe to wherever you redirect it. Speed depends on whether
+Tailscale gets a direct connection to the Pi or falls back to a relay — check
+with `tailscale status`; `active; direct ...` is fast (LAN speed), anything
+saying `relay` will be much slower.
+
+One caveat: if the destination drive is exFAT or FAT32 (common for drives
+formatted for Windows/cross-platform use), Unix permissions and symlinks in
+the tar won't survive extraction — fine for just recovering file contents,
+but format the drive as APFS (or ext4, if you'll plug it into the Pi later)
+if you need an exact restore.
+
 ---
 
 ## Restore: Immich database

@@ -233,6 +233,9 @@
         '/tmp is tmpfs (RAM, only a couple GB) and / is often nearly full, so prefer a spot on ' +
         '/mnt/t7 or /mnt/backup instead',
         cmd: `ssh ${target} '${base} restic restore ${id} --target &lt;path&gt;'` },
+      { note: 'Or stream it straight to THIS machine instead (e.g. a USB drive plugged into your ' +
+        'laptop) — never touches the Pi\'s disk. Replace &lt;path&gt; with a local destination file',
+        cmd: `ssh ${target} '${base} restic dump ${id} / --archive tar' &gt; &lt;path&gt;/snapshot-${id}.tar` },
       { note: 'Permanently delete this snapshot and prune its data',
         cmd: `ssh ${target} '${base} restic forget ${id} --prune'`, danger: true },
     );
