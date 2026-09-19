@@ -229,8 +229,10 @@
     blocks.push(
       { note: 'Extract a single file — replace &lt;path&gt; with one from `restic ls` above; prints to stdout',
         cmd: `ssh ${target} '${base} restic dump ${id} &lt;path&gt;'` },
-      { note: `Restore everything into /tmp/restore-${id} — leaves the originals untouched`,
-        cmd: `ssh ${target} '${base} restic restore ${id} --target /tmp/restore-${id}'` },
+      { note: 'Restore into &lt;path&gt; (leaves originals untouched) — pick somewhere with room: ' +
+        '/tmp is tmpfs (RAM, only a couple GB) and / is often nearly full, so prefer a spot on ' +
+        '/mnt/t7 or /mnt/backup instead',
+        cmd: `ssh ${target} '${base} restic restore ${id} --target &lt;path&gt;'` },
       { note: 'Permanently delete this snapshot and prune its data',
         cmd: `ssh ${target} '${base} restic forget ${id} --prune'`, danger: true },
     );

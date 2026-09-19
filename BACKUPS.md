@@ -126,10 +126,14 @@ restic dump <snapshot-id> <path-in-snapshot> > recovered-file
 
 ## Restore: files
 
+`--target` needs somewhere with actual free space — `/tmp` is tmpfs (RAM-backed,
+only a couple GB) and `/` is often nearly full, so prefer a spot on `/mnt/t7` or
+`/mnt/backup` instead (check with `df -h` first if unsure).
+
 ```bash
-# Restore a single directory to inspect it first (safe)
-restic restore latest --include /mnt/t7/files --target /tmp/restore
-ls /tmp/restore/mnt/t7/files
+# Restore into a scratch path to inspect first (safe — doesn't touch originals)
+restic restore latest --include /mnt/t7/files --target /mnt/t7/restore-scratch
+ls /mnt/t7/restore-scratch/mnt/t7/files
 
 # Restore everything to original paths (replaces current files)
 restic restore latest --target /
