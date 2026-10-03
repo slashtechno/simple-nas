@@ -107,7 +107,17 @@ To customize:
 
 ### Clone a private GitHub repo onto the NAS
 
-This repo is public, so the clone uses a read-only fine-grained token from the vault (`vault_github_read_token`; `vault.yml.example` says how to create it, scoped to the one repo). A role includes `roles/common/tasks/clone_private_repo.yml` with `repo` and `dest`. The token reaches git through its environment, so it never lands in `.git/config` on the NAS. If the token expires, the task fails at the clone step; make a new one and `ansible-vault edit` the vault.
+This repo is public, so the clone uses a read-only fine-grained token from the vault (`vault_github_read_token`; `vault.yml.example` says how to create it, scoped to the one repo). A role includes `roles/github_clone` with `repo` and `dest`. The token reaches git through its environment, so it never lands in `.git/config` on the NAS. If the token expires, the task fails at the clone step; make a new one and `ansible-vault edit` the vault.
+
+### proofs: photo culling and sharing
+
+An opt-in service (`proofs_enabled: true`; nothing happens until you set it). The `proofs` role clones the private `lab` repo with the token above, builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed), and runs it on `nas-services`. It talks to Copyparty as the `photos` service account, so set up that account first (see Copyparty above).
+
+1. In `vars.yml` copy the `proofs_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. The ingress entry has a `path` regex so only guest pages (`/e/`, `/api/share/`, static files) are public; everything else on that hostname returns 404. Owner pages are at `http://<pi>:8100` on the LAN or tailnet.
+2. In the vault add `vault_proofs_password` (your login, 12+ characters) and `vault_proofs_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
+3. `ansible-playbook site.yml --tags proofs,cloudflared --ask-vault-pass`.
+
+The app keeps its database in `proofs_data_dir`, which the nightly backup already covers; the app also writes its own daily snapshots there. `teardown.yml --tags proofs` removes the container and source and keeps that data unless `remove_data=true`.
 
 ### Cloudflare: add a public hostname for a new service
 

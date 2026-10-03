@@ -1,9 +1,9 @@
 ---
 # Clone or update a private GitHub repo using the read-only token in the vault.
+# Its own role (not a task file in `common`) because including `common` would also re-run its Docker dependency.
 # Call it from a role with:
 #   - ansible.builtin.include_role:
-#       name: common
-#       tasks_from: clone_private_repo
+#       name: github_clone
 #     vars:
 #       repo: owner/name        # required
 #       dest: /some/path        # required

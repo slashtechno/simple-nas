@@ -1,0 +1,20 @@
+networks:
+  {{ nas_network }}:
+    external: true
+
+services:
+  proofs:
+    build: ./src/local/proofs
+    image: proofs-hub
+    container_name: proofs
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    env_file: proofs.env
+    volumes:
+      - {{ proofs_data_dir }}:/data
+    ports:
+      - "{{ proofs_port }}:8000"
+    networks:
+      - {{ nas_network }}

@@ -1,0 +1,45 @@
+---
+- name: Create proofs directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner | default(ansible_user) }}"
+    group: "{{ item.owner | default(ansible_user) }}"
+    mode: "0755"
+  loop:
+    - path: "{{ nas_base_dir }}/proofs"
+    # The container runs as uid 10001 and must own its data folder
+    - { path: "{{ proofs_data_dir }}", owner: "10001" }
+
+- name: Fetch the proofs source
+  ansible.builtin.include_role:
+    name: github_clone
+  vars:
+    repo: "{{ proofs_repo }}"
+    dest: "{{ nas_base_dir }}/proofs/src"
+    version: "{{ proofs_version }}"
+
+- name: Render proofs.env
+  ansible.builtin.template:
+    src: proofs.env.j2
+    dest: "{{ nas_base_dir }}/proofs/proofs.env"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  notify: Restart proofs
+
+- name: Render docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nas_base_dir }}/proofs/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  notify: Restart proofs
+
+# Building takes several minutes on a Pi, so only rebuild when the source moved (or the image is missing)
+- name: Build and start proofs
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/proofs"
+    state: present
+    build: "{{ 'always' if private_repo_clone.before != private_repo_clone.after else 'policy' }}"

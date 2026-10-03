@@ -1,4 +1,7 @@
 {% for rule in cloudflared_ingress %}
 - hostname: {{ rule.hostname }}
+{% if rule.path is defined %}
+  path: {{ rule.path | to_json }}
+{% endif %}
   service: {{ rule.service }}
 {% endfor %}

@@ -102,6 +102,27 @@
             state: absent
           when: remove_data | bool
 
+    - name: Stop and remove proofs
+      tags: [proofs]
+      block:
+        - name: Down proofs compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/proofs"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove proofs compose directory (includes the cloned source)
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/proofs"
+            state: absent
+
+        - name: Wipe proofs data, including its database (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ proofs_data_dir }}"
+            state: absent
+          when: remove_data | bool
+
     - name: Stop and remove Homebridge
       tags: [homebridge]
       block:

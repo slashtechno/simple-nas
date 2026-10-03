@@ -1,0 +1,5 @@
+---
+- name: Restart proofs
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/proofs"
+    state: restarted
