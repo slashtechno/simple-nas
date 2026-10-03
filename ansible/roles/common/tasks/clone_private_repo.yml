@@ -1,0 +1,31 @@
+---
+# Clone or update a private GitHub repo using the read-only token in the vault.
+# Call it from a role with:
+#   - ansible.builtin.include_role:
+#       name: common
+#       tasks_from: clone_private_repo
+#     vars:
+#       repo: owner/name        # required
+#       dest: /some/path        # required
+#       version: main           # optional: branch, tag or commit
+# The result is in `private_repo_clone`. To decide whether to rebuild, compare `.before` and `.after` (the commit
+# hashes); `.changed` also flips on a changed remote URL.
+
+- name: Require the GitHub token
+  ansible.builtin.assert:
+    that: (vault_github_read_token | default('', true) | string | length) > 0
+    fail_msg: "Set vault_github_read_token in group_vars/nas/vault.yml (see vault.yml.example)."
+
+- name: "Clone {{ repo }}"
+  ansible.builtin.git:
+    repo: "https://github.com/{{ repo }}.git"
+    dest: "{{ dest }}"
+    version: "{{ version | default('main') }}"
+  register: private_repo_clone
+  # The token goes in through git's environment, so it is never written to .git/config or a command line.
+  # no_log keeps it out of Ansible's output; rerun without it only if debugging, with a throwaway token.
+  environment:
+    GIT_CONFIG_COUNT: "1"
+    GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"
+    GIT_CONFIG_VALUE_0: "Authorization: Basic {{ ('x-access-token:' ~ vault_github_read_token) | b64encode }}"
+  no_log: true

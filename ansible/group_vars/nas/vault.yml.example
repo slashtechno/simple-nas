@@ -19,6 +19,11 @@ vault_pocketpi_nas_user: "pocketpi"
 vault_pocketpi_nas_pass: "change-me-generate-with-openssl-rand-base64-32"
 # One per entry in copyparty_service_accounts (vars.yml):
 vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
+# Read-only token for cloning private GitHub repos onto the NAS (roles/common/tasks/clone_private_repo.yml).
+# Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
+# "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
+# It expires after at most a year; set a reminder to renew it.
+vault_github_read_token: "github_pat_..."
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
 vault_cf_api_token: "your_cloudflare_api_token"
 vault_cf_account_id: "your_cloudflare_account_id"

@@ -105,6 +105,10 @@ To customize:
 1. Edit `copyparty.conf.j2` or add vars to `vars.yml`/`vault.yml`
 2. Re-run `ansible-playbook site.yml --tags copyparty --ask-vault-pass`
 
+### Clone a private GitHub repo onto the NAS
+
+This repo is public, so the clone uses a read-only fine-grained token from the vault (`vault_github_read_token`; `vault.yml.example` says how to create it, scoped to the one repo). A role includes `roles/common/tasks/clone_private_repo.yml` with `repo` and `dest`. The token reaches git through its environment, so it never lands in `.git/config` on the NAS. If the token expires, the task fails at the clone step; make a new one and `ansible-vault edit` the vault.
+
 ### Cloudflare: add a public hostname for a new service
 
 In `vars.yml`:
