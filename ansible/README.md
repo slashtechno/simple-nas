@@ -99,6 +99,8 @@ Copyparty and cloudflared build their own images from local Dockerfiles (`build:
 
 The copyparty config is rendered directly by Ansible from `roles/copyparty/templates/copyparty.conf.j2` into the config volume. Accounts use `{{ copyparty_user }}` / `{{ copyparty_pass }}` from vars, and collab friends are defined via `vault_copyparty_collab_users` in the vault.
 
+Apps that talk to Copyparty get a service account: add an entry to `copyparty_service_accounts` in `vars.yml` (user, password var, and one or more volumes, each a folder plus perms) and put its password in the vault. Each volume is mounted at `/<folder>` (stored in `copyparty_files_dir/<folder>`), with the admin as owner, so the app sees only those folders. Note that they then disappear for every other account with access to `/`, such as pocketpi's. Leave out `d` unless the app truly needs to delete: without it Copyparty also refuses to overwrite files, so the app can't destroy anything. See `vars.yml.example` for an example.
+
 To customize:
 1. Edit `copyparty.conf.j2` or add vars to `vars.yml`/`vault.yml`
 2. Re-run `ansible-playbook site.yml --tags copyparty --ask-vault-pass`

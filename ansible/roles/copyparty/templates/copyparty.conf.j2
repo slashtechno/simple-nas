@@ -24,6 +24,9 @@
 {% if sftp_enabled | default(false) | bool %}
   {{ vault_pocketpi_nas_user }}: {{ vault_pocketpi_nas_pass }}
 {% endif %}
+{% for s in copyparty_service_accounts | default([]) %}
+  {{ s.user }}: {{ s.pass }}
+{% endfor %}
 
 [/]
   /files
@@ -35,6 +38,21 @@
   flags:
     daw
 
+{# One volume per service-account folder, a subfolder of /files. Volflags don't
+   carry over from [/], so daw is repeated to keep the admin's WebDAV
+   overwrites working the same inside these folders. #}
+{% for s in copyparty_service_accounts | default([]) %}
+{% for v in s.volumes %}
+[/{{ v.folder }}]
+  /files/{{ v.folder }}
+  accs:
+    A: {{ copyparty_user }}
+    {{ v.perms }}: {{ s.user }}
+  flags:
+    daw
+
+{% endfor %}
+{% endfor %}
 {% if vault_copyparty_collab_users is defined and vault_copyparty_collab_users %}
 [/collab]
   /collab

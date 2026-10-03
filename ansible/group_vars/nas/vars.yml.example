@@ -88,6 +88,19 @@ copyparty_port: 3923
 sftp_enabled: false
 sftp_port: 3922
 
+# Accounts for apps that talk to Copyparty. Each gets its own volume at
+# /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
+# too. Two entries can't share a folder. Passwords go in vault.yml.
+copyparty_service_accounts:
+  # Example: a photo app. No d on photos: without delete, Copyparty also refuses
+  # overwrites (it renames instead), so the app can't destroy a photo. It may
+  # delete only in its own photos-trash volume.
+  - user: photos
+    pass: "{{ vault_copyparty_photos_pass }}"
+    volumes:
+      - { folder: photos, perms: rwm }
+      - { folder: photos-trash, perms: rwmd }
+
 # --- Gitea ---
 gitea_root_url: "https://gitea.example.com/"
 gitea_domain: "gitea.example.com"
