@@ -115,7 +115,7 @@ An opt-in service (`proofs_enabled: true`; nothing happens until you set it). Th
 
 1. In `vars.yml` copy the `proofs_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. The ingress entry has a `path` regex so only guest pages (`/e/`, `/api/share/`, static files) are public; everything else on that hostname returns 404. Owner pages are at `http://<pi>:8100` on the LAN or tailnet.
 2. In the vault add `vault_proofs_password` (your login, 12+ characters) and `vault_proofs_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
-3. `ansible-playbook site.yml --tags proofs,cloudflared --ask-vault-pass`.
+3. `ansible-playbook site.yml --tags copyparty,proofs,cloudflared --ask-vault-pass`. `copyparty` creates the `photos` account and its two volumes first.
 
 The app keeps its database in `proofs_data_dir`, which the nightly backup already covers; the app also writes its own daily snapshots there. `teardown.yml --tags proofs` removes the container and source and keeps that data unless `remove_data=true`.
 
