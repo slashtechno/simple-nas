@@ -217,8 +217,8 @@ if [ -n "${CF_ZONES:-}" ] && [ -n "${HOSTNAMES_LIST:-}" ]; then
     fi
     log "Processing DNS for $host (zone $zone)"
 
-    # Check if a record exists and get its details
-    record_response=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records?name=${host}" \
+    # CNAME only: a name's A, TXT or MX record is never touched, and creating the CNAME then fails loudly
+    record_response=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records?type=CNAME&name=${host}" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json")
     
@@ -264,6 +264,18 @@ JSON
       log "WARNING: Failed to create DNS record for ${host}. Cloudflare response: $(printf '%s' "$resp" | tr '\n' ' ')"
       # Continue; do not exit so script remains idempotent in partial environments.
     fi
+  done
+
+  # Report, never delete: records still pointing at this tunnel for hostnames no longer in ingress.yml
+  for pair in $CF_ZONES; do
+    names=$(curl -s -G "https://api.cloudflare.com/client/v4/zones/${pair#*=}/dns_records" \
+      --data-urlencode "type=CNAME" --data-urlencode "content=${TUNNEL_ID}.cfargotunnel.com" \
+      --data-urlencode "per_page=100" -H "Authorization: Bearer ${CF_API_TOKEN}" \
+      | jq -r '.result[]?.name' 2>/dev/null || true)
+    for name in $names; do
+      printf '%s\n' "$HOSTNAMES_LIST" | grep -qxF "$name" ||
+        log "NOTE: ${name} still points at this tunnel but is not in cloudflared_ingress. Delete the record in Cloudflare if it is unused."
+    done
   done
 else
   log "No zone configured or no hostnames — skipping DNS creation."
