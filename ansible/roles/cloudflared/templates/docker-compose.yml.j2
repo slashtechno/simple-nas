@@ -14,8 +14,7 @@ services:
     environment:
       CF_API_TOKEN: {{ cf_api_token }}
       CF_ACCOUNT_ID: {{ cf_account_id }}
-      CF_ZONE_ID: {{ cf_zone_id }}
-      CF_ZONES: "{% for domain, zone in (cf_extra_zones | default({})).items() %}{{ domain }}={{ zone }} {% endfor %}"
+      CF_ZONES: "{% for domain, zone in cf_zones.items() %}{{ domain }}={{ zone }} {% endfor %}"
       CF_TUNNEL_NAME: {{ cf_tunnel_name }}
     networks:
       - {{ nas_network }}

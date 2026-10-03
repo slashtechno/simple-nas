@@ -133,10 +133,10 @@ proofs_watermark_text: ""   # e.g. your Instagram handle
 cf_tunnel_name: pi-nas-tunnel
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"
-cf_zone_id: "{{ vault_cf_zone_id }}"
-# Hostnames on other domains: the zone's domain and ID. A hostname uses the longest matching domain here,
-# else cf_zone_id. The API token needs DNS:Edit on each of these zones too.
-cf_extra_zones:
+# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (longest matching domain wins).
+# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones.
+cf_zones:
+  example.com: your_zone_id
   other-domain.example: your_other_zone_id
 
 # One entry per public hostname. The service value is the internal Docker address.
