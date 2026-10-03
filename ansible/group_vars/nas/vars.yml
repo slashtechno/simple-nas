@@ -9,7 +9,7 @@ copyparty_enabled: true
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
-proofs_enabled: true
+pics_enabled: true
 garage_enabled: true    # off by default — needs post-deploy init (see ansible/README.md)
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
@@ -55,7 +55,7 @@ immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ main_drive }}/files"
 copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
 gitea_data_dir: "{{ main_drive }}/docker/gitea"
-proofs_data_dir: "{{ main_drive }}/docker/proofs"
+pics_data_dir: "{{ main_drive }}/docker/pics"
 homebridge_config_dir: "{{ main_drive }}/docker/homebridge"
 garage_data_dir: "{{ main_drive }}/docker/garage"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
@@ -83,7 +83,7 @@ copyparty_port: 3923
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at
 # /<folder>, stored in copyparty_files_dir/<folder>. No d on photos: without delete, Copyparty also
-# refuses overwrites, so proofs can't destroy a photo. It may delete only in photos-trash.
+# refuses overwrites, so pics can't destroy a photo. It may delete only in photos-trash.
 copyparty_service_accounts:
   - user: photos
     pass: "{{ vault_copyparty_photos_pass }}"
@@ -91,14 +91,14 @@ copyparty_service_accounts:
       - { folder: photos, perms: rwm }
       - { folder: photos-trash, perms: rwmd }
 
-# --- proofs ---
+# --- pics ---
 # Owner pages: http://<pi>:8100 on the LAN. Only guest pages are public, via the path-limited ingress below.
-proofs_repo: slashtechno/lab
-proofs_version: main
-proofs_port: 8100
-proofs_public_url: "https://pics.angad.me"
-proofs_artist: ""
-proofs_watermark_text: ""
+pics_repo: slashtechno/lab
+pics_version: main
+pics_port: 8100
+pics_public_url: "https://pics.angad.me"
+pics_artist: ""
+pics_watermark_text: ""
 
 # --- Gitea ---
 gitea_root_url: "https://git.slashtechno.com/"
@@ -124,7 +124,7 @@ cloudflared_ingress:
   # Only guest pages; anything else on this hostname gets the catch-all 404.
   - hostname: pics.angad.me
     path: '^/(e/|api/share/|_app/|favicon|robots\.txt)'
-    service: "http://proofs:8000"
+    service: "http://pics:8000"
   - hostname: immich.slashtechno.com
     service: "http://immich_server:2283"
   - hostname: git.slashtechno.com

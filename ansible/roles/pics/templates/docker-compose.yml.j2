@@ -3,18 +3,18 @@ networks:
     external: true
 
 services:
-  proofs:
-    build: ./src/local/proofs
-    image: proofs-hub
-    container_name: proofs
+  pics:
+    build: ./src/local/pics
+    image: pics-hub
+    container_name: pics
     restart: unless-stopped
     read_only: true
     tmpfs:
       - /tmp
-    env_file: proofs.env
+    env_file: pics.env
     volumes:
-      - {{ proofs_data_dir }}:/data
+      - {{ pics_data_dir }}:/data
     ports:
-      - "{{ proofs_port }}:8000"
+      - "{{ pics_port }}:8000"
     networks:
       - {{ nas_network }}

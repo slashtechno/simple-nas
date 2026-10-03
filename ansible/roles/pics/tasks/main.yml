@@ -1,5 +1,5 @@
 ---
-- name: Create proofs directories
+- name: Create pics directories
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
@@ -7,39 +7,39 @@
     group: "{{ item.owner | default(ansible_user) }}"
     mode: "0755"
   loop:
-    - path: "{{ nas_base_dir }}/proofs"
+    - path: "{{ nas_base_dir }}/pics"
     # The container runs as uid 10001 and must own its data folder
-    - { path: "{{ proofs_data_dir }}", owner: "10001" }
+    - { path: "{{ pics_data_dir }}", owner: "10001" }
 
-- name: Fetch the proofs source
+- name: Fetch the pics source
   ansible.builtin.include_role:
     name: github_clone
   vars:
-    repo: "{{ proofs_repo }}"
-    dest: "{{ nas_base_dir }}/proofs/src"
-    version: "{{ proofs_version }}"
+    repo: "{{ pics_repo }}"
+    dest: "{{ nas_base_dir }}/pics/src"
+    version: "{{ pics_version }}"
 
-- name: Render proofs.env
+- name: Render pics.env
   ansible.builtin.template:
-    src: proofs.env.j2
-    dest: "{{ nas_base_dir }}/proofs/proofs.env"
+    src: pics.env.j2
+    dest: "{{ nas_base_dir }}/pics/pics.env"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
-  notify: Restart proofs
+  notify: Restart pics
 
 - name: Render docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2
-    dest: "{{ nas_base_dir }}/proofs/docker-compose.yml"
+    dest: "{{ nas_base_dir }}/pics/docker-compose.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
-  notify: Restart proofs
+  notify: Restart pics
 
 # Building takes several minutes on a Pi, so only rebuild when the source moved (or the image is missing)
-- name: Build and start proofs
+- name: Build and start pics
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/proofs"
+    project_src: "{{ nas_base_dir }}/pics"
     state: present
     build: "{{ 'always' if private_repo_clone.before != private_repo_clone.after else 'policy' }}"

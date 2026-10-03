@@ -102,24 +102,24 @@
             state: absent
           when: remove_data | bool
 
-    - name: Stop and remove proofs
-      tags: [proofs]
+    - name: Stop and remove pics
+      tags: [pics]
       block:
-        - name: Down proofs compose project
+        - name: Down pics compose project
           community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/proofs"
+            project_src: "{{ nas_base_dir }}/pics"
             state: absent
             remove_volumes: false
           ignore_errors: true
 
-        - name: Remove proofs compose directory (includes the cloned source)
+        - name: Remove pics compose directory (includes the cloned source)
           ansible.builtin.file:
-            path: "{{ nas_base_dir }}/proofs"
+            path: "{{ nas_base_dir }}/pics"
             state: absent
 
-        - name: Wipe proofs data, including its database (only when remove_data=true)
+        - name: Wipe pics data, including its database (only when remove_data=true)
           ansible.builtin.file:
-            path: "{{ proofs_data_dir }}"
+            path: "{{ pics_data_dir }}"
             state: absent
           when: remove_data | bool
 

@@ -24,10 +24,10 @@ vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
 # "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
 # It expires after at most a year; set a reminder to renew it.
 vault_github_read_token: "github_pat_..."
-# proofs: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
-vault_proofs_password: "change-me-12-characters-minimum"
-vault_proofs_secret_key: "change-me-generate-with-openssl-rand-base64-48"
-vault_proofs_alert_urls: ""   # optional Apprise URLs, space-separated
+# pics: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
+vault_pics_password: "change-me-12-characters-minimum"
+vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
+vault_pics_alert_urls: ""   # optional Apprise URLs, space-separated
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
 vault_cf_api_token: "your_cloudflare_api_token"
 vault_cf_account_id: "your_cloudflare_account_id"

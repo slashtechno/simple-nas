@@ -39,9 +39,9 @@
       tags: [homebridge]
       when: homebridge_enabled | default(true)
 
-    - role: proofs
-      tags: [proofs]
-      when: proofs_enabled | default(false)
+    - role: pics
+      tags: [pics]
+      when: pics_enabled | default(false)
 
     - role: cloudflared
       tags: [cloudflared]

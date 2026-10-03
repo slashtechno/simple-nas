@@ -10,7 +10,7 @@ copyparty_enabled: true
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
-proofs_enabled: false   # photo culling and sharing; needs vault_github_read_token (see README.md)
+pics_enabled: false   # photo culling and sharing; needs vault_github_read_token (see README.md)
 garage_enabled: false   # needs manual init after first deploy (see README.md)
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
@@ -56,7 +56,7 @@ immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ main_drive }}/files"
 copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
 gitea_data_dir: "{{ main_drive }}/docker/gitea"
-proofs_data_dir: "{{ main_drive }}/docker/proofs"
+pics_data_dir: "{{ main_drive }}/docker/pics"
 homebridge_config_dir: "{{ main_drive }}/docker/homebridge"
 garage_data_dir: "{{ main_drive }}/docker/garage"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
@@ -112,16 +112,16 @@ gitea_port: 3000
 gitea_db_type: sqlite3
 gitea_db_path: /data/gitea/gitea.db
 
-# --- proofs ---
+# --- pics ---
 # Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
-# above. Owner pages are on http://<pi>:<proofs_port> (LAN or tailnet); only share pages go public,
+# above. Owner pages are on http://<pi>:<pics_port> (LAN or tailnet); only share pages go public,
 # through the path-limited cloudflared_ingress entry below.
-proofs_repo: owner/lab
-proofs_version: main
-proofs_port: 8100
-proofs_public_url: "https://photos.example.com"
-proofs_artist: ""           # written into the EXIF of public downloads
-proofs_watermark_text: ""   # e.g. your Instagram handle
+pics_repo: owner/lab
+pics_version: main
+pics_port: 8100
+pics_public_url: "https://photos.example.com"
+pics_artist: ""           # written into the EXIF of public downloads
+pics_watermark_text: ""   # e.g. your Instagram handle
 
 # --- Homebridge ---
 # network_mode: host (required for HomeKit/mDNS) — not on nas-services, not in
@@ -148,7 +148,7 @@ cloudflared_ingress:
   # Only the guest pages. `path` is a regex; anything else on this hostname gets the catch-all 404.
   - hostname: photos.example.com
     path: '^/(e/|api/share/|_app/|favicon|robots\.txt)'
-    service: "http://proofs:8000"
+    service: "http://pics:8000"
   - hostname: copyparty.example.com
     service: "http://copyparty:3923"
   - hostname: s3.example.com
