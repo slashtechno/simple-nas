@@ -6,6 +6,8 @@
 #   CF_ACCOUNT_ID - Account ID (required when creating tunnel via API; optional if reusing existing)
 #   CF_ZONE_ID    - Zone ID for DNS record creation (required if DNS creation is desired)
 # Optional:
+#   CF_ZONES      - More zones for hostnames on other domains: space-separated domain=zone_id pairs.
+#                   A hostname uses the zone whose domain is its longest suffix, else CF_ZONE_ID.
 #   CF_TUNNEL_NAME - Tunnel name (default: pi-nas-tunnel)
 #
 # Notes:
@@ -18,6 +20,21 @@
 set -eu
 # Helper log
 log() { printf '%s\n' "$*" >&2; }
+
+# The zone a hostname's DNS record belongs in: the CF_ZONES entry with the longest matching domain, else CF_ZONE_ID.
+zone_for() {
+  best_zone="${CF_ZONE_ID:-}"
+  best_len=0
+  for pair in ${CF_ZONES:-}; do
+    domain="${pair%%=*}"
+    case "$1" in
+      "$domain"|*."$domain")
+        if [ "${#domain}" -gt "$best_len" ]; then best_len="${#domain}"; best_zone="${pair#*=}"; fi
+        ;;
+    esac
+  done
+  printf '%s' "$best_zone"
+}
 
 : "${CF_API_TOKEN?CF_API_TOKEN is required (create token with DNS edit & tunnels permissions)}"
 
@@ -186,18 +203,23 @@ chmod 0644 "$CONFIG_PATH"
 chmod 0644 "$CREDENTIALS_FILE" || true
 
 # Optional: create DNS records for each hostname if CF_ZONE_ID is provided.
-if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES_LIST:-}" ]; then
-  log "Ensuring DNS records exist in zone $CF_ZONE_ID for hostnames: $HOSTNAMES_LIST"
+if { [ -n "${CF_ZONE_ID:-}" ] || [ -n "${CF_ZONES:-}" ]; } && [ -n "${HOSTNAMES_LIST:-}" ]; then
+  log "Ensuring DNS records exist for hostnames: $HOSTNAMES_LIST"
 
   # Process each hostname
   for host in $HOSTNAMES_LIST; do
     host=$(printf '%s' "$host" | tr -d '[:space:]')
     [ -z "$host" ] && continue
 
-    log "Processing DNS for $host"
+    zone=$(zone_for "$host")
+    if [ -z "$zone" ]; then
+      log "WARNING: no zone configured for ${host} (set cf_extra_zones); skipping its DNS record."
+      continue
+    fi
+    log "Processing DNS for $host (zone $zone)"
 
     # Check if a record exists and get its details
-    record_response=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records?name=${host}" \
+    record_response=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records?name=${host}" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json")
     
@@ -212,7 +234,7 @@ if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES_LIST:-}" ]; then
       else
         log "DNS record for ${host} points to wrong tunnel: ${existing_content} (expected: ${expected_content})"
         log "Deleting old DNS record (id: ${existing_id})..."
-        curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records/${existing_id}" \
+        curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records/${existing_id}" \
           -H "Authorization: Bearer ${CF_API_TOKEN}" \
           -H "Content-Type: application/json" >/dev/null 2>&1
         log "Deleted. Will recreate with correct tunnel ID."
@@ -230,7 +252,7 @@ if [ -n "${CF_ZONE_ID:-}" ] && [ -n "${HOSTNAMES_LIST:-}" ]; then
 }
 JSON
 )
-    resp=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/dns_records" \
+    resp=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${zone}/dns_records" \
       -H "Authorization: Bearer ${CF_API_TOKEN}" \
       -H "Content-Type: application/json" \
       -d "${payload}")
@@ -245,7 +267,7 @@ JSON
     fi
   done
 else
-  log "CF_ZONE_ID not provided or HOSTNAMES empty — skipping DNS creation."
+  log "No zone configured or no hostnames — skipping DNS creation."
 fi
 
 log "Init complete. Credentials: $CREDENTIALS_FILE, config: $CONFIG_PATH"

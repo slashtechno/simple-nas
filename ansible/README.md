@@ -129,6 +129,8 @@ cloudflared_ingress:
 ```
 Then: `ansible-playbook site.yml --tags cloudflared --ask-vault-pass`
 
+A hostname on a different domain needs that domain's zone ID in `cf_extra_zones` (domain: zone ID), and the API token needs DNS:Edit on that zone. Each hostname's DNS record goes in the zone with the longest matching domain, else `cf_zone_id`. An optional `path` regex on a rule limits what the hostname forwards; the rest gets the catch-all 404.
+
 ### Tailscale Funnel
 
 In `vars.yml`:
