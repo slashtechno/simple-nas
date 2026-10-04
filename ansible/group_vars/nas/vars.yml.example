@@ -16,6 +16,10 @@ backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # --- Tailscale ---
+# Every service that publishes a host port is reachable at http://<pi-tailscale-ip>:<port> from any
+# device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. (The funnel
+# below is only for giving one service a public ts.net name, which pics does not use — its public
+# pages go through the Cloudflare tunnel with a path allowlist.)
 tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
 tailscale_funnel_enabled: false    # expose Copyparty publicly at your ts.net hostname
 tailscale_funnel_port: 3923
@@ -159,12 +163,14 @@ gitea_db_path: /data/gitea/gitea.db
 
 # --- pics ---
 # Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
-# above. Owner pages are on http://<pi>:<pics_port> (LAN or tailnet); only share pages go public,
-# through the path-limited cloudflared_ingress entry below.
+# above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
+# your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
+# path-limited cloudflared_ingress entry below.
 pics_repo: owner/lab
 pics_version: main
 pics_port: 8100
 pics_public_url: "https://photos.example.com"
+pics_public_port: 8001   # guest surface inside the container; the tunnel points here
 pics_artist: ""           # written into the EXIF of public downloads
 pics_watermark_text: ""   # e.g. your Instagram handle
 
@@ -190,10 +196,10 @@ cloudflared_ingress:
     service: "http://immich_server:2283"
   - hostname: gitea.example.com
     service: "http://gitea:3000"
-  # Only the guest pages. `path` is a regex; anything else on this hostname gets the catch-all 404.
+  # pics' guest surface: share pages and the portfolio, with no owner routes in it. The owner app
+  # stays on the Pi's LAN/tailnet port (pics_port); this file never forwards it.
   - hostname: photos.example.com
-    path: '^/(e/|api/share/|_app/|favicon|robots\.txt)'
-    service: "http://pics:8000"
+    service: "http://pics:8001"
   - hostname: copyparty.example.com
     service: "http://copyparty:3923"
   - hostname: s3.example.com

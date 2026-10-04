@@ -14,6 +14,8 @@ services:
     env_file: pics.env
     volumes:
       - {{ pics_data_dir }}:/data
+    # Only the owner app is published: LAN + tailnet (no tailscale serve needed). The guest
+    # surface (:{{ pics_public_port }}) stays on the docker network, reachable only by cloudflared.
     ports:
       - "{{ pics_port }}:8000"
     networks:

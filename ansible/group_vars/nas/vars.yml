@@ -15,6 +15,10 @@ backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # --- Tailscale ---
+# Every service that publishes a host port is reachable at http://<pi-tailscale-ip>:<port> from any
+# device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. (The funnel
+# below is only for giving one service a public ts.net name, which pics does not use — its public
+# pages go through the Cloudflare tunnel with a path allowlist.)
 tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
 tailscale_funnel_enabled: false    # set true to expose Copyparty at your ts.net hostname
 tailscale_funnel_port: 3923
@@ -141,6 +145,7 @@ pics_repo: slashtechno/lab
 pics_version: main
 pics_port: 8100
 pics_public_url: "https://pics.angad.me"
+pics_public_port: 8001    # the guest surface inside the container; the tunnel points at this one
 pics_artist: ""
 pics_watermark_text: ""
 
@@ -163,12 +168,14 @@ cf_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
   angad.me: f0cf329b896c61d1f5bc2a4c53c03647
 
-# Ingress rules for cloudflared (hostname -> internal service URL)
+# Ingress rules for cloudflared (hostname -> internal service URL). Keep these boring: a hostname
+# and a service, nothing else. Where a service needs a private surface, it publishes two ports and
+# this file points the tunnel at the guest one.
 cloudflared_ingress:
-  # Only guest pages; anything else on this hostname gets the catch-all 404.
+  # pics serves its guest surface (share pages + portfolio, no owner routes at all) on 8001; the
+  # owner app is on the Pi's LAN/tailnet port (pics_port) and is never forwarded here.
   - hostname: pics.angad.me
-    path: '^/(e/|api/share/|_app/|favicon|robots\.txt)'
-    service: "http://pics:8000"
+    service: "http://pics:{{ pics_public_port }}"
   - hostname: immich.slashtechno.com
     service: "http://immich_server:2283"
   - hostname: git.slashtechno.com
