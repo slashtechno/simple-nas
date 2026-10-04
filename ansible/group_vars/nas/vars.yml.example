@@ -27,8 +27,32 @@ nas_network: nas-services          # shared Docker network name
 docker_pull_policy: missing        # "always" to pull newer images on every run — see README.md#update-service-images
 
 # --- Storage ---
-main_drive: /mnt/t7
-backup_drive: /mnt/backup
+# Drives are the source of truth: every nas_drives entry declares which
+# roles it fills via `roles:` (a list — one drive can hold several roles;
+# a single-drive NAS is one entry with roles: [fast, primary, backup]).
+# Allowed roles, exactly one claim each (validated by the storage role;
+# unknown role names and double claims fail the deploy):
+#   fast    — SSD; random-IO data (Docker, Immich DB, configs) + caches
+#             (restic cache, copyparty hist/thumbnails)
+#   primary — bulk data (photos, files)
+#   backup  — restic local repo, service dumps, logs
+# The example below uses the same 2-drive layout as the initial deployment:
+# fast and primary both resolve to the T7 until more drives are added.
+nas_role_fallbacks:
+  fast: /mnt/t7
+  primary: /mnt/main
+  backup: /mnt/backup
+nas_drive_mounts: >-
+  {%- set _m = {} -%}
+  {%- for _d in nas_drives if _d.roles is defined -%}
+  {%- for _r in _d.roles -%}
+  {%- set _ = _m.update({_r: _d.mount}) -%}
+  {%- endfor -%}{%- endfor -%}
+  {{ nas_role_fallbacks | combine(_m) }}
+
+fast_drive: "{{ nas_drive_mounts.fast }}"
+main_drive: "{{ nas_drive_mounts.primary }}"
+backup_drive: "{{ nas_drive_mounts.backup }}"
 
 restic_repo_path: "{{ backup_drive }}/restic-repo"
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
@@ -51,27 +75,44 @@ restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 # silently blocking every later cloud backup/prune behind its stale lock.
 restic_command_timeout: "2h"
 
+# restic's local index/snapshot cache lives on the fast drive — it keeps
+# cache reads off the spinning backup drive and off Google Drive round-trips
+# (this matters most for the rclone/gdrive repo; see restic's cache docs).
+# Same-filesystem caching is near-pointless, so this only pays off once the
+# cache drive differs from the repo drive. Excluded from backups.
+restic_cache_dir: "{{ fast_drive }}/restic-cache"
+
+# Service data split across drive roles: random-IO data (Docker, DBs,
+# configs) on the fast drive; bulk data (photos, files) on the primary.
+# When both roles resolve to the same drive, this changes nothing on disk.
 immich_upload_location: "{{ main_drive }}/photos"
-immich_db_data_location: "{{ main_drive }}/docker/immich_postgres"
+immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ main_drive }}/files"
-copyparty_config_dir: "{{ main_drive }}/docker/copyparty_config"
-gitea_data_dir: "{{ main_drive }}/docker/gitea"
-pics_data_dir: "{{ main_drive }}/docker/pics"
-homebridge_config_dir: "{{ main_drive }}/docker/homebridge"
-garage_data_dir: "{{ main_drive }}/docker/garage"
+copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
+copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
+gitea_data_dir: "{{ fast_drive }}/docker/gitea"
+pics_data_dir: "{{ fast_drive }}/docker/pics"
+homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
+garage_data_dir: "{{ fast_drive }}/docker/garage"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
 
 # fstab entries — idempotent, no-ops if drives already mounted.
 # Find UUIDs on the Pi: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
 nas_drives:
-  - uuid: "your-main-drive-uuid"
+  - uuid: "your-fast-drive-uuid"
     mount: /mnt/t7
     fstype: ext4
     options: defaults,nofail   # nofail = Pi still boots if drive is unplugged
+    roles: [fast, primary]     # one drive doing both roles (2-drive setup)
   - uuid: "your-backup-drive-uuid"
     mount: /mnt/backup
     fstype: ext4
     options: defaults,nofail
+    roles: [backup]
+# 3-drive example (fast split onto its own SSD):
+#   T7/SSD entry: roles: [fast]
+#   large data drive /mnt/main: roles: [primary]
+#   backup drive: roles: [backup]
 
 # --- Immich ---
 immich_version: release   # or pin to e.g. v1.130.0
@@ -82,6 +123,10 @@ copyparty_pass: "{{ vault_copyparty_pass }}"
 copyparty_collab_dir: "{{ main_drive }}/collab"   # shared directory for friends
 host_mnt_dir: /mnt   # host directory browsable under /drives in Copyparty UI
 copyparty_port: 3923
+# Cap thumbnailer RAM; default would allow ~2.4 GiB on a 4 GB Pi (60% of
+# system RAM). 1 GiB is a safe cap on both the Pi 4 and Pi 5.
+copyparty_th_ram_max: "1"
+copyparty_version_checker_enabled: true   # vc-url points at upstream advisory feed (default-disabled upstream)
 
 # sftp_enabled (default false): turns on Copyparty's SFTP listener.
 # Used by the pocketpi project (lab/local/pocketpi) for its NAS sync,

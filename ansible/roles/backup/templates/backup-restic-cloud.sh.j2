@@ -12,6 +12,10 @@ fi
 
 export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
+# Cache on the fast drive: for the rclone/gdrive repo this matters most —
+# restic avoids re-reading packs over the network during backup/check/forget.
+# Explicit-override form keeps manual test runs able to point elsewhere.
+export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
 # rclone's shared default Google OAuth client hits Drive's per-minute quota
 # fast on a burst of small-file uploads — this throttles request rate to

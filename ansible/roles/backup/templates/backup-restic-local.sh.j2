@@ -14,6 +14,10 @@ fi
 # override stays so a manual run can still point elsewhere for testing.
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
+# Cache (index/snapshot copies) on the fast drive — off the spinning backup
+# drive. Same-filesystem caching is near-pointless, so this only pays off
+# once the cache drive differs from the repo drive.
+export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
 # See the matching comment in backup-restic-cloud.sh.j2 — guards against the
 # same class of hang, even though it's the cloud script (network-dependent)
@@ -30,6 +34,7 @@ readonly EXCLUDES=(
   "{{ gitea_data_dir }}/ssh"
   "{{ immich_db_data_location }}"
   "{{ copyparty_config_dir }}/copyparty"
+  "{{ restic_cache_dir }}"
   "{{ main_drive }}/lost+found"
 )
 

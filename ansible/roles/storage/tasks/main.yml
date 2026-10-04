@@ -1,4 +1,20 @@
 ---
+- name: Validate drive role map
+  ansible.builtin.assert:
+    that:
+      - nas_drive_mounts.fast is match('^/')
+      - nas_drive_mounts.primary is match('^/')
+      - nas_drive_mounts.backup is match('^/')
+      - (nas_drives | map(attribute='roles', default=[]) | flatten | length)
+        == (nas_drives | map(attribute='roles', default=[]) | flatten | unique | length)
+      - (nas_drives | map(attribute='roles', default=[]) | flatten)
+        | difference(['fast', 'primary', 'backup']) | length == 0
+    fail_msg: >-
+      Invalid nas_drives role map: each role (fast/primary/backup) must be
+      claimed by exactly one drive, unknown role names are not allowed
+      (allowed: fast, primary, backup, any drive may hold several).
+      Current map: {{ nas_drive_mounts }}
+
 - name: Create mount points
   ansible.builtin.file:
     path: "{{ item.mount }}"
@@ -56,8 +72,10 @@
     - "{{ main_drive }}/backups"
     - "{{ immich_db_data_location }}"
     - "{{ copyparty_config_dir }}"
+    - "{{ copyparty_hist_dir }}"
     - "{{ gitea_data_dir }}"
     - "{{ homebridge_config_dir }}"
+    - "{{ restic_cache_dir }}"
     - "{{ garage_data_dir }}"
     - "{{ restic_repo_path }}"
     - "{{ backup_logs_dir }}"

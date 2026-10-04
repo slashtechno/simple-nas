@@ -84,6 +84,24 @@ Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then re-run with th
 ansible-playbook site.yml --tags <service> --ask-vault-pass
 ```
 
+### Drive roles (source of truth)
+
+Every `nas_drives` entry in `vars.yml` declares which `roles:` it fills (a list — one drive can hold
+several, e.g. a 1-drive NAS is `roles: [fast, primary, backup]` on one entry). Allowed roles, each
+claimed by exactly one drive (the storage role's assert fails the deploy on duplicates or unknown names):
+
+- `fast` — SSD: random-IO data (Docker, Immich DB, configs) + caches (restic cache, copyparty hist)
+- `primary` — bulk data (photos, files)
+- `backup` — restic repo, service dumps, logs
+
+Service paths derive from the map (`fast_drive`/`main_drive`/`backup_drive`, defined in
+`group_vars/nas/vars.yml` via `nas_drive_mounts`). When multiple roles share one drive this changes
+nothing on disk — so if you later add a dedicated SSD for `fast`, the Docker/DB/config dirs resolve to
+a different mountpoint automatically and just need data moved there once.
+
+To add or replace a drive: format it, add/point the `nas_drives` entry (new UUID → same mount or a new
+`mount:` + updated `roles`), rerun `--tags storage`, then migrate data (e.g. `rsync -aHAX`).
+
 ### Update service images
 
 Gitea, Immich, Homebridge, and Garage track floating tags (`latest`/`release`/version vars), but deploys default to `pull: missing` (idempotent — only pulls if the image isn't already local). To pull and restart with newer images:

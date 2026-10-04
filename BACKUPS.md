@@ -2,6 +2,8 @@
 
 Backups are fully automated by the `backup` Ansible role — cron jobs are created on the Pi when you run `ansible-playbook site.yml`. You don't configure cron manually.
 
+All restic invocations use a local cache on the fast drive (`RESTIC_CACHE_DIR`, via the drive-role map): snapshot/index reads hit the SSD instead of the backup drive or Google Drive round-trips. The cache is disposable — deleting it only costs speed, never data.
+
 ## What runs automatically
 
 | Schedule | What it does |

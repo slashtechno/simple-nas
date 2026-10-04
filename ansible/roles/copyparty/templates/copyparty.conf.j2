@@ -5,6 +5,22 @@
 [global]
   e2dsa
   e2ts
+  # WebDAV write support, once globally — covers all volumes. Upstream has
+  # no volflag inheritance (each volume is independent), but `daw` is ALSO a
+  # global option, so per-volume repetition is unnecessary. Scoped negation
+  # (`-daw` on a volume) still works here if ever needed (documented feature).
+  daw
+  # Thumbs/dbs/transcode cache on the fast drive (SSD) instead of a `.hist`
+  # dir inside each volume. One-time: first boot after this change re-runs
+  # the e2dsa index scan (db starts empty); thumbs regenerate lazily.
+  hist: /hist
+  # Cap thumbnailer RAM; default would allow ~2.4 GiB on a 4 GB Pi.
+  th-ram-max: {{ copyparty_th_ram_max }}
+{% if copyparty_version_checker_enabled | default(false) | bool %}
+  # Opt-in version checker: alerts in the log/UI when the running version is
+  # affected by a security advisory. Phone-home is intentional (your choice).
+  vc-url: https://api.copyparty.eu/advisories
+{% endif %}
   xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
   xff-hdr: cf-connecting-ip
@@ -35,12 +51,10 @@
 {% if sftp_enabled | default(false) | bool %}
     rwmd: {{ vault_pocketpi_nas_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
-  flags:
-    daw
 
-{# One volume per service-account folder, a subfolder of /files. Volflags don't
-   carry over from [/], so daw is repeated to keep the admin's WebDAV
-   overwrites working the same inside these folders. #}
+{# One volume per service-account folder, a subfolder of /files. No per-volume
+   flags needed: `daw` is set globally in [global], and volflags deliberately
+   do NOT carry between volumes (unlike what inheritance would offer). #}
 {% for s in copyparty_service_accounts | default([]) %}
 {% for v in s.volumes %}
 [/{{ v.folder }}]
@@ -48,8 +62,6 @@
   accs:
     A: {{ copyparty_user }}
     {{ v.perms }}: {{ s.user }}
-  flags:
-    daw
 
 {% endfor %}
 {% endfor %}
@@ -61,8 +73,6 @@
 {% for u in vault_copyparty_collab_users %}
     A: {{ u.user }}
 {% endfor %}
-  flags:
-    daw
 {% endif %}
 
 [/drives]

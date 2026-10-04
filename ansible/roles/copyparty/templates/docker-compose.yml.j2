@@ -10,6 +10,7 @@ services:
     volumes:
       - {{ copyparty_files_dir }}:/files:rw
       - {{ copyparty_config_dir }}:/cfg:rw
+      - {{ copyparty_hist_dir }}:/hist:rw
       - {{ host_mnt_dir | default('/mnt') }}:/host/mnt:ro,rslave
 {% if copyparty_collab_dir is defined and copyparty_collab_dir %}
       - {{ copyparty_collab_dir }}:/collab:rw

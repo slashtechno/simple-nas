@@ -8,6 +8,7 @@ fi
 
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
+export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
 # See the matching comment in backup-restic-cloud.sh.j2 — a stalled check
 # should become a failed cron run, not a lock held forever.
