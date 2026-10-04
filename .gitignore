@@ -68,3 +68,6 @@ cloudflared/config.yml
 # Ansible secrets and local inventory (never commit these)
 ansible/group_vars/nas/vault.yml
 ansible/inventory/hosts.yml
+
+# Agent session artifacts
+.pi-subagents/
