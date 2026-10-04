@@ -1,0 +1,7 @@
+# Normalize all text files to LF (Linux) line endings in the repo AND on
+# checkout, so git status stays clean across Windows/Linux contributors.
+* text=auto eol=lf
+
+# Windows-only artifacts if ever added:
+*.bat text eol=crlf
+*.ps1 text eol=crlf
