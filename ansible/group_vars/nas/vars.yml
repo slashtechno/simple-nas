@@ -143,9 +143,11 @@ copyparty_service_accounts:
 # Owner pages: http://<pi>:8100 on the LAN. Only guest pages are public, via the path-limited ingress below.
 pics_repo: slashtechno/lab
 pics_version: main
-pics_port: 8100
+pics_port: 8100            # published on the Pi: LAN + tailnet reach the owner app here
 pics_public_url: "https://pics.angad.me"
-pics_public_port: 8001    # the guest surface inside the container; the tunnel points at this one
+pics_public_port: 8001    # container-internal (never published): the tunnel points here.
+                          # Container ports can't collide with other services — each has its own
+                          # namespace. Only pics_port (above) is published on the Pi.
 pics_artist: ""
 pics_watermark_text: ""
 

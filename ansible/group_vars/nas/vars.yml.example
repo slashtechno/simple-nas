@@ -168,9 +168,11 @@ gitea_db_path: /data/gitea/gitea.db
 # path-limited cloudflared_ingress entry below.
 pics_repo: owner/lab
 pics_version: main
-pics_port: 8100
+pics_port: 8100            # published on the Pi: LAN + tailnet reach the owner app here
 pics_public_url: "https://photos.example.com"
-pics_public_port: 8001   # guest surface inside the container; the tunnel points here
+pics_public_port: 8001   # container-internal (never published): the tunnel points here.
+                         # Container ports can't collide with other services — separate namespaces.
+                         # Only pics_port, below, is published on the Pi (LAN + tailnet).
 pics_artist: ""           # written into the EXIF of public downloads
 pics_watermark_text: ""   # e.g. your Instagram handle
 
