@@ -41,6 +41,11 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
+- name: No ingress rule may carry a path (a service that needs two surfaces publishes two ports)
+  ansible.builtin.assert:
+    that: cloudflared_ingress | selectattr('path', 'defined') | list | length == 0
+    fail_msg: "A cloudflared_ingress rule sets `path:`. Keep rules to hostname + service — see the note above the list in group_vars/nas/vars.yml."
+
 - name: Render ingress.yml
   ansible.builtin.template:
     src: ingress.yml.j2
