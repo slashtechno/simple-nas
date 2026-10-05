@@ -174,7 +174,8 @@ pics_public_port: 8001   # container-internal (never published): the tunnel poin
                          # Container ports can't collide with other services — separate namespaces.
                          # Only pics_port, below, is published on the Pi (LAN + tailnet).
 pics_artist: ""           # written into the EXIF of public downloads
-pics_watermark_text: ""   # e.g. your Instagram handle
+pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
+pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
 
 # --- Homebridge ---
 # network_mode: host (required for HomeKit/mDNS) — not on nas-services, not in
