@@ -16,16 +16,6 @@ fi
 mkdir -p "$DUMP_DIR"
 timestamp() { date +%Y%m%dT%H%M%S; }
 
-# Source repository .env if present so the script can pick up IMMIH_DB_* settings
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)/.."
-ENV_FILE="$SCRIPT_DIR/.env"
-if [ -f "$ENV_FILE" ]; then
-  set -a
-  # shellcheck disable=SC1090
-  source "$ENV_FILE"
-  set +a
-fi
-
 # Immich DB dump
 IMMICH_DB_CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
 # DB role inside Postgres for Immich (default matches docker-compose `DB_USERNAME`)

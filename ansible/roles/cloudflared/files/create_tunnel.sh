@@ -80,7 +80,7 @@ else
 fi
 
 if [ -z "${CF_ACCOUNT_ID:-}" ]; then
-  log "ERROR: CF_ACCOUNT_ID is required to create a tunnel via API. Please set CF_ACCOUNT_ID in your .env"
+  log "ERROR: CF_ACCOUNT_ID is required to create a tunnel via API. Set cf_account_id (vault_cf_account_id) in the Ansible vars"
   exit 2
 fi
 
@@ -106,7 +106,7 @@ if [ "$SKIP_CREATION" = "0" ]; then
     log "Note: You may also need to manually delete the tunnel in the Cloudflare Dashboard:"
     log "  https://one.dash.cloudflare.com/${CF_ACCOUNT_ID}/networks/tunnels"
     log ""
-    log "Alternatively, use a different tunnel name by setting CF_TUNNEL_NAME in .env"
+    log "Alternatively, use a different tunnel name by setting cf_tunnel_name in the Ansible vars"
     exit 1
   fi
   
