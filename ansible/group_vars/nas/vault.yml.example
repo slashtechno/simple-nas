@@ -37,5 +37,12 @@ vault_garage_webui_user: "admin"
 vault_garage_webui_pass: "change-me"
 vault_restic_password: "change-me-generate-with-openssl-rand-base64-32"
 # Generate at: https://login.tailscale.com/admin/settings/keys
-# Use an ephemeral key so the node auto-removes itself if the Pi is wiped
+# Do NOT tick "Ephemeral": ephemeral nodes are deleted from the tailnet 30-60 min after going
+# offline (meant for CI/containers), so a power cut would cost the Pi its IP, name and Funnel URL.
+# A plain one-off key is fine (it's only used for the first login; Tailscale keeps its own node
+# key afterwards). After the first run, in the admin console open the Pi's menu -> "Disable key
+# expiry", or its node key lapses after ~180 days. (Keys with a tag skip that step but need the
+# tag in your ACL tagOwners and set `tailscale_tags` in vars.yml.)
+# Re-provisioning / swapping the Pi? Mint a fresh key first; a used one-off key won't work again
+# (or use a "Reusable" key, which expires within 90 days).
 vault_tailscale_authkey: "tskey-auth-..."

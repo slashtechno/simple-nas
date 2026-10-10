@@ -171,7 +171,7 @@ Ansible's own control-flow keywords (`when`, `loop`, `notify`, etc., see below).
   credential-migration `find | cp` pipeline) because `command` can't pipe
 - `ansible.builtin.include_role` — pull in a role by name from inside a task
   list rather than a play's `roles:` list (tailscale role uses this to invoke
-  the Galaxy-installed `artis3n.tailscale.tailscale` role)
+  the Galaxy-installed `artis3n.tailscale.machine` role)
 
 `command`/`shell` are "escape hatches" because Ansible's philosophy is that a
 dedicated module is idempotent by construction — it checks current state and
@@ -179,9 +179,10 @@ only changes what's wrong — while `command`/`shell` just run a binary every
 time, blind to whether anything needed changing. That's why nearly every
 `command`/`shell` task here pairs with `changed_when`/`failed_when` — manually
 bolting idempotency onto a tool that doesn't have it natively. The Tailscale
-Funnel tasks are the clearest case: there's no dedicated Funnel module, so
-`command` is the only option, and `changed_when: true` is an honest admission
-that Ansible can't know whether toggling funnel actually changed anything.
+Funnel tasks show the pattern: there's no dedicated Funnel module, so `command`
+is the only option, but a read-only `funnel status --json` task
+(`changed_when: false`, `check_mode: false`) runs first and the enable/disable
+tasks only fire when the current state differs from the desired one.
 
 ---
 

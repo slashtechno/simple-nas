@@ -1,24 +1,51 @@
 ---
-# artis3n.tailscale handles: package install, service start, `tailscale up --authkey`
+# artis3n.tailscale.machine handles: package install, service start, `tailscale up --authkey`.
+# It reads `tailscale_args` (and `tailscale_tags`) straight from group_vars, so only the auth
+# key needs mapping. `tailscale up` only re-runs when the node is offline or its args/key hash
+# changes; auth_key_in_state: false makes a rotated vault key NOT count as a change, so minting
+# a new one-off key later doesn't trigger a pointless re-login.
 - name: Install and connect Tailscale
   ansible.builtin.include_role:
-    name: artis3n.tailscale.tailscale
+    name: artis3n.tailscale.machine
   vars:
     tailscale_authkey: "{{ vault_tailscale_authkey }}"
-    tailscale_args: "{{ tailscale_args }}"
+    auth_key_in_state: false
 
-# Funnel has no Ansible module — shell task is the only option.
+# Funnel has no Ansible module, so read current state and only act on a difference.
+# `tailscale funnel status --json` prints the serve config: AllowFunnel maps "host:port" -> bool,
+# and Web.<host:port>.Handlers.<path>.Proxy holds the backend URL.
+- name: Read current Tailscale Funnel config
+  ansible.builtin.command:
+    cmd: tailscale funnel status --json
+  register: tailscale_funnel_status
+  changed_when: false
+  check_mode: false
+
+- name: Work out current Funnel state on :443
+  ansible.builtin.set_fact:
+    tailscale_funnel_cfg: "{{ tailscale_funnel_status.stdout | from_json if tailscale_funnel_status.stdout | trim else {} }}"
+
+- name: Compare Funnel state to desired
+  ansible.builtin.set_fact:
+    tailscale_funnel_is_on: >-
+      {{ (tailscale_funnel_cfg.AllowFunnel | default({}) | dict2items
+          | selectattr('key', 'match', '.*:443$') | selectattr('value') | list | length) > 0 }}
+    tailscale_funnel_points_here: "{{ ('127.0.0.1:' ~ tailscale_funnel_port) in (tailscale_funnel_cfg.Web | default({}) | to_json) }}"
+
 # Funnel lets anyone on the internet reach Copyparty at your ts.net hostname.
 # Disabled by default; set tailscale_funnel_enabled: true in vars.yml to turn it on.
 - name: Enable Tailscale Funnel for Copyparty
   ansible.builtin.command:
     cmd: tailscale funnel --bg --https=443 http://127.0.0.1:{{ tailscale_funnel_port }}
-  when: tailscale_funnel_enabled | bool
+  when:
+    - tailscale_funnel_enabled | bool
+    - not (tailscale_funnel_is_on and tailscale_funnel_points_here)
   changed_when: true
 
 - name: Disable Tailscale Funnel
   ansible.builtin.command:
     cmd: tailscale funnel --https=443 off
-  when: not (tailscale_funnel_enabled | bool)
+  when:
+    - not (tailscale_funnel_enabled | bool)
+    - tailscale_funnel_is_on
   changed_when: true
-  failed_when: false   # no-op if funnel was never enabled

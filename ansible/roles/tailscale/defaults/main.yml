@@ -1,5 +1,6 @@
 ---
-# Extra flags passed to `tailscale up`, e.g. "--advertise-exit-node"
+# Extra flags passed to `tailscale up`, e.g. "--advertise-exit-node". The artis3n role reads this
+# name directly. Flags aren't persisted by Tailscale, so list every flag you want, every run.
 tailscale_args: ""
 
 # Set to true to expose Copyparty publicly via Tailscale Funnel (https://your-machine.ts.net)
