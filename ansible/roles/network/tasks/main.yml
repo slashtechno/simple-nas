@@ -32,7 +32,7 @@
 
     # Auto-assigns the laptop's IP so it doesn't need manual TCP/IP config.
     # DHCP only (port=0 disables dnsmasq's DNS proxy) and scoped to eth0 only
-    # (bind-interfaces), so it can't affect wifi or hand out a gateway/DNS —
+    # (bind-dynamic + interface=eth0), so it can't affect wifi or hand out a gateway/DNS —
     # NetworkManager's built-in "shared" mode was considered instead, but it
     # also enables NAT/forwarding, which would open exactly the internet path
     # this link is designed not to have.
