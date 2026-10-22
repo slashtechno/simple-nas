@@ -12,7 +12,8 @@
     find /home/{{ ansible_user }}/simple-nas/cloudflared \
       -maxdepth 1 -name '*.json' -exec cp {} {{ nas_base_dir }}/cloudflared/ \;
   when: existing_creds.matched == 0
-  ignore_errors: true   # no-op if old dir doesn't exist
+  changed_when: true
+  ignore_errors: true   # noqa: ignore-errors (no-op if the old dir doesn't exist)
 
 - name: Create cloudflared directory
   ansible.builtin.file:

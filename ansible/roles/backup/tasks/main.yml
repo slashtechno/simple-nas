@@ -58,6 +58,7 @@
   failed_when:
     - restic_init.rc != 0
     - "'already exists' not in restic_init.stderr"
+  become: true
   become_user: "{{ ansible_user }}"
 
 # The cloud repo needs rclone's one-time OAuth setup first (see BACKUPS.md) —
@@ -69,6 +70,7 @@
   register: rclone_remotes
   changed_when: false
   failed_when: false
+  become: true
   become_user: "{{ ansible_user }}"
 
 - name: Initialize cloud restic repository (idempotent)
@@ -83,6 +85,7 @@
   failed_when:
     - restic_cloud_init.rc != 0
     - "'already exists' not in restic_cloud_init.stderr"
+  become: true
   become_user: "{{ ansible_user }}"
   when: "'gdrive-nas:' in rclone_remotes.stdout"
 

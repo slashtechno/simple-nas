@@ -118,6 +118,7 @@
         # existing DNS records — so they only go with an explicit remove_data=true.
         - name: Wipe Cloudflared tunnel credentials (only when remove_data=true)
           ansible.builtin.shell: rm -f {{ cloudflared_dir }}/*.json
+          changed_when: true
           when: remove_data | bool
 
     - name: Stop and remove backup-status
@@ -172,6 +173,7 @@
 
         - name: Reload udev rules
           ansible.builtin.command: udevadm control --reload-rules
+          changed_when: true
 
     - name: Remove direct Ethernet link config
       tags: [network]

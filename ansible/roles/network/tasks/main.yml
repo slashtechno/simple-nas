@@ -59,7 +59,7 @@
       community.general.nmcli:
         conn_name: direct-link
         state: absent
-      ignore_errors: true
+      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)
 
     - name: Re-enable auto-connect on the default eth0 DHCP profile
       community.general.nmcli:
@@ -68,7 +68,7 @@
         ifname: "{{ direct_link_iface }}"
         autoconnect: true
         state: present
-      ignore_errors: true
+      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)
 
     - name: Remove direct-link dnsmasq config
       ansible.builtin.file:
@@ -82,4 +82,4 @@
         name: dnsmasq
         state: stopped
         enabled: false
-      ignore_errors: true
+      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)

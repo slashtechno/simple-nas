@@ -31,7 +31,7 @@
     state: mounted
   loop: "{{ nas_drives }}"
 
-- name: Set ownership of mounted drives to ansible user
+- name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:
     path: "{{ item.mount }}"
     owner: "{{ ansible_user }}"
