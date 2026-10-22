@@ -99,7 +99,7 @@
             project_src: "{{ cloudflared_dir }}"
             state: absent
             remove_volumes: false
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove Cloudflared compose/config files (credentials kept unless remove_data=true)
           ansible.builtin.file:
@@ -155,7 +155,7 @@
             name: nas-drive-remount.service
             state: stopped
             enabled: false
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove remount systemd unit
           ansible.builtin.file:
@@ -182,7 +182,7 @@
           community.general.nmcli:
             conn_name: direct-link
             state: absent
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Re-enable auto-connect on the default eth0 DHCP profile
           community.general.nmcli:
@@ -191,20 +191,20 @@
             ifname: "{{ direct_link_iface }}"
             autoconnect: true
             state: present
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove direct-link dnsmasq config
           ansible.builtin.file:
             path: /etc/dnsmasq.d/direct-link.conf
             state: absent
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Stop and disable dnsmasq
           ansible.builtin.systemd:
             name: dnsmasq
             state: stopped
             enabled: false
-          ignore_errors: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
     # ── Shared infrastructure (only removed when ALL services are gone) ────
 
@@ -214,7 +214,7 @@
         name: "{{ nas_network }}"
         state: absent
         force: true
-      ignore_errors: true
+      ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
     - name: Remove NAS base directory (only if empty)
       tags: [always]

@@ -5,8 +5,6 @@ skip_list:
   # Role-private names such as `register: restic_init` are not worth a prefix; the shared
   # variables in group_vars are global by design.
   - var-naming[no-role-prefix]
-  # Teardown and migration steps are best effort by design: the thing they remove may not exist.
-  - ignore-errors
   # compose_service and teardown_service are shared task files; the service name is the point.
   - name[template]
   # Renaming backup-status would touch the role directory, site.yml, teardown.yml and the docs.
