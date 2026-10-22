@@ -2,7 +2,7 @@
 
 For AI agents, not humans. Keep it short; detail lives in the linked docs.
 
-- Priorities, in order: reliability (especially backups), then the owner understanding, changing and extending this without an AI agent. Choose the plain, readable option over the clever one; no abstraction without a current use.
+- Priorities, in order: reliability (especially backups), then the owner understanding, changing and extending this without an AI agent. Choose the plain, readable option over the clever one. Prefer a well-known, documented tool over hand-rolled code; add no abstraction of our own without a current use.
 - Follow the `maintaining-codebases` skill for refactors and docs if you have it; if not, the rules in this file apply.
 - Everything is deployed by Ansible from `ansible/`; one role per service under `ansible/roles/`. See [ansible/README.md](./ansible/README.md).
 - Services are opt-in via `<name>_enabled` in `site.yml`. Compose-only services reuse `roles/compose_service`; teardown reuses `teardown_service.yml`.

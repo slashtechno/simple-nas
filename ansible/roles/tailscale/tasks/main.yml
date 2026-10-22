@@ -49,3 +49,20 @@
     - not (tailscale_funnel_enabled | bool)
     - tailscale_funnel_is_on
   changed_when: true
+
+# Helper for toggling the Copyparty funnel by hand: copyparty-funnel.sh enable|disable|status
+- name: Create scripts directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/scripts"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Install copyparty-funnel.sh
+  ansible.builtin.template:
+    src: copyparty-funnel.sh.j2
+    dest: "{{ nas_base_dir }}/scripts/copyparty-funnel.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"

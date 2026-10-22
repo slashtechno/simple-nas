@@ -18,7 +18,6 @@
     - backup-restic-local.sh
     - backup-restic-cloud.sh
     - backup-services.sh
-    - copyparty-funnel.sh
     - restic-check.sh
 
 - name: Deploy backup scripts with no deployment-specific paths
