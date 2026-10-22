@@ -139,11 +139,34 @@
             - nas-backup-cloud
             - nas-restic-check
 
-        # Also removes copyparty-funnel.sh, which the tailscale role installs here.
-        - name: Remove scripts directory
+        # Removes only the files these roles install. The dump scripts in dump.d
+        # belong to the immich and gitea roles and go with their services; wiping
+        # the whole directory would leave --tags backup redeploys without them,
+        # so backups would "succeed" with no database dump.
+        # copyparty-funnel.sh is installed by the tailscale role.
+        - name: Remove backup scripts
           ansible.builtin.file:
-            path: "{{ nas_base_dir }}/scripts"
+            path: "{{ nas_scripts_dir }}/{{ item }}"
             state: absent
+          loop:
+            - backup-restic-local.sh
+            - backup-restic-cloud.sh
+            - backup-services.sh
+            - restic-check.sh
+            - restore-services.sh
+            - backup-paths.txt
+            - copyparty-funnel.sh
+
+        # rmdir only succeeds when the directory is empty, like the nas_base_dir step at the end.
+        - name: Remove the dump.d and scripts directories (only if empty)
+          ansible.builtin.command:
+            cmd: rmdir "{{ item }}"
+          loop:
+            - "{{ service_dump_scripts_dir }}"
+            - "{{ nas_scripts_dir }}"
+          register: rmdir_scripts
+          changed_when: rmdir_scripts.rc == 0
+          failed_when: false   # a non-empty or missing directory is fine
 
     # Only the drive-remount udev rule/service the storage role installs.
     # Does NOT touch fstab entries, mount points, or drive ownership — those

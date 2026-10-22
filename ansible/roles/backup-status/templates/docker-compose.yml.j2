@@ -23,7 +23,7 @@ services:
       HOST_RESTIC_CLOUD_REPOSITORY: "{{ restic_cloud_repository }}"
       HOST_RESTIC_LOCAL_RETENTION: "{{ restic_local_retention }}"
       HOST_RESTIC_CLOUD_RETENTION: "{{ restic_cloud_retention }}"
-      HOST_SCRIPTS_DIR: "{{ nas_base_dir }}/scripts"
+      HOST_SCRIPTS_DIR: "{{ nas_scripts_dir }}"
     ports:
       - "{{ backup_status_port }}:8080"
     networks:

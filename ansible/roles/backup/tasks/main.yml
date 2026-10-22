@@ -1,7 +1,7 @@
 ---
 - name: Create scripts directory
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}/scripts"
+    path: "{{ nas_scripts_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -10,7 +10,7 @@
 - name: Render backup scripts that reference deployment-specific paths
   ansible.builtin.template:
     src: "{{ item }}.j2"
-    dest: "{{ nas_base_dir }}/scripts/{{ item }}"
+    dest: "{{ nas_scripts_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
@@ -23,7 +23,7 @@
 - name: Deploy backup scripts with no deployment-specific paths
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ nas_base_dir }}/scripts/{{ item }}"
+    dest: "{{ nas_scripts_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
@@ -33,7 +33,7 @@
 - name: Render backup-paths.txt
   ansible.builtin.template:
     src: backup-paths.txt.j2
-    dest: "{{ nas_base_dir }}/scripts/backup-paths.txt"
+    dest: "{{ nas_scripts_dir }}/backup-paths.txt"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
@@ -96,7 +96,7 @@
     minute: "0"
     hour: "2"
     job: >-
-      /bin/bash {{ nas_base_dir }}/scripts/backup-restic-local.sh
+      /bin/bash {{ nas_scripts_dir }}/backup-restic-local.sh
       >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
       logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
 
@@ -108,7 +108,7 @@
     hour: "4"
     weekday: "0"
     job: >-
-      /bin/bash {{ nas_base_dir }}/scripts/backup-restic-cloud.sh
+      /bin/bash {{ nas_scripts_dir }}/backup-restic-cloud.sh
       >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
       logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
@@ -120,6 +120,6 @@
     hour: "3"
     weekday: "3"
     job: >-
-      /bin/bash {{ nas_base_dir }}/scripts/restic-check.sh
+      /bin/bash {{ nas_scripts_dir }}/restic-check.sh
       >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
       logger -t nas-backup "restic-check failed or {{ backup_drive }} not mounted"

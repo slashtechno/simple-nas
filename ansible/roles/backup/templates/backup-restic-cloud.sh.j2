@@ -38,6 +38,13 @@ if [ ! -f "$BACKUP_PATHS_FILE" ]; then
 fi
 mapfile -t BACKUP_PATHS < <(grep -v '^[[:space:]]*\(#\|$\)' "$BACKUP_PATHS_FILE")
 
+# Extra excludes (restic_cloud_excludes in group_vars) for the paths above
+EXCLUDE_ARGS=(
+{% for path in restic_cloud_excludes %}
+  --exclude "{{ path }}"
+{% endfor %}
+)
+
 LOG_FILE="{{ backup_logs_dir }}/restic-cloud-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -67,7 +74,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
   for path in "${BACKUP_PATHS[@]}"; do
     if [ -d "$path" ]; then
       echo "Backing up $path..."
-      restic "${RESTIC_RCLONE_OPT[@]}" backup "$path" --tag weekly --verbose
+      restic "${RESTIC_RCLONE_OPT[@]}" backup "$path" "${EXCLUDE_ARGS[@]}" --tag weekly --verbose
       rc=$?
       [ "$rc" -eq 3 ] && any_partial=true
       [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && cloud_backup_failed=true

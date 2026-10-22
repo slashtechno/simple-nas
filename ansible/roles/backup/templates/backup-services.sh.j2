@@ -1,16 +1,21 @@
 #!/bin/bash
 set -euo pipefail
 
-# Creates Immich DB dump and Gitea dump in {{ service_dumps_dir }}/
-# Keeps last 3 dumps of each type. Called automatically by restic backup scripts.
+# Runs every dump script in {{ service_dump_scripts_dir }}/ and writes the dumps to
+# {{ service_dumps_dir }}/. Called by the restic backup scripts before they run.
 #
-# Only these two services need a logical dump: Immich's Postgres and Gitea's
-# database can be inconsistent if copied while running. Everything else
-# (Copyparty, pics, Homebridge, Garage, Crafty) is plain files that restic
-# copies directly. Add a block here only for a service with a live database.
-# restore-services.sh and BACKUPS.md depend on the dump file names below.
+# Each service with a live database installs its own script there from its role
+# (roles/immich/files/dump.sh, roles/gitea/files/dump.sh), so a service that is
+# not deployed leaves no script. A script receives the dump directory as $1 and
+# names its output <script name>-*, e.g. immich.sh writes immich-db-*.sql.gz.
+# Services that are plain files (Copyparty, pics, Homebridge, Garage, Crafty)
+# need no script: restic copies them directly.
+#
+# The loop below is deliberate, not run-parts: run-parts only runs names made of
+# letters, digits, _ and - (see man run-parts), so it would skip immich.sh.
 
 DUMP_DIR="${DUMP_DIR:-{{ service_dumps_dir }}}"
+SCRIPTS_DIR="{{ service_dump_scripts_dir }}"
 
 # Refuse to run if the backup drive isn't mounted — otherwise this silently
 # creates $DUMP_DIR (and writes DB dumps into it) on the root filesystem.
@@ -20,65 +25,18 @@ if ! mountpoint -q {{ backup_drive }}; then
 fi
 
 mkdir -p "$DUMP_DIR"
-timestamp() { date +%Y%m%dT%H%M%S; }
+shopt -s nullglob
 
-# Immich DB dump
-IMMICH_DB_CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
-# DB role inside Postgres for Immich (default matches docker-compose `DB_USERNAME`)
-IMMICH_DB_USER="${IMMICH_DB_USER:-immich}"
-IMMICH_DB_PASSWORD="${IMMICH_DB_PASSWORD:-}" # optional; read from environment if provided
-IMMICH_DUMP="$DUMP_DIR/immich-db-$(timestamp).sql.gz"
+failed=false
+for script in "$SCRIPTS_DIR"/*.sh; do
+  name="$(basename "$script" .sh)"
+  echo "Running dump script: $name"
+  bash "$script" "$DUMP_DIR" || { echo "ERROR: dump script $name failed" >&2; failed=true; }
+  # Keep only the last 3 dumps of this service
+  find "$DUMP_DIR" -maxdepth 1 -name "${name}-*" -type f | sort -r | tail -n +4 | xargs -r rm -f
+done
 
-if docker ps -q -f name="^${IMMICH_DB_CONTAINER}$" >/dev/null 2>&1; then
-  echo "Dumping Immich DB..."
-  # Run pg_dumpall inside the container as root and specify the DB user with -U.
-  # If a password is provided via IMMICH_DB_PASSWORD, pass it as PGPASSWORD to avoid prompts.
-  if [ -n "$IMMICH_DB_PASSWORD" ]; then
-    if ! docker exec -t -e PGPASSWORD="$IMMICH_DB_PASSWORD" "$IMMICH_DB_CONTAINER" \
-         pg_dumpall --clean --if-exists --username="$IMMICH_DB_USER" | gzip > "$IMMICH_DUMP"; then
-      echo "Error: Immich DB dump failed (check DB credentials)" >&2
-      exit 1
-    fi
-  else
-    if ! docker exec -t "$IMMICH_DB_CONTAINER" \
-         pg_dumpall --clean --if-exists --username="$IMMICH_DB_USER" | gzip > "$IMMICH_DUMP"; then
-      echo "Error: Immich DB dump failed (no password provided)" >&2
-      exit 1
-    fi
-  fi
-else
-  echo "Warning: Immich container not running" >&2
+if $failed; then
+  exit 1
 fi
-
-# Gitea dump
-GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
-GITEA_APP_INI="${GITEA_APP_INI:-/data/gitea/conf/app.ini}"
-if docker ps -q -f name="^${GITEA_CONTAINER}$" >/dev/null 2>&1; then
-  echo "Creating Gitea dump..."
-  # Run gitea dump with explicit config + target so we get deterministic output.
-  # Running as the git user matches the container's runtime UID/GID defaults.
-  if docker exec --user git "$GITEA_CONTAINER" test -r "$GITEA_APP_INI"; then
-        GITEA_DUMP_TARGET="/tmp/gitea-dump-$(timestamp).zip"
-    if docker exec --user git "$GITEA_CONTAINER" gitea dump \
-         --config "$GITEA_APP_INI" \
-         --tempdir /tmp \
-          --file "$GITEA_DUMP_TARGET" \
-         --skip-log; then
-      docker cp "$GITEA_CONTAINER:$GITEA_DUMP_TARGET" "$DUMP_DIR/"
-      docker exec "$GITEA_CONTAINER" rm -f "$GITEA_DUMP_TARGET"
-      echo "Gitea dump written to $DUMP_DIR/$(basename "$GITEA_DUMP_TARGET")"
-    else
-      echo "Warning: gitea dump failed" >&2
-    fi
-  else
-    echo "Warning: gitea config not readable at $GITEA_APP_INI; skipping gitea dump" >&2
-  fi
-else
-  echo "Warning: Gitea container not running" >&2
-fi
-
-# Keep only last 3 dumps of each type
-find "$DUMP_DIR" -name 'immich-db-*.sql.gz' -type f | sort -r | tail -n +4 | xargs -r rm -f
-find "$DUMP_DIR" -name 'gitea-dump-*.zip' -type f | sort -r | tail -n +4 | xargs -r rm -f
-
 echo "Service dumps complete in $DUMP_DIR"

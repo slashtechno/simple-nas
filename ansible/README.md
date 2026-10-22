@@ -193,7 +193,8 @@ Config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero fa
 5. Add `- role: myservice` + tag + `when: myservice_enabled | default(false)` to `site.yml` (opt-in; use `true` only for core services)
 6. Add a `myservice_*` entry to `teardown.yml` (`import_tasks: teardown_service.yml` with `service` and `data_paths`)
 7. Add a `cloudflared_ingress` rule if it needs a public hostname
-8. `ansible-playbook site.yml --tags myservice --ask-vault-pass`
+8. Only if it has a live database: add `files/dump.sh` and install it into `service_dump_scripts_dir` (copy `roles/gitea`). See [BACKUPS.md](../BACKUPS.md). Plain-file data needs nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
+9. `ansible-playbook site.yml --tags myservice --ask-vault-pass`
 
 ---
 

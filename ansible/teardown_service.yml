@@ -9,6 +9,11 @@
     remove_volumes: false
   ignore_errors: true   # noqa: ignore-errors (the project may already be gone)
 
+- name: Remove {{ service }} dump script (only exists for services with a database)
+  ansible.builtin.file:
+    path: "{{ service_dump_scripts_dir }}/{{ service }}.sh"
+    state: absent
+
 - name: Remove {{ service }} compose directory
   ansible.builtin.file:
     path: "{{ nas_base_dir }}/{{ service }}"
