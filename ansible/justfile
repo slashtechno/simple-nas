@@ -39,6 +39,6 @@ deploy tags='':
 preview tags='':
     ansible-playbook site.yml --check --diff --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
 
-# Remove services' containers and deployed files, keeping data (wiping data is deliberately not a recipe)
-teardown tags='':
-    ansible-playbook teardown.yml --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
+# Remove containers and deployed files, keeping data. Tags are required: `just teardown crafty`, or `just teardown all` (this also removes the backup cron jobs). Wiping data is deliberately not a recipe.
+teardown tags:
+    ansible-playbook teardown.yml --ask-vault-pass --tags {{ tags }}

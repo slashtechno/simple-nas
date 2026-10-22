@@ -185,6 +185,7 @@ Common commands live in `ansible/justfile`. [`just`](https://just.systems) is a 
 | `just syntax` | Both playbooks parse |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
 | `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags` |
+| `just teardown <tags>` | `teardown.yml --tags <tags>`; tags are required (`all` for everything, which also removes the backup cron jobs). Keeps data |
 | `just preview [tags]` | The same with `--check --diff`, which changes nothing |
 
 Lint config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
