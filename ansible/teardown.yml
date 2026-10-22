@@ -35,156 +35,61 @@
 
     - name: Stop and remove Immich
       tags: [immich]
-      block:
-        - name: Down Immich compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/immich"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Immich compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/immich"
-            state: absent
-
-        - name: Wipe Immich data (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - "{{ immich_upload_location }}"
-            - "{{ immich_db_data_location }}"
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: immich
+        data_paths:
+          - "{{ immich_upload_location }}"
+          - "{{ immich_db_data_location }}"
 
     - name: Stop and remove Copyparty
       tags: [copyparty]
-      block:
-        - name: Down Copyparty compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/copyparty"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Copyparty compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/copyparty"
-            state: absent
-
-        - name: Wipe Copyparty data (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - "{{ copyparty_files_dir }}"
-            - "{{ copyparty_config_dir }}"
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: copyparty
+        data_paths:
+          - "{{ copyparty_files_dir }}"
+          - "{{ copyparty_config_dir }}"
 
     - name: Stop and remove Gitea
       tags: [gitea]
-      block:
-        - name: Down Gitea compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/gitea"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Gitea compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/gitea"
-            state: absent
-
-        - name: Wipe Gitea data (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ gitea_data_dir }}"
-            state: absent
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: gitea
+        data_paths:
+          - "{{ gitea_data_dir }}"
 
     - name: Stop and remove pics
       tags: [pics]
-      block:
-        - name: Down pics compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/pics"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove pics compose directory (includes the cloned source)
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/pics"
-            state: absent
-
-        - name: Wipe pics data, including its database (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ pics_data_dir }}"
-            state: absent
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: pics
+        data_paths:
+          - "{{ pics_data_dir }}"
 
     - name: Stop and remove Homebridge
       tags: [homebridge]
-      block:
-        - name: Down Homebridge compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/homebridge"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Homebridge compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/homebridge"
-            state: absent
-
-        - name: Wipe Homebridge data (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ homebridge_config_dir }}"
-            state: absent
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: homebridge
+        data_paths:
+          - "{{ homebridge_config_dir }}"
 
     - name: Stop and remove Garage
       tags: [garage]
-      block:
-        - name: Down Garage compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/garage"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Garage compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/garage"
-            state: absent
-
-        - name: Wipe Garage data (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ garage_data_dir }}"
-            state: absent
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: garage
+        data_paths:
+          - "{{ garage_data_dir }}"
 
     - name: Stop and remove Crafty
       tags: [crafty]
-      block:
-        - name: Down Crafty compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/crafty"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove Crafty compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/crafty"
-            state: absent
-
-        - name: Wipe Crafty data, including every world and backup (only when remove_data=true)
-          ansible.builtin.file:
-            path: "{{ crafty_data_dir }}"
-            state: absent
-          when: remove_data | bool
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: crafty
+        data_paths:
+          - "{{ crafty_data_dir }}"
 
     - name: Stop and remove Cloudflared
       tags: [cloudflared]
@@ -217,18 +122,9 @@
 
     - name: Stop and remove backup-status
       tags: [backup-status]
-      block:
-        - name: Down backup-status compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/backup-status"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true
-
-        - name: Remove backup-status compose directory
-          ansible.builtin.file:
-            path: "{{ nas_base_dir }}/backup-status"
-            state: absent
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: backup-status
 
     - name: Remove backup cron jobs and scripts
       tags: [backup]

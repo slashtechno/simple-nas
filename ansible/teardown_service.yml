@@ -1,0 +1,22 @@
+---
+# Removes one compose service. Called from teardown.yml with:
+#   service: directory name under nas_base_dir (also the compose project)
+#   data_paths: directories deleted only when remove_data=true (default: none)
+- name: Down {{ service }} compose project
+  community.docker.docker_compose_v2:
+    project_src: "{{ nas_base_dir }}/{{ service }}"
+    state: absent
+    remove_volumes: false
+  ignore_errors: true
+
+- name: Remove {{ service }} compose directory
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/{{ service }}"
+    state: absent
+
+- name: Wipe {{ service }} data (only when remove_data=true)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ data_paths | default([]) }}"
+  when: remove_data | bool
