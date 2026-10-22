@@ -22,7 +22,8 @@ Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). 
 | Service data under `fast_drive/docker` (Gitea, pics, Homebridge, Garage, Crafty, Copyparty config) | Yes | Only Copyparty config |
 | Immich database | Dump only (raw Postgres dir excluded) | Dump only |
 | Gitea database and repos | Dump, plus raw data (SSH host keys excluded) | Dump only |
-| Compose files, scripts (`/opt/nas`), rclone config, restic password | No | Yes |
+| Compose files and scripts (`/opt/nas`), rclone config | No | Yes |
+| Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `vault.yml` (see Disaster recovery). |
 
 Where each is declared:
 - Local paths and excludes: `ansible/roles/backup/templates/backup-restic-local.sh.j2`.
@@ -31,7 +32,7 @@ Where each is declared:
 
 Caveats:
 - Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` folder is backed up too.
-- The local backup lists `main_drive` and `fast_drive` separately, so it keeps covering service data after they become different drives. Changing that path list starts a new restic snapshot group, and the old snapshots are no longer pruned by `forget`.
+- The local backup lists `main_drive` and `fast_drive` separately, so it keeps covering service data after they become different drives. `restic forget` groups snapshots by host and paths, so changing the path list starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget <id> --prune`).
 - To add a service to the cloud backup, add its data dir to `backup-paths.txt.j2`.
 
 ---
@@ -164,7 +165,7 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ## Disaster recovery (both drives fail)
 
-1. Re-flash Pi OS, re-run `ansible-playbook site.yml`
+1. Re-flash Pi OS, re-run `ansible-playbook site.yml`. This needs `vault.yml` and its vault password, which hold `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.
 2. Pull from Google Drive:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password

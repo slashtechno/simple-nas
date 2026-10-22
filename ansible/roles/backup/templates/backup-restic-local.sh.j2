@@ -53,8 +53,9 @@ done
   # Back up every drive that holds data, plus the dumps. fast_drive is listed
   # because service data (docker/gitea, docker/crafty, ...) lives there; today it
   # is the same drive as main_drive, so `unique` collapses them. Keep the path
-  # list stable: restic forget groups snapshots by path, so changing it
-  # starts a new group and leaves the old snapshots unpruned.
+  # list stable: restic forget groups snapshots by host and paths, so changing
+  # it starts a new group and the old group's last snapshots stay until you
+  # forget them by hand.
   restic backup {{ ([main_drive, fast_drive, service_dumps_dir] | unique) | join(' ') }} \
     --exclude "{{ main_drive }}/immich_model_cache" \
     --exclude "{{ main_drive }}/**/.cache" \

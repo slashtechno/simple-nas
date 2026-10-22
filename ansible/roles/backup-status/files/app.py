@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-"""Read-only backup status dashboard.
+"""Read-only backup status dashboard (the "Snapshot Deck").
 
-Serves a static page plus two JSON endpoints (/api/status, /api/snapshots)
-built by shelling out to `restic --no-lock` (read-only flag: restic never
-takes a repo lock) and parsing the existing backup role's log files. This
-process holds no write access anywhere — the repo and password file are
-bind-mounted read-only by docker-compose — so there is nothing here that
-can delete a snapshot or touch a backup; those actions only ever render an
-SSH command in the UI for a human to run themselves.
+Serves index.html plus two JSON endpoints, /api/status and /api/snapshots,
+built from `restic --no-lock` and the backup role's log files. The repo and
+password file are mounted read-only, so nothing here can change a backup;
+destructive actions are only shown in the UI as SSH commands to run by hand.
 
-No framework: two GET endpoints and two static files don't need one.
+Contract with roles/backup: snapshot tags `daily`/`weekly`, the log names
+below, and the "=== Complete:" line a script prints only when it succeeded.
 """
 
 import datetime
@@ -25,16 +23,13 @@ import time
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Container-internal paths (our own convention, fixed by the Dockerfile/
-# compose mount targets — not host paths, so nothing here is a "hardcoded
-# drive name"; the actual host paths only ever live in group_vars/nas).
+# Container paths, fixed by the compose mounts.
 RESTIC_REPO_PATH = os.environ["RESTIC_REPO_PATH"]
 RESTIC_PASSWORD_FILE = os.environ["RESTIC_PASSWORD_FILE"]
 BACKUP_LOGS_DIR = os.environ["BACKUP_LOGS_DIR"]
 
-# Real host-side values, templated in by Ansible from group_vars/nas — used
-# only for display and for the SSH commands the UI generates, since those
-# commands run on the Pi itself, not inside this container.
+# Host-side values from group_vars, used only to build the SSH commands shown
+# in the UI (they run on the Pi, not in this container).
 NAS_SSH_USER = os.environ["NAS_SSH_USER"]
 HOST_BACKUP_DRIVE = os.environ["HOST_BACKUP_DRIVE"]
 HOST_RESTIC_REPO_PATH = os.environ["HOST_RESTIC_REPO_PATH"]
@@ -49,6 +44,9 @@ CACHE_TTL_SECONDS = 30
 
 LOCAL_STALE_AFTER_SECONDS = 36 * 3600       # daily job — allow a missed run
 WEEKLY_STALE_AFTER_SECONDS = 9 * 24 * 3600  # weekly jobs — allow a missed week
+
+# Printed by the backup scripts only after every step succeeded.
+COMPLETE_MARKER = "=== Complete:"
 
 _cache_lock = threading.Lock()
 _cache = {}  # key -> (expires_at_monotonic, value)
@@ -65,10 +63,7 @@ def cached(key, build):
     return value
 
 
-def run_restic_lines(args, timeout=20):
-    """For subcommands like `list locks` that print one ID per line, not JSON
-    — even with --json, `restic list` emits JSON Lines, not a single
-    document, so json.loads() on the whole output would fail."""
+def restic_output(args, timeout=20):
     env = dict(os.environ)
     env["RESTIC_REPOSITORY"] = RESTIC_REPO_PATH
     env["RESTIC_PASSWORD_FILE"] = RESTIC_PASSWORD_FILE
@@ -80,22 +75,22 @@ def run_restic_lines(args, timeout=20):
         timeout=timeout,
         check=True,
     )
-    return [line for line in result.stdout.splitlines() if line.strip()]
+    return result.stdout
 
 
-def run_restic(args, timeout=20):
-    env = dict(os.environ)
-    env["RESTIC_REPOSITORY"] = RESTIC_REPO_PATH
-    env["RESTIC_PASSWORD_FILE"] = RESTIC_PASSWORD_FILE
-    result = subprocess.run(
-        ["restic", "--no-lock", "--json", *args],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-        check=True,
-    )
-    return json.loads(result.stdout)
+def run_restic(args):
+    return json.loads(restic_output(["--json", *args]))
+
+
+def run_restic_lines(args):
+    """One ID per line. `restic list --json` emits JSON Lines, not one
+    document, so json.loads() on the whole output would fail."""
+    return [line for line in restic_output(args).splitlines() if line.strip()]
+
+
+def read_text(path):
+    with open(path, "r", errors="replace") as f:
+        return f.read()
 
 
 def human_bytes(n):
@@ -119,27 +114,20 @@ def newest_matching(pattern):
 
 
 def parse_restic_time(ts):
-    """Parse restic's RFC3339Nano snapshot timestamp into an aware datetime.
+    """Parse restic's timestamp into an aware datetime.
 
-    Go emits up to 9 fractional digits; Python's fromisoformat wants at most
-    6, so trim rather than risk a version-dependent parse failure. Returns
-    a timezone-aware datetime — comparing/subtracting these is safe
-    regardless of what timezone this container itself happens to be in,
-    unlike naively using time.mktime on a naive struct_time.
+    Go emits up to 9 fractional digits; fromisoformat accepts at most 6.
     """
     ts = re.sub(r"(\.\d{6})\d*", r"\1", ts)
     return datetime.datetime.fromisoformat(ts)
 
 
 def parse_dated_job_log(glob_pattern, stale_after):
-    """Parse a backup-restic-{local,cloud}.sh.j2-style dated log file.
+    """Status of the newest dated log matching the pattern.
 
-    Success is judged by whether the script reached its final "=== Complete"
-    line, not by matching specific wording — both the clean-success and the
-    partial-success (some source files unreadable, restic exit 3) paths print
-    different text but both fall through to "=== Complete"; a real failure
-    calls `exit 1` before ever reaching it. This is tied to control flow, not
-    prose, so it doesn't need updating if the scripts' log messages change.
+    Success means the log contains COMPLETE_MARKER. A partial success (restic
+    exit 3) still reaches it; a real failure exits before. Don't grep for
+    "error": restic's own success line says "no errors were found".
     """
     path = newest_matching(glob_pattern)
     if not path:
@@ -147,13 +135,8 @@ def parse_dated_job_log(glob_pattern, stale_after):
 
     mtime = os.path.getmtime(path)
     age = time.time() - mtime
-    with open(path, "r", errors="replace") as f:
-        content = f.read()
-
-    ok = "=== Complete:" in content
-
     return {
-        "ok": ok,
+        "ok": COMPLETE_MARKER in read_text(path),
         "stale": age > stale_after,
         "last_run_human": human_ago(age),
         "detail_human": time.strftime("%a %H:%M", time.localtime(mtime)),
@@ -161,17 +144,9 @@ def parse_dated_job_log(glob_pattern, stale_after):
 
 
 def build_local_daily_status(stale_after):
-    """Derived from the actual local repo, not a log file — this container
-    has direct read access to it, so "when did the last daily snapshot
-    really land" is directly knowable rather than inferred from whatever
-    the last script invocation happened to log. A manual `restic forget`
-    or `backup` run outside the script shows up here immediately, where a
-    log-based check would miss it entirely.
-
-    Log parsing is still the only option for the cloud and integrity-check
-    jobs — see parse_dated_job_log and parse_integrity_log — since this
-    container has no cloud credentials and restic check leaves no queryable
-    trace of having run.
+    """Read from the repo itself, so manual restic runs show up too. The cloud
+    and integrity jobs can only be judged from logs: this container has no
+    cloud credentials and `restic check` leaves nothing to query.
     """
     snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
     daily_times = [
@@ -186,14 +161,14 @@ def build_local_daily_status(stale_after):
     stale = age > stale_after
     detail = latest.strftime("%a %H:%M")
 
-    # If a script attempt happened more recently than the latest snapshot
-    # and didn't complete, that's worth surfacing even though older data
-    # still exists — otherwise a currently-broken job could look fine.
+    # A failed run newer than the last snapshot would otherwise look fine.
     log_path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"))
-    if log_path and os.path.getmtime(log_path) > latest.timestamp():
-        with open(log_path, "r", errors="replace") as f:
-            if "=== Complete:" not in f.read():
-                detail += " · a more recent attempt failed"
+    if (
+        log_path
+        and os.path.getmtime(log_path) > latest.timestamp()
+        and COMPLETE_MARKER not in read_text(log_path)
+    ):
+        detail += " · a more recent attempt failed"
 
     return {
         "ok": not stale,
@@ -204,20 +179,10 @@ def build_local_daily_status(stale_after):
 
 
 def parse_integrity_log(stale_after):
-    """restic-check.sh.j2 writes one dated log file per run (like the local/
-    cloud scripts) and its success is judged by the same "=== Complete"
-    control-flow marker — not by grepping for the word "error", which used
-    to always false-positive: restic's own success line reads "no errors
-    were found", so a naive case-insensitive search for "error" matched
-    every clean run too and this status was permanently stuck on "failed".
-    """
-    result = parse_dated_job_log(
-        os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log"), stale_after
-    )
+    pattern = os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log")
+    result = parse_dated_job_log(pattern, stale_after)
     if result["ok"] is False:
-        path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log"))
-        with open(path, "r", errors="replace") as f:
-            content = f.read()
+        content = read_text(newest_matching(pattern))
         error_lines = len(re.findall(r"^error:", content, re.IGNORECASE | re.MULTILINE))
         result["detail_human"] = f"failed · {error_lines} error line(s), see log"
     return result
@@ -244,9 +209,8 @@ def build_status():
         drive["free_human"] = None
         drive["detail_human"] = "check the USB connection, then: sudo mount -a"
 
-    # A stale lock (e.g. left behind by a run interrupted when the drive
-    # dropped) silently blocks forget/prune while backup itself can still
-    # succeed — surfacing this saves a manual `restic list locks` SSH trip.
+    # A stale lock (e.g. from a run cut off by a drive dropout) blocks
+    # forget/prune while backups still succeed.
     lock_count = 0
     if mounted:
         try:
@@ -258,13 +222,8 @@ def build_status():
 
 
 def read_cloud_snapshots_cache():
-    """The dashboard has no cloud (rclone/Google Drive) credentials of its
-    own — by design, matching the local repo's read-only-mount model. The
-    cloud backup script writes this file after each successful weekly run,
-    since it already legitimately holds those credentials at that point;
-    the dashboard just reads what it left behind. Freshness is therefore
-    bounded by the weekly cloud-backup cadence, not live — which matches
-    how often that data actually changes anyway.
+    """The dashboard has no cloud credentials. backup-restic-cloud.sh writes
+    this file after each successful run, so it is only as fresh as that run.
     """
     path = os.path.join(BACKUP_LOGS_DIR, "cloud-snapshots.json")
     if not os.path.isfile(path):
@@ -277,29 +236,26 @@ def read_cloud_snapshots_cache():
 
 
 def _snapshot_row(snap, repo):
+    time = parse_restic_time(snap["time"])
     return {
         "id": snap["short_id"],
-        "time_human": parse_restic_time(snap["time"]).strftime("%b %d, %H:%M"),
+        "time_human": time.strftime("%b %d, %H:%M"),
         "tag": (snap.get("tags") or ["untagged"])[0],
         "repo": repo,
-        "_sort_time": parse_restic_time(snap["time"]).timestamp(),
+        "_sort_time": time.timestamp(),
     }
 
 
 def build_snapshots():
-    # Deliberately metadata-only (no per-snapshot `restic stats`): stats in
-    # restore-size mode walks the whole snapshot tree, which over a slow disk
-    # with a large repo can take much longer than a page load should wait —
-    # this was measured taking 30s+ per snapshot in practice, hanging the page.
+    # No per-snapshot `restic stats`: it walks the whole tree and took 30s+
+    # per snapshot on the HDD.
     local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
     cloud_snapshots = read_cloud_snapshots_cache()
 
     result = [_snapshot_row(s, "local") for s in local_snapshots]
     result += [_snapshot_row(s, "cloud") for s in cloud_snapshots]
 
-    # `restic diff` takes two snapshot IDs from the same repository, so the
-    # UI needs to know each snapshot's chronological predecessor within its
-    # own repo to offer a one-click "what changed since last time" command.
+    # prev_id: the previous snapshot in the same repo, for the UI's `restic diff`.
     for repo in ("local", "cloud"):
         repo_rows = sorted(
             (r for r in result if r["repo"] == repo), key=lambda r: r["_sort_time"]
@@ -315,24 +271,21 @@ def build_snapshots():
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
-        pass  # quiet by default; container logs stay to stdout via docker anyway
+        pass  # no per-request logging
 
-    def _json(self, payload, status=200):
-        body = json.dumps(payload).encode()
+    def _send(self, body, content_type, status=200):
         self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def _file(self, path, content_type):
-        with open(path, "rb") as f:
-            body = f.read()
-        self.send_response(200)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _json(self, payload, status=200):
+        self._send(json.dumps(payload).encode(), "application/json", status)
+
+    def _file(self, path, content_type):
+        with open(path, "rb") as f:
+            self._send(f.read(), content_type)
 
     def _index(self):
         with open(os.path.join(BASE_DIR, "index.html"), "r") as f:
@@ -346,12 +299,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             .replace("__HOST_RESTIC_CLOUD_RETENTION__", HOST_RESTIC_CLOUD_RETENTION)
             .replace("__HOST_SCRIPTS_DIR__", HOST_SCRIPTS_DIR)
         )
-        body = html.encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        self._send(html.encode(), "text/html; charset=utf-8")
 
     def do_GET(self):
         try:

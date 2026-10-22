@@ -91,3 +91,7 @@ fallback (and the long-term clean-up) at any point.
 - The restic cache (`RESTIC_CACHE_DIR`) lands on the fast drive automatically via the role map.
 - Dedup is intentionally NOT enabled: in-place edits through the mounted copyparty volume are a
   primary use-case (hardlinks share content between paths). If wanted later: reflink requires btrfs.
+
+## Backup follow-up after the drive split
+
+The local backup lists `main_drive` and `fast_drive` as separate paths. When they stop being the same drive, the first backup afterwards creates a new restic snapshot group. Once it has run, remove the old `/mnt/t7` group's snapshots by hand (`restic snapshots`, then `restic forget <id> --prune`); `forget` leaves them alone.
