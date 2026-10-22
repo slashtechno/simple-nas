@@ -5,12 +5,8 @@ set -euo pipefail
 # Usage: ./restore-services.sh immich /path/to/immich-db-*.sql.gz
 #        ./restore-services.sh gitea /path/to/gitea-dump-*.zip
 #
-# Notes (Gitea, Docker rootless best practices):
-# - Stop Gitea before restoring to ensure consistency.
-# - Use a one-off helper container with `--volumes-from gitea` to place files.
-# - Paths (rootless): app.ini -> /etc/gitea/app.ini, data -> /var/lib/gitea,
-#   repos -> /var/lib/gitea/git/repositories.
-# - After file restore, regenerate hooks: `gitea admin regenerate hooks`.
+# Gitea: the container is stopped, a one-off helper container (--volumes-from gitea)
+# replaces the data and repositories from the dump, hooks are regenerated, then it restarts.
 
 if [ $# -lt 2 ]; then
   echo "Usage: $0 <immich|gitea> <dump-file>"
@@ -28,7 +24,8 @@ fi
 case "$TARGET" in
   immich)
     IMMICH_DB_CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
-    IMMICH_DB_USER="${IMMICH_DB_USER:-postgres}"
+    # Must match POSTGRES_USER in roles/immich/templates/docker-compose.yml.j2 (and backup-services.sh).
+    IMMICH_DB_USER="${IMMICH_DB_USER:-immich}"
     
     echo "Restoring Immich DB from: $DUMPFILE"
     if [ -z "$(docker ps -q -f name="^${IMMICH_DB_CONTAINER}$")" ]; then
@@ -42,7 +39,7 @@ case "$TARGET" in
   gitea)
     GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
     GITEA_IMAGE_HELPER="${GITEA_IMAGE_HELPER:-gitea/gitea:latest}"
-    echo "Restoring Gitea (Docker, rootful) from: $DUMPFILE"
+    echo "Restoring Gitea from: $DUMPFILE"
 
     if [ -z "$(docker ps -q -f name=^${GITEA_CONTAINER}$)" ] && [ -z "$(docker ps -aq -f name=^${GITEA_CONTAINER}$)" ]; then
       echo "Error: Gitea container '$GITEA_CONTAINER' not found" >&2
@@ -96,7 +93,7 @@ case "$TARGET" in
 
     echo "Starting Gitea..."
     docker start "$GITEA_CONTAINER" >/dev/null
-    echo "Gitea restore complete (rootful). SQLite DB import attempted if dump was present."
+    echo "Gitea restore complete."
     ;;
 
   *)
