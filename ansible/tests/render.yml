@@ -1,0 +1,71 @@
+---
+# Renders every role template against the example vars and checks the result.
+# Runs on your machine only (no Pi, no vault): `just test` runs this, then
+# shellchecks the rendered scripts. It catches:
+#   - a template using a variable that isn't defined in vars.yml.example,
+#     vault.yml.example or the role's defaults/
+#   - a key in vars.yml that is missing from vars.yml.example
+#   - template syntax errors
+- name: Render all role templates against the example vars
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/.."
+    # Normally set by the inventory or by a task at deploy time.
+    ansible_user: pi
+    garage_is_first_deploy: false
+  tasks:
+    - name: Find every role's defaults and templates
+      ansible.builtin.find:
+        paths: "{{ repo }}/roles"
+        patterns: ["main.yml", "*.j2"]
+        recurse: true
+      register: found
+
+    - name: Split into defaults files and templates
+      ansible.builtin.set_fact:
+        defaults_files: "{{ found.files | map(attribute='path') | select('search', '/defaults/main.yml$') | sort }}"
+        template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
+
+    # A glob that silently matches nothing would make this whole test pass while testing nothing.
+    - name: Make sure the search found something
+      ansible.builtin.assert:
+        that:
+          - defaults_files | length > 0
+          - template_files | length > 0
+
+    - name: Load the example vars, the vault example and every role's defaults
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      loop: "{{ [repo + '/group_vars/nas/vars.yml.example', repo + '/group_vars/nas/vault.yml.example'] + defaults_files }}"
+
+    - name: Read the keys of vars.yml and vars.yml.example
+      ansible.builtin.include_vars:
+        file: "{{ item.file }}"
+        name: "{{ item.name }}"
+      loop:
+        - {file: "{{ repo }}/group_vars/nas/vars.yml", name: real_vars}
+        - {file: "{{ repo }}/group_vars/nas/vars.yml.example", name: example_vars}
+
+    - name: Every key in vars.yml must also be in vars.yml.example
+      ansible.builtin.assert:
+        that: (real_vars.keys() | list | difference(example_vars.keys() | list)) | length == 0
+        fail_msg: "In vars.yml but missing from vars.yml.example: {{ real_vars.keys() | list | difference(example_vars.keys() | list) }}"
+
+    - name: Create one output directory per role
+      ansible.builtin.file:
+        path: "{{ out_dir }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ template_files | map('dirname') | map('dirname') | map('basename') | unique | list }}"
+
+    - name: Render every template into {{ out_dir }}
+      ansible.builtin.template:
+        src: "{{ item }}"
+        dest: "{{ out_dir }}/{{ item | dirname | dirname | basename }}/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop: "{{ template_files }}"
+      loop_control:
+        label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"

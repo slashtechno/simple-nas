@@ -78,7 +78,9 @@ restic_local_paths: "{{ [main_drive, fast_drive] | unique }}"
 # roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
 # restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
 # something an earlier line excluded, e.g. ["{{ fast_drive }}/docker/crafty/logs", "!{{ fast_drive }}/docker/crafty/logs/keep.log"].
-restic_local_excludes: []
+# Crafty keeps its own backup archives here; they dedupe badly and would grow the repo.
+restic_local_excludes:
+  - "{{ crafty_data_dir }}/backups"
 # Extra paths for the cloud (weekly) backup, on top of the fixed ones in
 # roles/backup/templates/backup-paths.txt.j2 (/opt/nas, rclone config, restic
 # password file, Copyparty config). Each path is its own restic snapshot group.

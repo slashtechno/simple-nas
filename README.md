@@ -82,6 +82,7 @@ For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs 
 | Doc | Covers |
 |---|---|
 | [ansible/README.md](./ansible/README.md) | Playbooks, roles, variables, tags, adding a service |
+| [ansible/TERMS.md](./ansible/TERMS.md) | Every Ansible concept and config key this repo uses |
 | [BACKUPS.md](./BACKUPS.md) | `roles/backup`, `roles/backup-status`: schedules, restore |
 | [plans/DRIVE-MIGRATION-PLAN.md](./plans/DRIVE-MIGRATION-PLAN.md) | Planned drive upgrade and the backup steps that follow it |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

@@ -8,6 +8,16 @@
 - name: Deploy NAS
   hosts: nas
   become: true
+
+  pre_tasks:
+    # Without the vault, templates fail halfway through with a confusing "undefined variable".
+    - name: Check the vault is loaded
+      ansible.builtin.assert:
+        that: vault_restic_password is defined
+        fail_msg: "vault.yml is not loaded. Run with --ask-vault-pass (or: just deploy)."
+        quiet: true
+      tags: [always]
+
   roles:
     - role: common
       tags: [common]

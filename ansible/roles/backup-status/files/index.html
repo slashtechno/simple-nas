@@ -197,6 +197,7 @@
     { note: 'Local backup (daily job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-local.sh'` },
     { note: 'Cloud backup (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-cloud.sh'` },
     { note: 'Integrity check (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/restic-check.sh'` },
+    { note: 'Cloud integrity check (manual only; reads the index and structure, not file data)', cmd: `ssh ${target} '${cloudBase} restic check'` },
   ], 'opRun');
 
   renderCmdBlocks(document.getElementById('opsPreview'), [

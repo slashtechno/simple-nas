@@ -174,13 +174,20 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ---
 
-## Lint
+## Commands and checks
 
-```bash
-cd ansible/ && uvx ansible-lint
-```
+Common commands live in `ansible/justfile`. [`just`](https://just.systems) is a plain command runner: install it with `brew install just`, then run `just` in `ansible/` to list them. Each recipe is a short shell snippet you can read in the file.
 
-Config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
+| Command | Does |
+|---|---|
+| `just check` | Everything below; run it before committing (CI runs it too) |
+| `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard |
+| `just syntax` | Both playbooks parse |
+| `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
+| `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags` |
+| `just preview [tags]` | The same with `--check --diff`, which changes nothing |
+
+Lint config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
 
 ---
 

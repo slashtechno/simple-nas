@@ -1,0 +1,40 @@
+# Common commands. Run `just` to list them. Install: brew install just
+# (or run any recipe without installing: uvx --from rust-just just <recipe>)
+
+default:
+    @just --list
+
+# Install the Ansible collections and roles this repo needs
+deps:
+    ansible-galaxy collection install -r requirements.yml
+    ansible-galaxy role install -r requirements.yml
+
+# Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the dashboard
+lint:
+    uvx ansible-lint
+    uvx --from shellcheck-py shellcheck --severity=warning roles/*/files/*.sh
+    uvx ruff check --isolated --select F,B roles/backup-status/files
+
+# Both playbooks parse
+syntax:
+    ansible-playbook --syntax-check site.yml teardown.yml
+
+# Render every template with the example vars, then shellcheck the rendered scripts
+test:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="$(mktemp -d)"
+    ansible-playbook tests/render.yml -e "out_dir=$out"
+    uvx --from shellcheck-py shellcheck --severity=warning "$out"/*/*.sh
+    echo "Rendered templates are in $out"
+
+# Everything CI runs. Run this before committing.
+check: lint syntax test
+
+# Deploy: `just deploy` for everything, `just deploy crafty` for one service
+deploy tags='':
+    ansible-playbook site.yml --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
+
+# Preview a deploy without changing anything
+preview tags='':
+    ansible-playbook site.yml --check --diff --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
