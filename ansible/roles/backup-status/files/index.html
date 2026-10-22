@@ -155,6 +155,7 @@
     resticCloudRepository: "__HOST_RESTIC_CLOUD_REPOSITORY__",
     resticLocalRetention: "__HOST_RESTIC_LOCAL_RETENTION__",
     resticCloudRetention: "__HOST_RESTIC_CLOUD_RETENTION__",
+    resticCloudRcloneArgs: "__HOST_RESTIC_CLOUD_RCLONE_ARGS__",
     scriptsDir: "__HOST_SCRIPTS_DIR__",
   };
 
@@ -180,6 +181,8 @@
   const resticEnv = (repoPath) => `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
   const localBase = resticEnv(NAS_CONFIG.resticRepoPath);
   const cloudBase = resticEnv(NAS_CONFIG.resticCloudRepository);
+  // Same throttle the cloud backup script uses; without it Google Drive answers 403 RATE_LIMIT_EXCEEDED.
+  const cloudRestic = `${cloudBase} restic -o "rclone.args=${NAS_CONFIG.resticCloudRcloneArgs}"`;
 
   // Renders a list of {note, cmd} pairs as copy-ready blocks, shared by the
   // three "Manual operations" groups and the per-snapshot modal.
@@ -197,14 +200,14 @@
     { note: 'Local backup (daily job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-local.sh'` },
     { note: 'Cloud backup (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/backup-restic-cloud.sh'` },
     { note: 'Integrity check (weekly job)', cmd: `ssh ${target} 'bash ${NAS_CONFIG.scriptsDir}/restic-check.sh'` },
-    { note: 'Cloud integrity check (manual only; reads the index and structure, not file data)', cmd: `ssh ${target} '${cloudBase} restic check'` },
+    { note: 'Cloud integrity check (manual only; reads the index and structure, not file data)', cmd: `ssh ${target} '${cloudRestic} check'` },
   ], 'opRun');
 
   renderCmdBlocks(document.getElementById('opsPreview'), [
     { note: `Local — shows what ${NAS_CONFIG.resticLocalRetention} would remove, deletes nothing`,
       cmd: `ssh ${target} '${localBase} restic forget ${NAS_CONFIG.resticLocalRetention} --dry-run'` },
     { note: `Cloud — shows what ${NAS_CONFIG.resticCloudRetention} would remove, deletes nothing`,
-      cmd: `ssh ${target} '${cloudBase} restic forget ${NAS_CONFIG.resticCloudRetention} --dry-run'` },
+      cmd: `ssh ${target} '${cloudRestic} forget ${NAS_CONFIG.resticCloudRetention} --dry-run'` },
   ], 'opPreview');
 
   renderCmdBlocks(document.getElementById('opsSearch'), [
@@ -216,31 +219,31 @@
     const id = row.dataset.id;
     const prevId = row.dataset.prevId;
     const repoPath = row.dataset.repo === 'cloud' ? NAS_CONFIG.resticCloudRepository : NAS_CONFIG.resticRepoPath;
-    const base = resticEnv(repoPath);
+    const resticCmd = row.dataset.repo === 'cloud' ? cloudRestic : `${resticEnv(repoPath)} restic`;
 
     modalTitle.textContent = `Snapshot ${id}`;
     modalSub.textContent = `${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
 
     const blocks = [
       { note: 'List every file this snapshot contains',
-        cmd: `ssh ${target} '${base} restic ls ${id}'` },
+        cmd: `ssh ${target} '${resticCmd} ls ${id}'` },
     ];
     if (prevId && prevId !== 'null') {
       blocks.push({ note: `What changed since the previous snapshot (${prevId})`,
-        cmd: `ssh ${target} '${base} restic diff ${prevId} ${id}'` });
+        cmd: `ssh ${target} '${resticCmd} diff ${prevId} ${id}'` });
     }
     blocks.push(
       { note: 'Extract a single file — replace &lt;path&gt; with one from `restic ls` above; prints to stdout',
-        cmd: `ssh ${target} '${base} restic dump ${id} &lt;path&gt;'` },
+        cmd: `ssh ${target} '${resticCmd} dump ${id} &lt;path&gt;'` },
       { note: 'Restore into &lt;path&gt; (leaves originals untouched) — pick somewhere with room: ' +
         '/tmp is tmpfs (RAM, only a couple GB) and / is often nearly full, so prefer a spot on ' +
         'one of the data drives (check with df -h)',
-        cmd: `ssh ${target} '${base} restic restore ${id} --target &lt;path&gt;'` },
+        cmd: `ssh ${target} '${resticCmd} restore ${id} --target &lt;path&gt;'` },
       { note: 'Or stream it straight to THIS machine instead (e.g. a USB drive plugged into your ' +
         'laptop) — never touches the Pi\'s disk. Replace &lt;path&gt; with a local destination file',
-        cmd: `ssh ${target} '${base} restic dump ${id} / --archive tar' &gt; &lt;path&gt;/snapshot-${id}.tar` },
+        cmd: `ssh ${target} '${resticCmd} dump ${id} / --archive tar' &gt; &lt;path&gt;/snapshot-${id}.tar` },
       { note: 'Permanently delete this snapshot and prune its data',
-        cmd: `ssh ${target} '${base} restic forget ${id} --prune'`, danger: true },
+        cmd: `ssh ${target} '${resticCmd} forget ${id} --prune'`, danger: true },
     );
     renderCmdBlocks(modalBody, blocks, 'modalCmd');
     overlay.showModal();

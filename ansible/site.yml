@@ -10,11 +10,12 @@
   become: true
 
   pre_tasks:
-    # Without the vault, templates fail halfway through with a confusing "undefined variable".
+    # Catches a missing or incomplete vault.yml. (An encrypted vault with no password given
+    # fails earlier, when Ansible loads the variables: use --ask-vault-pass or `just deploy`.)
     - name: Check the vault is loaded
       ansible.builtin.assert:
         that: vault_restic_password is defined
-        fail_msg: "vault.yml is not loaded. Run with --ask-vault-pass (or: just deploy)."
+        fail_msg: "vault_restic_password is not defined: group_vars/nas/vault.yml is missing or incomplete. Copy vault.yml.example and fill it in."
         quiet: true
       tags: [always]
 
