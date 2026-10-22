@@ -66,6 +66,7 @@
 - name: Check whether the gdrive-nas rclone remote is configured
   ansible.builtin.command:
     cmd: rclone listremotes
+  check_mode: false   # read-only probe; the cloud init task reads its stdout
   register: rclone_remotes
   changed_when: false
   failed_when: false

@@ -139,6 +139,7 @@
             - nas-backup-cloud
             - nas-restic-check
 
+        # Also removes copyparty-funnel.sh, which the tailscale role installs here.
         - name: Remove scripts directory
           ansible.builtin.file:
             path: "{{ nas_base_dir }}/scripts"
