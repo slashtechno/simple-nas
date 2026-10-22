@@ -1,12 +1,5 @@
 ---
-# One data root, five subdirectories — Crafty's whole footprint on the host.
-- name: Create Crafty compose directory
-  ansible.builtin.file:
-    path: "{{ nas_base_dir }}/crafty"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
+
 
 - name: Create Crafty data directories
   ansible.builtin.file:
@@ -17,17 +10,8 @@
     mode: "0755"
   loop: [servers, backups, logs, config, import]
 
-- name: Render Crafty docker-compose.yml
-  ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: "{{ nas_base_dir }}/crafty/docker-compose.yml"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0640"
-  notify: Restart Crafty
-
-- name: Start Crafty
-  community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/crafty"
-    state: present
-    pull: "{{ docker_pull_policy }}"
+- name: Deploy crafty
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: crafty
