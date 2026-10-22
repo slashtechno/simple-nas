@@ -7,6 +7,22 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
+- name: Create Immich upload directory
+  ansible.builtin.file:
+    path: "{{ immich_upload_location }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Create Postgres data directory (container runs as UID 999)
+  ansible.builtin.file:
+    path: "{{ immich_db_data_location }}"
+    state: directory
+    owner: "999"
+    group: "999"
+    mode: "0700"
+
 - name: Render Immich docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2

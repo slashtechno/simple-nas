@@ -7,6 +7,19 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
+- name: Create Copyparty data directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ copyparty_files_dir }}"
+    - "{{ copyparty_collab_dir }}"
+    - "{{ copyparty_config_dir }}"
+    - "{{ copyparty_hist_dir }}"
+
 - name: Copy Docker build files
   ansible.builtin.copy:
     src: "{{ item.src }}"
