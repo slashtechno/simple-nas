@@ -3,6 +3,12 @@ set -euo pipefail
 
 # Creates Immich DB dump and Gitea dump in {{ service_dumps_dir }}/
 # Keeps last 3 dumps of each type. Called automatically by restic backup scripts.
+#
+# Only these two services need a logical dump: Immich's Postgres and Gitea's
+# database can be inconsistent if copied while running. Everything else
+# (Copyparty, pics, Homebridge, Garage, Crafty) is plain files that restic
+# copies directly. Add a block here only for a service with a live database.
+# restore-services.sh and BACKUPS.md depend on the dump file names below.
 
 DUMP_DIR="${DUMP_DIR:-{{ service_dumps_dir }}}"
 

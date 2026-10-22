@@ -14,6 +14,26 @@ All restic invocations use a local cache on the fast drive (`RESTIC_CACHE_DIR`, 
 
 Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). Logs go to `/mnt/backup/logs/`, one dated file per run. Every restic call is wrapped in a timeout (`restic_command_timeout`, default 2h), so a stalled network/rclone pipe fails the cron run instead of hanging indefinitely while holding the repo lock.
 
+## What is backed up where
+
+| Data | Local (daily, HDD) | Cloud (Sunday, Google Drive) |
+|---|---|---|
+| Photos, Copyparty files (`main_drive`) | Yes | No |
+| Service data under `fast_drive/docker` (Gitea, pics, Homebridge, Garage, Crafty, Copyparty config) | Yes | Only Copyparty config |
+| Immich database | Dump only (raw Postgres dir excluded) | Dump only |
+| Gitea database and repos | Dump, plus raw data (SSH host keys excluded) | Dump only |
+| Compose files, scripts (`/opt/nas`), rclone config, restic password | No | Yes |
+
+Where each is declared:
+- Local paths and excludes: `ansible/roles/backup/templates/backup-restic-local.sh.j2`.
+- Cloud paths: `ansible/roles/backup/templates/backup-paths.txt.j2`.
+- Dumps: `ansible/roles/backup/templates/backup-services.sh.j2`. Only Immich and Gitea have databases that need one; the rest is plain files.
+
+Caveats:
+- Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` folder is backed up too.
+- The local backup lists `main_drive` and `fast_drive` separately, so it keeps covering service data after they become different drives. Changing that path list starts a new restic snapshot group, and the old snapshots are no longer pruned by `forget`.
+- To add a service to the cloud backup, add its data dir to `backup-paths.txt.j2`.
+
 ---
 
 ## One-time setup: rclone (Google Drive)

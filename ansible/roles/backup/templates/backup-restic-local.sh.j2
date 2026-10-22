@@ -46,16 +46,16 @@ done
 
 {
   echo "=== Local Backup: $(date) ==="
-  # Create service dumps (Immich DB, Gitea)
+  # Dump the databases first (Immich, Gitea); the dumps are backed up below.
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-  # If the service dump helper exists, always invoke it with bash. This
-  # avoids relying on the executable bit and ensures a consistent shell.
-  if [ -f "$SCRIPT_DIR/backup-services.sh" ]; then
-    bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
-  fi
+  bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
-  # Backup {{ main_drive }} and {{ service_dumps_dir }}
-  restic backup {{ main_drive }} {{ service_dumps_dir }} \
+  # Back up every drive that holds data, plus the dumps. fast_drive is listed
+  # because service data (docker/gitea, docker/crafty, ...) lives there; today it
+  # is the same drive as main_drive, so `unique` collapses them. Keep the path
+  # list stable: restic forget groups snapshots by path, so changing it
+  # starts a new group and leaves the old snapshots unpruned.
+  restic backup {{ ([main_drive, fast_drive, service_dumps_dir] | unique) | join(' ') }} \
     --exclude "{{ main_drive }}/immich_model_cache" \
     --exclude "{{ main_drive }}/**/.cache" \
     "${EXCLUDE_ARGS[@]}" \

@@ -28,35 +28,23 @@ RESTIC_RCLONE_OPT=(-o "rclone.args={{ restic_cloud_rclone_args }}")
 # instead of silently blocking every later cloud backup/prune.
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
-## Load backup paths from a newline-delimited file next to this script.
-## This avoids sourcing arbitrary shell code. Optionally set
-## BACKUP_PATHS_FILE to point to a different file.
+# The cloud paths live in backup-paths.txt next to this script (rendered from
+# roles/backup/templates/backup-paths.txt.j2). Comment lines are skipped.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-BACKUP_PATHS_FILE="${BACKUP_PATHS_FILE:-$SCRIPT_DIR/backup-paths.txt}"
+BACKUP_PATHS_FILE="$SCRIPT_DIR/backup-paths.txt"
 if [ ! -f "$BACKUP_PATHS_FILE" ]; then
   echo "ERROR: backup paths file not found: $BACKUP_PATHS_FILE" >&2
   exit 1
 fi
-# Read non-empty lines into BACKUP_PATHS array, strip CRs
-mapfile -t BACKUP_PATHS < <(grep -v '^[[:space:]]*$' "$BACKUP_PATHS_FILE" | sed 's/\r$//')
+mapfile -t BACKUP_PATHS < <(grep -v '^[[:space:]]*\(#\|$\)' "$BACKUP_PATHS_FILE")
 
 LOG_FILE="{{ backup_logs_dir }}/restic-cloud-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
 {
   echo "=== Cloud Backup: $(date) ==="
-  # Create service dumps (Immich DB, Gitea)
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-  if [ -x "$SCRIPT_DIR/backup-services.sh" ]; then
-    "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
-  fi
-
-  # Avoid backing up live database data directories to cloud — prefer the
-  # logical dumps backup-services.sh already produced in {{ service_dumps_dir }}.
-  SKIP_PATHS=(
-    "{{ immich_db_data_location }}"
-    "{{ gitea_data_dir }}"
-  )
+  # Dump the databases first (Immich, Gitea); the dumps are backed up below.
+  bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
   # restic's exit codes: 0 = clean success, 3 = the snapshot was still saved
   # but some source files couldn't be read — a partial success, not a
@@ -77,37 +65,14 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
   # Backup critical paths from backup-paths.txt
   for path in "${BACKUP_PATHS[@]}"; do
-    expanded_path="$path"
-    # Expand leading ~ to $HOME without using eval
-    if [[ "$expanded_path" == ~* ]]; then
-      expanded_path="${expanded_path/#\~/$HOME}"
-    fi
-    # Replace literal $USER with the current user name (safe textual replacement)
-    expanded_path="${expanded_path//\$USER/$USER}"
-
-    # Skip anything under a live database data directory — see SKIP_PATHS above.
-    skip=false
-    for sp in "${SKIP_PATHS[@]:-}"; do
-      if [ -n "$sp" ]; then
-        if [[ "$expanded_path" == "$sp" || "$expanded_path" == "$sp"/* ]]; then
-          echo "Skipping live DB data dir for cloud backup: $expanded_path (match $sp)"
-          skip=true
-          break
-        fi
-      fi
-    done
-    if $skip; then
-      continue
-    fi
-
-    if [ -d "$expanded_path" ]; then
-      echo "Backing up $expanded_path..."
-      restic "${RESTIC_RCLONE_OPT[@]}" backup "$expanded_path" --tag weekly --verbose
+    if [ -d "$path" ]; then
+      echo "Backing up $path..."
+      restic "${RESTIC_RCLONE_OPT[@]}" backup "$path" --tag weekly --verbose
       rc=$?
       [ "$rc" -eq 3 ] && any_partial=true
       [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && cloud_backup_failed=true
     else
-      echo "Skipping missing path: $expanded_path"
+      echo "Skipping missing path: $path"
     fi
   done
 

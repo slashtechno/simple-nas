@@ -96,7 +96,6 @@
     minute: "0"
     hour: "2"
     job: >-
-      BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
       /bin/bash {{ nas_base_dir }}/scripts/backup-restic-local.sh
       >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
       logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
@@ -109,7 +108,6 @@
     hour: "4"
     weekday: "0"
     job: >-
-      BACKUP_PATHS_FILE={{ nas_base_dir }}/scripts/backup-paths.txt
       /bin/bash {{ nas_base_dir }}/scripts/backup-restic-cloud.sh
       >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
       logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"

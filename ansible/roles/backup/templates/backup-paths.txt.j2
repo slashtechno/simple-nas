@@ -1,6 +1,7 @@
-# Paths backed up to cloud (Google Drive) by backup-restic-cloud.sh.
-# One path per line. $USER and ~ are expanded at runtime.
-{{ gitea_data_dir }}
+# Paths backed up to the cloud (Google Drive) by backup-restic-cloud.sh, one per line,
+# each as its own restic snapshot group. Lines starting with # are ignored.
+# Gitea and Immich are not listed: they reach the cloud through their dumps
+# (backup-services.sh), because a raw copy of a live database can be inconsistent.
 {{ copyparty_config_dir }}
 /home/{{ ansible_user }}/.config/rclone
 {{ restic_password_file }}
