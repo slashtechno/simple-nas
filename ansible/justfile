@@ -38,3 +38,7 @@ deploy tags='':
 # Preview a deploy without changing anything
 preview tags='':
     ansible-playbook site.yml --check --diff --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
+
+# Remove services' containers and deployed files, keeping data (wiping data is deliberately not a recipe)
+teardown tags='':
+    ansible-playbook teardown.yml --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
