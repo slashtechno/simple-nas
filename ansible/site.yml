@@ -53,7 +53,7 @@
 
     - role: garage
       tags: [garage]
-      when: garage_enabled | default(true)
+      when: garage_enabled | default(false)
 
     - role: backup
       tags: [backup]

@@ -10,7 +10,7 @@ gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
-garage_enabled: true    # off by default — needs post-deploy init (see ansible/README.md)
+garage_enabled: true    # needs post-deploy init (see ansible/README.md)
 crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
