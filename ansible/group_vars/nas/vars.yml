@@ -99,6 +99,7 @@ gitea_data_dir: "{{ fast_drive }}/docker/gitea"
 pics_data_dir: "{{ fast_drive }}/docker/pics"
 homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
 garage_data_dir: "{{ fast_drive }}/docker/garage"
+crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
 
 # fstab entries — idempotent, no-ops if drives already mounted.
@@ -115,20 +116,11 @@ nas_drives:
     options: defaults,nofail
     roles: [backup]
 
-# --- Immich ---
-immich_version: release
-
 # --- Copyparty ---
 copyparty_user: "{{ vault_copyparty_user }}"
 copyparty_pass: "{{ vault_copyparty_pass }}"
 copyparty_collab_dir: "{{ main_drive }}/collab"
-host_mnt_dir: /mnt
 copyparty_port: 3923
-# Cap the thumbnailer's RAM claim (default = 60% of system RAM, clamped
-# 0.3–6 GiB). On a 4GB Pi that's ~2.4GiB — too greedy when Immich + Postgres
-# also live here. 1 GiB is a safe cap on both the Pi 4 and Pi 5.
-copyparty_th_ram_max: "1"
-copyparty_version_checker_enabled: true   # vc-url points at upstream advisories (default-disabled upstream)
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at
 # /<folder>, stored in copyparty_files_dir/<folder>. No d on photos: without delete, Copyparty also
@@ -143,8 +135,6 @@ copyparty_service_accounts:
 # --- pics ---
 # Owner pages: http://<pi>:8100 on the LAN. Only guest pages are public, via the path-limited ingress below.
 pics_repo: slashtechno/lab
-pics_version: main
-pics_port: 8100            # published on the Pi: LAN + tailnet reach the owner app here
 pics_public_url: "https://pics.angad.me"
 pics_public_port: 8001    # container-internal (never published): the tunnel points here.
                           # Container ports can't collide with other services — each has its own
@@ -158,9 +148,6 @@ gitea_root_url: "https://git.slashtechno.com/"
 gitea_domain: "git.slashtechno.com"
 gitea_ssh_domain: "git.slashtechno.com"
 gitea_ssh_port: "2222"
-gitea_port: 3000
-gitea_db_type: sqlite3
-gitea_db_path: /data/gitea/gitea.db
 
 # --- Cloudflare Tunnel ---
 cf_tunnel_name: pi-nas-tunnel
@@ -191,31 +178,6 @@ cloudflared_ingress:
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
 
-# --- Garage S3 ---
-garage_version: v2.3.0
-garage_rpc_secret: "{{ vault_garage_rpc_secret }}"
-garage_s3_port: 3900
-garage_rpc_port: 3901
-garage_web_port: 3902
-garage_admin_port: 3903
-garage_replication_factor: 1   # 1 = single node, no replication
-garage_webui_user: "{{ vault_garage_webui_user }}"
-garage_cors_allowed_origins:
-  - "*"
-
-# --- Crafty (Minecraft servers) ---
-# One container runs every server; one directory (crafty_data_dir) holds all of it:
-# servers/ backups/ logs/ config/ import/. Panel: https://<pi-ip>:8443  (self-signed cert).
-# First login: `docker logs crafty` prints a generated admin password, or read
-# <crafty_data_dir>/config/default-creds.txt. Create servers in the panel; give each a port inside crafty_mc_ports.
-# Friends join via LAN, a router port-forward, or by sharing the Pi on Tailscale.
-crafty_version: latest
-crafty_data_dir: "{{ fast_drive }}/docker/crafty"
-crafty_panel_port: 8443
-crafty_mc_ports: "25565-25575"   # Java servers; a range is one docker-proxy per port, so keep it small
-crafty_bedrock_enabled: false    # also publish 19132/udp for Bedrock servers
-crafty_memory_limit: 3g          # whole container, all servers combined; leave room for Immich on a 4 GB Pi
-
 # --- Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers) ---
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
 # so it can't route internet traffic. See README.md#direct-ethernet-link.
@@ -224,9 +186,3 @@ direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link
 direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
 direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
-
-# --- Backup status dashboard ---
-# Read-only web UI for restic backup status/snapshots (Tailscale-only, no auth).
-# Destructive actions only ever render an SSH command to copy and run yourself;
-# the app never executes anything.
-backup_status_port: 8091

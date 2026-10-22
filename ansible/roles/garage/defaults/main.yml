@@ -1,0 +1,10 @@
+---
+garage_version: v2.3.0   # pin a specific version; check https://garagehq.deuxfleurs.fr/_releases.html
+garage_s3_port: 3900
+garage_rpc_port: 3901
+garage_web_port: 3902
+garage_admin_port: 3903
+garage_replication_factor: 1   # 1 = single node, no replication
+garage_cors_allowed_origins:
+  - "*"           # wildcard: static header, works for non-credentialed requests
+  # - "https://myapp.example.com"   # specific origin, reflected per request (needed for credentials: 'include')

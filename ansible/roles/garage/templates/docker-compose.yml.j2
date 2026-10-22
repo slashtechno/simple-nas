@@ -4,7 +4,7 @@ networks:
 
 services:
   garage:
-    image: dxflrs/garage:{{ garage_version | default('v2.3.0') }}
+    image: dxflrs/garage:{{ garage_version }}
     container_name: garage
     restart: unless-stopped
     # --single-node (Garage v2.3+) is only needed on first deploy to auto-configure
@@ -20,8 +20,8 @@ services:
     ports:
       # S3 port is intentionally not exposed on the host — all external S3 traffic
       # goes through garage-cors-proxy which handles CORS and proxies to garage:3900 internally.
-      - "{{ garage_admin_port | default(3903) }}:{{ garage_admin_port | default(3903) }}"
-      - "{{ garage_rpc_port | default(3901) }}:{{ garage_rpc_port | default(3901) }}"
+      - "{{ garage_admin_port }}:{{ garage_admin_port }}"
+      - "{{ garage_rpc_port }}:{{ garage_rpc_port }}"
     networks:
       - {{ nas_network }}
 
@@ -32,7 +32,7 @@ services:
     volumes:
       - {{ nas_base_dir }}/garage/Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
-      - "{{ garage_s3_port | default(3900) }}:{{ garage_s3_port | default(3900) }}"
+      - "{{ garage_s3_port }}:{{ garage_s3_port }}"
     networks:
       - {{ nas_network }}
 
@@ -45,8 +45,8 @@ services:
       - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
     environment:
       # Points at Garage's admin API and S3 API — both internal to the Docker network
-      API_BASE_URL: "http://garage:{{ garage_admin_port | default(3903) }}"
-      S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port | default(3900) }}"
+      API_BASE_URL: "http://garage:{{ garage_admin_port }}"
+      S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port }}"
       CONFIG_PATH: /etc/garage.toml
       # Admin token for the v2 API — must match admin_token in garage.toml
       API_ADMIN_KEY: '{{ vault_garage_admin_token | replace("$", "$$") }}'

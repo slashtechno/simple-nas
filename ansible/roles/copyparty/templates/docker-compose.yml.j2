@@ -11,7 +11,7 @@ services:
       - {{ copyparty_files_dir }}:/files:rw
       - {{ copyparty_config_dir }}:/cfg:rw
       - {{ copyparty_hist_dir }}:/hist:rw
-      - {{ host_mnt_dir | default('/mnt') }}:/host/mnt:ro,rslave
+      - {{ host_mnt_dir }}:/host/mnt:ro,rslave
 {% if copyparty_collab_dir is defined and copyparty_collab_dir %}
       - {{ copyparty_collab_dir }}:/collab:rw
 {% endif %}
@@ -19,8 +19,8 @@ services:
       TZ: {{ timezone }}
     ports:
       - "{{ copyparty_port }}:3923"
-{% if sftp_enabled | default(false) | bool %}
-      - "{{ sftp_port | default(3922) }}:{{ sftp_port | default(3922) }}"
+{% if sftp_enabled | bool %}
+      - "{{ sftp_port }}:{{ sftp_port }}"
 {% endif %}
     networks:
       - {{ nas_network }}

@@ -4,7 +4,7 @@ networks:
 
 services:
   immich_server:
-    image: ghcr.io/immich-app/immich-server:{{ immich_version | default('release') }}
+    image: ghcr.io/immich-app/immich-server:{{ immich_version }}
     container_name: immich_server
     restart: unless-stopped
     command: ["start.sh", "immich"]
@@ -27,7 +27,7 @@ services:
       - immich_machine_learning
 
   immich_machine_learning:
-    image: ghcr.io/immich-app/immich-machine-learning:{{ immich_version | default('release') }}
+    image: ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}
     container_name: immich_machine_learning
     restart: unless-stopped
     volumes:
