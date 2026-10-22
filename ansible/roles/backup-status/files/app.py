@@ -236,13 +236,13 @@ def read_cloud_snapshots_cache():
 
 
 def _snapshot_row(snap, repo):
-    time = parse_restic_time(snap["time"])
+    taken = parse_restic_time(snap["time"])
     return {
         "id": snap["short_id"],
-        "time_human": time.strftime("%b %d, %H:%M"),
+        "time_human": taken.strftime("%b %d, %H:%M"),
         "tag": (snap.get("tags") or ["untagged"])[0],
         "repo": repo,
-        "_sort_time": time.timestamp(),
+        "_sort_time": taken.timestamp(),
     }
 
 

@@ -8,8 +8,8 @@ All restic invocations use a local cache on the fast drive (`RESTIC_CACHE_DIR`, 
 
 | Schedule | What it does |
 |---|---|
-| Daily @ 2 AM | Immich DB dump + Gitea dump, then full `/mnt/t7` → local HDD via restic |
-| Sunday @ 4 AM | Same dumps, then critical paths → Google Drive via rclone + restic |
+| Daily @ 2 AM | Immich DB dump + Gitea dump, then the local backup (see [What is backed up where](#what-is-backed-up-where)) → HDD via restic |
+| Sunday @ 4 AM | Same dumps, then the cloud paths → Google Drive via rclone + restic |
 | Wednesday @ 3 AM | `restic check` — verifies local repo integrity |
 
 Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). Logs go to `/mnt/backup/logs/`, one dated file per run. Every restic call is wrapped in a timeout (`restic_command_timeout`, default 2h), so a stalled network/rclone pipe fails the cron run instead of hanging indefinitely while holding the repo lock.

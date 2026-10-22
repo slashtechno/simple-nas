@@ -176,8 +176,10 @@
   document.getElementById('repoLabel').textContent = NAS_CONFIG.resticRepoPath;
 
   const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
-  const localBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
-  const cloudBase = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticCloudRepository}`;
+  // Env prefix that points restic at a repo, for the commands shown in the UI.
+  const resticEnv = (repoPath) => `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
+  const localBase = resticEnv(NAS_CONFIG.resticRepoPath);
+  const cloudBase = resticEnv(NAS_CONFIG.resticCloudRepository);
 
   // Renders a list of {note, cmd} pairs as copy-ready blocks, shared by the
   // three "Manual operations" groups and the per-snapshot modal.
@@ -213,7 +215,7 @@
     const id = row.dataset.id;
     const prevId = row.dataset.prevId;
     const repoPath = row.dataset.repo === 'cloud' ? NAS_CONFIG.resticCloudRepository : NAS_CONFIG.resticRepoPath;
-    const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
+    const base = resticEnv(repoPath);
 
     modalTitle.textContent = `Snapshot ${id}`;
     modalSub.textContent = `${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
@@ -311,11 +313,9 @@
 
     const lockWarning = document.getElementById('lockWarning');
     if (data.lock_count > 0) {
-      const target = `${NAS_CONFIG.sshUser}@${sshHost}`;
-      const base = `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${NAS_CONFIG.resticRepoPath}`;
       document.getElementById('lockWarningText').textContent =
         `${data.lock_count} lock${data.lock_count === 1 ? '' : 's'} found on the local repo`;
-      document.getElementById('unlockCmd').textContent = `ssh ${target} '${base} restic unlock'`;
+      document.getElementById('unlockCmd').textContent = `ssh ${target} '${localBase} restic unlock'`;
       lockWarning.style.display = '';
     } else {
       lockWarning.style.display = 'none';
