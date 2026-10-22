@@ -43,6 +43,10 @@
       tags: [pics]
       when: pics_enabled | default(false)
 
+    - role: crafty
+      tags: [crafty]
+      when: crafty_enabled | default(false)
+
     - role: cloudflared
       tags: [cloudflared]
       when: cloudflared_enabled | default(true)

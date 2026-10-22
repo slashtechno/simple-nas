@@ -165,6 +165,27 @@
             state: absent
           when: remove_data | bool
 
+    - name: Stop and remove Crafty
+      tags: [crafty]
+      block:
+        - name: Down Crafty compose project
+          community.docker.docker_compose_v2:
+            project_src: "{{ nas_base_dir }}/crafty"
+            state: absent
+            remove_volumes: false
+          ignore_errors: true
+
+        - name: Remove Crafty compose directory
+          ansible.builtin.file:
+            path: "{{ nas_base_dir }}/crafty"
+            state: absent
+
+        - name: Wipe Crafty data, including every world and backup (only when remove_data=true)
+          ansible.builtin.file:
+            path: "{{ crafty_data_dir }}"
+            state: absent
+          when: remove_data | bool
+
     - name: Stop and remove Cloudflared
       tags: [cloudflared]
       block:

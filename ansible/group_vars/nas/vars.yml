@@ -11,6 +11,7 @@ homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
 garage_enabled: true    # off by default — needs post-deploy init (see ansible/README.md)
+crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
@@ -201,6 +202,19 @@ garage_replication_factor: 1   # 1 = single node, no replication
 garage_webui_user: "{{ vault_garage_webui_user }}"
 garage_cors_allowed_origins:
   - "*"
+
+# --- Crafty (Minecraft servers) ---
+# One container runs every server; one directory (crafty_data_dir) holds all of it:
+# servers/ backups/ logs/ config/ import/. Panel: https://<pi-ip>:8443  (self-signed cert).
+# First login: `docker logs crafty` prints a generated admin password, or read
+# <crafty_data_dir>/config/default-creds.txt. Create servers in the panel; give each a port inside crafty_mc_ports.
+# Friends join via LAN, a router port-forward, or by sharing the Pi on Tailscale.
+crafty_version: latest
+crafty_data_dir: "{{ fast_drive }}/docker/crafty"
+crafty_panel_port: 8443
+crafty_mc_ports: "25565-25575"   # Java servers; a range is one docker-proxy per port, so keep it small
+crafty_bedrock_enabled: false    # also publish 19132/udp for Bedrock servers
+crafty_memory_limit: 3g          # whole container, all servers combined; leave room for Immich on a 4 GB Pi
 
 # --- Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers) ---
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
