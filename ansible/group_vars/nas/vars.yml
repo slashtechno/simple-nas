@@ -11,7 +11,7 @@ homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see ansible/README.md)
-crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
+crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
@@ -74,7 +74,11 @@ service_dumps_dir: "{{ backup_drive }}/service-dumps"
 # run `restic forget --path <old path> ...` by hand (see plans/DRIVE-MIGRATION-PLAN.md).
 # To skip something, add it to restic_local_excludes instead: excludes never split a group.
 restic_local_paths: "{{ [main_drive, fast_drive] | unique }}"
-restic_local_excludes: []   # extra paths to skip, e.g. ["{{ fast_drive }}/copyparty-hist"]
+# Extra patterns for the local backup to skip, added AFTER the defaults in
+# roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
+# restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
+# something an earlier line excluded, e.g. ["{{ fast_drive }}/docker/crafty/logs", "!{{ fast_drive }}/docker/crafty/logs/keep.log"].
+restic_local_excludes: []
 # Extra paths for the cloud (weekly) backup, on top of the fixed ones in
 # roles/backup/templates/backup-paths.txt.j2 (/opt/nas, rclone config, restic
 # password file, Copyparty config). Each path is its own restic snapshot group.
@@ -84,6 +88,7 @@ restic_local_excludes: []   # extra paths to skip, e.g. ["{{ fast_drive }}/copyp
 #   - "{{ crafty_data_dir }}"                   # Minecraft worlds (live copy; see BACKUPS.md)
 #   - "{{ copyparty_files_dir }}/documents"     # a single Copyparty folder
 restic_cloud_extra_paths: []
+# Same syntax; added after the defaults in restic-excludes-cloud.txt.j2.
 restic_cloud_excludes: []
 # restic's local index/snapshot cache lives on the fast drive — it keeps
 # cache reads off the spinning backup drive and off Google Drive round-trips

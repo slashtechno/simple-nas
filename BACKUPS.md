@@ -26,13 +26,13 @@ Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). 
 | Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `vault.yml`, and the vault password is in Bitwarden (see Disaster recovery). |
 
 Where each is declared:
-- Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/nas/vars.yml`. The script adds the dumps directory itself.
-- Cloud paths and excludes: `restic_cloud_extra_paths` and `restic_cloud_excludes` in `vars.yml`. The fixed cloud paths (`/opt/nas`, rclone config, restic password file, Copyparty config) are in `ansible/roles/backup/templates/backup-paths.txt.j2`.
+- Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/nas/vars.yml`. The script adds the dumps directory itself. Default excludes (caches, `lost+found`, Copyparty's thumbnail cache) are in `roles/backup/templates/restic-excludes-local.txt.j2`; your extras are added after them.
+- Cloud paths and excludes: `restic_cloud_extra_paths` and `restic_cloud_excludes` in `vars.yml` (defaults in `restic-excludes-cloud.txt.j2`). The fixed cloud paths (`/opt/nas`, rclone config, restic password file, Copyparty config) are in `ansible/roles/backup/templates/backup-paths.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` (`/opt/nas/scripts/dump.d/`) by that service's role: `roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 Caveats:
 - Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` folder is backed up too.
-- `restic forget` groups snapshots by host and paths, so changing `restic_local_paths` starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget --path <old path> --prune`). Excludes never split a group, so tune with `restic_local_excludes` first.
+- `restic forget` groups snapshots by host and paths, so changing `restic_local_paths` starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget --path <old path> --prune`). Excludes never split a group, so tune with `restic_local_excludes` first. Exclude lines use restic's syntax, not gitignore's: `**` for any depth, and a leading `!` re-includes something an earlier line excluded (check `restic version` on the Pi first: older releases may not support `!`).
 - To add a path to the cloud backup, put it in `restic_cloud_extra_paths`. Adding is safe. Removing one leaves its snapshots until you forget them by hand.
 - To give a new service a database dump, add `files/dump.sh` to its role and install it into `service_dump_scripts_dir` as `<service>.sh` (copy the Gitea role). Its dump files must start with `<service>-`. `teardown_service.yml` removes the script again.
 

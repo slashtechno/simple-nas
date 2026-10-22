@@ -1,0 +1,21 @@
+# Patterns the local (daily) backup skips, one per line; lines starting with # are ignored.
+# Rendered by Ansible: edit restic_local_excludes in group_vars, not this file.
+# Syntax is restic's, not gitignore's: https://restic.readthedocs.io/en/stable/040_backup.html
+# `**` matches any number of directories; a leading `!` re-includes something an
+# EARLIER line excluded (so your extras below can undo a default). You cannot
+# re-include files inside a directory that is excluded as a whole.
+
+# Defaults: caches and files that can't be copied cleanly or can be rebuilt.
+{{ gitea_data_dir }}/ssh
+{{ immich_db_data_location }}
+{{ copyparty_config_dir }}/copyparty
+{{ copyparty_hist_dir }}
+{{ restic_cache_dir }}
+{{ main_drive }}/lost+found
+{{ main_drive }}/immich_model_cache
+{{ main_drive }}/**/.cache
+
+# Yours: restic_local_excludes
+{% for pattern in restic_local_excludes %}
+{{ pattern }}
+{% endfor %}

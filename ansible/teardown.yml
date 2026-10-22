@@ -155,6 +155,8 @@
             - restic-check.sh
             - restore-services.sh
             - backup-paths.txt
+            - restic-excludes-local.txt
+            - restic-excludes-cloud.txt
             - copyparty-funnel.sh
 
         # rmdir only succeeds when the directory is empty, like the nas_base_dir step at the end.

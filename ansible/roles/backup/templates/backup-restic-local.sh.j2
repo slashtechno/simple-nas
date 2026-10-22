@@ -27,30 +27,14 @@ restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
-# Directories to exclude from backups. Keep as an immutable list so callers
-# can review or extend in one place. These exclude patterns avoid permission
-# errors for socket/DB/ssh dirs and skip filesystem junk like lost+found.
-readonly EXCLUDES=(
-  "{{ gitea_data_dir }}/ssh"
-  "{{ immich_db_data_location }}"
-  "{{ copyparty_config_dir }}/copyparty"
-  "{{ restic_cache_dir }}"
-  "{{ main_drive }}/lost+found"
-{% for path in restic_local_excludes %}
-  "{{ path }}"
-{% endfor %}
-)
-
-# Build restic-friendly exclude arguments from the `EXCLUDES` array
-EXCLUDE_ARGS=()
-for p in "${EXCLUDES[@]}"; do
-  EXCLUDE_ARGS+=( --exclude "$p" )
-done
+# Exclude patterns live in restic-excludes-local.txt next to this script
+# (rendered from roles/backup/templates/restic-excludes-local.txt.j2).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
 {
   echo "=== Local Backup: $(date) ==="
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
-  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
   # Back up restic_local_paths (group_vars) plus the dumps dir. Keep the path
@@ -58,9 +42,7 @@ done
   # it starts a new group and the old group's last snapshots stay until you
   # forget them by hand. Use restic_local_excludes to skip things instead.
   restic backup {{ (restic_local_paths + [service_dumps_dir]) | unique | join(' ') }} \
-    --exclude "{{ main_drive }}/immich_model_cache" \
-    --exclude "{{ main_drive }}/**/.cache" \
-    "${EXCLUDE_ARGS[@]}" \
+    --exclude-file "$EXCLUDE_FILE" \
     --tag daily \
     --verbose
   backup_rc=$?

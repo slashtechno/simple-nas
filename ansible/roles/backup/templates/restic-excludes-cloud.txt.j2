@@ -1,0 +1,16 @@
+# Patterns the cloud (weekly) backup skips, one per line; lines starting with # are ignored.
+# Rendered by Ansible: edit restic_cloud_excludes in group_vars, not this file.
+# Syntax is restic's, not gitignore's: https://restic.readthedocs.io/en/stable/040_backup.html
+# `**` matches any number of directories; a leading `!` re-includes something an
+# EARLIER line excluded. You cannot re-include files inside a directory that is
+# excluded as a whole.
+
+# Defaults: caches that can be rebuilt.
+{{ restic_cache_dir }}
+{{ copyparty_hist_dir }}
+**/.cache
+
+# Yours: restic_cloud_excludes
+{% for pattern in restic_cloud_excludes %}
+{{ pattern }}
+{% endfor %}

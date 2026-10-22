@@ -30,13 +30,17 @@
   loop:
     - restore-services.sh
 
-- name: Render backup-paths.txt
+- name: Render backup path and exclude lists
   ansible.builtin.template:
-    src: backup-paths.txt.j2
-    dest: "{{ nas_scripts_dir }}/backup-paths.txt"
+    src: "{{ item }}.j2"
+    dest: "{{ nas_scripts_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
+  loop:
+    - backup-paths.txt
+    - restic-excludes-local.txt
+    - restic-excludes-cloud.txt
 
 - name: Write restic password file
   ansible.builtin.copy:
