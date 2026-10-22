@@ -78,7 +78,7 @@ Then set `immich_enabled: false` so future runs don't redeploy it.
 
 ## Update configuration
 
-Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then re-run with the relevant tag. Only changed services restart — handlers ensure a restart only fires if a config file actually changed.
+Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then re-run with the relevant tag. Only changed services restart: compose-only services are recreated by `docker_compose_v2` when their rendered file changes, and handlers cover the rest (Copyparty, Garage, pics, backup-status, cloudflared, network, storage).
 
 ```bash
 ansible-playbook site.yml --tags <service> --ask-vault-pass
@@ -174,14 +174,24 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
 
 ---
 
+## Lint
+
+```bash
+cd ansible/ && uvx ansible-lint
+```
+
+Config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
+
+---
+
 ## Add a new service
 
-1. `mkdir -p roles/myservice/{tasks,templates,handlers,files}`
-2. `roles/myservice/tasks/main.yml` — create dir, render compose, start
-3. `roles/myservice/templates/docker-compose.yml.j2` — join `nas-services` external network
-4. `roles/myservice/handlers/main.yml` — restart on config change
-5. Add vars to `group_vars/nas/vars.yml`
-6. Add `- role: myservice` + tag + `when: myservice_enabled | default(true)` to `site.yml`
+1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
+2. `roles/myservice/templates/docker-compose.yml.j2` — join the `nas-services` external network
+3. `roles/myservice/tasks/main.yml` — create its data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (renders the template and runs `docker_compose_v2`). Copy `roles/gitea` as the model. Services that restart on config changes (like `copyparty`) write their own tasks and handlers instead.
+4. `roles/myservice/defaults/main.yml` — knobs only this role reads. Values shared between roles or with `teardown.yml` (data dirs, enabled flags, ports used in `cloudflared_ingress`) go in `group_vars/nas/vars.yml` and `vars.yml.example`.
+5. Add `- role: myservice` + tag + `when: myservice_enabled | default(false)` to `site.yml` (opt-in; use `true` only for core services)
+6. Add a `myservice_*` entry to `teardown.yml` (`import_tasks: teardown_service.yml` with `service` and `data_paths`)
 7. Add a `cloudflared_ingress` rule if it needs a public hostname
 8. `ansible-playbook site.yml --tags myservice --ask-vault-pass`
 

@@ -5,7 +5,11 @@ A self-hosted NAS on Raspberry Pi 4 managed by Ansible. Two drives, a Pi, and a 
 - **Immich** — photo library (Google Photos alternative)
 - **Copyparty** — file sharing
 - **Gitea** — Git server
-- **Garage** — S3-compatible object storage
+- **Homebridge** — HomeKit bridge
+- **pics** — photo gallery
+- **Garage** — S3-compatible object storage (opt-in)
+- **Crafty Controller** — Minecraft servers (opt-in)
+- **Backup status** — read-only backup dashboard
 - **Cloudflare Tunnel** — public hostnames without port forwarding
 - **Tailscale** — private remote access
 
@@ -77,3 +81,13 @@ For fast local transfers, the Pi's Ethernet port (idle — the Pi normally runs 
 - `https://` works with no cert setup on our end — Copyparty ships a built-in self-signed cert and auto-detects HTTPS vs HTTP on the same port. The browser warning is expected (it's copyparty's public default cert, not unique to this box).
 
 </details>
+
+---
+
+## Docs
+
+| Doc | Covers |
+|---|---|
+| [ansible/README.md](./ansible/README.md) | Playbooks, roles, variables, tags, adding a service |
+| [BACKUPS.md](./BACKUPS.md) | `roles/backup`, `roles/backup-status`: schedules, restore |
+| [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
