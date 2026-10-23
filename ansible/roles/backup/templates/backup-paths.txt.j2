@@ -2,7 +2,9 @@
 # each as its own restic snapshot group. Lines starting with # are ignored.
 # Gitea and Immich are not listed: they reach the cloud through their dumps
 # (dump.d scripts run by backup-services.sh), because a raw copy of a live database can be inconsistent.
+{% if 'nas' in group_names %}
 {{ copyparty_config_dir }}
+{% endif %}
 /home/{{ ansible_user }}/.config/rclone
 {{ restic_password_file }}
 {{ nas_base_dir }}

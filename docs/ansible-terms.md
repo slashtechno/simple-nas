@@ -125,12 +125,12 @@ Keywords any task can carry:
 Config comes from these sources, lowest precedence first:
 
 1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_panel_port`.
-2. `group_vars/all/`: loaded for every host. `vars.yml` holds settings every server reads (timezone, base paths, SSH keys, Docker options, `drives: []`), `versions.yml` every image and tool version, `derived.yml` values computed from the others (`fast_drive`, `primary_drive`, `backup_drive`, `docker_daemon_options`).
+2. `group_vars/all/`: loaded for every host. `vars.yml` holds settings every server reads (timezone, base paths, SSH keys, Docker options, `drives: []`), `versions.yml` every image and tool version, `derived.yml` values computed from the others (`fast_drive`, `primary_drive`, `backup_drive`, `docker_daemon_options`), `vault.yml` the secrets every host needs (Cloudflare token and account, restic password, rclone token). Backup settings (`restic_*`) are here too.
 3. `group_vars/nas/`: loaded for hosts in the `nas` group. `vars.yml` holds enabled flags, paths and non-secret settings, `vault.yml` secrets.
 4. `host_vars/<host>/vars.yml`: one host's settings, such as `drives` and the direct link. Beats group values.
 
-`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host only loads the vault files of its own groups, so a server outside `nas` needs no vault password.
+`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads the vault files of `all` and of its own groups. A key defined in both takes the group's value.
 
 `vars.yml` refers to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and `vars.yml` stays safe to commit because the values exist only in the encrypted file.
 
-Edit the vault with `ansible-vault edit group_vars/nas/vault.yml`. Nothing can read or change it without the vault password.
+Edit a vault with `ansible-vault edit group_vars/nas/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.

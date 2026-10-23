@@ -1,7 +1,45 @@
 ---
+- name: Check the backup role can run on this host
+  ansible.builtin.assert:
+    that:
+      - backup_drive | length > 0
+      - vault_restic_password is defined
+    fail_msg: >-
+      {{ inventory_hostname }} needs a drive with the `backup` role (`drives` in its host_vars) and
+      vault_restic_password (group_vars/all/vault.yml) to run backups.
+    quiet: true
+
+- name: Check the offsite repository is set
+  ansible.builtin.assert:
+    that: restic_cloud_repository | length > 0
+    fail_msg: "backup_cloud_enabled is true but restic_cloud_repository is empty. Set it for {{ inventory_hostname }} (see docs/backups.md)."
+    quiet: true
+  when: backup_cloud_enabled | default(false) | bool
+
+- name: Create the backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  loop:
+    - "{{ restic_cache_dir }}"
+    - "{{ restic_repo_path }}"
+    - "{{ backup_logs_dir }}"
+    - "{{ service_dumps_dir }}"
+
 - name: Create scripts directory
   ansible.builtin.file:
     path: "{{ nas_scripts_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Create the dump script directory
+  ansible.builtin.file:
+    path: "{{ service_dump_scripts_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -16,7 +54,6 @@
     mode: "0755"
   loop:
     - backup-restic-local.sh
-    - backup-restic-cloud.sh
     - backup-services.sh
     - restic-check.sh
 
@@ -30,17 +67,13 @@
   loop:
     - restore-services.sh
 
-- name: Render backup path and exclude lists
+- name: Render the local backup exclude list
   ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "{{ nas_scripts_dir }}/{{ item }}"
+    src: restic-excludes-local.txt.j2
+    dest: "{{ nas_scripts_dir }}/restic-excludes-local.txt"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
-  loop:
-    - backup-paths.txt
-    - restic-excludes-local.txt
-    - restic-excludes-cloud.txt
 
 - name: Write restic password file
   ansible.builtin.copy:
@@ -50,6 +83,82 @@
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true   # the password would show in --diff
+
+# The weekly offsite backup: its script, path and exclude lists, rclone remote, repository and cron job.
+- name: Set up the offsite backup
+  when: backup_cloud_enabled | default(false) | bool
+  block:
+    - name: Render the offsite backup script
+      ansible.builtin.template:
+        src: backup-restic-cloud.sh.j2
+        dest: "{{ nas_scripts_dir }}/backup-restic-cloud.sh"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Render the offsite path and exclude lists
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ nas_scripts_dir }}/{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+      loop:
+        - backup-paths.txt
+        - restic-excludes-cloud.txt
+
+    # Google Drive is reached through rclone, whose remote needs an OAuth token. It comes from the vault
+    # (vault_rclone_gdrive_token, made with `rclone authorize` on a computer with a browser). The file is
+    # written only when it does not exist: rclone writes refreshed tokens back into it, so overwriting
+    # it on every deploy would replace a fresh token with the stale one from the vault.
+    - name: Create the rclone config directory
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.config/rclone"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+      when: vault_rclone_gdrive_token | default('') | length > 0
+
+    - name: Write the rclone Google Drive remote (only if there is no rclone.conf yet)
+      ansible.builtin.template:
+        src: rclone.conf.j2
+        dest: "/home/{{ ansible_user }}/.config/rclone/rclone.conf"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+        force: false
+      no_log: true   # the rendered file holds the OAuth token and would show in --diff
+      when: vault_rclone_gdrive_token | default('') | length > 0
+
+    # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
+    # unreachable server) fails the deploy, so a backup that would never run is noticed now.
+    - name: Initialize cloud restic repository (idempotent)
+      ansible.builtin.command:
+        cmd: >-
+          restic -o "rclone.args={{ restic_cloud_rclone_args }}" init
+      environment:
+        RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+        RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"
+      register: restic_cloud_init
+      changed_when: "'created restic repository' in restic_cloud_init.stdout"
+      failed_when:
+        - restic_cloud_init.rc != 0
+        - "'already exists' not in restic_cloud_init.stderr"
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Schedule weekly cloud backup (Sunday 4 AM)
+      ansible.builtin.cron:
+        name: nas-backup-cloud
+        user: "{{ ansible_user }}"
+        minute: "0"
+        hour: "4"
+        weekday: "0"
+        job: >-
+          /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
+          >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
+          logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
 - name: Initialize local restic repository (idempotent)
   ansible.builtin.command:
@@ -65,47 +174,6 @@
   become: true
   become_user: "{{ ansible_user }}"
 
-# Google Drive is reached through rclone, whose remote needs an OAuth token. It comes from the vault
-# (vault_rclone_gdrive_token, made with `rclone authorize` on a computer with a browser). The file is
-# written only when it does not exist: rclone writes refreshed tokens back into it, so overwriting
-# it on every deploy would replace a fresh token with the stale one from the vault.
-- name: Create the rclone config directory
-  ansible.builtin.file:
-    path: "/home/{{ ansible_user }}/.config/rclone"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0700"
-  when: vault_rclone_gdrive_token | default('') | length > 0
-
-- name: Write the rclone Google Drive remote (only if there is no rclone.conf yet)
-  ansible.builtin.template:
-    src: rclone.conf.j2
-    dest: "/home/{{ ansible_user }}/.config/rclone/rclone.conf"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0600"
-    force: false
-  no_log: true   # the rendered file holds the OAuth token and would show in --diff
-  when: vault_rclone_gdrive_token | default('') | length > 0
-
-# A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
-# unreachable server) fails the deploy, so a backup that would never run is noticed now.
-- name: Initialize cloud restic repository (idempotent)
-  ansible.builtin.command:
-    cmd: >-
-      restic -o "rclone.args={{ restic_cloud_rclone_args }}" init
-  environment:
-    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
-    RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"
-  register: restic_cloud_init
-  changed_when: "'created restic repository' in restic_cloud_init.stdout"
-  failed_when:
-    - restic_cloud_init.rc != 0
-    - "'already exists' not in restic_cloud_init.stderr"
-  become: true
-  become_user: "{{ ansible_user }}"
-
 - name: Schedule daily local backup (2 AM)
   ansible.builtin.cron:
     name: nas-backup-local
@@ -116,18 +184,6 @@
       /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
       >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
       logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
-
-- name: Schedule weekly cloud backup (Sunday 4 AM)
-  ansible.builtin.cron:
-    name: nas-backup-cloud
-    user: "{{ ansible_user }}"
-    minute: "0"
-    hour: "4"
-    weekday: "0"
-    job: >-
-      /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
-      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-      logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly restic integrity check (Wednesday 3 AM)
   ansible.builtin.cron:
@@ -140,3 +196,9 @@
       /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
       >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
       logger -t nas-backup "restic-check failed or {{ backup_drive }} not mounted"
+
+- name: Remove the weekly cloud backup job when the offsite backup is off
+  ansible.builtin.cron:
+    name: nas-backup-cloud
+    state: absent
+  when: not (backup_cloud_enabled | default(false) | bool)

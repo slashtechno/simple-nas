@@ -6,17 +6,19 @@
 # re-include files inside a directory that is excluded as a whole.
 
 # Defaults: caches and files that can't be copied cleanly or can be rebuilt.
+{{ restic_cache_dir }}
+{% if 'nas' in group_names %}
 {{ gitea_data_dir }}/ssh
 {{ immich_db_data_location }}
 {{ copyparty_config_dir }}/copyparty
 {{ copyparty_hist_dir }}
-{{ restic_cache_dir }}
 {{ primary_drive }}/lost+found
 {{ primary_drive }}/immich_model_cache
 {{ primary_drive }}/**/.cache
 # Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
 # still backed up. Add "!{{ crafty_data_dir }}/backups" to restic_local_excludes to back them up too.
 {{ crafty_data_dir }}/backups
+{% endif %}
 
 # Yours: restic_local_excludes
 {% for pattern in restic_local_excludes %}

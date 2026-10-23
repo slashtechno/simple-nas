@@ -3,7 +3,8 @@
 # Run with: ansible-playbook site.yml --ask-vault-pass
 #
 # Three plays: every server gets the base roles (drives, packages, Docker, Tailscale, network);
-# the NAS group gets services and backups; the general-server group gets Dockge (and optionally Caddy).
+# the NAS group gets services and backups; the general-server group gets Dockge (and optionally Caddy,
+# and backups when its host_vars set backup_enabled: true).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
 # To disable services permanently, set <name>_enabled: false in group_vars/nas/vars.yml
@@ -61,8 +62,8 @@
     # fails earlier, when Ansible loads the variables: use --ask-vault-pass or `just deploy`.)
     - name: Check the vault is loaded
       ansible.builtin.assert:
-        that: vault_restic_password is defined
-        fail_msg: "vault_restic_password is not defined: group_vars/nas/vault.yml is missing or incomplete. Copy vault.yml.example and fill it in."
+        that: vault_immich_db_password is defined
+        fail_msg: "vault_immich_db_password is not defined: group_vars/nas/vault.yml is missing or incomplete. Copy vault.yml.example and fill it in."
         quiet: true
       tags: [always]
 
@@ -115,6 +116,10 @@
   become: true
 
   roles:
+    - role: backup
+      tags: [backup]
+      when: backup_enabled | default(false)
+
     - role: dockge
       tags: [dockge]
       when: dockge_enabled | default(true)

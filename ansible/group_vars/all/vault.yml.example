@@ -1,0 +1,13 @@
+# Secrets every host uses. Copy to vault.yml, fill in, then encrypt:
+#   ansible-vault encrypt group_vars/all/vault.yml
+# To edit later: ansible-vault edit group_vars/all/vault.yml
+# Secrets for one group go in group_vars/<group>/vault.yml (the NAS has one). Same password for all.
+# A key defined in both files takes the group's value, so move a key here, do not copy it.
+
+vault_cf_api_token: "your_cloudflare_api_token"
+vault_cf_account_id: "your_cloudflare_account_id"
+# Encrypts every restic repository the hosts write.
+vault_restic_password: "change-me-generate-with-openssl-rand-base64-32"
+# Google Drive login for the cloud backup: the JSON that `rclone authorize "drive" --drive-scope drive.file`
+# prints on a computer with a browser (docs/backups.md). Optional: leave empty if rclone.conf is set up by hand.
+vault_rclone_gdrive_token: ""

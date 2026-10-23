@@ -29,13 +29,9 @@ vault_pics_password: "change-me-12-characters-minimum"
 vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
 vault_pics_alert_urls: ""   # optional Apprise URLs, space-separated
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
-vault_cf_api_token: "your_cloudflare_api_token"
-vault_cf_account_id: "your_cloudflare_account_id"
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
 vault_garage_webui_user: "admin"
 vault_garage_webui_pass: "change-me"
-vault_restic_password: "change-me-generate-with-openssl-rand-base64-32"
-# Google Drive login for the cloud backup: the JSON that `rclone authorize "drive" --drive-scope drive.file`
-# prints on a computer with a browser (docs/backups.md). Optional: leave empty if rclone.conf is set up by hand.
-vault_rclone_gdrive_token: ""
+
+# Cloudflare and backup secrets shared by all hosts are in group_vars/all/vault.yml.

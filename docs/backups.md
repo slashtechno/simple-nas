@@ -2,6 +2,8 @@
 
 `just deploy backup` (from `ansible/`) installs the scripts and cron jobs on the NAS. Nothing to set up by hand.
 
+On another host (`servers_general`), set `backup_enabled: true` in its `host_vars` and give one drive in `drives` the `backup` role. It then backs up `/etc`, `/opt` and the user's home daily (change `restic_local_paths` to narrow that). The Sunday cloud copy runs only with `backup_cloud_enabled: true` and a `restic_cloud_repository` of that host's own. The dashboard (`backup-status`) is NAS only.
+
 restic keeps its cache in `restic_cache_dir` (`<fast_drive>/restic-cache`). It is safe to delete: that only costs speed.
 
 ## What runs automatically
@@ -27,7 +29,7 @@ Paths below use `/mnt/backup` for `backup_drive` and `/mnt/t7` for the fast and 
 | Immich database | Dump only (raw Postgres dir excluded) | Dump only |
 | Gitea database and repos | Dump, plus raw data (SSH host keys excluded) | Dump only |
 | Compose files and scripts (`/opt/nas`), rclone config | No | Yes |
-| Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `vault.yml`, and the vault password is in Bitwarden (see Disaster recovery). |
+| Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden (see Disaster recovery). |
 
 Where each is declared:
 - Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/nas/vars.yml` (default: `primary_drive` and `fast_drive`). The script adds the dumps directory itself. Default excludes (caches, `lost+found`, Copyparty's thumbnail cache) are in `roles/backup/templates/restic-excludes-local.txt.j2`; your extras are added after them.
@@ -61,7 +63,7 @@ The URL scheme picks the backend. The deploy runs `restic init` on it and **fail
 Google Drive goes through rclone. Its login needs a browser, so the token comes from the vault:
 
 1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`. Sign in; it prints a JSON token.
-2. Put that JSON in `vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
+2. Put that JSON in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
 3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive-nas` remote **only if the file does not exist**, because rclone writes refreshed tokens back into it.
 
 To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive-nas:` there.
@@ -186,7 +188,7 @@ Check with `mountpoint /mnt/backup`, `journalctl -t nas-backup` and `systemctl s
 
 ## Disaster recovery (both drives fail)
 
-1. Re-flash Pi OS, then run `just deploy`. This needs `vault.yml` and its vault password, which hold `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.
+1. Re-flash Pi OS, then run `just deploy`. This needs the `vault.yml` files (`group_vars/all/` and `group_vars/nas/`) and their vault password; `group_vars/all/vault.yml` holds `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.
 2. Pull from the cloud repo. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password

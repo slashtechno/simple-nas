@@ -64,6 +64,7 @@ venv.bak/
 cloudflared/*.json
 
 # Ansible secrets and local inventory (never commit these)
+ansible/group_vars/all/vault.yml
 ansible/group_vars/nas/vault.yml
 ansible/inventory/hosts.yml
 

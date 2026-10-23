@@ -15,12 +15,13 @@ cp group_vars/all/vars.yml.example group_vars/all/vars.yml
 cp group_vars/nas/vars.yml.example group_vars/nas/vars.yml
 mkdir host_vars/<host>                                # named after the host in the inventory
 cp host_vars/vars.yml.example host_vars/<host>/vars.yml   # keep only the options that host needs
-cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml
-# fill in vault.yml with real secrets, then encrypt it:
-ansible-vault encrypt group_vars/nas/vault.yml
+cp group_vars/all/vault.yml.example group_vars/all/vault.yml   # secrets every host uses
+cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml   # NAS-only secrets
+# fill in both with real secrets, then encrypt them (same password):
+ansible-vault encrypt group_vars/all/vault.yml group_vars/nas/vault.yml
 ```
 
-The vault is only for the `nas` group; a host in `servers_general` needs no vault password. The first deploy to a new host needs the sudo password once: `just deploy '' --limit <host> -K`. After that, the sudoers file the `common` role installs makes it unnecessary.
+`group_vars/all/vault.yml` is read by every host, so a `servers_general` host that runs backups or a tunnel needs it; a host that uses no secret is fine without it. The first deploy to a new host needs the sudo password once: `just deploy '' --limit <host> -K`. After that, the sudoers file the `common` role installs makes it unnecessary.
 
 ## Commands
 

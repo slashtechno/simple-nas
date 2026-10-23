@@ -7,7 +7,9 @@
 
 # Defaults: caches that can be rebuilt.
 {{ restic_cache_dir }}
+{% if 'nas' in group_names %}
 {{ copyparty_hist_dir }}
+{% endif %}
 **/.cache
 
 # Yours: restic_cloud_excludes

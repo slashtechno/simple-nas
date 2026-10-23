@@ -1,0 +1,12 @@
+---
+# Hosts for tests/render.yml. group_names in the templates comes from here.
+all:
+  vars:
+    ansible_connection: local
+  children:
+    nas:
+      hosts:
+        render-nas:
+    servers_general:
+      hosts:
+        render-general:

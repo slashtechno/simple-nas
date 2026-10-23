@@ -119,20 +119,14 @@
   notify: Reload udev rules
   when: not usb_automount_enabled | bool
 
-# The NAS's drive-level layout. Each service role creates its own data directories below these.
-- name: Create the NAS directory structure
+# The NAS's Docker directory. Each service role creates its own data directories below it; the backup role creates its own.
+- name: Create the NAS Docker directory
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ fast_drive }}/docker"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-  loop:
-    - "{{ fast_drive }}/docker"
-    - "{{ restic_cache_dir }}"
-    - "{{ restic_repo_path }}"
-    - "{{ backup_logs_dir }}"
-    - "{{ service_dumps_dir }}"
   when: "'nas' in group_names"
 
 - name: Create /opt/nas base directory
