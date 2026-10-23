@@ -48,8 +48,8 @@ Only standard Ansible features, no wrapper of our own.
 - **Inventory:** hosts are named after hardware (`pi4`, `pi5`, later `desktop`). Groups are named after function: `nas` and `servers_general`, both under a parent group `servers`. Changing which machine is the NAS is a one-line move.
 - **Settings:**
   - `group_vars/all/`: timezone, SSH public keys, base flags.
-  - `group_vars/nas/`: drives, services, restic (stays where it is).
-  - `host_vars/<host>/`: wifi, direct link, overclock, per-host `_enabled` overrides, per-host secrets in `vault.yml`.
+  - `group_vars/nas/`: services, restic (stays where it is).
+  - `host_vars/<host>/`: drives, wifi, direct link, overclock, per-host `_enabled` overrides, per-host secrets in `vault.yml`.
 - **Vault:** several encrypted files, one per scope (`all`, `nas`, each host), all with the same password. `ansible/README.md` setup changes accordingly.
 - **`site.yml`:** one play for `hosts: servers` (common, tailscale, network, base roles) and one for `hosts: nas` (storage, services, backup). The existing `<name>_enabled` flags keep doing per-service opt-in.
 - **Access:** set `ansible_host` to the Tailscale (MagicDNS) name so Ansible reaches a Pi on any network. `pi5.local` stops resolving on a phone hotspot.
@@ -175,7 +175,7 @@ The owner asked that every option, its default and its meaning be easy to find a
 | Per-host setting (wifi, drives, data root) | `host_vars/<host>/vars.yml` and an example | Owner |
 | Secrets | `vault.yml` files and examples | Owner |
 | Image and tool versions | `group_vars/all/versions.yml` | Owner (`just tags`) |
-| **Derived values** (`drive_mounts`, `fast_drive`, `primary_drive`, `backup_drive`) | a tracked `group_vars/nas/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
+| **Derived values** (`drive_mounts`, `fast_drive`, `primary_drive`, `backup_drive`) | a tracked `group_vars/all/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
 
 **One comment shape for every option**, in defaults files and example files alike, modeled on the restic comments already in `vars.yml.example`:
 

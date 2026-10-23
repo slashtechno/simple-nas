@@ -1,6 +1,6 @@
 # Drive migration plan (2-drive → 3-drive + drive-role map)
 
-Target state, per the drive-role map in `ansible/group_vars/nas/vars.yml`:
+Target state, per the `drives` list in `ansible/host_vars/<host>/vars.yml`:
 
 | Role | Drive | Mount | Holds |
 |---|---|---|---|

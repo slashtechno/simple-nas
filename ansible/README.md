@@ -44,11 +44,11 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 |---|---|
 | Used by one role | that role's `defaults/main.yml` |
 | Every server (timezone, base paths) | `group_vars/all/vars.yml`, mirrored in `vars.yml.example` |
-| The NAS group (services, drives, backups) | `group_vars/nas/vars.yml`, mirrored in `vars.yml.example` |
-| One host (direct link) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
+| The NAS group (services, backups) | `group_vars/nas/vars.yml`, mirrored in `vars.yml.example` |
+| One host (its drives, direct link) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` next to the file they belong with |
 | Image versions | `group_vars/all/versions.yml` |
-| Computed from the above | `group_vars/nas/derived.yml`; not edited |
+| Computed from the above | `group_vars/all/derived.yml`; not edited |
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 
