@@ -98,6 +98,8 @@ The direct Ethernet link is a static profile with no gateway, up whenever the ca
 
 ## Cloudflared: tokens from the vault, no credentials file
 
+**Status 2026-10-23: implemented** in `roles/cloudflared` (DNS uses `uri` calls rather than `community.general.cloudflare_dns`, to keep one mechanism and the delete/report logic in view). Tested on pi5 against a fake API server: create, ingress PUT, DNS create, token file `65532` mode `0400`, and no mutating calls on a second run. **Not tested against real Cloudflare**; the existing tunnel's migration is still the owner's step (below). The text below is the design as decided.
+
 Today's role creates a **locally managed** tunnel (`config_src: local`). Cloudflare returns the tunnel secret only at creation, so the credentials JSON is the only copy. On a host without it, `create_tunnel.sh` finds the existing tunnel by name and stops with an error. Copying the file is a workaround for that design, and the API token and account ID in the vault are not enough to recover it.
 
 **Redesign: a remotely managed tunnel.**

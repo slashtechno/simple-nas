@@ -38,7 +38,7 @@ ansible-vault encrypt group_vars/nas/vault.yml
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared, network and storage.
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared (new token), network and storage.
 
 | Setting | File |
 |---|---|
@@ -66,7 +66,7 @@ A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, beca
 ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass
 ```
 
-Pin a floating tag to the version running on the Pi once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Copyparty, backup-status and cloudflared build on the Pi and always rebuild, so `docker_pull_policy` doesn't apply to them.
+Pin a floating tag to the version running on the Pi once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Copyparty and backup-status build on the Pi and always rebuild, so `docker_pull_policy` doesn't apply to them.
 
 ## Disable or remove a service
 
