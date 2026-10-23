@@ -1,263 +1,124 @@
-# Ansible Terms & Config Keys Used In This Repo
+# Ansible terms used in this repo
 
-A reference for every Ansible concept, module, and config key this project actually
-uses — not a general Ansible tutorial, just what's here and why.
+What Ansible does: you describe the desired state in YAML, and a run makes the Pi match it. Each step checks first and skips itself when already correct, so running a playbook twice is safe and brings a drifted Pi back to the defined state.
 
----
+This is a reference for what the repo actually uses, not a tutorial. For operating the repo, see [README.md](./README.md).
 
-## 1. The files that make Ansible work at all
+## 1. Files that make Ansible work
 
 | File | Role |
 |---|---|
-| `ansible.cfg` | Project-level settings, read automatically when running `ansible-playbook` from this directory |
-| `inventory/hosts.yml` | *Who* to run against |
-| `group_vars/nas/vars.yml` + `vault.yml` | *What values* to run with |
-| `requirements.yml` | *What dependencies* (collections/roles) must be installed first |
-| `site.yml` / `teardown.yml` | *What to do* — the playbooks |
-| `roles/*/` | *How* to do each piece |
+| `ansible.cfg` | Project settings, read automatically from this directory |
+| `inventory/hosts.yml` | Who to run against |
+| `group_vars/nas/` | What values to run with (`vars.yml`, `versions.yml`, `vault.yml`) |
+| `requirements.yml` | Collections and roles to install first (`just deps`) |
+| `site.yml`, `teardown.yml` | The playbooks |
+| `roles/*/` | How to deploy each piece |
 
-### `ansible.cfg` keys used here
+`ansible.cfg` keys:
 
-- `roles_path = ~/.ansible/roles:roles` — where to look for roles referenced by name
-  (like `geerlingguy.docker`), searched in order. `~/.ansible/roles` holds
-  Galaxy-installed roles (not committed to git); `roles` is this repo's own custom
-  roles.
-- `host_key_checking = False` — skip the interactive SSH host-key confirmation
-  prompt. Reasonable for a single known Pi you already trust.
-- `become = True` / `become_method = sudo` under `[privilege_escalation]` — every
-  task runs as root via `sudo`, globally, without needing `become: true` on each
-  task. `become` is a generic privilege-escalation abstraction (works with `sudo`,
-  `su`, `doas`, etc.) — setting it once here means switching escalation methods
-  later is a one-line change, not an edit to every role.
+- `roles_path = ~/.ansible/roles:roles`: where role names are looked up, in order. The first is Galaxy-installed roles (not committed), the second is this repo's.
+- `host_key_checking = False`: skips the SSH host-key prompt. Acceptable for one known Pi.
+- `become = True`, `become_method = sudo`: every task runs as root, so tasks don't repeat `become: true`.
+- `pipelining = True`: faster deploys over SSH.
 
-### Inventory (`inventory/hosts.yml`)
+The inventory is `groups → hosts → connection vars`. `nas:` is the group that `hosts: nas` in `site.yml` matches. The host key is only a nickname. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 
-A YAML tree of `groups → hosts → connection vars`. `nas:` is the group name
-(matched by `hosts: nas` in `site.yml`); the host key (`pi`/`pi4`) is just a
-display nickname, not a real hostname. `ansible_host`, `ansible_user`,
-`ansible_ssh_private_key_file` are "magic" variables Ansible reads to know how to
-SSH in — this file has zero application config, purely connection info.
+`requirements.yml` installs:
 
-### `requirements.yml`
+- Collections (bundles of modules): `community.general`, `community.docker`, `ansible.posix` and `artis3n.tailscale`.
+- One role, `geerlingguy.docker`, which installs Docker itself.
 
-Declares two kinds of dependency Ansible Galaxy can install:
+## 2. Playbooks
 
-- **`collections:`** — bundles of modules (the verbs tasks call). This repo pulls
-  in `community.general` (generic system modules), `community.docker`
-  (Docker/Compose modules), and `ansible.posix` (POSIX-specific modules like
-  `mount`).
-- **`roles:`** — whole pre-built roles, not just modules. `geerlingguy.docker` (a
-  widely-used community role that installs Docker itself) and `artis3n.tailscale`
-  (installs/configures Tailscale) are used wholesale instead of hand-rolling that
-  logic.
-
----
-
-## 2. The playbooks: `site.yml` and `teardown.yml`
-
-A playbook is a list of **plays**; each play targets a set of hosts and runs a
-list of **roles** or **tasks** against them. `site.yml` has one play:
+A playbook is a list of plays. Each play runs roles or tasks against a group of hosts. `site.yml` has one play:
 
 ```yaml
 - name: Deploy NAS
-  hosts: nas          # the inventory group to target
-  become: true        # escalate to root for every task in this play
+  hosts: nas
+  become: true
   roles:
     - role: immich
       tags: [immich]
       when: immich_enabled | default(true)
 ```
 
-Three keywords do the work:
-
-- **`tags`** — run a subset: `ansible-playbook site.yml --tags immich` runs only
-  the `immich` role. This is what makes `--tags homebridge` or
-  `--tags backup,storage` possible instead of redeploying everything.
-- **`when`** — a per-role conditional. `immich_enabled | default(true)` reads as
-  "use `immich_enabled` if set, otherwise default to `true`." This is the
-  mechanism behind "set `<service>_enabled: false` to skip a service."
-- **`roles:`** vs `tasks:` — `site.yml` is 100% role-based; all real work lives
-  inside each role. `teardown.yml` uses `tasks:` and `block:` instead, because
-  teardown logic is more ad hoc per-service than a reusable deploy unit. Each
-  `block:` groups a few tasks under one `tags:`, and `remove_data: false`
-  (settable via `-e remove_data=true`) is a play-level `vars:` default every
-  task's `when: remove_data | bool` reads.
-
----
+- **`tags`**: run a subset, e.g. `--tags immich` or `--tags backup,storage`.
+- **`when`**: `immich_enabled | default(true)` means "use the flag if set, otherwise true". This is how `<service>_enabled: false` skips a service. Core services default to true, opt-in ones (pics, crafty, garage) to false.
+- **`roles:` vs `tasks:`**: `site.yml` is all roles. `teardown.yml` is tasks, one `block:` per service sharing one `tags:`, mostly through `teardown_service.yml`. Its play-level `remove_data: false` is what `-e remove_data=true` overrides.
 
 ## 3. Role anatomy
 
-Every role in `roles/` follows Ansible's fixed directory convention:
-
-| Directory | Purpose | Used here? |
+| Directory | Purpose | Used here |
 |---|---|---|
-| `tasks/main.yml` | The actual steps | Always |
-| `handlers/main.yml` | Tasks that only run when *notified* | Some roles |
+| `tasks/main.yml` | The steps | Always |
+| `handlers/main.yml` | Tasks that run only when notified | Some roles |
 | `templates/*.j2` | Jinja2 files rendered with variables | Most roles |
-| `files/*` | Static files copied verbatim, no templating | Some roles |
-| `defaults/main.yml` | Role's own fallback variable values (lowest precedence) | Roles with settings only they read |
-| `meta/main.yml` | Role dependencies (run automatically before this role) | Only `common/` |
+| `files/*` | Static files copied as-is | Some roles |
+| `defaults/main.yml` | The role's own fallback values (lowest precedence) | Roles with settings only they read |
+| `meta/main.yml` | Roles to run first | Only `common/` |
 
-`templates/` vs `files/` is a real distinction: `ansible.builtin.template` runs
-the file through Jinja2 first (so `{{ variable }}` gets substituted), while
-`ansible.builtin.copy` with `src:` pointing into `files/` copies bytes as-is.
-That's why `copyparty/files/Dockerfile` is static (no Ansible variables in it)
-while `copyparty/templates/copyparty.conf.j2` interpolates `{{ copyparty_user }}`
-and loops over `vault_copyparty_collab_users`. Using `copy` on a file containing
-`{{ }}` just copies that literal text — it does not error, it silently fails to
-substitute.
+`template` substitutes `{{ variable }}`; `copy` from `files/` copies the bytes unchanged. Using `copy` on a file containing `{{ }}` doesn't error, it silently leaves the text as is. That is why Dockerfiles get their base image through `ARG` and compose `build.args` rather than a variable.
 
-`meta/main.yml` (only `common/`) declares a **role dependency**:
+`common/meta/main.yml` makes `geerlingguy.docker` run before `common`'s own tasks, which is how Docker gets installed without `site.yml` mentioning it.
 
-```yaml
-dependencies:
-  - role: geerlingguy.docker
-    vars: {docker_users: ["{{ ansible_user }}"], ...}
-```
+## 4. Modules
 
-This means "before running `common`'s own tasks, run this entire other role
-first, with these variables." It's how `site.yml` gets Docker installed without
-ever mentioning Docker installation itself.
+Every task calls one module.
 
----
+Files:
+- `file`: create, own or permission a path, or delete it (`state: absent`)
+- `copy`: push a static file or a literal `content:` string
+- `template`: render a `.j2` file, then push it
+- `find`: search for files into a registered variable (Garage's first-deploy check, cloudflared's credential migration)
+- `git`: clone a repo (pics, through `github_clone`)
 
-## 4. The modules (the actual verbs)
+System:
+- `apt`: install packages
+- `community.general.timezone`: set the timezone
+- `community.general.nmcli`: NetworkManager settings (the direct Ethernet link)
+- `ansible.posix.mount`: manage an `fstab` entry and mount it
+- `cron`: manage one crontab entry, identified by its `name:`. Re-running updates it instead of duplicating it, and `teardown.yml` removes it by name.
+- `systemd`: control or query a unit
 
-Every task calls exactly one module — the thing that does work, as opposed to
-Ansible's own control-flow keywords (`when`, `loop`, `notify`, etc., see below).
+Docker:
+- `docker_network`: create the shared `nas-services` network
+- `docker_compose_v2`: `docker compose up`/`down` for a `project_src:` directory
+- `docker_container_exec`: run a command in a running container (Garage reloads Caddy this way)
 
-**Files & directories**
+Flow and escape hatches:
+- `assert`: fail early with a message (the storage role's drive checks)
+- `set_fact`: set a variable mid-play
+- `import_role`, `import_tasks`: pull in a role or task file when the playbook is parsed, so `--tags` still select tasks inside it. This repo uses these.
+- `include_role`: the same at run time, where tags don't reach inside. Used only where a role is called mid-task: tailscale calls `artis3n.tailscale.machine`, and pics calls `github_clone`.
+- `command`: run one binary, no shell features
+- `shell`: full shell, used where a pipe is needed (cloudflared's `find | cp`)
 
-- `ansible.builtin.file` — create/own/permission a directory or file, or delete
-  one (`state: absent`, used throughout `teardown.yml`)
-- `ansible.builtin.copy` — push a static file (or literal `content:` string, as
-  used for `.restic-password`) to the remote host
-- `ansible.builtin.template` — render a `.j2` Jinja2 file with variables
-  substituted, then push it
-- `ansible.builtin.find` — search for files matching a pattern, return results
-  into a `register`ed variable (garage's "is this the first deploy" check;
-  cloudflared's credential migration)
+Dedicated modules check state and change only what's wrong. `command` and `shell` run every time, so they carry `changed_when` or `failed_when` to say when something really changed. The Tailscale Funnel tasks show it: a read-only `funnel status --json` task (`changed_when: false`, `check_mode: false`) runs first, and the enable and disable tasks fire only when the state differs.
 
-**System / OS**
+## 5. Task keywords
 
-- `ansible.builtin.apt` — install Debian/Ubuntu packages (Raspberry Pi OS is
-  Debian-based)
-- `community.general.timezone` — set the system timezone declaratively
-- `ansible.posix.mount` — manage an `/etc/fstab` entry *and* actually
-  mount/unmount it in one module
-- `ansible.builtin.cron` — manage one crontab entry idempotently, identified by
-  its `name:` (becomes a `#Ansible: <name>` comment marker — how re-running
-  updates the same entry instead of duplicating it, and how `teardown.yml`'s
-  `state: absent` finds the right line to remove)
-- `ansible.builtin.systemd` — control/query a systemd unit (used for
-  `daemon_reload: true` after installing the drive auto-remount service)
+Keywords any task can carry:
 
-**Docker**
+- **`when:`**: run conditionally, with filters such as `| bool` and `| default(x)`.
+- **`loop:`**: repeat once per list item.
+- **`register:`**: capture a result. Garage sets `garage_is_first_deploy` from the registered `meta/` listing.
+- **`changed_when:`, `failed_when:`**: override what counts as changed or failed. The restic-init task fails only if it errored and the message wasn't "already exists", so re-running is harmless.
+- **`notify:` and handlers**: a changed task triggers a named handler, which runs once at the end of the play. If a rendered `docker-compose.yml` is byte-identical to the one on the Pi, nothing is notified and the container isn't touched.
+- **`ignore_errors: true`**: keep going after a failure (teardown of a project that may not exist, migrating credentials that may not exist).
+- **`become_user:`**: escalate to a specific user. restic-init runs as `ansible_user` because that user's home holds `.restic-password`.
+- **`environment:`**: set environment variables for one task only (restic's repo and password file, git's token).
+- **`block:`**: group tasks under one `tags:` or `when:`.
 
-- `community.docker.docker_network` — create the shared `nas-services` bridge
-  network
-- `community.docker.docker_compose_v2` — the Ansible-native equivalent of
-  `docker compose up`/`down`/`restart`, driven by a `project_src:` directory
-  containing a `docker-compose.yml`
-- `community.docker.docker_container_exec` — run a command inside an
-  already-running container (Garage role uses this to `caddy reload` without
-  restarting the whole Caddy container)
+## 6. Variables and vault
 
-**Escape hatches**
+Config comes from four sources, lowest precedence first:
 
-- `ansible.builtin.command` — run one binary with arguments, no shell features
-  (pipes, `&&`, env expansion) unless added explicitly
-- `ansible.builtin.shell` — full shell semantics, used once (cloudflared's
-  credential-migration `find | cp` pipeline) because `command` can't pipe
-- `ansible.builtin.include_role` — pull in a role by name from inside a task
-  list rather than a play's `roles:` list (the tailscale role invokes the
-  Galaxy-installed `artis3n.tailscale.machine` role this way, and the pics role
-  calls `github_clone`)
+1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_panel_port`.
+2. `group_vars/nas/vars.yml`: the shared config, auto-loaded for the `nas` group. Enabled flags, paths and non-secret settings.
+3. `group_vars/nas/versions.yml`: every image version.
+4. `group_vars/nas/vault.yml`: secrets, encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given.
 
-`command`/`shell` are "escape hatches" because Ansible's philosophy is that a
-dedicated module is idempotent by construction — it checks current state and
-only changes what's wrong — while `command`/`shell` just run a binary every
-time, blind to whether anything needed changing. That's why nearly every
-`command`/`shell` task here pairs with `changed_when`/`failed_when` — manually
-bolting idempotency onto a tool that doesn't have it natively. The Tailscale
-Funnel tasks show the pattern: there's no dedicated Funnel module, so `command`
-is the only option, but a read-only `funnel status --json` task
-(`changed_when: false`, `check_mode: false`) runs first and the enable/disable
-tasks only fire when the current state differs from the desired one.
+`vars.yml` refers to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and `vars.yml` stays safe to commit because the values exist only in the encrypted file.
 
----
-
-## 5. Task-level control-flow keywords
-
-Not modules — keywords any task can carry, controlling whether/how the module
-runs:
-
-- **`when:`** — conditional execution. Uses Jinja filters like `| bool`
-  (coerce to true/false) and `| default(x)` (fallback if undefined).
-- **`loop:`** — run the same task once per item in a list (storage role's
-  directory-creation task; copyparty's account rendering over
-  `vault_copyparty_collab_users`).
-- **`register:`** — capture a task's result into a variable for later tasks.
-  Garage's first-deploy detection: `register: garage_meta_contents` →
-  `set_fact: garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"`.
-- **`changed_when:` / `failed_when:`** — override Ansible's default idea of
-  "did this succeed / change anything," as a Jinja condition against the
-  `register`ed result. Example — the restic-init task:
-  `failed_when: [restic_init.rc != 0, "'already exists' not in restic_init.stderr"]`
-  — fail only if it errored *and* the error wasn't just "already initialized."
-  This is how re-running against an already-initialized repo stays a harmless
-  no-op.
-- **`notify:` + handlers** — a task can `notify: Restart Gitea`; the named
-  handler only fires once, at the end of the play, and only if some notifying
-  task reported `changed`. This is why editing vars and re-running only
-  restarts what actually changed — if a rendered `docker-compose.yml` is
-  byte-identical to what's already there, nothing notifies, and the running
-  container is left untouched.
-- **`ignore_errors: true`** — swallow a task failure and keep going (teardown's
-  "down a compose project that might not exist"; cloudflared's "migrate old
-  credentials if the old location happens to exist").
-- **`become_user:`** — like `become`, but escalates to a specific non-root user
-  (restic-init runs as `ansible_user`, not root, because that's whose home
-  directory holds `.restic-password`).
-- **`environment:`** — set process environment variables for just one task
-  (passing `RESTIC_PASSWORD_FILE`/`RESTIC_REPOSITORY` into `restic init` without
-  polluting the whole shell).
-- **`block:`** — group several tasks to share one `tags:`/`when:` without
-  repeating it per task (every per-service section of `teardown.yml`).
-
----
-
-## 6. Variables and Vault — where config actually lives
-
-Ansible has a variable-precedence system; this repo exercises four tiers:
-
-1. **`roles/*/defaults/main.yml`** — lowest precedence, a role's own fallback
-   for settings only that role reads (for example `crafty_panel_port`).
-   Settings shared between roles go in `vars.yml` instead.
-2. **`group_vars/nas/vars.yml`** — this project's actual config file, auto-loaded
-   for any host in the `nas` group, no explicit include needed. Every
-   `<service>_enabled`, every path (`main_drive`, `gitea_data_dir`,
-   `homebridge_config_dir`, ...), every non-secret setting lives here.
-3. **`group_vars/nas/versions.yml`** — same auto-loading, holds every image
-   version so an update is a one-line edit in one file.
-4. **`group_vars/nas/vault.yml`** — same auto-loading mechanism, but the file is
-   encrypted at rest with `ansible-vault` (AES256). Only decrypted in-memory at
-   run time, when `--ask-vault-pass` is passed.
-
-### The `vault_*` indirection pattern
-
-Variables consumed by templates/tasks are named without the `vault_` prefix
-(e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `vars.yml`), and each
-one-line passthrough points at the encrypted value in `vault.yml`. This is a
-convention, not an Ansible requirement — it buys two things:
-
-- Templates never need to know *which* variables are secret; they just use
-  `{{ copyparty_pass }}` like any other var.
-- `vars.yml` stays safe to commit even though it *references* secrets, because
-  the actual values only exist in the encrypted file.
-
-This is also why `vault.yml` can't be edited by anything other than someone
-holding the vault password — `ansible-vault`'s security model is that the
-encrypted file is opaque without it, including to tooling operating on the
-repo. There's no "edit the encrypted file programmatically" path that skips
-decryption — that's the same property that makes it safe to commit to git.
+Edit the vault with `ansible-vault edit group_vars/nas/vault.yml`. Nothing can read or change it without the vault password.
