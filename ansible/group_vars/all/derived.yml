@@ -16,13 +16,6 @@ drive_mounts: >-
   {%- set _ = _m.update({_r: _d.mount}) -%}
   {%- endfor -%}{%- endfor -%}
   {{ _m }}
-# Drives that fill no role, as listed in `drives`. Copyparty exposes these under /drives.
-extra_drives: >-
-  {%- set _x = [] -%}
-  {%- for _d in drives if not (_d.roles | default([])) -%}
-  {%- set _ = _x.append(_d) -%}
-  {%- endfor -%}
-  {{ _x }}
 fast_drive: "{{ drive_mounts.fast }}"
 primary_drive: "{{ drive_mounts.primary }}"
 backup_drive: "{{ drive_mounts.backup }}"

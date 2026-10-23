@@ -1,5 +1,8 @@
-# Ansible-managed. Mounts a USB drive or card reader that is not one of ours.
-# Skipped by UUID: every drive in `drives` (fstab mounts those) and the root and boot filesystems.
+# Ansible-managed. Mounts USB drives and card readers that are not in `drives`.
+# Skipped by UUID: every drive in `drives` and the root and boot filesystems. A wrong `uuid` in `drives`
+# means that drive gets mounted a second time here. Upper and lower case are both skipped.
+# add|change: a card put into a reader that is already plugged in sends only `change`. A repeat mount of a mounted device fails harmlessly.
+# nosuid,nodev,noexec: nothing on a plugged-in drive can run. ro: see usb_automount_writable.
 {% set _skip = (drives | selectattr('uuid', 'defined') | map(attribute='uuid') | list)
    + (ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/firmware']) | map(attribute='uuid') | reject('equalto', 'N/A') | list) %}
-ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_USAGE}=="filesystem", ENV{ID_FS_UUID}!="{{ _skip | unique | join('|') }}", RUN{program}+="/usr/bin/systemd-mount --no-block --collect -o nosuid,nodev,noexec{{ '' if extra_drives_writable | bool else ',ro' }} $devnode"
+ACTION=="add|change", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_USAGE}=="filesystem", ENV{ID_FS_UUID}!="{{ (_skip | map('upper') | list + _skip | map('lower') | list) | unique | join('|') }}", RUN{program}+="/usr/bin/systemd-mount --no-block --collect -o nosuid,nodev,noexec{{ '' if usb_automount_writable | bool else ',ro' }} $devnode"

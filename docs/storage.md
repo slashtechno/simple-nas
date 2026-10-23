@@ -38,9 +38,9 @@ drives:
 
 Keep `nofail` on every drive so a missing drive does not stop the Pi booting.
 
-## Using the microSD card as fast or primary storage
+## Using the microSD card for fast or primary
 
-An entry with no `uuid` is a plain directory on the root filesystem (the microSD card). The storage role creates it and never touches fstab:
+A `drives` entry with no `uuid` is a folder on the microSD card; nothing goes in fstab:
 
 ```yaml
 drives:
@@ -48,18 +48,17 @@ drives:
   - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
 ```
 
-The `backup` role cannot go on such an entry (the deploy fails): a backup on the card holding the data protects against nothing. Trade-offs of putting data on the card: the Immich database writes constantly and wears a card out, and one card failure then takes the OS and the data together. The same entry works for any host, so a Pi with no extra drive can run on the card until you add one.
+The `backup` role needs an entry with a `uuid`, or the deploy fails. Downsides of the card: the Immich database wears it out, and one card failure loses the OS and the data together.
 
-## Extra drives (no role)
+## Plugged-in USB drives (`/drives`)
 
-A drive that fills no role is "extra". Two kinds, both listed under `/drives` in Copyparty and never including a role drive (the backup drive holds unencrypted database dumps, so it must not be browsable):
+Set `usb_automount_enabled: true` (already on in `group_vars/nas`) and any USB drive or card reader you plug in appears in Copyparty under `/drives/<label>`. A camera's SD card in a reader works. The host mounts it at `/run/media/system/<label>`.
 
-- **A `drives` entry without `roles:`.** Mounted through fstab like the others. Copyparty binds it at `/drives/<last part of mount>`.
-- **Anything plugged in.** With `usb_automount_enabled: true` (on in `group_vars/nas`), a udev rule asks `systemd-mount` to mount every USB filesystem that is not in `drives` and is not the root or boot filesystem. It appears under `/run/media/system/<label>` and in Copyparty as `/drives/usb/<label>`, with no configuration. A camera's SD card in a USB reader just shows up. The rule skips by UUID, so write each `uuid` as `blkid` prints it (FAT UUIDs are upper-case).
-
-Both kinds are **read-only** unless `extra_drives_writable: true` (`group_vars/all/vars.yml`). It sets the `ro` mount option for plugged-in drives, and Copyparty's bind mount and permission for both kinds. Plugged-in drives are made read-only on the host because a Docker `:ro` bind mount does not cover mounts that arrive after the container started (tested). Mounted `nosuid,nodev,noexec`.
-
-An unplugged drive leaves its empty folder until `systemd-tmpfiles` sweeps it (within a day) or the next boot. Unplug without unmounting is what these cards usually get; the mount ends with the device.
+- It is read-only. To change or delete files on it, set `usb_automount_writable: true`.
+- Programs on it cannot be run.
+- Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
+- After unplugging, its empty folder stays until the next reboot or up to a day. Unplugging a writable drive without unmounting can corrupt it.
+- Re-deploy to apply: `just deploy storage copyparty`.
 
 To add or replace a drive:
 1. Format it and add or point a `drives` entry at it (a new UUID, either on the same mount or a new `mount:` with updated `roles`).
