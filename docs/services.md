@@ -59,6 +59,8 @@ cloudflared_ingress:
 
 Then `just deploy cloudflared`.
 
+The NAS group runs a tunnel by default (`cloudflared_enabled: true` in `group_vars/nas`). A general server runs its own by setting `cloudflared_enabled: true` and its own `cloudflared_ingress` in `host_vars/<host>/vars.yml`; its tunnel is named `<hostname>-tunnel`. `cf_api_token`, `cf_account_id` and `cf_zones` are shared (`group_vars/all`). A hostname may appear in only one host's `cloudflared_ingress`; the deploy fails if two hosts list it.
+
 - Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone.
 - The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain or more than one in `cf_zones`.
 - Hostnames not listed get a 404.

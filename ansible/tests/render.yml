@@ -7,7 +7,7 @@
 #   - a key in a vars.yml (group_vars/all, group_vars/nas, host_vars/<host>) that is missing from
 #     its example file
 #   - template syntax errors
-#   - a backup template that needs a NAS-only variable on a general server (second play)
+#   - a backup or cloudflared template that needs a NAS-only variable on a general server (second play)
 # The hosts come from tests/inventory.yml, so group_names inside the templates is real.
 - name: Render all role templates against the example vars
   hosts: render-nas
@@ -82,7 +82,7 @@
 
 # A general server has no group_vars/nas, so only the all/ examples are loaded. A backup template that
 # uses a NAS-only variable outside {% if 'nas' in group_names %} fails here as undefined.
-- name: Render the backup templates for a general server
+- name: Render the backup and cloudflared templates for a general server
   hosts: render-general
   become: false
   gather_facts: false
@@ -105,26 +105,28 @@
         drives:
           - {uuid: "1111-AAAA", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
 
-    - name: Create the output directory
+    - name: Find the templates of the roles that run on general servers
+      ansible.builtin.find:
+        paths: "{{ repo }}/roles/{{ item }}/templates"
+        patterns: ["*.j2"]
+      loop: [backup, cloudflared]
+      register: general_templates
+
+    - name: Create the output directories
       ansible.builtin.file:
-        path: "{{ out_dir }}/general/backup"
+        path: "{{ out_dir }}/general/{{ item }}"
         state: directory
         mode: "0755"
-
-    - name: Find the backup templates
-      ansible.builtin.find:
-        paths: "{{ repo }}/roles/backup/templates"
-        patterns: ["*.j2"]
-      register: backup_templates
+      loop: [backup, cloudflared]
 
     - name: Render them
       ansible.builtin.template:
-        src: "{{ item.path }}"
-        dest: "{{ out_dir }}/general/backup/{{ item.path | basename | regex_replace('\\.j2$', '') }}"
+        src: "{{ item.1.path }}"
+        dest: "{{ out_dir }}/general/{{ item.0.item }}/{{ item.1.path | basename | regex_replace('\\.j2$', '') }}"
         mode: "0644"
-      loop: "{{ backup_templates.files }}"
+      loop: "{{ general_templates.results | subelements('files') }}"
       loop_control:
-        label: "{{ item.path | basename }}"
+        label: "{{ item.1.path | basename }}"
 
     - name: The default local paths are the system paths, not empty strings
       ansible.builtin.assert:

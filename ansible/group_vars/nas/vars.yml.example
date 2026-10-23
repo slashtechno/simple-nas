@@ -84,16 +84,10 @@ pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home p
 # --- Cloudflare Tunnel ---
 # Tunnel name: other hosts default to <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
 cf_tunnel_name: pi-nas-tunnel
-cf_api_token: "{{ vault_cf_api_token }}"
-cf_account_id: "{{ vault_cf_account_id }}"
-# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
-# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones.
-cf_zones:
-  example.com: your_zone_id
-  other-domain.example: your_other_zone_id
+# cf_api_token, cf_account_id and cf_zones are in group_vars/all/vars.yml: every server that runs a tunnel uses them.
 
 # One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
-# address). No `path:`. The hostname must contain one domain from cf_zones above. Where a service
+# address). No `path:`. The hostname must contain one domain from cf_zones (group_vars/all/vars.yml). Where a service
 # has a private surface, it publishes two ports and the tunnel points at the guest one.
 cloudflared_ingress:
   - hostname: immich.example.com

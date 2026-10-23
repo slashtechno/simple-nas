@@ -124,6 +124,10 @@
       tags: [dockge]
       when: dockge_enabled | default(true)
 
+    - role: cloudflared
+      tags: [cloudflared]
+      when: cloudflared_enabled | default(false)
+
     - role: caddy
       tags: [caddy]
       when: caddy_enabled | default(false)

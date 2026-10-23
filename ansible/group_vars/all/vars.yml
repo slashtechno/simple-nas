@@ -93,3 +93,16 @@ restic_command_timeout: "2h"
 # off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
 # A host without a fast drive keeps it in the user's ~/.cache.
 restic_cache_dir: "{{ fast_drive + '/restic-cache' if fast_drive else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
+
+# --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
+cf_api_token: "{{ vault_cf_api_token }}"
+cf_account_id: "{{ vault_cf_account_id }}"
+# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
+# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones.
+cf_zones:
+  slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
+  angad.me: f0cf329b896c61d1f5bc2a4c53c03647
+# Public hostnames this host's tunnel serves. Empty here; the NAS group lists its own (group_vars/nas/vars.yml).
+# One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
+# The hostname must contain one domain from cf_zones. A hostname may appear on only one host; the deploy fails otherwise.
+cloudflared_ingress: []

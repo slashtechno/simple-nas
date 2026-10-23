@@ -20,11 +20,22 @@
       - cf_zones | dict2items | selectattr('key', 'in', item.hostname) | list | length == 1
     fail_msg: >-
       {{ item }} must have only hostname and service (no path), and its hostname must match exactly
-      one domain in cf_zones. See the comments in group_vars/nas/vars.yml.
+      one domain in cf_zones. See the comments in group_vars/all/vars.yml.
     quiet: true
   loop: "{{ cloudflared_ingress }}"
   loop_control:
     label: "{{ item.hostname | default(item) }}"
+
+# Two hosts serving one hostname would fight over its DNS record, so each hostname belongs to one host.
+- name: Check that no other host serves the same hostname
+  ansible.builtin.assert:
+    that: >-
+      cloudflared_ingress | map(attribute='hostname')
+      | intersect(groups['servers'] | difference([inventory_hostname])
+                  | map('extract', hostvars, 'cloudflared_ingress') | flatten | map(attribute='hostname') | list)
+      | length == 0
+    fail_msg: A hostname in cloudflared_ingress is also in another host's cloudflared_ingress. Each hostname belongs to one host.
+    quiet: true
 
 - name: Make Cloudflare match cloudflared_ingress
   delegate_to: localhost

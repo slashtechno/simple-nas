@@ -10,7 +10,7 @@ How it works now is in [ansible/README.md](../../ansible/README.md), [networking
 - Base roles on every server: sudoers drop-in, Tailscale install (`state: present`, join by hand), zellij, Ghostty terminfo, SSH keys, log rotation, cloud-init network switch, Docker snap check.
 - `docker_data_root` with containerd `root` and mount guards (containerd `root` verified on pi5); Gitea runner bind mount.
 - Copyparty option renames, `tailscale_funnel` as its own NAS-only role, all versions in `versions.yml`.
-- Cloudflared with a remotely managed tunnel (token and ingress through the API); tested on pi5 against a fake API only.
+- Cloudflared with a remotely managed tunnel (token and ingress through the API); tested on pi5 against a fake API only. Runs on general servers too (own tunnel and `cloudflared_ingress` per host; the deploy fails if two hosts list one hostname).
 - rclone Google Drive remote from the vault; a configured cloud repo that fails to initialise fails the deploy.
 - Dockge and caddy-docker-proxy roles for `servers_general`.
 - `just deploy` and `just preview` take `--limit` and extra flags (`-K`).
