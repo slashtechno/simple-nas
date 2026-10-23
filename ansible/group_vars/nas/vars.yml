@@ -84,6 +84,7 @@ copyparty_files_dir: "{{ main_drive }}/files"
 copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
 copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
 gitea_data_dir: "{{ fast_drive }}/docker/gitea"
+gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"   # runner registration (.runner); on the fast drive so it is backed up
 pics_data_dir: "{{ fast_drive }}/docker/pics"
 homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
 garage_data_dir: "{{ fast_drive }}/docker/garage"

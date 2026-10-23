@@ -41,6 +41,7 @@ services:
       GITEA_RUNNER_EPHEMERAL: "1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - {{ gitea_runner_data_dir }}:/data
     networks:
       - {{ nas_network }}
     depends_on:

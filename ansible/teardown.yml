@@ -58,6 +58,7 @@
         service: gitea
         data_paths:
           - "{{ gitea_data_dir }}"
+          - "{{ gitea_runner_data_dir }}"
 
     - name: Stop and remove pics
       tags: [pics]
