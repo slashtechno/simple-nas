@@ -15,4 +15,4 @@ To add or replace a drive:
 2. `just deploy storage`.
 3. Copy the data over, for example `rsync -aHAX`.
 
-The step-by-step plan for the next drive upgrade is in [plans/DRIVE-MIGRATION-PLAN.md](../plans/DRIVE-MIGRATION-PLAN.md). A backup drive that drops out and comes back is covered in [BACKUPS.md](../BACKUPS.md#if-the-backup-drive-disconnects).
+The step-by-step plan for the next drive upgrade is in [plans/drive-migration.md](./plans/drive-migration.md). A backup drive that drops out and comes back is covered in [backups.md](./backups.md#if-the-backup-drive-disconnects).

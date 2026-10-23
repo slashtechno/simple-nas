@@ -115,5 +115,5 @@ without assuming you have your phone on you.
    `storage`/`backup` Ansible roles to mount post-unlock instead of at boot.
 4. Fix Docker Compose boot ordering so services start only after mount.
 5. Add passkey path for day-to-day unlock from own devices.
-6. Update `BACKUPS.md` and `docs/storage.md` to document the new unlock flow and the
+6. Update `docs/backups.md` and `docs/storage.md` to document the new unlock flow and the
    reboot-then-no-backup-until-unlocked tradeoff.

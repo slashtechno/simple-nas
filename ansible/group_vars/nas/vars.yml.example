@@ -31,7 +31,7 @@ tailscale_funnel_port: 3923
 timezone: America/New_York         # timedatectl list-timezones
 nas_base_dir: /opt/nas             # where compose projects are deployed on the Pi
 nas_scripts_dir: "{{ nas_base_dir }}/scripts"                       # backup/helper scripts installed on the Pi
-service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"      # one dump script per service with a live database (see BACKUPS.md)
+service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"      # one dump script per service with a live database (see docs/backups.md)
 nas_network: nas-services          # shared Docker network name
 docker_pull_policy: missing        # "always" to pull newer images on every run — see ansible/README.md#update-service-images
 
@@ -72,7 +72,7 @@ service_dumps_dir: "{{ backup_drive }}/service-dumps"
 # the backup script, so editing this list can't drop the database dumps.
 # CAUTION: restic groups snapshots by host + paths, so changing this list
 # starts a new snapshot group; the old group's last snapshots stay until you
-# run `restic forget --path <old path> ...` by hand (see plans/DRIVE-MIGRATION-PLAN.md).
+# run `restic forget --path <old path> ...` by hand (see docs/plans/drive-migration.md).
 # To skip something, add it to restic_local_excludes instead: excludes never split a group.
 restic_local_paths: "{{ [main_drive, fast_drive] | unique }}"
 # Extra patterns for the local backup to skip, added AFTER the defaults in
@@ -86,7 +86,7 @@ restic_local_excludes: []
 # Adding a path is safe. Removing one leaves its old snapshots until you run
 # `restic forget --path <path> ...` by hand. Examples:
 #   - "{{ immich_upload_location }}"            # all photos
-#   - "{{ crafty_data_dir }}"                   # Minecraft worlds (live copy; see BACKUPS.md)
+#   - "{{ crafty_data_dir }}"                   # Minecraft worlds (live copy; see docs/backups.md)
 #   - "{{ copyparty_files_dir }}/documents"     # a single Copyparty folder
 restic_cloud_extra_paths: []
 # Same syntax; added after the defaults in restic-excludes-cloud.txt.j2.

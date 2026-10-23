@@ -1,7 +1,7 @@
 #!/bin/bash
 # Gitea dump. Run by backup-services.sh, which passes the dump directory as $1
 # and keeps the last 3 files named gitea-*.
-# restore-services.sh and BACKUPS.md depend on the file name gitea-dump-*.zip.
+# restore-services.sh and docs/backups.md depend on the file name gitea-dump-*.zip.
 set -euo pipefail
 
 DUMP_DIR="$1"

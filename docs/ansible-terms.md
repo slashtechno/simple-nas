@@ -2,7 +2,7 @@
 
 What Ansible does: you describe the desired state in YAML, and a run makes the Pi match it. Each step checks first and skips itself when already correct, so running a playbook twice is safe and brings a drifted Pi back to the defined state.
 
-This is a reference for what the repo actually uses, not a tutorial. For operating the repo, see [README.md](./README.md).
+This is a reference for what the repo actually uses, not a tutorial. For operating the repo, see [ansible/README.md](../ansible/README.md).
 
 ## 1. Files that make Ansible work
 

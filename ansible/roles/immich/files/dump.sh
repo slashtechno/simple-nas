@@ -1,7 +1,7 @@
 #!/bin/bash
 # Immich database dump. Run by backup-services.sh, which passes the dump
 # directory as $1 and keeps the last 3 files named immich-*.
-# restore-services.sh and BACKUPS.md depend on the file name immich-db-*.sql.gz.
+# restore-services.sh and docs/backups.md depend on the file name immich-db-*.sql.gz.
 set -euo pipefail
 
 DUMP_DIR="$1"

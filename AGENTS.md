@@ -12,4 +12,4 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - `just check` (in `ansible/`) must pass: lint, syntax-check and the template render test. Add lint skips only with a written reason.
 - Never run playbooks against the Pi. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
-- Backups: [BACKUPS.md](./BACKUPS.md).
+- Backups: [docs/backups.md](./docs/backups.md).

@@ -1,6 +1,6 @@
 # NAS Ansible playbooks
 
-Each service is a role with its own Docker Compose project at `/opt/nas/<service>/` on the Pi, all on the shared Docker network `nas-services`. Ansible runs on your Mac and SSHes into the Pi, which only needs SSH and Python. New to Ansible? Read [TERMS.md](./TERMS.md) first.
+Each service is a role with its own Docker Compose project at `/opt/nas/<service>/` on the Pi, all on the shared Docker network `nas-services`. Ansible runs on your Mac and SSHes into the Pi, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
 Ansible owns what it deploys; you own everything else. Files it manages (`/opt/nas/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Anything outside that, such as SSH keys or manually installed packages, is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
@@ -76,5 +76,5 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass # also wipes 
 5. `site.yml`: add `- role: myservice` with a tag and `when: myservice_enabled | default(false)` (opt-in; `true` only for core services).
 6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
 7. A public hostname needs a `cloudflared_ingress` rule.
-8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../BACKUPS.md](../BACKUPS.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
+8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
 9. `just deploy myservice`

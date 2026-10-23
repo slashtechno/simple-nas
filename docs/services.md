@@ -1,6 +1,6 @@
 # Service notes
 
-Setup steps and gotchas for services that need more than `<name>_enabled: true`. Deploy any of them with `just deploy <tag>`. Backups are in [BACKUPS.md](../BACKUPS.md).
+Setup steps and gotchas for services that need more than `<name>_enabled: true`. Deploy any of them with `just deploy <tag>`. Backups are in [backups.md](./backups.md).
 
 | Service | Role | Section |
 |---|---|---|
@@ -65,7 +65,7 @@ Opt-in (`crafty_enabled: true`). One container runs every server. Everything is 
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
 - `crafty_memory_limit` caps all servers combined. On a 4 GB Pi it competes with Immich, so start small.
 - Not behind Cloudflare Tunnel (raw TCP and self-signed HTTPS don't fit). Friends join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
-- The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [BACKUPS.md](../BACKUPS.md)).
+- The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [backups.md](./backups.md)).
 
 ## Homebridge
 

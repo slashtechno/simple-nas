@@ -64,7 +64,7 @@
   become: true
   become_user: "{{ ansible_user }}"
 
-# The cloud repo needs rclone's one-time OAuth setup first (see BACKUPS.md) —
+# The cloud repo needs rclone's one-time OAuth setup first (see docs/backups.md) —
 # on a fresh Pi that hasn't done that yet, skip init rather than fail the
 # whole deploy; it'll pick up automatically on a later run once configured.
 - name: Check whether the gdrive-nas rclone remote is configured
