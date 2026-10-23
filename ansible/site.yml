@@ -65,6 +65,9 @@
       tags: [storage]
       when: storage_enabled | default(true)
 
+    - role: tailscale_funnel
+      tags: [tailscale]
+
     - role: immich
       tags: [immich]
       when: immich_enabled | default(true)

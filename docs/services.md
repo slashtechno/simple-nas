@@ -7,7 +7,7 @@ Setup steps and gotchas for services that need more than `<name>_enabled: true`.
 | Copyparty | `roles/copyparty` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
 | pics | `roles/pics`, `roles/github_clone` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Cloudflare Tunnel | `roles/cloudflared` | [Public hostname](#cloudflare-add-a-public-hostname) |
-| Tailscale | `roles/tailscale` | [Funnel](#tailscale-funnel) |
+| Tailscale | `roles/tailscale`, `roles/tailscale_funnel` | [Funnel](#tailscale-funnel) |
 | Garage | `roles/garage` | [Garage](#garage-s3) |
 | Crafty | `roles/crafty` | [Crafty](#crafty-minecraft-servers) |
 | Homebridge | `roles/homebridge` | [Homebridge](#homebridge) |
@@ -19,7 +19,7 @@ The config is rendered by `roles/copyparty/templates/copyparty.conf.j2` into the
 
 Apps that talk to Copyparty get a service account. Add an entry to `copyparty_service_accounts` in `vars.yml` (user, password variable, and one or more volumes, each a folder plus permissions) and put its password in the vault. Each volume is mounted at `/<folder>`, stored in `copyparty_files_dir/<folder>`, with the admin as owner. Those folders then disappear for every other account with access to `/`, such as pocketpi's. Leave out `d` unless the app must delete: without it Copyparty also refuses to overwrite, so the app can't destroy anything. `vars.yml.example` has an example.
 
-To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. The base image version is in `ansible/group_vars/nas/versions.yml`; see "Update service images" in [ansible/README.md](../ansible/README.md).
+To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. The base image version is in `ansible/group_vars/all/versions.yml`; see "Update service images" in [ansible/README.md](../ansible/README.md).
 
 ## Clone a private GitHub repo
 

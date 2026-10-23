@@ -115,8 +115,8 @@ Keywords any task can carry:
 Config comes from these sources, lowest precedence first:
 
 1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_panel_port`.
-2. `group_vars/all/vars.yml`: settings every server reads (timezone, base paths).
-3. `group_vars/nas/`: loaded for hosts in the `nas` group. `vars.yml` holds enabled flags, paths and non-secret settings, `versions.yml` every image version, `derived.yml` values computed from the others (not edited), `vault.yml` secrets.
+2. `group_vars/all/`: loaded for every host. `vars.yml` holds settings every server reads (timezone, base paths, SSH keys), `versions.yml` every image and tool version, `derived.yml` values computed from the others.
+3. `group_vars/nas/`: loaded for hosts in the `nas` group. `vars.yml` holds enabled flags, paths and non-secret settings, `derived.yml` values computed from the others (not edited), `vault.yml` secrets.
 4. `host_vars/<host>/vars.yml`: one host's settings, such as the direct link. Beats group values.
 
 `vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host only loads the vault files of its own groups, so a server outside `nas` needs no vault password.

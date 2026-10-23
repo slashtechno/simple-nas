@@ -47,7 +47,6 @@
             repo + '/group_vars/nas/vars.yml.example',
             repo + '/host_vars/vars.yml.example',
             repo + '/group_vars/nas/vault.yml.example',
-            repo + '/group_vars/nas/versions.yml',
             repo + '/group_vars/nas/derived.yml'] + defaults_files }}
 
     - name: Find every host's vars.yml

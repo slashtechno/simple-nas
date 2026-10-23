@@ -82,3 +82,4 @@
     src: "/opt/zellij/{{ zellij_version }}/zellij"
     dest: /usr/local/bin/zellij
     state: link
+    force: true   # replaces a copy installed by hand before this playbook managed zellij

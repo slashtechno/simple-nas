@@ -172,7 +172,7 @@ The owner asked that every option, its default and its meaning be easy to find a
 | Setting shared across roles or `teardown.yml` | `group_vars/<scope>/vars.yml` and its `.example` | Owner |
 | Per-host setting (wifi, drives, data root) | `host_vars/<host>/vars.yml` and an example | Owner |
 | Secrets | `vault.yml` files and examples | Owner |
-| Image and tool versions | `group_vars/nas/versions.yml` | Owner (`just tags`) |
+| Image and tool versions | `group_vars/all/versions.yml` | Owner (`just tags`) |
 | **Derived values** (`nas_drive_mounts`, `fast_drive`, `main_drive`, `backup_drive`) | a tracked `group_vars/nas/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
 
 **One comment shape for every option**, in defaults files and example files alike, modeled on the restic comments already in `vars.yml.example`:

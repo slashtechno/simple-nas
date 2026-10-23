@@ -47,14 +47,14 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | The NAS group (services, drives, backups) | `group_vars/nas/vars.yml`, mirrored in `vars.yml.example` |
 | One host (direct link) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` next to the file they belong with |
-| Image versions | `group_vars/nas/versions.yml` |
+| Image versions | `group_vars/all/versions.yml` |
 | Computed from the above | `group_vars/nas/derived.yml`; not edited |
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 
 ## Update service images
 
-Every image and version is a line in `group_vars/nas/versions.yml`, with its release-notes link above it. To update one:
+Every image and version is a line in `group_vars/all/versions.yml`, with its release-notes link above it. To update one:
 
 1. Read the release notes.
 2. Edit that line (`just tags <image>` lists the tags that exist).
