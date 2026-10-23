@@ -3,7 +3,7 @@
 # Runs on your machine only (no Pi, no vault): `just test` runs this, then
 # shellchecks the rendered scripts. It catches:
 #   - a template using a variable that isn't defined in vars.yml.example,
-#     vault.yml.example or the role's defaults/
+#     vault.yml.example, versions.yml or the role's defaults/
 #   - a key in vars.yml that is missing from vars.yml.example
 #   - template syntax errors
 - name: Render all role templates against the example vars
@@ -36,10 +36,13 @@
           - defaults_files | length > 0
           - template_files | length > 0
 
-    - name: Load the example vars, the vault example and every role's defaults
+    - name: Load the example vars, the vault example, the versions and every role's defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
-      loop: "{{ [repo + '/group_vars/nas/vars.yml.example', repo + '/group_vars/nas/vault.yml.example'] + defaults_files }}"
+      loop: >-
+        {{ [repo + '/group_vars/nas/vars.yml.example',
+            repo + '/group_vars/nas/vault.yml.example',
+            repo + '/group_vars/nas/versions.yml'] + defaults_files }}
 
     - name: Read the keys of vars.yml and vars.yml.example
       ansible.builtin.include_vars:

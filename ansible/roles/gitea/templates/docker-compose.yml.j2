@@ -4,7 +4,7 @@ networks:
 
 services:
   gitea:
-    image: gitea/gitea:latest
+    image: {{ gitea_image }}
     container_name: gitea
     restart: unless-stopped
     volumes:
@@ -31,7 +31,7 @@ services:
 
 {% if vault_gitea_runner_token %}
   gitea-runner:
-    image: docker.io/gitea/act_runner:nightly
+    image: {{ gitea_runner_image }}
     container_name: gitea-runner
     restart: unless-stopped
     environment:

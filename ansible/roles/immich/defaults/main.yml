@@ -1,3 +1,0 @@
----
-# renovate: datasource=docker depName=ghcr.io/immich-app/immich-server
-immich_version: release  # or pin to e.g. v1.130.0

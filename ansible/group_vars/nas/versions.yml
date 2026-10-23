@@ -1,0 +1,40 @@
+---
+# Every image version in one place. To update one: read the release notes,
+# edit the line, `just preview <service>`, `just deploy <service>`.
+# `just tags <image>` lists the tags that exist.
+# Floating tags (latest, release, nightly, main) only move when you deploy with
+# `-e docker_pull_policy=always`. Pin one to a version once it is running well.
+
+# Immich: release notes https://github.com/immich-app/immich/releases
+immich_version: release
+# Postgres and Valkey are pinned by digest: change only when Immich's notes say so.
+immich_postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+immich_valkey_image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
+
+# Copyparty (RAW thumbnails): https://github.com/9001/copyparty/releases
+copyparty_base_image: copyparty/iv:1.20.26
+
+# Garage: https://garagehq.deuxfleurs.fr/_releases.html
+garage_version: v2.3.0
+garage_caddy_image: caddy:alpine
+garage_webui_image: khairul169/garage-webui:latest
+
+# Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
+crafty_version: latest
+
+# Gitea and its runner: https://github.com/go-gitea/gitea/releases
+gitea_image: gitea/gitea:latest
+gitea_runner_image: docker.io/gitea/act_runner:nightly
+
+homebridge_image: homebridge/homebridge:latest
+
+# backup-status dashboard (built on the Pi)
+restic_image: restic/restic:latest
+backup_status_python_image: python:3.14-slim
+
+# Cloudflare Tunnel (built on the Pi)
+cloudflared_image: cloudflare/cloudflared:latest
+alpine_image: alpine:latest
+
+# pics: git branch, tag or commit of the private repo
+pics_version: main

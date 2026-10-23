@@ -1,3 +1,2 @@
 ---
-pics_version: main
 pics_port: 8100   # published on the Pi: LAN + tailnet reach the owner app here

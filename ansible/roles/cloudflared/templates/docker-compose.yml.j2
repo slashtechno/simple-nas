@@ -7,6 +7,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.init
+      args:
+        CLOUDFLARED_IMAGE: {{ cloudflared_image }}
+        ALPINE_IMAGE: {{ alpine_image }}
     container_name: cloudflared-init
     restart: "no"
     volumes:
@@ -23,6 +26,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.runtime
+      args:
+        CLOUDFLARED_IMAGE: {{ cloudflared_image }}
+        ALPINE_IMAGE: {{ alpine_image }}
     container_name: cloudflared
     restart: unless-stopped
     command: tunnel --config /etc/cloudflared/config.yml run

@@ -1,5 +1,7 @@
-FROM cloudflare/cloudflared:latest as cloudflared
-FROM alpine:latest
+ARG CLOUDFLARED_IMAGE
+ARG ALPINE_IMAGE
+FROM ${CLOUDFLARED_IMAGE} AS cloudflared
+FROM ${ALPINE_IMAGE}
 
 # Copy cloudflared binary from the official image
 COPY --from=cloudflared /usr/local/bin/cloudflared /usr/local/bin/cloudflared

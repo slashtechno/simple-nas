@@ -7,7 +7,7 @@
 # Reach the UI over Tailscale instead: http://<pi-tailscale-ip>:8581
 services:
   homebridge:
-    image: homebridge/homebridge:latest
+    image: {{ homebridge_image }}
     container_name: homebridge
     restart: unless-stopped
     network_mode: host

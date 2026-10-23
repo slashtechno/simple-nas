@@ -1,6 +1,8 @@
-FROM restic/restic:latest AS restic
+ARG RESTIC_IMAGE
+ARG PYTHON_IMAGE
+FROM ${RESTIC_IMAGE} AS restic
 
-FROM python:3.14-slim
+FROM ${PYTHON_IMAGE}
 
 COPY --from=restic /usr/bin/restic /usr/local/bin/restic
 

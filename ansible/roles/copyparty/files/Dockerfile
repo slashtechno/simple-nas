@@ -1,6 +1,6 @@
-# iv = ffmpeg + vips + libraw (RAW thumbnails, including NEF). Pinned: bump the tag deliberately.
-# Check the tag and read the changelog at https://github.com/9001/copyparty/releases
-FROM copyparty/iv:1.20.26
+# iv = ffmpeg + vips + libraw (RAW thumbnails, including NEF). The tag is copyparty_base_image in group_vars/nas/versions.yml.
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 # Install system dependencies for thumbnail generation
 # ffmpeg: video/audio thumbnails

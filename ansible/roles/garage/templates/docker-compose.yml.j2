@@ -26,7 +26,7 @@ services:
       - {{ nas_network }}
 
   garage-cors-proxy:
-    image: caddy:alpine
+    image: {{ garage_caddy_image }}
     container_name: garage-cors-proxy
     restart: unless-stopped
     volumes:
@@ -37,7 +37,7 @@ services:
       - {{ nas_network }}
 
   garage-webui:
-    image: khairul169/garage-webui:latest
+    image: {{ garage_webui_image }}
     container_name: garage-webui
     restart: unless-stopped
     # webui reads garage.toml to discover the admin API and S3 settings

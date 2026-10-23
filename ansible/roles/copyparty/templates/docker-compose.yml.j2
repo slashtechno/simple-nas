@@ -4,7 +4,10 @@ networks:
 
 services:
   copyparty:
-    build: .
+    build:
+      context: .
+      args:
+        BASE_IMAGE: {{ copyparty_base_image }}
     container_name: copyparty
     restart: unless-stopped
     volumes:

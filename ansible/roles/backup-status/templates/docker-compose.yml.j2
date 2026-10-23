@@ -4,7 +4,11 @@ networks:
 
 services:
   backup-status:
-    build: .
+    build:
+      context: .
+      args:
+        RESTIC_IMAGE: {{ restic_image }}
+        PYTHON_IMAGE: {{ backup_status_python_image }}
     container_name: backup-status
     restart: unless-stopped
     # Both mounts are read-only — this container can list/read the repo and

@@ -1,279 +1,80 @@
-# NAS Ansible Playbooks
+# NAS Ansible playbooks
 
-Each service is a separate role with its own Docker Compose project at `/opt/nas/<service>/` on the Pi, all connected via a shared Docker network (`nas-services`).
+Each service is a role with its own Docker Compose project at `/opt/nas/<service>/` on the Pi, all on the shared Docker network `nas-services`. Ansible runs on your Mac and SSHes into the Pi, which only needs SSH and Python. New to Ansible? Read [TERMS.md](./TERMS.md) first.
 
-Ansible runs **on your Mac** and SSHes into the Pi. The Pi only needs SSH access and Python.
-
----
-
-## Ansible concepts (new to Ansible — read this first)
-
-**What Ansible does:** You describe the desired state in YAML files on your Mac. Running a playbook makes the Pi match that state. It's not a script that runs top-to-bottom once — it checks each step and skips it if it's already correct.
-
-**Idempotency:** Running the same playbook twice is safe and expected. The second run no-ops on everything that's already correct. This means you can always re-run to bring the Pi back to the desired state after something drifts.
-
-**Roles:** A role is a self-contained unit for one service — its own tasks, templates, files, and handlers. `roles/immich/` knows everything about deploying Immich and nothing about anything else. Adding a new service = adding a new role.
-
-**Handlers:** A handler is a task that only runs when triggered by another task via `notify:`. The key property: it runs **once at the end**, no matter how many tasks triggered it. Used for restarts — e.g. "if the Copyparty config changed, restart Copyparty." If nothing changed, the handler never fires and the service is never disrupted.
-
-**Vault:** Sensitive values (passwords, API tokens) live in `group_vars/nas/vault.yml`, encrypted with `ansible-vault`. The file looks like `vars.yml` but is stored as ciphertext. You decrypt it at run time with `--ask-vault-pass`.
-
-**Is this like NixOS — should I avoid changing things directly on the Pi?**
-
-Not as strict. The rule is: **Ansible owns what it deploys; you own everything else.**
-
-- Files Ansible manages (`/opt/nas/*/docker-compose.yml`, cron jobs, config files it renders) — change these through Ansible, or the next playbook run will overwrite your edit.
-- Everything else (SSH keys, packages you install manually, files outside `/opt/nas/`) — direct changes are fine and Ansible won't touch them.
-
-If you SSH in and manually restart a container or tweak something temporarily, that's fine. Just know that re-running the relevant playbook tag will bring it back to the defined state.
-
----
+Ansible owns what it deploys; you own everything else. Files it manages (`/opt/nas/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Anything outside that, such as SSH keys or manually installed packages, is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
 ## First-time setup
 
 ```bash
-brew install ansible
+brew install ansible just
 cd ansible/
-
-ansible-galaxy collection install -r requirements.yml
-ansible-galaxy role install -r requirements.yml
-
-cp inventory/hosts.yml.example inventory/hosts.yml    # set your Pi's IP and username
+just deps
+cp inventory/hosts.yml.example inventory/hosts.yml    # set the Pi's IP and username
 cp group_vars/nas/vars.yml.example group_vars/nas/vars.yml
 cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml
 # fill in vault.yml with real secrets, then encrypt it:
 ansible-vault encrypt group_vars/nas/vault.yml
 ```
 
----
+## Commands
 
-## Deploy
-
-```bash
-# Everything
-ansible-playbook site.yml --ask-vault-pass
-
-# One service only
-ansible-playbook site.yml --tags immich --ask-vault-pass
-```
-
----
-
-## Disable a service
-
-Set `<name>_enabled: false` in `group_vars/nas/vars.yml` and re-run. The service won't be deployed or started. All enabled flags are at the top of `vars.yml`.
-
-```yaml
-immich_enabled: false   # skip Immich entirely
-garage_enabled: false   # Garage is off by default — needs manual init after first deploy
-```
-
-If you previously deployed the service and want to remove it from the Pi, run teardown first:
-```bash
-ansible-playbook teardown.yml --tags immich --ask-vault-pass
-```
-Then set `immich_enabled: false` so future runs don't redeploy it.
-
----
-
-## Update configuration
-
-Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then re-run with the relevant tag. Only changed services restart: compose-only services are recreated by `docker_compose_v2` when their rendered file changes, and handlers cover the rest (Copyparty, Garage, pics, backup-status, cloudflared, network, storage).
-
-```bash
-ansible-playbook site.yml --tags <service> --ask-vault-pass
-```
-
-### Drive roles (source of truth)
-
-Every `nas_drives` entry in `vars.yml` declares which `roles:` it fills (a list — one drive can hold
-several, e.g. a 1-drive NAS is `roles: [fast, primary, backup]` on one entry). Allowed roles, each
-claimed by exactly one drive (the storage role's assert fails the deploy on duplicates or unknown names):
-
-- `fast` — SSD: random-IO data (Docker, Immich DB, configs) + caches (restic cache, copyparty hist)
-- `primary` — bulk data (photos, files)
-- `backup` — restic repo, service dumps, logs
-
-Service paths derive from the map (`fast_drive`/`main_drive`/`backup_drive`, defined in
-`group_vars/nas/vars.yml` via `nas_drive_mounts`). When multiple roles share one drive this changes
-nothing on disk — so if you later add a dedicated SSD for `fast`, the Docker/DB/config dirs resolve to
-a different mountpoint automatically and just need data moved there once.
-
-To add or replace a drive: format it, add/point the `nas_drives` entry (new UUID → same mount or a new
-`mount:` + updated `roles`), rerun `--tags storage`, then migrate data (e.g. `rsync -aHAX`).
-
-### Update service images
-
-Gitea, Immich, Homebridge, and Garage track floating tags (`latest`/`release`/version vars), but deploys default to `pull: missing` (idempotent — only pulls if the image isn't already local). To pull and restart with newer images:
-
-```bash
-ansible-playbook site.yml -e docker_pull_policy=always --ask-vault-pass          # everything
-ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass   # one service
-```
-
-To see what is newer, run `just outdated`. It reads the pinned versions (the `FROM` lines, and the `*_version:` keys that carry a `# renovate:` comment) and lists the ones with a newer release. It opens no pull requests and changes nothing. Then:
-
-1. Read the release notes of the service you want to update.
-2. Edit that one line (`just tags <image>` lists the tags you can choose from).
-3. `just preview <service>`, then `just deploy <service>`.
-
-Floating tags (`latest`, `release`, `nightly`) are not checked, because there is no version to compare. Pin one to a real version, and add a `# renovate: datasource=docker depName=<image>` comment above its `*_version:` key, to include it. It only sees `FROM` lines, literal `image:` lines and annotated variables. Images that appear only in a compose template with a templated tag (Immich's Postgres and Valkey, Caddy and garage-webui in the Garage file) are not checked; take Immich's from its release notes. The config is `renovate.json` at the repo root.
-
-Copyparty and cloudflared build their own images from local Dockerfiles (`build: always`) and always rebuild, so this doesn't apply to them. Copyparty's base image is pinned (`FROM copyparty/iv:<version>` in `roles/copyparty/files/Dockerfile`), so to update it, change that tag (check the [releases](https://github.com/9001/copyparty/releases) first) and redeploy.
-
-### Copyparty: add users or change volume layout
-
-The copyparty config is rendered directly by Ansible from `roles/copyparty/templates/copyparty.conf.j2` into the config volume. Accounts use `{{ copyparty_user }}` / `{{ copyparty_pass }}` from vars, and collab friends are defined via `vault_copyparty_collab_users` in the vault.
-
-Apps that talk to Copyparty get a service account: add an entry to `copyparty_service_accounts` in `vars.yml` (user, password var, and one or more volumes, each a folder plus perms) and put its password in the vault. Each volume is mounted at `/<folder>` (stored in `copyparty_files_dir/<folder>`), with the admin as owner, so the app sees only those folders. Note that they then disappear for every other account with access to `/`, such as pocketpi's. Leave out `d` unless the app truly needs to delete: without it Copyparty also refuses to overwrite files, so the app can't destroy anything. See `vars.yml.example` for an example.
-
-To customize:
-1. Edit `copyparty.conf.j2` or add vars to `vars.yml`/`vault.yml`
-2. Re-run `ansible-playbook site.yml --tags copyparty --ask-vault-pass`
-
-### Clone a private GitHub repo onto the NAS
-
-This repo is public, so the clone uses a read-only fine-grained token from the vault (`vault_github_read_token`; `vault.yml.example` says how to create it, scoped to the one repo). A role includes `roles/github_clone` with `repo` and `dest`. The token reaches git through its environment, so it never lands in `.git/config` on the NAS. If the token expires, the task fails at the clone step; make a new one and `ansible-vault edit` the vault.
-
-### pics: photo culling and sharing
-
-An opt-in service (`pics_enabled: true`; nothing happens until you set it). The `pics` role clones the private `lab` repo with the token above, builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed), and runs it on `nas-services`. It talks to Copyparty as the `photos` service account, so set up that account first (see Copyparty above).
-
-1. In `vars.yml` copy the `pics_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. The hub serves two ports: the owner app (cull UI, everything, password-gated) on `pics_port`, and a guest surface (share pages + portfolio, with no owner routes in it at all) on `pics_public_port`. Only the owner port is published, so the app is at `http://<pi>:<pics_port>` on the LAN and `http://<pi-tailscale-ip>:<pics_port>` on the tailnet — no `tailscale serve` needed. The tunnel points straight at `http://pics:<pics_public_port>`, so its Cloudflare entry needs no `path` rule: nothing private exists on that port.
-2. In the vault add `vault_pics_password` (your login, 12+ characters) and `vault_pics_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
-3. `ansible-playbook site.yml --tags copyparty,pics,cloudflared --ask-vault-pass`. `copyparty` creates the `photos` account and its two volumes first.
-
-The app keeps its database in `pics_data_dir`, which the nightly backup already covers; the app also writes its own daily snapshots there. `teardown.yml --tags pics` removes the container and source and keeps that data unless `remove_data=true`.
-
-### Cloudflare: add a public hostname for a new service
-
-In `vars.yml`:
-```yaml
-cloudflared_ingress:
-  - hostname: newservice.example.com
-    service: "http://newservice:8080"
-```
-Then: `ansible-playbook site.yml --tags cloudflared --ask-vault-pass`
-
-Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID) with the longest matching domain, so a hostname on a new domain needs its domain added there, and the API token needs DNS:Edit on that zone. A hostname with no matching domain is skipped with a warning. An optional `path` regex on a rule limits what the hostname forwards; the rest gets the catch-all 404.
-
-### Tailscale Funnel
-
-In `vars.yml`:
-```yaml
-tailscale_funnel_enabled: true   # exposes Copyparty at your ts.net hostname
-```
-Then: `ansible-playbook site.yml --tags tailscale --ask-vault-pass`
-
----
-
-## Remove services
-
-```bash
-# Stop and remove one service (data kept)
-ansible-playbook teardown.yml --tags garage --ask-vault-pass
-
-# Remove everything (data kept)
-ansible-playbook teardown.yml --ask-vault-pass
-
-# Remove everything AND wipe data (DESTRUCTIVE — no undo without a backup)
-ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass
-```
-
----
-
-## Commands and checks
-
-Common commands live in `ansible/justfile`. [`just`](https://just.systems) is a plain command runner: install it with `brew install just`, then run `just` in `ansible/` to list them. Each recipe is a short shell snippet you can read in the file.
+[`just`](https://just.systems) is a plain command runner. Run `just` in `ansible/` to list the recipes; each is a short shell snippet in `justfile`.
 
 | Command | Does |
 |---|---|
-| `just check` | Everything below; run it before committing (CI runs it too) |
-| `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard |
+| `just check` | Everything below; run before committing (CI runs it too) |
+| `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
 | `just syntax` | Both playbooks parse |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
-| `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags` |
+| `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich` |
 | `just preview [tags]` | The same with `--check --diff`, which changes nothing |
-| `just outdated` | Lists newer versions of pinned images (Renovate in Docker, read-only). Needs Docker and `jq`; not part of `check` |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'` |
 
-Lint config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
+`--check` does not create directories, so on a first deploy a later step can fail with "not a directory". That is a preview limit, not a bug.
 
----
+## Change a setting
+
+Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared, network and storage.
+
+Settings used by one role are in that role's `defaults/main.yml`. Settings shared between roles or with `teardown.yml` are in `group_vars/nas/vars.yml`, mirrored in `vars.yml.example`. Image versions are all in `group_vars/nas/versions.yml`.
+
+Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
+
+## Update service images
+
+Every image and version is a line in `group_vars/nas/versions.yml`, with its release-notes link above it. To update one:
+
+1. Read the release notes.
+2. Edit that line (`just tags <image>` lists the tags that exist).
+3. `just preview <service>`, then `just deploy <service>`.
+
+A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, because deploys use `pull: missing`:
+
+```bash
+ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass
+```
+
+Pin a floating tag to the version running on the Pi (`docker ps`) once it works. Moving Immich off `release` to something newer can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Copyparty, backup-status and cloudflared build on the Pi and always rebuild, so `docker_pull_policy` doesn't apply to them.
+
+## Disable or remove a service
+
+Set `<name>_enabled: false` in `vars.yml` to stop deploying it (the flags are at the top of the file). To remove one that is already on the Pi, tear it down first, then set the flag so later runs don't bring it back:
+
+```bash
+ansible-playbook teardown.yml --tags garage --ask-vault-pass       # one service, data kept
+ansible-playbook teardown.yml --ask-vault-pass                     # everything, data kept
+ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass # also wipes data: no undo without a backup
+```
 
 ## Add a new service
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
-2. `roles/myservice/templates/docker-compose.yml.j2` — join the `nas-services` external network
-3. `roles/myservice/tasks/main.yml` — create its data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (renders the template and runs `docker_compose_v2`). Copy `roles/gitea` as the model. Services that restart on config changes (like `copyparty`) write their own tasks and handlers instead.
-4. `roles/myservice/defaults/main.yml` — knobs only this role reads. Values shared between roles or with `teardown.yml` (data dirs, enabled flags, ports used in `cloudflared_ingress`) go in `group_vars/nas/vars.yml` and `vars.yml.example`.
-5. Add `- role: myservice` + tag + `when: myservice_enabled | default(false)` to `site.yml` (opt-in; use `true` only for core services)
-6. Add a `myservice_*` entry to `teardown.yml` (`import_tasks: teardown_service.yml` with `service` and `data_paths`)
-7. Add a `cloudflared_ingress` rule if it needs a public hostname
-8. Only if it has a live database: add `files/dump.sh` and install it into `service_dump_scripts_dir` (copy `roles/gitea`). See [BACKUPS.md](../BACKUPS.md). Plain-file data needs nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
-9. `ansible-playbook site.yml --tags myservice --ask-vault-pass`
-
----
-
-## Homebridge
-
-Runs with `network_mode: host` (required for HomeKit's mDNS discovery), so it can't join `nas-services` and is deliberately left out of `cloudflared_ingress`. Remote Apple Home access (and widgets) needs a real HomeKit hub — Apple TV or HomePod — on your LAN; **Tailscale doesn't substitute**, since HomeKit gates local-vs-remote by Wi-Fi network identity and multicast mDNS discovery, not IP reachability (MagicDNS is unicast name resolution, a different thing) — off Wi-Fi, the Home app shows the bridge offline even with Tailscale connected. Tailscale does still reach Homebridge's own admin UI fine (`http://<pi-tailscale-ip>:8581`), since that's a plain HTTP page unrelated to HAP.
-
-The role only deploys the container — the image bootstraps its own `config.json`/`auth.json` on first start. Log in with `admin`/`admin` and **change the password immediately**; the HomeKit PIN and plugins (Kasa, Google Smart Home, etc.) are also configured there and persist across re-deploys.
-
----
-
-## Backups: if the backup drive disconnects
-
-`fstab`'s `nofail` only covers mount-at-boot — it doesn't auto-remount a drive that drops out later, so `/mnt/backup` silently becomes a plain (small) directory on root instead. This happened once, caused by a Pi-side USB brown-out, not the drive itself; see `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` if it recurs — undervoltage there points at the Pi's power delivery (PSU/cable/hub), not the enclosure.
-
-Two guards now cover it:
-
-1. **Loud failure** — `backup-restic-local.sh`, `backup-restic-cloud.sh`, `backup-services.sh`, and the `restic check` cron job all check `mountpoint -q /mnt/backup` first and log to `journalctl -t nas-backup` instead of writing onto root.
-2. **Self-healing** — `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` via a oneshot systemd service whenever any filesystem reappears, so a reconnected drive remounts within seconds.
-
-Check with: `mountpoint /mnt/backup`, `journalctl -t nas-backup`, `systemctl status nas-drive-remount.service`.
-
----
-
-## Garage S3 post-setup
-
-Set `garage_enabled: true` in `vars.yml`, fill in the vault entries (`vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user`, `vault_garage_webui_pass`), then deploy:
-
-```bash
-ansible-playbook site.yml --tags garage,cloudflared --ask-vault-pass
-```
-
-Ansible automatically detects whether this is a first deploy by checking if the `meta/` data directory is empty. If it is (fresh install), `--single-node` is injected into the compose command to auto-bootstrap the cluster layout. On subsequent runs, the flag is omitted automatically. Open `https://garage.example.com` and log in with the web UI credentials. Use the web UI to create buckets and access keys.
-
-When connecting an app to Garage, use:
-- **Endpoint**: `https://s3.example.com`
-- **Region**: `garage`
-- **Access key / secret**: from the web UI
-
----
-
-## Crafty (Minecraft servers) — opt-in
-
-Off by default. Set `crafty_enabled: true` in `vars.yml` and deploy with `--tags crafty`. One container runs every server, and everything lives under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`), so moving or backing up all your worlds is one directory.
-
-- Panel: `https://<pi-ip>:28443` (`crafty_panel_port`, self-signed cert). First admin password: `docker logs crafty`, or `<crafty_data_dir>/config/default-creds.txt`.
-- Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server in the panel.
-- `crafty_memory_limit` caps all servers combined. On a 4 GB Pi it competes with Immich, so start small.
-- Not behind Cloudflare Tunnel (raw TCP and self-signed HTTPS don't fit). Friends join over LAN, a router port-forward of the game port, or Tailscale.
-- Worlds are not in the restic backup set; use Crafty's own scheduled backups (written to `backups/`).
-
----
-
-## Useful commands
-
-```bash
-# View logs for a service
-ssh yourname@your-pi "docker logs -f copyparty"
-
-# Dry-run (shows what would change, touches nothing)
-ansible-playbook site.yml --check --ask-vault-pass
-
-# Edit encrypted secrets
-ansible-vault edit group_vars/nas/vault.yml
-```
+2. `templates/docker-compose.yml.j2`: join the external `nas-services` network. Take the image from a variable defined in `versions.yml`.
+3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
+4. `defaults/main.yml`: settings only this role reads. Shared values (data dirs, enabled flags, ports used in `cloudflared_ingress`) go in `group_vars/nas/vars.yml` and `vars.yml.example`.
+5. `site.yml`: add `- role: myservice` with a tag and `when: myservice_enabled | default(false)` (opt-in; `true` only for core services).
+6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
+7. A public hostname needs a `cloudflared_ingress` rule.
+8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../BACKUPS.md](../BACKUPS.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
+9. `just deploy myservice`
