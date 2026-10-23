@@ -48,6 +48,6 @@ Fully automated: daily local, weekly cloud, weekly integrity check, plus a read-
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Planned drive upgrade and the backup steps that follow it |
 | [docs/plans/encryption.md](./docs/plans/encryption.md) | Planned encryption at rest (not started) |
-| [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Moving the NAS to pi5, then managing several servers from this repo (not started) |
+| [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Moving the NAS to pi5 and managing several servers from this repo (built on a branch; cutover pending) |
 | [docs/dumps/](./docs/dumps/) | Decisions log and deferred work from the maintainability refactor |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

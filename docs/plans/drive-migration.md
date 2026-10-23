@@ -55,7 +55,7 @@ Hardware notes:
 
 ## 4. Pi 5 board swap
 
-**Decided (D50): the Pi 5 comes first, before the 4TB and P10 purchases.** pi5 already has a fresh Pi OS install, so this is Option B below. The T7 and the 500GB HDD move to it as they are, and steps 0-3 then happen on pi5. The move, including state that lives on the Pi 4's microSD and does not travel with the drives (rclone config, cloudflared credentials, the runner registration), is in [multi-host.md](./multi-host.md#cutover-from-the-pi-4-to-pi5). Power: pi5's supply allows 1.6A across all USB ports. The T7 and the P10 are both bus-powered, so check their combined draw or plan a powered hub before connecting both. The options below are kept for reference.
+**Decided (D50): the Pi 5 comes first, before the 4TB and P10 purchases.** pi5 already has a fresh Pi OS install, so this is Option B below. The T7 and the 500GB HDD move to it as they are, and steps 0-3 then happen on pi5. The move, including state that lives on the Pi 4's microSD and does not travel with the drives (rclone config, the runner registration), is in [multi-host.md](./multi-host.md#cutover-from-the-pi-4-to-pi5). Power: pi5's supply allows 1.6A across all USB ports. The T7 and the P10 are both bus-powered, so check their combined draw or plan a powered hub before connecting both. The options below are kept for reference.
 
 *Option A: move the microSD (fastest — keeps exact OS/config state)*
 
@@ -63,7 +63,7 @@ Hardware notes:
 - Nothing in this repo's playbooks touches OS internals (no config.txt/firmware/raspi-config edits), so the SD carries over as-is.
 - Steps: shut down the Pi 4 → image the SD first (rollback insurance, e.g. dd to a file on another machine) → move SD + all three drives → boot the Pi 5.
 - After first boot: update the Pi's IP in `ansible/inventory/hosts.yml` (MAC address changes on the new board; a DHCP reservation fixes this permanently), then run the full playbook — it's idempotent and reconciles anything drift-y.
-- Carries over for free: SSH host keys, Tailscale identity, cloudflared creds, docker images (they live on the SD).
+- Carries over for free: SSH host keys, Tailscale identity, docker images (they live on the SD).
 - Hardware: Pi 5 needs the official 27W PSU (with a 3A supply the USB budget is only 600mA — *worse* than the Pi 4's 1.2A; the 5A PSU raises it to 1.6A, enough for the bus-powered P10 at ~1A spinup) + active cooling. No HAT.
 
 *Option B: fresh OS + ansible re-provision (cleanest)*

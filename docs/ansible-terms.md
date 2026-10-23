@@ -70,7 +70,7 @@ Files:
 - `file`: create, own or permission a path, or delete it (`state: absent`)
 - `copy`: push a static file or a literal `content:` string
 - `template`: render a `.j2` file, then push it
-- `find`: search for files into a registered variable (Garage's first-deploy check, cloudflared's credential migration)
+- `find`: search for files into a registered variable (Garage's first-deploy check)
 - `git`: clone a repo (pics, through `github_clone`)
 
 System:
@@ -92,7 +92,7 @@ Flow and escape hatches:
 - `import_role`, `import_tasks`: pull in a role or task file when the playbook is parsed, so `--tags` still select tasks inside it. This repo uses these.
 - `include_role`: the same at run time, where tags don't reach inside. Used only where a role is called mid-task: tailscale calls `artis3n.tailscale.machine`, and pics calls `github_clone`.
 - `command`: run one binary, no shell features
-- `shell`: full shell, used where a pipe is needed (cloudflared's `find | cp`)
+- `shell`: full shell, for when a pipe is needed (no role uses it today)
 
 Dedicated modules check state and change only what's wrong. `command` and `shell` run every time, so they carry `changed_when` or `failed_when` to say when something really changed. The Tailscale Funnel tasks show it: a read-only `funnel status --json` task (`changed_when: false`, `check_mode: false`) runs first, and the enable and disable tasks fire only when the state differs.
 

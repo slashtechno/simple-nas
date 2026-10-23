@@ -33,7 +33,7 @@ volumes:
   caddy_data: {}
 ```
 
-The README shows `ci-alpine`, a CI build with no stability guarantee. Use a version tag. With cloudflared in front you can skip ports 80 and 443 on the host and let cloudflared reach `caddy:80` over the Docker network.
+The README shows `ci-alpine`, a CI build with no stability guarantee. Use a version tag. The `roles/caddy` compose file publishes `caddy_http_port` and `caddy_https_port` on the host. Behind cloudflared you can ignore them: cloudflared reaches `caddy:80` over the Docker network.
 
 ## Label syntax
 
