@@ -40,6 +40,9 @@ dockge_image: louislam/dockge:1.5.0
 # caddy-docker-proxy (opt-in reverse proxy): https://github.com/lucaslorentz/caddy-docker-proxy/releases
 caddy_image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine
 
+# ntfy (failure alerts): https://github.com/binwiederhier/ntfy/releases
+ntfy_image: binwiederhier/ntfy:v2.33.1
+
 # pics: git branch, tag or commit of the private repo
 pics_version: main
 

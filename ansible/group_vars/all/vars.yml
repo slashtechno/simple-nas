@@ -94,6 +94,13 @@ restic_command_timeout: "2h"
 # A host without a fast drive keeps it in the user's ~/.cache.
 restic_cache_dir: "{{ fast_drive + '/restic-cache' if fast_drive else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 
+# --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
+# A failed backup job always goes to the system log (`journalctl -t nas-backup`). Set this to also send it
+# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the NAS (roles/ntfy). The login token
+# is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
+ntfy_alert_url: ""
+ntfy_token_file: "{{ nas_base_dir }}/ntfy-token"
+
 # --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"

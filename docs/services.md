@@ -11,6 +11,7 @@ Setup steps for services that need more than `<name>_enabled: true`. Run `just d
 | Garage | `roles/garage` | [Garage](#garage-s3) |
 | Crafty | `roles/crafty` | [Crafty](#crafty-minecraft-servers) |
 | Homebridge | `roles/homebridge` | [Homebridge](#homebridge) |
+| ntfy | `roles/ntfy` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Dockge, Caddy | `roles/dockge`, `roles/caddy` | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Direct Ethernet link | `roles/network` | [networking.md](./networking.md#direct-ethernet-link) |
 
@@ -69,6 +70,20 @@ The NAS group runs a tunnel by default (`cloudflared_enabled: true` in `group_va
 - The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the NAS holds only a tunnel token (`/opt/nas/cloudflared/token`). If no tunnel named `cf_tunnel_name` exists, the deploy creates it.
 - If a tunnel with that name exists but is "locally managed", the deploy stops. Use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel (public hostnames are offline until the next deploy).
 - A leftover `*.json` credentials file in `/opt/nas/cloudflared/` is not used and not touched; delete it by hand.
+
+## ntfy: failure alerts
+
+A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`, off by default, NAS only) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
+
+1. Make the secrets: a login password's hash with `docker run --rm -it binwiederhier/ntfy user hash` and a token with `docker run --rm binwiederhier/ntfy token generate`. The hash goes in `vault_ntfy_password_hash` (`group_vars/nas/vault.yml`), the token in `vault_ntfy_token` (`group_vars/all/vault.yml`).
+2. Set `ntfy_enabled: true` and `ntfy_alert_url: "http://localhost:8090/alerts"` (topic `alerts`) in `group_vars/nas/vars.yml`; `just deploy ntfy,backup`.
+3. In the ntfy app, add the server `http://<nas-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale.
+
+- The server denies everyone but the `alerts` user and its token, so the published port is not open to the LAN. The user and token are set from the compose file at every start; the data directory only holds message history.
+- Another host sends alerts to the same server by setting `ntfy_alert_url` to `http://<nas-tailscale-name>:8090/alerts` in its `host_vars`; it needs `vault_ntfy_token` (shared vault).
+- `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t nas-backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
+- It cannot report the NAS being down or a backup that never started (cron not running, host off).
+- iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
 
 ## Tailscale Funnel
 

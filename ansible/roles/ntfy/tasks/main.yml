@@ -1,0 +1,22 @@
+---
+- name: Check the ntfy secrets are in the vault
+  ansible.builtin.assert:
+    that:
+      - vault_ntfy_password_hash is defined
+      - vault_ntfy_token is defined
+    fail_msg: vault_ntfy_password_hash or vault_ntfy_token is missing from the vault. vault.yml.example says how to make them.
+    quiet: true
+
+- name: Create the ntfy data directory
+  ansible.builtin.file:
+    path: "{{ ntfy_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy ntfy
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: ntfy

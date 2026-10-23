@@ -60,6 +60,14 @@
           - "{{ gitea_data_dir }}"
           - "{{ gitea_runner_data_dir }}"
 
+    - name: Stop and remove ntfy
+      tags: [ntfy]
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: ntfy
+        data_paths:
+          - "{{ ntfy_data_dir }}"
+
     - name: Stop and remove pics
       tags: [pics]
       ansible.builtin.import_tasks: teardown_service.yml
@@ -231,6 +239,12 @@
             - restic-excludes-local.txt
             - restic-excludes-cloud.txt
             - copyparty-funnel.sh
+            - alert.sh
+
+        - name: Remove the ntfy token file
+          ansible.builtin.file:
+            path: "{{ ntfy_token_file }}"
+            state: absent
 
         # rmdir only succeeds when the directory is empty, like the nas_base_dir step at the end.
         - name: Remove the dump.d and scripts directories (only if empty)

@@ -9,6 +9,13 @@
       vault_restic_password (group_vars/all/vault.yml) to run backups.
     quiet: true
 
+- name: Check the ntfy token is in the vault
+  ansible.builtin.assert:
+    that: vault_ntfy_token is defined
+    fail_msg: "ntfy_alert_url is set but vault_ntfy_token is not in group_vars/all/vault.yml (see vault.yml.example)."
+    quiet: true
+  when: ntfy_alert_url | length > 0
+
 - name: Check the offsite repository is set
   ansible.builtin.assert:
     that: restic_cloud_repository | length > 0
@@ -56,6 +63,7 @@
     - backup-restic-local.sh
     - backup-services.sh
     - restic-check.sh
+    - alert.sh
 
 - name: Deploy backup scripts with no deployment-specific paths
   ansible.builtin.copy:
@@ -83,6 +91,23 @@
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true   # the password would show in --diff
+
+# alert.sh reads the token from this file; with no ntfy_alert_url the file is removed.
+- name: Write the ntfy token file
+  ansible.builtin.copy:
+    content: "{{ vault_ntfy_token }}"
+    dest: "{{ ntfy_token_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+  when: ntfy_alert_url | length > 0
+
+- name: Remove the ntfy token file when alerts are off
+  ansible.builtin.file:
+    path: "{{ ntfy_token_file }}"
+    state: absent
+  when: ntfy_alert_url | length == 0
 
 # The weekly offsite backup: its script, path and exclude lists, rclone remote, repository and cron job.
 - name: Set up the offsite backup
@@ -158,7 +183,8 @@
         job: >-
           /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-          logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
+          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
 - name: Initialize local restic repository (idempotent)
   ansible.builtin.command:
@@ -183,7 +209,8 @@
     job: >-
       /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
       >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-      logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
+      /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+      "backup-restic-local failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly restic integrity check (Wednesday 3 AM)
   ansible.builtin.cron:
@@ -195,7 +222,8 @@
     job: >-
       /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
       >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-      logger -t nas-backup "restic-check failed or {{ backup_drive }} not mounted"
+      /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+      "restic-check failed or {{ backup_drive }} not mounted"
 
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:

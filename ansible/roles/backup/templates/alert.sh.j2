@@ -1,0 +1,11 @@
+#!/bin/bash
+# Run by the backup cron jobs when one fails. Usage: alert.sh "message"
+# Writes the message to the system log{% if ntfy_alert_url | length > 0 %} and sends it to ntfy{% endif %}.
+logger -t nas-backup "$1"
+{% if ntfy_alert_url | length > 0 %}
+# The send must never fail the job or hang it: --max-time stops a stuck connection, `|| true` ignores errors.
+curl --silent --show-error --max-time 15 \
+  -H "Authorization: Bearer $(cat {{ ntfy_token_file | quote }})" \
+  -H "Title: {{ inventory_hostname }}: backup failed" -H "Priority: high" \
+  -d "$1" {{ ntfy_alert_url | quote }} || true
+{% endif %}

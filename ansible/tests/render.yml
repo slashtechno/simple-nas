@@ -133,3 +133,30 @@
         that:
           - restic_local_paths == ['/home/pi']
           - restic_cache_dir == '/home/pi/.cache/restic'
+
+    # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
+    # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
+    # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
+    - name: Turn on ntfy alerts for this host
+      ansible.builtin.set_fact:
+        ntfy_alert_url: http://localhost:8090/alerts
+
+    - name: Render alert.sh with an ntfy topic set
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/backup/templates/alert.sh.j2"
+        dest: "{{ out_dir }}/general/backup/alert-with-ntfy.sh"
+        mode: "0644"
+
+    - name: Read both alert.sh renders
+      ansible.builtin.slurp:
+        src: "{{ out_dir }}/general/backup/{{ item }}"
+      loop: [alert.sh, alert-with-ntfy.sh]
+      register: alert_scripts
+
+    - name: Only the ntfy render sends anything, and never lets a failed send fail the job
+      ansible.builtin.assert:
+        that:
+          - "'curl' not in (alert_scripts.results[0].content | b64decode)"
+          - "'curl' in (alert_scripts.results[1].content | b64decode)"
+          - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
+          - "'|| true' in (alert_scripts.results[1].content | b64decode)"

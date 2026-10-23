@@ -107,6 +107,10 @@
       tags: [backup]
       when: backup_enabled | default(true)
 
+    - role: ntfy
+      tags: [ntfy]
+      when: ntfy_enabled | default(false)
+
     - role: backup-status
       tags: [backup-status]
       when: backup_status_enabled | default(true)

@@ -109,6 +109,8 @@ For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive-nas:
 
 ## Checking backup status
 
+A failed job is written to the system log (`journalctl -t nas-backup`) and, with `ntfy_alert_url` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
+
 ```bash
 restic snapshots                                  # add --tag daily or --tag weekly to filter
 tail -50 /mnt/backup/logs/backup-cron.log          # recent combined cron log

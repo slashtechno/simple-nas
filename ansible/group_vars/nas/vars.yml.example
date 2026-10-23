@@ -16,10 +16,15 @@ crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RA
 backup_enabled: true
 backup_cloud_enabled: true   # weekly offsite copy; the repository is below
 usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
+ntfy_enabled: false   # private notification server for backup failure alerts; see docs/services.md#ntfy-failure-alerts
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # Offsite repository for this host; every host needs its own path (docs/backups.md#offsite-repository-restic_cloud_repository).
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
+
+# Failure alerts to ntfy (roles/ntfy, docs/services.md#ntfy-failure-alerts). "" sends nothing;
+# when ntfy_enabled is true on this host use the local address.
+ntfy_alert_url: ""   # e.g. "http://localhost:8090/alerts"
 
 # --- Tailscale ---
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from

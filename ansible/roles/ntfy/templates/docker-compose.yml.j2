@@ -1,0 +1,32 @@
+# Ansible-managed — do not edit directly, edit the ntfy_* settings and re-deploy.
+# Users, access and the token are set here at every start; the compose file is mode 0640 because
+# it holds them. `$` is written `$$` because compose would otherwise read it as a variable.
+networks:
+  {{ nas_network }}:
+    external: true
+
+services:
+  ntfy:
+    image: {{ ntfy_image }}
+    container_name: ntfy
+    restart: unless-stopped
+    command: serve
+    ports:
+      - "{{ ntfy_port }}:80"
+    volumes:
+      - {{ ntfy_data_dir }}:/var/lib/ntfy
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      NTFY_BASE_URL: "{{ ntfy_base_url }}"
+      NTFY_LISTEN_HTTP: ":80"
+      NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
+      NTFY_AUTH_FILE: /var/lib/ntfy/user.db
+      NTFY_AUTH_DEFAULT_ACCESS: deny-all
+      NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ vault_ntfy_password_hash | replace("$", "$$") }}:user'
+      NTFY_AUTH_ACCESS: "{{ ntfy_user }}:*:rw"
+      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:alerts'
+{% if ntfy_ios_push | bool %}
+      NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
+{% endif %}
+    networks:
+      - {{ nas_network }}
