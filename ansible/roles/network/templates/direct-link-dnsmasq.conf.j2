@@ -1,15 +1,15 @@
 # Managed by Ansible (network role) — hands the laptop an IP on the direct
 # Ethernet link automatically. DHCP only: no DNS proxying, no gateway handed
 # out, so this can't become an internet path or interfere with other DNS.
-# interface=eth0 with bind-interfaces hard-fails at boot when eth0 has no
-# link yet (cable unplugged => eth0 has no address => "unknown interface"
-# => dnsmasq stays dead forever) — bind-dynamic instead attaches to eth0
+# interface= with bind-interfaces hard-fails at boot when the port has no
+# link yet (cable unplugged => the port has no address => "unknown interface"
+# => dnsmasq stays dead forever) — bind-dynamic instead attaches to the port
 # whenever it appears, with no boot-order dependency.
-interface=eth0
+interface={{ direct_link_iface }}
 bind-dynamic
 except-interface=lo
 port=0
-dhcp-range={{ direct_link_peer_ip }},{{ direct_link_peer_ip }},255.255.255.252,12h
+dhcp-range={{ direct_link_peer_ip }},{{ direct_link_peer_ip }},12h
 # dnsmasq defaults to advertising itself as the router if you don't say
 # otherwise -- these explicitly suppress that (and DNS) so no gateway is
 # ever handed out.

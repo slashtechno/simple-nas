@@ -24,12 +24,19 @@
   when: network_cloud_init_dir.stat.exists
 
 # Direct Ethernet link to a laptop (see docs/services.md#direct-ethernet-link).
-# Assumes eth0 is idle (Pi runs on wifi) — if eth0 is ever your Ansible
-# management connection instead, enabling this will drop that connection.
-- name: Set up direct Ethernet link on eth0
+# The port must be idle (Pi runs on wifi): setting it up on the connection Ansible uses would drop it.
+- name: Set up direct Ethernet link
   when: direct_link_enabled | default(false)
   block:
-    - name: Configure static direct-link IP on eth0 (no gateway — can't route internet traffic)
+    - name: Refuse to touch the interface this host is managed over
+      ansible.builtin.assert:
+        that: ansible_facts['default_ipv4']['interface'] | default('') != direct_link_iface
+        fail_msg: >-
+          {{ direct_link_iface }} carries this host's default route, which is probably the connection
+          Ansible uses. Setting up the direct link on it would cut that connection.
+          Manage the host over another interface (wifi), or use another port for the link.
+
+    - name: Configure static direct-link IP (no gateway — can't route internet traffic)
       community.general.nmcli:
         type: ethernet
         conn_name: direct-link
@@ -50,8 +57,8 @@
         state: present
 
     # Auto-assigns the laptop's IP so it doesn't need manual TCP/IP config.
-    # DHCP only (port=0 disables dnsmasq's DNS proxy) and scoped to eth0 only
-    # (bind-dynamic + interface=eth0), so it can't affect wifi or hand out a gateway/DNS —
+    # DHCP only (port=0 disables dnsmasq's DNS proxy) and scoped to the link port only
+    # (bind-dynamic + interface={{ direct_link_iface }}), so it can't affect wifi or hand out a gateway/DNS —
     # NetworkManager's built-in "shared" mode was considered instead, but it
     # also enables NAT/forwarding, which would open exactly the internet path
     # this link is designed not to have.
@@ -60,7 +67,7 @@
         name: dnsmasq
         state: present
 
-    - name: Configure dnsmasq to auto-assign the laptop's IP on eth0
+    - name: Configure dnsmasq to auto-assign the laptop's IP
       ansible.builtin.template:
         src: direct-link-dnsmasq.conf.j2
         dest: /etc/dnsmasq.d/direct-link.conf
@@ -71,16 +78,20 @@
 
 # Symmetric revert: flipping direct_link_enabled back to false and redeploying
 # undoes the block above, without needing the full destructive teardown.yml.
-# Only for a host that sets direct_link_enabled: false itself. A host that never mentions the
-# link (pi5) keeps its own eth0 profile, so the role changes nothing on it.
-- name: Tear down direct Ethernet link on eth0
-  when: direct_link_enabled is defined and not direct_link_enabled
+# Runs only where the link was set up before (its dnsmasq file exists). A host that never had the
+# link, including one that copied the example's "false", keeps its own port profile untouched.
+- name: Check whether the direct link is set up
+  ansible.builtin.stat:
+    path: /etc/dnsmasq.d/direct-link.conf
+  register: network_direct_link_conf
+
+- name: Tear down direct Ethernet link
+  when: direct_link_enabled is defined and not direct_link_enabled and network_direct_link_conf.stat.exists
   block:
     - name: Remove static direct-link profile
       community.general.nmcli:
         conn_name: direct-link
         state: absent
-      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)
 
     - name: Re-enable auto-connect on the default eth0 DHCP profile
       community.general.nmcli:
@@ -89,7 +100,6 @@
         ifname: "{{ direct_link_iface }}"
         autoconnect: true
         state: present
-      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)
 
     - name: Remove direct-link dnsmasq config
       ansible.builtin.file:
@@ -103,4 +113,3 @@
         name: dnsmasq
         state: stopped
         enabled: false
-      ignore_errors: true   # noqa: ignore-errors (best effort: the profile or service may not exist)
