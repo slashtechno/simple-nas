@@ -1,6 +1,6 @@
 # Service notes
 
-Setup steps and gotchas for services that need more than `<name>_enabled: true`. Deploy any of them with `just deploy <tag>`. Backups are in [backups.md](./backups.md).
+Setup steps for services that need more than `<name>_enabled: true`. Run `just deploy <tag>` from `ansible/` (tag = role name). Settings named `vars.yml` below are in `ansible/group_vars/nas/vars.yml`; per-host ones are in `ansible/host_vars/<host>/vars.yml`. Backups are in [backups.md](./backups.md).
 
 | Service | Role | Section |
 |---|---|---|
@@ -16,29 +16,36 @@ Setup steps and gotchas for services that need more than `<name>_enabled: true`.
 
 ## Copyparty accounts and volumes
 
-The config is rendered by `roles/copyparty/templates/copyparty.conf.j2` into the config volume. The admin account is `copyparty_user` / `copyparty_pass`. Collaborators come from `vault_copyparty_collab_users` in the vault.
+- Config: rendered from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
+- Admin account: `copyparty_user` / `copyparty_pass`. Collaborators: `vault_copyparty_collab_users` in the vault.
 
-Apps that talk to Copyparty get a service account. Add an entry to `copyparty_service_accounts` in `vars.yml` (user, password variable, and one or more volumes, each a folder plus permissions) and put its password in the vault. Each volume is mounted at `/<folder>`, stored in `copyparty_files_dir/<folder>`, with the admin as owner. Those folders then disappear for every other account with access to `/`, such as pocketpi's. Leave out `d` unless the app must delete: without it Copyparty also refuses to overwrite, so the app can't destroy anything. `vars.yml.example` has an example.
+Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_service_accounts` in `vars.yml` (user, password variable, volumes as folder plus permissions) and put the password in the vault. `vars.yml.example` has an example.
+- Each volume is mounted at `/<folder>` and stored in `copyparty_files_dir/<folder>`, owned by the admin. Those folders then vanish for other accounts that have `/`, such as pocketpi's.
+- Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
 `/drives` shows USB drives and cards plugged into the host (`usb_automount_enabled`), read-only unless `usb_automount_writable`. Drives listed in `drives` are never shown. See [storage.md](./storage.md#plugged-in-usb-drives-drives).
 
-`/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for working space that benefits from SSD speed. It exists only when the fast and primary roles are on different drives (`copyparty_fast_enabled`); on a one- or two-drive setup where they share a drive it would just be a folder of `/`, so it is not created. `/` stays the bulk volume, so existing URLs and shares keep working. A real `fast/` folder inside `files/` would be hidden behind the volume once it is enabled.
+`/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when the fast and primary roles are on different drives (`copyparty_fast_enabled`, default `fast_drive != primary_drive`). `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
-To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. The base image version is in `ansible/group_vars/all/versions.yml`; see "Update service images" in [ansible/README.md](../ansible/README.md).
+To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).
 
 ## Clone a private GitHub repo
 
-This repo is public, so the clone uses a read-only fine-grained token from the vault (`vault_github_read_token`; `vault.yml.example` says how to create it, scoped to the one repo). A role calls `roles/github_clone` with `repo` and `dest`. The token reaches git through its environment, so it never lands in `.git/config` on the NAS. If the token expires, the clone step fails: make a new one and run `ansible-vault edit` on the vault.
+- Token: `vault_github_read_token`, a read-only fine-grained token scoped to the one repo (`vault.yml.example` says how to create it).
+- A role calls `roles/github_clone` with `repo` and `dest`. The token is passed to git through its environment, so it is not stored in `.git/config`.
+- If the token expires, the clone step fails. Make a new one and update the vault with `ansible-vault edit`.
 
 ## pics: photo culling and sharing
 
-Opt-in (`pics_enabled: true`). The `pics` role clones the private `lab` repo, builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed) and runs it on `nas-services`. It talks to Copyparty as the `photos` service account, so set that account up first.
+Opt-in (`pics_enabled: true`). The `pics` role clones the private `lab` repo (`pics_repo`), builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed) and runs it on `nas-services`. It uses the `photos` service account in `copyparty_service_accounts`.
 
-1. In `vars.yml`, copy the `pics_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. The app has two ports: the owner app (cull UI, everything, password-gated) on `pics_port`, and a guest surface (share pages and portfolio, no owner routes) on `pics_public_port`. Only the owner port is published: `http://<pi>:<pics_port>` on the LAN, `http://<pi-tailscale-ip>:<pics_port>` on the tailnet. The tunnel points at `http://pics:<pics_public_port>`, so its Cloudflare entry needs no `path` rule.
+1. In `vars.yml`, copy the `pics_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. Two ports:
+   - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
+   - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
 2. In the vault add `vault_pics_password` (12+ characters) and `vault_pics_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared`. `copyparty` creates the `photos` account and its two volumes first.
 
-The database is in `pics_data_dir`, covered by the nightly backup. The app also writes its own daily snapshots there. `teardown.yml --tags pics` keeps that data unless `remove_data=true`.
+The database is in `pics_data_dir`, covered by the daily backup; the app also writes its own daily snapshots there. `teardown.yml --tags pics` keeps that data unless `-e remove_data=true`.
 
 ## Cloudflare: add a public hostname
 
@@ -50,55 +57,65 @@ cloudflared_ingress:
     service: "http://newservice:8080"
 ```
 
-Then `just deploy cloudflared`. Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone. The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain, or more than one. Anything not listed gets a 404.
+Then `just deploy cloudflared`.
 
-If a hostname already has a DNS record, the deploy replaces it only when it points at a Cloudflare tunnel (such as one you deleted). A record of any other kind stops the deploy with a message naming it; delete it in the Cloudflare dashboard if it is unused. Records for hostnames you removed from the list are reported and left alone.
-
-The tunnel is remotely managed: its rules live at Cloudflare, set by the deploy through the API from your machine, and the server holds only a tunnel token (`/opt/nas/cloudflared/token`). A DNS record that points at a different tunnel is replaced; one that points at this tunnel for a hostname you removed is reported and left for you to delete. If a tunnel with that name does not exist, the deploy creates it. If it exists but is "locally managed" (made by the older setup), the deploy stops: use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel, which takes the public hostnames offline until the next deploy. The old `*.json` credentials file in `/opt/nas/cloudflared/` is no longer used; delete it once the tunnel works.
+- Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone.
+- The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain or more than one in `cf_zones`.
+- Hostnames not listed get a 404.
+- An existing DNS record is replaced only if it points at a Cloudflare tunnel. A record of any other kind stops the deploy with a message naming it; delete it in the Cloudflare dashboard if unused.
+- A record pointing at this tunnel for a hostname you removed from the list is reported and left for you to delete.
+- The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the NAS holds only a tunnel token (`/opt/nas/cloudflared/token`). If no tunnel named `cf_tunnel_name` exists, the deploy creates it.
+- If a tunnel with that name exists but is "locally managed", the deploy stops. Use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel (public hostnames are offline until the next deploy).
+- A leftover `*.json` credentials file in `/opt/nas/cloudflared/` is not used and not touched; delete it by hand.
 
 ## Tailscale Funnel
 
-Set `tailscale_funnel_enabled: true` in `vars.yml` to expose Copyparty at your ts.net hostname, then `just deploy tailscale`.
+Set `tailscale_funnel_enabled: true` in `vars.yml` to expose Copyparty (port `tailscale_funnel_port`, default 3923) at your ts.net hostname, then `just deploy tailscale`.
 
 ## Garage (S3)
 
 Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_pass`, then `just deploy garage,cloudflared`.
 
-On a first deploy (the `meta/` data directory is empty) Ansible adds `--single-node` to the compose command to bootstrap the cluster layout, and leaves it out afterwards. Open `https://garage.example.com`, log in with the web UI credentials, and create buckets and access keys there. Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI.
+- The first deploy (empty `<garage_data_dir>/meta`) adds `--single-node` to the compose command to set up the cluster layout; later deploys leave it out.
+- Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
+- Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI.
 
 ## Crafty (Minecraft servers)
 
-Opt-in (`crafty_enabled: true`). One container runs every server. Everything is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`), so moving or backing up all worlds is one directory.
+Opt-in (`crafty_enabled: true`). One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
 
 - Panel: `https://<pi-ip>:28443` (`crafty_panel_port`, self-signed certificate). The first admin password is in `docker logs crafty` or `<crafty_data_dir>/config/default-creds.txt`. Change it in the panel, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
-- `crafty_memory_limit` caps all servers combined. On a 4 GB Pi it competes with Immich, so start small.
-- Not behind Cloudflare Tunnel (raw TCP and self-signed HTTPS don't fit). Friends join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
+- `crafty_memory_limit` (default 3g) caps all servers combined. On a 4 GB Pi it competes with Immich.
+- Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
 - The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [backups.md](./backups.md)).
 
 ## Homebridge
 
-Runs with `network_mode: host` (HomeKit's mDNS discovery needs it), so it can't join `nas-services` and is left out of `cloudflared_ingress`.
+Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `nas-services` and not in `cloudflared_ingress`.
 
-Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale doesn't substitute: HomeKit decides local versus remote by Wi-Fi network identity and multicast mDNS, not IP reachability, so off Wi-Fi the Home app shows the bridge offline even with Tailscale connected. Tailscale does reach Homebridge's admin UI at `http://<pi-tailscale-ip>:8581`, which is a plain HTTP page.
+- Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale does not replace it: off home Wi-Fi the Home app shows the bridge offline even with Tailscale connected.
+- The admin UI is reachable over Tailscale at `http://<pi-tailscale-ip>:8581` (plain HTTP).
 
-The role only deploys the container; the image creates its own `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. The HomeKit PIN and plugins are configured there and persist across deploys.
+The role only deploys the container; the image creates `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. The HomeKit PIN and plugins are set in the UI and persist across deploys.
 
 ## Ad-hoc app platform
 
-For general servers (the `servers_general` group), not the NAS. **Dockge** (`dockge_enabled`, on by default) is a web UI at `http://<host>:5001` over plain `compose.yaml` stacks in `/opt/stacks`. Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
+For general servers (the `servers_general` group), not the NAS.
 
-**Caddy** (`caddy_enabled`, off by default) gives apps names from container labels; the syntax is in [caddy-reference.md](./caddy-reference.md). Apps are reachable over Tailscale at `http://<host>:<port>` without it. Stacks that want a name join the `nas-services` network, which every server has.
+**Dockge** (`dockge_enabled`, default on) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`/opt/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
 
-Public access is not available on these hosts yet: cloudflared runs only on the NAS, and its tunnel, token and `cloudflared_ingress` list belong to the NAS. Until a general server gets its own tunnel (a role play and a tunnel name per host), reach its apps over Tailscale. Removal: `ansible-playbook teardown.yml --tags dockge,caddy --limit <host>`.
+**Caddy** (`caddy_enabled`, default off) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `nas-services` network.
 
-Both mount the Docker socket, so anything that can reach their UI or set a label controls Docker on that host.
+No public access on these hosts: cloudflared runs only on the NAS, so reach apps over Tailscale. Removal: `ansible-playbook teardown.yml --tags dockge,caddy --limit <host>`.
 
-Back up `/opt/stacks` and Dockge's data directory with the host's other files once per-host backups exist (see [plans/multi-host.md](./plans/multi-host.md#per-host-backups)).
+Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
+
+Nothing backs up `/opt/stacks` or `dockge_data_dir` yet; per-host backups are planned in [plans/multi-host.md](./plans/multi-host.md#per-host-backups).
 
 ## Direct Ethernet link
 
-The Pi's Ethernet port is idle (the Pi normally runs on wifi). Cabled straight to a laptop, it gives about 117 MB/s, against about 4.3 MB/s over Tailscale on wifi (measured). The Pi side is a static `10.10.20.1`. The laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port.
+Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
 1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`, then `just deploy network`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.

@@ -1,22 +1,26 @@
 # Backups
 
-Backups are fully automated by the `backup` Ansible role — cron jobs are created on the Pi when you run `ansible-playbook site.yml`. You don't configure cron manually.
+`just deploy backup` (from `ansible/`) installs the scripts and cron jobs on the NAS. Nothing to set up by hand.
 
-All restic invocations use a local cache on the fast drive (`RESTIC_CACHE_DIR`, via the drive-role map): snapshot/index reads hit the SSD instead of the backup drive or Google Drive round-trips. The cache is disposable — deleting it only costs speed, never data.
+restic keeps its cache in `restic_cache_dir` (`<fast_drive>/restic-cache`). It is safe to delete: that only costs speed.
 
 ## What runs automatically
 
 | Schedule | What it does |
 |---|---|
-| Daily @ 2 AM | Immich DB dump + Gitea dump, then the local backup (see [What is backed up where](#what-is-backed-up-where)) → HDD via restic |
-| Sunday @ 4 AM | Same dumps, then the cloud paths → Google Drive via rclone + restic |
-| Wednesday @ 3 AM | `restic check` — verifies local repo integrity (the cloud repo is checked by hand, see below) |
+| Daily 02:00 | Immich and Gitea dumps, then the local backup (see [What is backed up where](#what-is-backed-up-where)) to the backup drive with restic |
+| Sunday 04:00 | Same dumps, then the dumps and cloud paths to the cloud repository |
+| Wednesday 03:00 | `restic check` of the local repo (the cloud repo is checked by hand, see below) |
 
-Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). Logs go to `/mnt/backup/logs/`, one dated file per run. Every restic call is wrapped in a timeout (`restic_command_timeout`, default 2h), so a stalled network/rclone pipe fails the cron run instead of hanging indefinitely while holding the repo lock.
+- Dumps: `<backup_drive>/service-dumps/` (`service_dumps_dir`), last 3 of each type kept.
+- Logs: `<backup_drive>/logs/` (`backup_logs_dir`), one file per job per day, plus `backup-cron.log`.
+- Every restic call has a timeout (`restic_command_timeout`, default 2h), so a stalled network pipe fails the run instead of holding the repo lock.
+
+Paths below use `/mnt/backup` for `backup_drive` and `/mnt/t7` for the fast and primary drive; use your `drives` mounts (in `host_vars/<host>/vars.yml`).
 
 ## What is backed up where
 
-| Data | Local (daily, HDD) | Cloud (Sunday, Google Drive) |
+| Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
 | Photos, Copyparty files (`primary_drive`) | Yes | No |
 | Service data under `fast_drive/docker` (Gitea, pics, Homebridge, Garage, Crafty, Copyparty config) | Yes | Only Copyparty config |
@@ -26,19 +30,19 @@ Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). 
 | Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `vault.yml`, and the vault password is in Bitwarden (see Disaster recovery). |
 
 Where each is declared:
-- Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/nas/vars.yml`. The script adds the dumps directory itself. Default excludes (caches, `lost+found`, Copyparty's thumbnail cache) are in `roles/backup/templates/restic-excludes-local.txt.j2`; your extras are added after them.
+- Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/nas/vars.yml` (default: `primary_drive` and `fast_drive`). The script adds the dumps directory itself. Default excludes (caches, `lost+found`, Copyparty's thumbnail cache) are in `roles/backup/templates/restic-excludes-local.txt.j2`; your extras are added after them.
 - Cloud paths and excludes: `restic_cloud_extra_paths` and `restic_cloud_excludes` in `vars.yml` (defaults in `restic-excludes-cloud.txt.j2`). The fixed cloud paths (`/opt/nas`, rclone config, restic password file, Copyparty config) are in `ansible/roles/backup/templates/backup-paths.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` (`/opt/nas/scripts/dump.d/`) by that service's role: `roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 Caveats:
-- Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` archives are excluded from the local backup by default (`restic-excludes-local.txt.j2`), because they dedupe badly and would grow the repo. So the archives exist only on the fast drive, in neither backup. To keep them, add `"!{{ crafty_data_dir }}/backups"` to `restic_local_excludes`, or add `{{ crafty_data_dir }}/backups` to `restic_cloud_extra_paths` for offsite. Note that `teardown.yml -e remove_data=true` deletes all of `crafty_data_dir`, archives included; by default only the local restic copy of `servers/` would survive, with nothing offsite.
-- `restic forget` groups snapshots by host and paths, so changing `restic_local_paths` starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget --path <old path> --prune`). Excludes never split a group, so tune with `restic_local_excludes` first. Exclude lines use restic's syntax, not gitignore's: `**` for any depth, and a leading `!` re-includes something an earlier line excluded (check `restic version` on the Pi first: older releases may not support `!`).
+- Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` archives are excluded from the local backup (`restic-excludes-local.txt.j2`; they dedupe badly), so they exist only on the fast drive. To keep them, add `"!{{ crafty_data_dir }}/backups"` to `restic_local_excludes`, or add `{{ crafty_data_dir }}/backups` to `restic_cloud_extra_paths` for offsite. `teardown.yml -e remove_data=true` deletes all of `crafty_data_dir`, archives included; only the local restic copy of `servers/` survives, and nothing offsite.
+- `restic forget` groups snapshots by host and paths, so changing `restic_local_paths` starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget --path <old path> --prune`). Excludes never split a group, so tune with `restic_local_excludes` first. Exclude lines use restic's syntax, not gitignore's: `**` for any depth, and a leading `!` re-includes something an earlier line excluded (needs a restic release that supports `!`; check `restic version`).
 - To add a path to the cloud backup, put it in `restic_cloud_extra_paths`. Adding is safe. Removing one leaves its snapshots until you forget them by hand.
 - To give a new service a database dump, add `files/dump.sh` to its role and install it into `service_dump_scripts_dir` as `<service>.sh` (copy the Gitea role). Its dump files must start with `<service>-`. `teardown_service.yml` removes the script again.
 
 ### Checking the cloud repo (manual)
 
-The cloud repository is not checked on a schedule: a full check reads the whole repo over the network. Run it yourself now and then, on the Pi:
+No schedule checks the cloud repo (a full check reads all of it over the network). Run it now and then, on the NAS:
 
 ```bash
 sudo -E bash -c 'export RESTIC_PASSWORD_FILE=<restic_password_file> RESTIC_REPOSITORY=<restic_cloud_repository>; restic -o rclone.args="serve restic --stdio --tpslimit=10" check'
@@ -50,35 +54,39 @@ Add `--read-data-subset=5%` to also read a sample of the stored data.
 
 ## Offsite repository (`restic_cloud_repository`)
 
-The URL scheme picks the backend. The deploy runs `restic init` on it and **fails if that fails** (no rclone remote, bad credentials, unreachable server), so a cloud backup that could never run is noticed at deploy time. An existing repository is left alone.
+The URL scheme picks the backend. The deploy runs `restic init` on it and **fails if that fails** (no rclone remote, bad credentials, unreachable server). An existing repository is left alone.
 
 ### Google Drive (default)
 
-Google Drive goes through rclone, whose login needs a browser. The token lives in the vault, so a new host needs no manual rclone setup:
+Google Drive goes through rclone. Its login needs a browser, so the token comes from the vault:
 
 1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`. Sign in; it prints a JSON token.
 2. Put that JSON in `vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
-3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive-nas` remote **only if the file does not exist**. rclone writes refreshed tokens back into that file, so overwriting it on every deploy would replace a fresh token with the old one.
+3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive-nas` remote **only if the file does not exist**, because rclone writes refreshed tokens back into it.
 
 To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive-nas:` there.
 
-The remote uses rclone's default Google OAuth client, which is shared with every rclone user and can hit `403 RATE_LIMIT_EXCEEDED` on a large first backup. The cloud script throttles with `restic_cloud_rclone_args` for that reason. A custom OAuth client is not used (owner decision); if the throttle is not enough, `rclone config` → edit `gdrive-nas` → client ID/secret is the way to add one. Google also expires the refresh token after 7 days for an app in "Testing" status, and after 6 months unused; if cloud backups stop with an auth error, re-run step 1 and replace `rclone.conf`.
+- The remote uses rclone's default Google OAuth client, shared by all rclone users, which can return `403 RATE_LIMIT_EXCEEDED` on a large first backup. `restic_cloud_rclone_args` (`--tpslimit=10`) throttles requests. To use your own client instead: `rclone config`, edit `gdrive-nas`, set client ID and secret.
+- Google expires the refresh token after 7 days for an app in "Testing" status, and after 6 months unused. If cloud backups stop with an auth error, redo step 1 and replace `rclone.conf`.
 
 ### SFTP (if you want it later)
 
-Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the host's SSH client, so on the NAS user (the one running cron) set up key login to that server by hand: a key without a passphrase in `~/.ssh`, and the server's host key in `~/.ssh/known_hosts` (`ssh-keyscan host >> ~/.ssh/known_hosts`, checked against the fingerprint). Without the host key the cron run waits on a prompt and fails. Nothing in the repo manages this yet; it is added when there is a real SFTP target.
+Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the host's SSH client. Set up by hand, as the NAS user that runs cron: a key without a passphrase in `~/.ssh`, and the server's host key in `~/.ssh/known_hosts` (`ssh-keyscan host >> ~/.ssh/known_hosts`, checked against the fingerprint). Without the host key the cron run waits on a prompt and fails. Ansible does not manage this. The rclone-specific throttle (`restic_cloud_rclone_args`) does not apply.
 
 ---
 
 ## Web dashboard (read-only)
 
-The `backup-status` role deploys a small read-only dashboard — job status, drive mount state, and the snapshot list for both repos:
+The `backup-status` role deploys a read-only dashboard with job status, drive mount state and the snapshot list for both repos:
 
 ```
 http://<your-pi-tailscale-host>:<backup_status_port>   # default port 8091
 ```
 
-Reachable from the LAN and the tailnet, with no login (the port is published on the Pi): the container gets a **read-only** mount of the repo and password file, so it has no code path that can write to or delete a backup. Every action opens the exact SSH command to copy and run yourself. Disable with `backup_status_enabled: false`.
+- Reachable from the LAN and the tailnet, with no login.
+- The container mounts the backup drive and password file read-only, so it cannot write to or delete a backup.
+- Each action shows the exact SSH command to copy and run yourself.
+- Disable with `backup_status_enabled: false`; change the port with `backup_status_port`.
 
 ---
 
@@ -87,10 +95,10 @@ Reachable from the LAN and the tailnet, with no login (the port is published on 
 Every command below assumes you've SSH'd in and set these once per session:
 
 ```bash
-ssh your-user@your-pi-ip
+ssh your-user@your-nas-ip
 
 export RESTIC_PASSWORD_FILE=~/.restic-password
-export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (default below)
+export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (restic_repo_path)
 ```
 
 For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"`
@@ -124,7 +132,7 @@ restic dump <snapshot-id> <path-in-snapshot> > recovered-file   # extract one fi
 
 ## Restore: files
 
-`--target` needs real free space — `/tmp` is tmpfs (RAM, a couple GB) and `/` is often nearly full, so prefer `/mnt/t7` or `/mnt/backup`.
+`--target` needs real free space. `/tmp` is in RAM and `/` is small, so use a path on a data drive such as `/mnt/t7` or `/mnt/backup`.
 
 ```bash
 # Restore into a scratch path to inspect first (safe — doesn't touch originals)
@@ -134,15 +142,15 @@ restic restore latest --include /mnt/t7/files --target /mnt/t7/restore-scratch
 restic restore latest --target /
 ```
 
-**Restoring to another machine instead** (e.g. a USB drive on your Mac) skips the Pi's disk entirely — stream the snapshot as a tar over the same SSH connection:
+**To another machine** (for example a USB drive on your Mac), stream the snapshot as a tar over SSH:
 
 ```bash
-ssh your-user@your-pi-ip 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo restic dump latest / --archive tar' \
+ssh your-user@your-nas-ip 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo restic dump latest / --archive tar' \
   > /Volumes/YourDrive/snapshot.tar
 tar -xf /Volumes/YourDrive/snapshot.tar -C /Volumes/YourDrive/restored/
 ```
 
-No need for Tailscale's `tailcat` — restic only runs on the Pi, plain SSH already does the job. Speed depends on `tailscale status` showing `direct` vs `relay`. exFAT/FAT32 destinations lose Unix permissions/symlinks on extract — use APFS or ext4 if that matters.
+Speed over Tailscale depends on `tailscale status` showing `direct` rather than `relay`. exFAT/FAT32 destinations lose Unix permissions and symlinks on extract; use APFS or ext4 if that matters.
 
 ---
 
@@ -169,22 +177,21 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ## If the backup drive disconnects
 
-`nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted, so `/mnt/backup` silently becomes a small plain directory on the root filesystem. This happened once, caused by a Pi-side USB brown-out rather than the drive. If it recurs, run `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'`; undervoltage points at the PSU, cable or hub.
+`nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted by it, and `/mnt/backup` then becomes a plain directory on the root filesystem. Two guards cover this:
 
-Two guards cover it:
+1. The backup scripts and the `restic check` job run `mountpoint -q /mnt/backup` first. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t nas-backup`.
+2. `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` (through `nas-drive-remount.service`) whenever a filesystem appears, so a reconnected drive remounts within seconds.
 
-1. The backup scripts and the `restic check` job run `mountpoint -q /mnt/backup` first. On failure they log to `journalctl -t nas-backup` and write nothing to root.
-2. `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` through a oneshot systemd service whenever a filesystem reappears, so a reconnected drive remounts within seconds.
-
-Check with `mountpoint /mnt/backup`, `journalctl -t nas-backup` and `systemctl status nas-drive-remount.service`.
+Check with `mountpoint /mnt/backup`, `journalctl -t nas-backup` and `systemctl status nas-drive-remount.service`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault.
 
 ## Disaster recovery (both drives fail)
 
-1. Re-flash Pi OS, re-run `ansible-playbook site.yml`. This needs `vault.yml` and its vault password, which hold `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.
-2. Pull from Google Drive:
+1. Re-flash Pi OS, then run `just deploy`. This needs `vault.yml` and its vault password, which hold `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.
+2. Pull from the cloud repo. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password
-   export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"
-   restic restore latest --target /
+   export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"   # restic_cloud_repository
+   restic snapshots --group-by path
+   restic restore <snapshot-id> --target /      # once per group
    ```
-3. Restore Immich and Gitea databases from the service-dumps restored in step 2
+3. Restore the Immich and Gitea databases from the dumps restored in step 2 (see Restore: Immich database and Restore: Gitea above, using the restored `service-dumps` folder).
