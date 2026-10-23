@@ -11,6 +11,31 @@
   hosts: servers
   become: true
 
+  pre_tasks:
+    - name: Check the host runs a Debian-family OS
+      ansible.builtin.assert:
+        that: ansible_facts.os_family == "Debian"
+        fail_msg: "{{ inventory_hostname }} is {{ ansible_facts.os_family }}; the roles use apt and need Debian, Raspberry Pi OS or Ubuntu."
+        quiet: true
+      tags: [always]
+
+    # The Docker role installs Docker Engine from Docker's apt repo; a snap Docker next to it
+    # would be a second daemon with its own storage and confusing socket paths.
+    - name: Look for a Docker snap
+      ansible.builtin.stat:
+        path: /snap/bin/docker
+      register: docker_snap
+      tags: [always]
+
+    - name: Check Docker is not installed as a snap
+      ansible.builtin.assert:
+        that: not docker_snap.stat.exists
+        fail_msg: >-
+          Docker is installed as a snap on {{ inventory_hostname }}. Remove it (sudo snap remove docker)
+          and let this playbook install Docker from Docker's apt repo.
+        quiet: true
+      tags: [always]
+
   roles:
     - role: common
       tags: [common]

@@ -11,3 +11,15 @@ nas_network: nas-services
 # Docker image pull policy. Allowed: missing, always. Default: missing.
 # "always" pulls newer images on every run, see ansible/README.md#update-service-images.
 docker_pull_policy: missing
+# Log rotation for every container: json-file keeps 3 files of 10m per container. Docker's default
+# never rotates, and logs on a microSD card fill it. Allowed: json-file options (strings).
+# CAUTION: applies only to containers created after the change; recreate the rest with
+# `docker compose up -d --force-recreate` in each project.
+docker_log_opts:
+  max-size: "10m"
+  max-file: "3"
+
+# SSH public keys allowed to log in as the Ansible user, one per device. Added, never removed:
+# a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAEAQC4RuOq5NV5hHWRcLuugygSa/v83NjeEVUlolAY1+pMWkegkF7gONDIlQoPC3mJkGnI/mHhvoRZE3AYcvrfLeR7KgsqT+lRera0AVwvFXI6qdW8a1RxEgkhlr98llm8xx7g+6V+tpfGl5Qg8OF+Bc+Ciem8F5dLMajUvOQS2ad//OTNPSkFsvbr2+vShCsBoa99pWSHpHJ8/hX8y3alLro0V02ISFp/qZstD9d79nDbGKb2UzT+1PiIsbCN58yZOrkrLwixGOSmyYd785jUHUEQV32dkujd5G3O1QdIRqHeGXNLLI8ui9ziJiIq4O92MWWsa2GOI6TKLIOA95t9yngsJ6tv9FVZebFzMy5EhsLIoBkKWjBb5p79m1Hvlv1fn21BNqUzuHrOhqGQ9ggdSkMpl0K1nwvjfjJ+tbSRewNqkrNC4kiaeyNXjsIBOSdiGRvZ+ZydDnVOV+Kq0zA316IH1FQmKDAqp4Jn0GGgS1KrUnW/DopnzX7b0I8SPWJg4h9u5iSfIAyNdYGerRmHNCBhpIKS9nb8unU/u3slU0A2ZemCjadg5hb+N19sIttXETkt2zwXGJMRJT64VsiZso7YhG6Sl/4+TUtlArEgOf8siZHwIQ8XFKVJP6G8i9HzwD1B1lWqRa2QN2/TO4KgKMFRKah9I4tt3XLGnZe0jN3+599vvCUOYyJNOyFUcxFwjarJsJMdjtBtVqxSDfHIYI3JpWEh14Ksy3lcN2uMtp1kcqLPXV2k592vJZK3NhdMRVe7fEZtuC6ZtddANTwMOi/Ybws0PjzWIBawxT+U1X7d8LwiHsGa1Y4nWbi6Ac1UfMtcokrdGnuE4xj7VBwNKHLFYvOd3QoZnPwrMXvV60svEQ9XBDStWUSqGITTKoZ9GKKSKKLhEO0wphPV/2xIG0zsRnyhIroyUE7ASLyS7sdYuXmLuObDnKZiBAnTjQ342PkJ0Ga+iKGi+61kZxS1QW2ZufQe1o8/UNVQ8I0q+3JHOZIVJUUzzrA8GS20OsOE7RMaKt7dNt1PCG2wEtNjXbfumWmje2PNjWoFbBhBP1n9yM7cE+qlHyCteqIUn6dYiWsFLqviCF3fEHBXvlkQzssWS2cMBab99byhr+M6n0wP65+odoR5Zismwc+Zkg8R8LgjDM6ccOeJy2wjZRf59HgiWrFA4pXwZ3PHf0JjDRFAlURwYwLiqTGQcvO17KSWsvdnAmb4CmZnHd8LVYpxqbUW5TyjRVg1IXho/eIAoicdheQEL9fhb+BzhtbCFq6kQaBKgz9XwezhnZWOXmi4tmX280NVdsA3hrEaLKhpOBGJGgXw3pSVodD4F/2SHCg3SbobnBaoo6Y/UK/sd7//e0ML

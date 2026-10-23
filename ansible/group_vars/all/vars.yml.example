@@ -11,3 +11,15 @@ nas_network: nas-services
 # Docker image pull policy. Allowed: missing, always. Default: missing.
 # "always" pulls newer images on every run, see ansible/README.md#update-service-images.
 docker_pull_policy: missing
+# Log rotation for every container: json-file keeps 3 files of 10m per container. Docker's default
+# never rotates, and logs on a microSD card fill it. Allowed: json-file options (strings).
+# CAUTION: applies only to containers created after the change; recreate the rest with
+# `docker compose up -d --force-recreate` in each project.
+docker_log_opts:
+  max-size: "10m"
+  max-file: "3"
+
+# SSH public keys allowed to log in as the Ansible user, one per device. Added, never removed:
+# a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
+ssh_authorized_keys:
+  - ssh-ed25519 AAAA... you@laptop

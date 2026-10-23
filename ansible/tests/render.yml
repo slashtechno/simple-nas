@@ -42,6 +42,8 @@
         file: "{{ item }}"
       loop: >-
         {{ [repo + '/group_vars/all/vars.yml.example',
+            repo + '/group_vars/all/versions.yml',
+            repo + '/group_vars/all/derived.yml',
             repo + '/group_vars/nas/vars.yml.example',
             repo + '/host_vars/vars.yml.example',
             repo + '/group_vars/nas/vault.yml.example',
