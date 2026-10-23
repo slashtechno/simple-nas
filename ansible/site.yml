@@ -17,7 +17,6 @@
 
     - role: tailscale
       tags: [tailscale]
-      when: tailscale_enabled | default(true)
 
     - role: network
       tags: [network]

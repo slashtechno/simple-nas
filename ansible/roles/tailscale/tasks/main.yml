@@ -1,16 +1,16 @@
 ---
-# artis3n.tailscale.machine handles: package install, service start, `tailscale up --authkey`.
-# It reads `tailscale_args` (and `tailscale_tags`) straight from group_vars, so only the auth
-# key needs mapping. `tailscale up` only re-runs when the node is offline or its args/key hash
-# changes; auth_key_in_state: false makes a rotated vault key NOT count as a change, so minting
-# a new one-off key later doesn't trigger a pointless re-login.
+# artis3n.tailscale.machine installs the package and starts the service. It does not log in:
+# join a new host once by hand with `sudo tailscale up` (add flags such as --advertise-exit-node
+# there; Tailscale remembers them). No auth key is stored anywhere in this repo.
+# state: present installs Tailscale if missing but never upgrades it during a deploy; the role's
+# default, latest, would. Upgrade by hand with `sudo apt upgrade tailscale`.
 # include_role, not import_role (AGENTS.md exception): kept as deployed. import_role would expand and tag every inner task, and that has not been tested.
-- name: Install and connect Tailscale
+- name: Install Tailscale
   ansible.builtin.include_role:
     name: artis3n.tailscale.machine
   vars:
-    tailscale_authkey: "{{ vault_tailscale_authkey }}"
-    auth_key_in_state: false
+    state: present
+    tailscale_up_skip: true
 
 # Funnel has no Ansible module, so read current state and only act on a difference.
 # `tailscale funnel status --json` prints the serve config: AllowFunnel maps "host:port" -> bool,

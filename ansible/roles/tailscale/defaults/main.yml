@@ -1,8 +1,7 @@
 ---
-# Extra flags passed to `tailscale up`, e.g. "--advertise-exit-node". The artis3n role reads this
-# name directly. Flags aren't persisted by Tailscale, so list every flag you want, every run.
-tailscale_args: ""
-
-# Set to true to expose Copyparty publicly via Tailscale Funnel (https://your-machine.ts.net)
+# Expose Copyparty publicly through Tailscale Funnel (https://<host>.<tailnet>.ts.net).
+# Allowed: true, false. Default: false.
 tailscale_funnel_enabled: false
+# Local port Copyparty listens on, which the funnel forwards to.
+# Default: 3923, the port Copyparty publishes.
 tailscale_funnel_port: 3923

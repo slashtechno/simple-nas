@@ -3,7 +3,6 @@
 # --- Enable/disable services ---
 # Set false to skip a service entirely. It won't be deployed or started.
 # To remove a service you previously deployed, run teardown.yml --tags <name> first.
-tailscale_enabled: false # tmp since already deployed
 immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true
