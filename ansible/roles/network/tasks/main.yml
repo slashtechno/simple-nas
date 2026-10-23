@@ -23,7 +23,7 @@
     mode: "0644"
   when: network_cloud_init_dir.stat.exists
 
-# Direct Ethernet link to a laptop (see docs/services.md#direct-ethernet-link).
+# Direct Ethernet link to a laptop (see docs/networking.md#direct-ethernet-link).
 # The port must be idle (Pi runs on wifi): setting it up on the connection Ansible uses would drop it.
 - name: Set up direct Ethernet link
   when: direct_link_enabled | default(false)

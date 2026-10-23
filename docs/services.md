@@ -12,7 +12,7 @@ Setup steps for services that need more than `<name>_enabled: true`. Run `just d
 | Crafty | `roles/crafty` | [Crafty](#crafty-minecraft-servers) |
 | Homebridge | `roles/homebridge` | [Homebridge](#homebridge) |
 | Dockge, Caddy | `roles/dockge`, `roles/caddy` | [Ad-hoc app platform](#ad-hoc-app-platform) |
-| Direct Ethernet link | `roles/network` | [Direct Ethernet link](#direct-ethernet-link) |
+| Direct Ethernet link | `roles/network` | [networking.md](./networking.md#direct-ethernet-link) |
 
 ## Copyparty accounts and volumes
 
@@ -112,15 +112,3 @@ No public access on these hosts: cloudflared runs only on the NAS, so reach apps
 Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
 
 Nothing backs up `/opt/stacks` or `dockge_data_dir` yet; per-host backups are planned in [plans/multi-host.md](./plans/multi-host.md#per-host-backups).
-
-## Direct Ethernet link
-
-Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
-
-1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`, then `just deploy network`.
-2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
-3. Open `https://10.10.20.1:3923` for Copyparty. Expect a certificate warning: Copyparty serves its own self-signed certificate on the same port as HTTP.
-
-The link can't reach the internet or collide with a VPN:
-- `dnsmasq` hands out DHCP only (no DNS, no gateway), and neither end has a gateway, so there is no route off the cable.
-- `10.10.20.0/30` has two usable addresses, too small to overlap common VPN or home-router ranges such as `10.8.0.0/24` or `192.168.1.0/24`.

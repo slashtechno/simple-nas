@@ -30,7 +30,7 @@ Requirement: unlockable from any device, including one you do not own, without n
 - Exact backoff curve and alert channel (email? push? which service?).
 - Whether passkey verification also runs through the same releaser service, or is handled separately (e.g. an authenticated page gated by browser-native WebAuthn, no server-side passkey verification needed if it's just gating a button that hits the releaser).
 - Boot-ordering fix: `immich_db_data_location`, `gitea_data_dir`, `copyparty_config_dir`, `garage_data_dir` (vars.yml) all live under `{{ fast_drive }}/docker`, which would sit under the gocryptfs mount. Compose auto-start must wait for the unlock, or Postgres runs `initdb` on an empty directory.
-- Benchmark `gocryptfs -init -xchacha` against the default AES mode on the NAS host before committing. The Pi 4 SoC likely lacks ARM crypto extensions, so AES there may not keep up with the direct link's 117 MB/s (docs/services.md#direct-ethernet-link).
+- Benchmark `gocryptfs -init -xchacha` against the default AES mode on the NAS host before committing. The Pi 4 SoC likely lacks ARM crypto extensions, so AES there may not keep up with the direct link's 117 MB/s (docs/networking.md#direct-ethernet-link).
 - Known tradeoff: after a reboot nobody unlocks, the 2 AM and Sunday 4 AM backups fail until unlocked; the cron lines already log the failure with `logger -t nas-backup`.
 
 ## Order of work

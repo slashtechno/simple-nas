@@ -10,6 +10,6 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Settings used by one role go in that role's `defaults/main.yml`. Settings shared across roles or `teardown.yml` go in `group_vars/<all|nas>/vars.yml` (per-host ones in `host_vars/<host>/vars.yml`) and the matching `vars.yml.example`, kept in sync.
 - Use `import_role`/`import_tasks`, not `include_*`, so `--tags` work. Two `include_role` calls (pics, tailscale) are kept on purpose and marked in the code.
 - `just check` (in `ansible/`) must pass: lint, syntax-check and the template render test. Add lint skips only with a written reason.
-- Never run playbooks against the Pi. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
+- Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
 - Backups: [docs/backups.md](./docs/backups.md).

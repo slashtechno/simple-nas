@@ -5,7 +5,7 @@
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
 # so it can't route internet traffic. Laptop's IP is auto-assigned via a
 # scoped dnsmasq (DHCP only, no DNS/gateway) — no manual laptop config needed.
-# See docs/services.md#direct-ethernet-link.
+# See docs/networking.md#direct-ethernet-link.
 direct_link_enabled: false
 direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link
