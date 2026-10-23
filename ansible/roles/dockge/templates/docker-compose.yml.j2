@@ -14,8 +14,3 @@ services:
       - {{ dockge_stacks_dir }}:{{ dockge_stacks_dir }}
     environment:
       DOCKGE_STACKS_DIR: {{ dockge_stacks_dir }}
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "1"

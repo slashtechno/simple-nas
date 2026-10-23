@@ -24,8 +24,3 @@ services:
       - {{ crafty_data_dir }}/logs:/crafty/logs
       - {{ crafty_data_dir }}/config:/crafty/app/config
       - {{ crafty_data_dir }}/import:/crafty/import
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "1"

@@ -21,8 +21,3 @@ services:
       - {{ caddy_data_dir }}:/data
     networks:
       - {{ nas_network }}
-    logging:
-      driver: json-file
-      options:
-        max-size: 10m
-        max-file: "1"
