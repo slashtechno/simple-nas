@@ -208,8 +208,8 @@ This is a major change: **each step updates its docs in the same commit** as the
 | File | Change |
 |---|---|
 | `README.md` | Doc table; the repo is no longer "a NAS only" |
-| `ansible/README.md` | Setup (inventory, vault layout, become password), commands, "add a service/host" |
-| `docs/ansible-terms.md` | `host_vars`, `group_vars/all`, several plays, the become password |
+| `ansible/README.md` | Setup (inventory, vault layout, first run with `-K`), commands, "add a service/host" |
+| `docs/ansible-terms.md` | `host_vars`, `group_vars/all`, several plays, the sudoers drop-in |
 | `docs/services.md` | The direct link moves to `networking.md` |
 | `docs/networking.md` | New (written now for the parts true today) |
 | `docs/backups.md` | Backends, the vault-managed rclone remote |
