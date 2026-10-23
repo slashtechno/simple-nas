@@ -200,5 +200,6 @@
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:
     name: nas-backup-cloud
+    user: "{{ ansible_user }}"
     state: absent
   when: not (backup_cloud_enabled | default(false) | bool)

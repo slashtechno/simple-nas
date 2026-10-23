@@ -129,5 +129,5 @@
     - name: The default local paths are the system paths, not empty strings
       ansible.builtin.assert:
         that:
-          - restic_local_paths == ['/etc', '/opt', '/home/pi']
+          - restic_local_paths == ['/home/pi']
           - restic_cache_dir == '/home/pi/.cache/restic'

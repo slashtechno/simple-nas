@@ -57,12 +57,14 @@ backup_logs_dir: "{{ backup_drive }}/logs"
 service_dumps_dir: "{{ backup_drive }}/service-dumps"
 # What the local (daily) backup copies. The dumps dir above is always added by
 # the backup script, so editing this list can't drop the database dumps.
-# Default: the primary and fast drives; a host with neither role backs up /etc, /opt and the user's home.
+# Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
+# the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic reports
+# "unreadable source files" in the log and the run still counts as done.
 # CAUTION: restic groups snapshots by host + paths, so changing this list
 # starts a new snapshot group; the old group's last snapshots stay until you
 # run `restic forget --path <old path> ...` by hand (see docs/plans/drive-migration.md).
 # To skip something, add it to restic_local_excludes instead: excludes never split a group.
-restic_local_paths: "{{ [primary_drive, fast_drive] | select | unique | list or ['/etc', '/opt', '/home/' ~ ansible_user] }}"
+restic_local_paths: "{{ [primary_drive, fast_drive] | select | unique | list or ['/home/' ~ ansible_user] }}"
 # Extra patterns for the local backup to skip, added AFTER the defaults in
 # roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
 # restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
