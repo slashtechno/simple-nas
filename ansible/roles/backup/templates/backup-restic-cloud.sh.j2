@@ -37,6 +37,10 @@ if [ ! -f "$BACKUP_PATHS_FILE" ]; then
   exit 1
 fi
 mapfile -t BACKUP_PATHS < <(grep -v '^[[:space:]]*\(#\|$\)' "$BACKUP_PATHS_FILE")
+if [ -z "${BACKUP_PATHS[*]}" ]; then
+  echo "ERROR: no paths listed in $BACKUP_PATHS_FILE" >&2
+  exit 1
+fi
 
 # Exclude patterns live in restic-excludes-cloud.txt next to this script.
 EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-cloud.txt"
@@ -68,14 +72,15 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
   # Backup critical paths from backup-paths.txt
   for path in "${BACKUP_PATHS[@]}"; do
-    if [ -d "$path" ]; then
+    if [ -e "$path" ]; then
       echo "Backing up $path..."
       restic "${RESTIC_RCLONE_OPT[@]}" backup "$path" --exclude-file "$EXCLUDE_FILE" --tag weekly --verbose
       rc=$?
       [ "$rc" -eq 3 ] && any_partial=true
       [ "$rc" -ne 0 ] && [ "$rc" -ne 3 ] && cloud_backup_failed=true
     else
-      echo "Skipping missing path: $path"
+      echo "ERROR: backup path is missing: $path"
+      cloud_backup_failed=true
     fi
   done
 
@@ -85,10 +90,12 @@ mkdir -p "$(dirname "$LOG_FILE")"
     else
       echo "Cloud backup successful. Removing old snapshots..."
     fi
-    restic "${RESTIC_RCLONE_OPT[@]}" forget {{ restic_cloud_retention }} --prune
+    restic "${RESTIC_RCLONE_OPT[@]}" forget {{ restic_cloud_retention }} --prune \
+      || { echo "ERROR: restic forget --prune failed!"; exit 1; }
 
     echo "Cloud repository stats:"
-    restic "${RESTIC_RCLONE_OPT[@]}" stats
+    restic "${RESTIC_RCLONE_OPT[@]}" stats \
+      || { echo "ERROR: restic stats failed!"; exit 1; }
 
     # The backup-status dashboard has no cloud credentials of its own (by
     # design — see its README section); this cache file is how it shows
@@ -103,4 +110,4 @@ mkdir -p "$(dirname "$LOG_FILE")"
   fi
   
   echo "=== Complete: $(date) ==="
-} | tee -a "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"

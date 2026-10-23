@@ -59,10 +59,10 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
     else
       echo "Backup successful. Removing old snapshots..."
     fi
-    restic forget {{ restic_local_retention }} --prune
+    restic forget {{ restic_local_retention }} --prune || { echo "ERROR: restic forget --prune failed!"; exit 1; }
 
     echo "Repository stats:"
-    restic stats
+    restic stats || { echo "ERROR: restic stats failed!"; exit 1; }
     echo "Free space on HDD:"
     df -h {{ backup_drive }}
   else
@@ -71,4 +71,4 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
   fi
   
   echo "=== Complete: $(date) ==="
-} | tee -a "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
