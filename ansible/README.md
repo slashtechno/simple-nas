@@ -29,7 +29,7 @@ ansible-vault encrypt group_vars/nas/vault.yml
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
 | `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich` |
 | `just preview [tags]` | The same with `--check --diff`, which changes nothing |
-| `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'` |
+| `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 
 `--check` does not create directories, so on a first deploy a later step can fail with "not a directory". That is a preview limit, not a bug.
 

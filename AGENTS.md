@@ -6,7 +6,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Follow the `maintaining-codebases` skill for refactors and docs if you have it; if not, the rules in this file apply.
 - Everything is deployed by Ansible from `ansible/`; one role per service under `ansible/roles/`. See [ansible/README.md](./ansible/README.md); service notes are in [docs/services.md](./docs/services.md) and drives in [docs/storage.md](./docs/storage.md).
 - Services are opt-in via `<name>_enabled` in `site.yml`. Compose-only services reuse `roles/compose_service`; teardown reuses `teardown_service.yml`.
-- Every image version lives in `ansible/group_vars/nas/versions.yml`; templates and Dockerfiles take it from there.
+- Every deployed image version lives in `ansible/group_vars/nas/versions.yml`; templates and Dockerfiles take it from there.
 - Settings used by one role go in that role's `defaults/main.yml`. Settings shared across roles or `teardown.yml` go in `group_vars/nas/vars.yml` and `vars.yml.example`, kept in sync.
 - Use `import_role`/`import_tasks`, not `include_*`, so `--tags` work.
 - `just check` (in `ansible/`) must pass: lint, syntax-check and the template render test. Add lint skips only with a written reason.
