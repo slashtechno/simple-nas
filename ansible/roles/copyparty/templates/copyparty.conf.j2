@@ -23,6 +23,10 @@
 {% endif %}
   xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
+  # Sort file2.txt before file10.txt, and show times in the container's timezone
+  # (TZ in docker-compose.yml.j2) instead of UTC. Clients can still override both in the UI.
+  nsort
+  localtime
   xff-hdr: cf-connecting-ip
   rproxy: 1
   shr: /shares
