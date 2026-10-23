@@ -76,9 +76,7 @@ Open:
 
 ## Public hostnames for ad-hoc apps
 
-Cloudflared runs only on the NAS group, so general servers have no tunnel yet. To add one: a `cloudflared` play for `servers_general` and a tunnel name per host (the default is `<hostname>-tunnel`).
-
-Apps on general servers are tailnet-only by default, at `http://<host>:<port>` or through Caddy. To publish one app, add a `hostname` and `service` entry to that host's `cloudflared_ingress` and deploy. There is no wildcard to Caddy, because every labeled container would become public the moment it starts.
+Apps on general servers are tailnet-only by default, at `http://<host>:<port>` or through Caddy. To publish one app, set `cloudflared_enabled: true` on the host, add a `hostname` and `service` entry to its `cloudflared_ingress` and deploy (its tunnel is `<hostname>-tunnel`). There is no wildcard to Caddy, because every labeled container would become public the moment it starts.
 
 ## Networking decisions still open
 

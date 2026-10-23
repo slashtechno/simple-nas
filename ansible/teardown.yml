@@ -262,6 +262,12 @@
         data_paths:
           - "{{ dockge_data_dir }}"
 
+    - name: Stop and remove Cloudflared
+      tags: [cloudflared]
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: cloudflared
+
     - name: Stop and remove Caddy
       tags: [caddy]
       ansible.builtin.import_tasks: teardown_service.yml

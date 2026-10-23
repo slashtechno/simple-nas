@@ -48,7 +48,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | Used by one role | that role's `defaults/main.yml` |
 | Every server (timezone, base paths) | `group_vars/all/vars.yml`, mirrored in `vars.yml.example` |
 | The NAS group (services, backups) | `group_vars/nas/vars.yml`, mirrored in `vars.yml.example` |
-| One host (its drives, direct link, Docker data root, Dockge and Caddy flags) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
+| One host (its drives, direct link, Docker data root, Dockge, Caddy and Cloudflared settings) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` next to the file they belong with |
 | Image versions | `group_vars/all/versions.yml` |
 | Computed from the above | `group_vars/all/derived.yml`; not edited |
@@ -75,7 +75,7 @@ Pin a floating tag to the version running on the host once it works: `docker ins
 
 ## Disable or remove a service
 
-Set `<name>_enabled: false` in `group_vars/nas/vars.yml` (or in `host_vars/<host>/vars.yml` for Dockge and Caddy) to stop deploying it. To remove one that is already on a host, tear it down first, then set the flag so later runs don't bring it back:
+Set `<name>_enabled: false` in `group_vars/nas/vars.yml` (or in `host_vars/<host>/vars.yml` for Dockge, Caddy and Cloudflared on a general server) to stop deploying it. To remove one that is already on a host, tear it down first, then set the flag so later runs don't bring it back:
 
 ```bash
 ansible-playbook teardown.yml --tags garage --ask-vault-pass       # one service, data kept
