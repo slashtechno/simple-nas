@@ -32,13 +32,12 @@ case "$TARGET" in
       docker start "$IMMICH_DB_CONTAINER" && sleep 3
     fi
     
-    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql --username="$IMMICH_DB_USER" postgres
+    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql -v ON_ERROR_STOP=1 --username="$IMMICH_DB_USER" postgres
     echo "Immich DB restored"
     ;;
 
   gitea)
     GITEA_CONTAINER="${GITEA_CONTAINER:-gitea}"
-    GITEA_IMAGE_HELPER="${GITEA_IMAGE_HELPER:-gitea/gitea:latest}"
     echo "Restoring Gitea from: $DUMPFILE"
 
     if [ -z "$(docker ps -q -f name=^${GITEA_CONTAINER}$)" ] && [ -z "$(docker ps -aq -f name=^${GITEA_CONTAINER}$)" ]; then
@@ -46,8 +45,13 @@ case "$TARGET" in
       exit 1
     fi
 
+    # The helper uses the image Gitea is already running, so no version is guessed.
+    GITEA_IMAGE_HELPER="${GITEA_IMAGE_HELPER:-$(docker inspect -f '{{.Config.Image}}' "$GITEA_CONTAINER")}"
+
     echo "Stopping Gitea to ensure consistency..."
     docker stop "$GITEA_CONTAINER" >/dev/null
+    # If the restore fails below, Gitea stays stopped on purpose: starting it on half-restored data is worse.
+    trap 'echo "Restore FAILED. Gitea is left stopped; fix the error above and rerun." >&2' ERR
 
     echo "Running helper container to wipe and restore files into Gitea volumes..."
     docker run --rm \
@@ -59,7 +63,7 @@ case "$TARGET" in
         unzip -o /tmp/dump.zip -d /tmp/restore
         cd /tmp/restore
         # Wipe current data for a clean restore (KISS)
-        rm -rf /data/gitea/* /data/git/repositories/* || true
+        rm -rf /data/gitea/* /data/git/repositories/*
         # app.ini (rootful: data/conf/app.ini -> /data/gitea/conf/app.ini)
         if [ -f data/conf/app.ini ]; then
           mkdir -p /data/gitea/conf
