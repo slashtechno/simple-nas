@@ -32,7 +32,7 @@ Other consequences:
 
 Each step is a gate: the owner verifies it before the next starts, so a failure has one possible cause. pi5 has nothing on it and the Pi 4 keeps running the NAS until the cutover, so pi5 is a safe place to test the new structure.
 
-1. **Refactor on a branch** (below): the groups and vars split, plus the fixes for the stray profile, Tailscale and sudo. Proof: `--list-tasks` for the Pi 4 is unchanged, `just check` passes, and the owner's `--check --diff` against the Pi 4 shows nothing unexpected.
+1. **Refactor on a branch** (below): the groups and vars split, the configuration conventions, log rotation, state moved out of Docker's storage, plus the fixes for the stray profile, Tailscale and sudo. Proof: `--list-tasks` for the Pi 4 is unchanged, `just check` passes, and the owner's `--check --diff` against the Pi 4 shows nothing unexpected.
 2. **pi5 joins `servers` only**, getting the base roles. The owner deploys and checks SSH, sudo, Tailscale, networking, zellij.
 3. **Cloudflared and rclone come from the vault while still on the Pi 4** (below), so the cutover copies no files. pi5 can run the same tunnel alongside the Pi 4 before the Pi 4 stops, which makes the cutover close to zero downtime.
 4. **Cutover:** pi5 moves into `nas`, the Pi 4 leaves it, the drives move ([checklist](#cutover-from-the-pi-4-to-pi5)).
@@ -100,7 +100,7 @@ Today's role creates a **locally managed** tunnel (`config_src: local`). Cloudfl
 **Redesign: a remotely managed tunnel.**
 
 - Ansible creates the tunnel once (`POST .../cfd_tunnel` with `config_src: cloudflare`), sets ingress with `PUT .../cfd_tunnel/{id}/configurations`, and fetches the token any time with `GET .../cfd_tunnel/{id}/token`, using `ansible.builtin.uri`. DNS records use `community.general.cloudflare_dns` (checked: it supports `proxied` CNAMEs).
-- The container is the stock `cloudflare/cloudflared` image running `tunnel run --token-file` (needs cloudflared 2025.4.0 or later; the pinned version must be checked). The token sits in a `0600` file on the host.
+- The container is the stock `cloudflare/cloudflared` image running `tunnel run --token-file` (`--token-file` needs cloudflared 2025.4.0 or later). `versions.yml` has `cloudflared_image: cloudflare/cloudflared:latest` today, which also breaks the pinning rule in AGENTS.md; the refactor pins a version (2026.10.3 was the latest release on 2026-10-23) and the pin is confirmed with `cloudflared tunnel run --help`. The token sits in a `0600` file on the host.
 - These API calls run with `delegate_to: localhost`, so the broad `CF_API_TOKEN` never lands on a server. Today it is rendered into a 0640 compose file. The owner's API token needs Tunnel Write and DNS Edit.
 - **Removed:** `create_tunnel.sh`, both Dockerfiles, the init container, and the dead "migrate credentials from old location" task. That is roughly 200 lines of shell and a build step replaced by documented API calls.
 - Tunnel names become per host.
@@ -120,29 +120,22 @@ Owner decision: **no Cloudflare Access, no wildcard.** Tunnels are only for what
 
 ## rclone and offsite backends
 
-restic speaks several backends natively (checked in its docs): S3 and compatible services, **Backblaze B2** (`b2:bucket:path`, though restic's docs recommend B2's S3 endpoint), **SFTP** (`sftp:user@host:/path`). **rclone is only needed for services restic lacks, such as Google Drive.** The design follows restic's documentation with no layer of ours:
-
-- `restic_cloud_repository` stays the one switch; its URL scheme picks the backend.
-- A new `restic_cloud_env` dictionary holds credentials as vault references. The role renders it to a `0600` env file the backup scripts source. The weekly check and the dashboard use the same file.
+Owner's actual need: **Google Drive now, SFTP maybe later. Not S3 or B2.** restic reaches SFTP natively (`sftp:user@host:/path`, checked in its docs) and Google Drive only through rclone. The design is therefore two cases, with no layer for backends nobody uses:
 
 ```yaml
-# Backblaze B2 over S3
-restic_cloud_repository: "s3:s3.us-west-004.backblazeb2.com/my-bucket/nas"
-restic_cloud_env:
-  AWS_ACCESS_KEY_ID: "{{ vault_cloud_key_id }}"
-  AWS_SECRET_ACCESS_KEY: "{{ vault_cloud_key }}"
-
-# SFTP (private key in the vault, host key pinned in known_hosts, or the first cron run fails)
-restic_cloud_repository: "sftp:backup@host:/srv/restic"
-
-# Google Drive (unchanged)
+# Google Drive (today)
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
+
+# SFTP (later, if wanted): private key in the vault, host key pinned in known_hosts
+restic_cloud_repository: "sftp:backup@host:/srv/restic"
 ```
 
-- **Tested here:** restic accepts `-o rclone.args=...` on a non-rclone repository (throwaway local repo), so the existing option does not break other backends.
-- The `listremotes` probe and the `gdrive-nas` check in the backup role apply only to `rclone:` repositories.
-- **A configured repository whose init fails must fail the deploy**, not skip silently as today.
-- **Google Drive:** run `rclone authorize "drive"` on the Mac, put the token in the vault, and have Ansible write `rclone.conf` only when absent (`force: false`), since rclone writes refreshed tokens back. With your own OAuth client, Google expires refresh tokens after 7 days while the app is in "Testing" (reported by rclone users; check Google's docs), so publish it to Production.
+- `restic_cloud_repository` stays the one switch; the URL scheme picks the backend. If S3 or B2 is ever wanted, restic takes their URL here too, plus the credentials as environment variables. That is added when there is a use, not before (AGENTS.md: no abstraction without a current use). The earlier `restic_cloud_env` idea is dropped for that reason.
+- **Tested here:** restic accepts `-o rclone.args=...` on a non-rclone repository (throwaway local repo), so the existing option does not break SFTP.
+- The `rclone listremotes` probe and the `gdrive-nas` check in the backup role apply only to `rclone:` repositories.
+- **A configured repository whose init fails must fail the deploy.** Today a missing `gdrive-nas` remote silently skips cloud init.
+- **Google Drive remote from the vault:** run `rclone authorize "drive"` on the Mac, put the token in the vault, and have Ansible write `rclone.conf` only when absent (`force: false`), since rclone writes refreshed tokens back. Verified in Google's OAuth documentation: a refresh token expires after **7 days when the OAuth consent screen is External and its publishing status is "Testing"**, and also after 6 months unused or when revoked. So publish the app to Production (or the backup silently stops after a week).
+- **SFTP:** the private key lives in the vault and the server's host key is pinned in `known_hosts`, or the first cron run fails on the host-key prompt.
 - The dashboard only receives `restic_cloud_repository`, so it needs no change (checked with grep).
 
 ## Per-host backups
@@ -164,6 +157,67 @@ Small, each on a standard module:
 - Wifi and the cloud-init switch (Networking).
 - Optional overclock (`arm_freq` in `/boot/firmware/config.txt`), off by default, Pi hosts only. Not on the NAS: its limits are IO and network, and an unstable clock risks data.
 
+## Configuration conventions
+
+The owner asked that every option, its default and its meaning be easy to find and hard to get out of sync. Checked against Ansible's documentation and this repo:
+
+**Where an option lives** (one place per option, as AGENTS.md already says):
+
+| Kind | File | Edited by |
+|---|---|---|
+| Setting private to one role | `roles/<name>/defaults/main.yml` | Overridden in `vars.yml` or `host_vars` only when needed |
+| Setting shared across roles or `teardown.yml` | `group_vars/<scope>/vars.yml` and its `.example` | Owner |
+| Per-host setting (wifi, drives, data root) | `host_vars/<host>/vars.yml` and an example | Owner |
+| Secrets | `vault.yml` files and examples | Owner |
+| Image and tool versions | `group_vars/nas/versions.yml` | Owner (`just tags`) |
+| **Derived values** (`nas_drive_mounts`, `fast_drive`, `main_drive`, `backup_drive`) | a tracked `group_vars/nas/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
+
+**One comment shape for every option**, in defaults files and example files alike, modeled on the restic comments already in `vars.yml.example`:
+
+```yaml
+# What it does, in one sentence.
+# Allowed: <values or a type>. Default: <value>.   (only when not obvious)
+# CAUTION: <the consequence of changing it later>.  (only where one exists)
+crafty_memory_limit: 3g
+```
+
+**Defaults appear once.** Current drift to fix in the refactor: `tailscale_args`, `tailscale_funnel_enabled` and `tailscale_funnel_port` are set in both `vars.yml.example` and `roles/tailscale/defaults/main.yml`, which breaks the repo's own rule. The example file keeps only settings the owner is expected to change, shown commented out when the default is fine.
+
+**Naming.** Role-private options carry the role name as a prefix. `.ansible-lint` skips `var-naming[no-role-prefix]` today (with a written reason that covers `register:` names and shared group vars). The refactor renames the options that break this on purpose, `sftp_enabled` and `host_mnt_dir` in the copyparty role, to `copyparty_sftp_enabled` and `copyparty_host_mnt_dir`, after grepping every use (templates, `teardown*.yml`, docs) and telling the owner to rename them in their own `vars.yml`.
+
+**Checks:** the render test's key-parity check ("a key in `vars.yml` that is missing from `vars.yml.example`") is extended to every pair after the split: `group_vars/all`, `group_vars/nas`, a `host_vars` example, and the vault examples. A new test also fails an option whose comment does not match the shape above only if that turns out cheap to write; otherwise review catches it.
+
+**Decision for the owner: `meta/argument_specs.yml`?** Ansible (2.11+) validates a role's options at start: types, `choices`, `required`, with a description shown by `ansible-doc -t role`. Its docs state that the spec's `default` is documentation only, "the actual default for the role variable will always come from the role defaults", and that the two must be kept matching by hand. So it gives validation and a typed reference, at the cost of every default being written twice per role. Options: (a) **comments in `defaults/main.yml` as the single source** (recommended: plain, one place, matches the current repo); (b) argument specs for the roles that take many options, plus a render-test check that the defaults match. Recommendation is (a) now, revisit if wrong values reaching a role become a real source of failures. This is your call because it trades a typed reference against maintaining two copies.
+
+## Docker data root, logs and state
+
+**Why it matters:** the Pi runs from a microSD card. The Pi 4 runs Docker 29.4.2 with the **containerd image store** (`docker info` shows `Storage Driver: overlayfs`, `driver-type: io.containerd.snapshotter.v1`, `Docker Root Dir: /var/lib/docker`). Docker's documentation says containerd storage "is not automatically moved" by `data-root`, and that `data-root` "does not affect image and container data stored in `/var/lib/containerd`". It is the default for fresh installs from Docker 29.0. **So setting `data-root` alone would leave image layers on the SD.** A host gets the same default if `geerlingguy.docker` installs 29.x on it, which pi5 and the x64 box will.
+
+**Make Docker's directory disposable.** Instead of migrating overlay layers, the plan is that nothing that matters lives in Docker's own storage. Checked on the Pi 4 (`docker inspect`):
+
+| Volume | What it holds | Plan |
+|---|---|---|
+| `gitea-runner` `/data` (anonymous) | Runner registration: real state | Bind mount on the fast drive (backed up with it) |
+| `immich_machine_learning` `/cache`, `immich_model-cache` | Model cache | Rebuilds; leave, or bind mount to avoid re-downloading |
+| `immich_redis` `/data` (anonymous) | Redis cache | Rebuilds |
+| `immich_microservices` `/data` (anonymous) | Container not in the repo; probably stale | Remove after checking it is not running |
+| `nas-docker_caddy_*`, `nas-docker_model-cache`, `simple-nas_model-cache` | Look like leftovers of older project names | Check, then `docker volume prune` |
+
+**Rule:** a service's state is a bind mount under a drive role. Anything in Docker's storage can be deleted and re-created. New services (Dockge, Caddy's `caddy_data`) follow the same rule.
+
+**The `docker_data_root` option** (empty by default, so Docker's default stays; set per host in `host_vars`). When set, Ansible writes `data-root` through `geerlingguy.docker`'s `docker_daemon_options` (a dict written to `/etc/docker/daemon.json`; present in the installed role) and also places containerd's storage on the same drive. Two ways to cover containerd, to be chosen by a test on pi5, not by guesswork:
+
+1. Set `root = "<path>/containerd"` in `/etc/containerd/config.toml` (the file ships with `containerd.io` and holds only `disabled_plugins = ["cri"]` on the Pi 4). Docker's daemon page names this file as the place to change containerd's location. Follows Docker's direction.
+2. Disable the containerd image store (`"features": {"containerd-snapshotter": false}`). Docker's reference shows only `true` and says switching backends hides images from the other backend. Whether `false` is honored by 29.x is **not confirmed in the docs**; it is only a fallback.
+
+Test: on pi5, with a throwaway directory, apply the option, restart, pull an image, and confirm with `du` that `/var/lib/docker` and `/var/lib/containerd` stay small. Record the result in `docs/` when done.
+
+**Changing it, and changing it back.** Because state is disposable the procedure is the same both ways: stop `docker.service` **and** `docker.socket` (socket activation restarts the daemon mid-change), change the setting, start, then `just deploy` so compose re-pulls images and recreates containers. No `rsync` of overlay layers (whiteouts, hardlinks and xattrs are where copies go wrong). The old directory stays behind as unused space; delete it once the stacks are healthy. Docker's docs do not give a migration procedure, so this is ours and is documented in `docs/storage.md`.
+
+**Mount ordering.** A systemd drop-in for `docker.service` with `RequiresMountsFor=<data root>` adds `Requires=` and `After=` on the mount unit (systemd.unit). With `nofail` the fstab mount is only *wanted* by `local-fs.target` (systemd.mount), but `RequiresMountsFor=` adds its own `Requires=` on that mount unit, so a failed mount should stop Docker from starting rather than letting it create an empty directory on the SD. The docs I read do not state this combination explicitly. **Test on pi5:** reboot with the drive unplugged; `docker` must be inactive, not running on an SD directory.
+
+**Log rotation (do now, independent of the data root).** Docker's docs: the default `json-file` driver does no rotation; `local` rotates by default. Plan: `docker_daemon_options` sets `log-driver: json-file` with `log-opts: {max-size: "10m", max-file: "3"}` (values must be strings). **These apply only to containers created after the change**, and compose-only services recreate only when their rendered file changes, so the first deploy adds a one-time step: recreate every stack (`docker compose up -d --force-recreate` per project, documented in `ansible/README.md`). A daemon restart also restarts containers unless `live-restore` is set; deploy this when a brief restart is acceptable.
+
 ## Ad-hoc app platform (decision pending)
 
 Wanted: a lightweight Coolify-like layer for apps the owner starts by hand, with no database server, easy teardown, arm64 and amd64.
@@ -181,12 +235,9 @@ Everything under `/mnt/t7` (Docker app data, Immich photos and database, Copypar
 
 | State | What to do |
 |---|---|
-| Gitea runner registration (anonymous Docker volume) | Re-register the runner, or copy the volume |
-| Immich model cache and Redis | Rebuild themselves |
+| Docker's own storage (images, anonymous volumes) | Disposable by the rule in "Docker data root, logs and state": images re-pull. The Gitea runner registration becomes a bind mount in the refactor, so it moves with the drive |
 | Tailscale identity | pi5 is a new node: new IP and MagicDNS name. Update WebDAV mounts, bookmarks, the inventory and Funnel |
 | `autoback`, `obtain-ampere` containers | Outside this repo; they do not move |
-
-Not yet checked: `immich_microservices` has an anonymous volume on the Pi 4 and may be a stale container.
 
 Order: take fresh service dumps and a local snapshot and verify them (`restic snapshots`, `restic check`), avoiding the 2 AM and 4 AM cron windows; stop the stacks cleanly so Postgres shuts down properly; shut the Pi 4 down and **leave its microSD untouched** (moving the drives back is the rollback); move both drives to pi5's blue USB 3 ports; the owner runs `--check --diff` then deploys; verify Immich, Copyparty, Gitea, a backup run and the `/mnt/backup` mount; keep the Pi 4 off for a week before repurposing it.
 
@@ -199,30 +250,61 @@ This is a major change: **each step updates its docs in the same commit** as the
 | File | Change |
 |---|---|
 | `README.md` | Doc table; the repo is no longer "a NAS only" |
+| `ansible/README.md` and example files | The configuration conventions, the where-an-option-lives table |
 | `ansible/README.md` | Setup (inventory, vault layout, first run with `-K`), commands, "add a service/host" |
 | `docs/ansible-terms.md` | `host_vars`, `group_vars/all`, several plays, the sudoers drop-in |
 | `docs/services.md` | The direct link moves to `networking.md` |
 | `docs/networking.md` | New (written now for the parts true today) |
 | `docs/backups.md` | Backends, the vault-managed rclone remote |
-| `docs/storage.md` | Per-host drives |
+| `docs/storage.md` | Per-host drives; the Docker data root option and the procedure for moving it |
 | `AGENTS.md` | "The Pi" becomes "any host"; single-NAS wording |
-| `ansible/justfile` | `--limit`, per-host commands |
+| `ansible/justfile` | `deploy` and `preview` take `--limit` and extra flags. Today they hard-code `--ask-vault-pass` and cannot pass `-K`, which the first run on a new host needs |
 | `docs/plans/drive-migration.md` | The pi5 order and the power note |
 
 ## Owner items
 
 Decisions and things to do by hand before work starts:
 
-1. (Dropped: no dedicated domain or Cloudflare Access needed.)
+1. Decide `argument_specs` vs comments-only (Configuration conventions; recommendation is comments).
 2. In the Zero Trust dashboard, check whether the existing tunnel can be migrated to remotely managed.
 3. Confirm the Cloudflare API token has Tunnel Write and DNS Edit.
 4. Run the netplan spike on pi5 (commands and pass criteria in `networking.md`).
 5. Run the first deploy on each new host with `-K`; the sudoers task removes the need afterward.
 6. Disable Tailscale key expiry for each server.
 7. When installing Ubuntu on the x64 box, do not choose the Docker snap.
+8. Publish the Google Drive OAuth app to Production (or backups stop after 7 days), and run `rclone authorize "drive"` on the Mac when the refactor reaches that step.
+9. Run the data-root test on pi5 (below) when the refactor reaches it; I give the exact commands.
 
 ## Open decisions
 
 - netplan vs nmcli (the spike).
-- The ad-hoc platform and domain.
+- The ad-hoc platform.
+- Whether orphan DNS records are deleted automatically (today they are only reported).
+- containerd root vs disabling the containerd image store (the pi5 test).
 - Whether the second Pi joins Tailscale by hand or with a one-off key.
+
+## What is verified and what is not
+
+Checked against primary documentation or the live Pi 4 / pi5 (read-only):
+
+| Claim | Source |
+|---|---|
+| Pi 4 runs Docker 29.4.2 with the containerd image store; `data-root` does not move containerd storage | `docker info` on the Pi 4; Docker's containerd-store and daemon docs |
+| `json-file` does no rotation by default; log options apply only to new containers | Docker logging docs |
+| `RequiresMountsFor=` adds `Requires=` and `After=` on the mounts; `nofail` makes a mount only wanted by `local-fs.target` | systemd.unit, systemd.mount |
+| An argument spec's `default` is documentation only | Ansible role docs |
+| 7-day refresh-token expiry for apps in "Testing" | Google OAuth documentation |
+| `cloudflared` latest release is 2026.10.3; `--token-file` landed in 2025.4.0 | GitHub releases page (version); the earlier check (flag) |
+| `community.general.cloudflare_dns` supports `proxied` CNAME; restic reaches SFTP natively | module docs; restic docs |
+
+Not verified, with the test that settles each:
+
+| Open item | Test |
+|---|---|
+| Whether `RequiresMountsFor=` stops Docker when a `nofail` mount is missing | pi5: reboot with the drive unplugged; Docker must be inactive |
+| Whether containerd `root` in `config.toml` moves image layers (and `false` for the snapshotter flag) | pi5: set it, pull an image, `du` both directories |
+| Whether `netplan try` rolls back with the NetworkManager renderer; duplicate profiles next to `90-NM-*.yaml` | The spike in `networking.md` |
+| `caddy.auto_https: "off"` as a global label | Read the generated Caddyfile when Caddy is first built |
+| Whether the existing tunnel can be migrated to remotely managed | The Zero Trust dashboard |
+| Whether a Pi on a hotspot returns to home wifi by itself | Not tested; recovery is `nmcli con up` |
+| `cloudflared tunnel run --token-file` accepted by the pinned image | `--help` on that image |
