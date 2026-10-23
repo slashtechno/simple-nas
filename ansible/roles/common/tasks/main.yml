@@ -1,6 +1,18 @@
 ---
 # Docker is handled via the geerlingguy.docker role dependency in meta/main.yml.
 
+# Passwordless sudo for the Ansible user, so deploys need no password. On a new host the first run
+# uses -K (--ask-become-pass) to type the sudo password once; this file makes later runs need none.
+# The drop-in is checked with visudo before it is installed, so a typo cannot lock sudo out.
+- name: Allow the Ansible user passwordless sudo
+  ansible.builtin.copy:
+    content: "{{ ansible_user }} ALL=(ALL) NOPASSWD:ALL\n"
+    dest: /etc/sudoers.d/90-ansible
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+
 - name: Install base packages
   ansible.builtin.apt:
     name:

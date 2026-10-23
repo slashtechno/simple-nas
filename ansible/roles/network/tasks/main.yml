@@ -52,8 +52,10 @@
 
 # Symmetric revert: flipping direct_link_enabled back to false and redeploying
 # undoes the block above, without needing the full destructive teardown.yml.
+# Only for a host that sets direct_link_enabled: false itself. A host that never mentions the
+# link (pi5) keeps its own eth0 profile, so the role changes nothing on it.
 - name: Tear down direct Ethernet link on eth0
-  when: not (direct_link_enabled | default(false))
+  when: direct_link_enabled is defined and not direct_link_enabled
   block:
     - name: Remove static direct-link profile
       community.general.nmcli:
