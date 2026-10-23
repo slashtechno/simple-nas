@@ -148,7 +148,7 @@
           changed_when: rmdir_scripts.rc == 0
           failed_when: false   # a non-empty or missing directory is fine
 
-    # Only the drive-remount udev rule/service the storage role installs.
+    # Only the udev rules, service and tmpfiles entry the storage role installs (remount and USB automount).
     # Does NOT touch fstab entries, mount points, or drive ownership — those
     # stay untouched so your data drives are never at risk here.
     - name: Remove drive auto-remount udev rule and systemd service
@@ -166,10 +166,14 @@
             path: /etc/systemd/system/nas-drive-remount.service
             state: absent
 
-        - name: Remove remount udev rule
+        - name: Remove the udev rules and the tmpfiles entry
           ansible.builtin.file:
-            path: /etc/udev/rules.d/99-nas-drive-remount.rules
+            path: "{{ item }}"
             state: absent
+          loop:
+            - /etc/udev/rules.d/99-nas-drive-remount.rules
+            - /etc/udev/rules.d/98-usb-automount.rules
+            - /etc/tmpfiles.d/usb-automount.conf
 
         - name: Reload systemd daemon
           ansible.builtin.systemd:

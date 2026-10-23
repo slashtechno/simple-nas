@@ -11,6 +11,13 @@ storage_enabled: true
 # This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
 # (explained in host_vars/vars.yml.example).
 drives: []
+# Drives that fill no role are "extra": a `drives` entry without `roles:`, and (when the next setting
+# is on) any USB drive or card reader you plug in. Nothing has to be configured for the second kind.
+# Mounted USB drives appear under /run/media/system/<label>; Copyparty lists both kinds under /drives.
+usb_automount_enabled: false
+# Extra drives are read-only unless this is true. It sets the mount option of plugged-in drives and
+# Copyparty's permission and bind mount for both kinds. Role drives are never exposed either way.
+extra_drives_writable: false
 # Name of the shared Docker network the services join.
 nas_network: nas-services
 # Docker image pull policy. Allowed: missing, always. Default: missing.

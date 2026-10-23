@@ -89,17 +89,28 @@
     A: {{ copyparty_user }}
 
 {% endif %}
+{# /drives lists the extra drives only: those in `drives` with no roles, and USB drives plugged in. #}
 [/drives]
   /tmp/drives-root
   accs:
     r: {{ copyparty_user }}
   flags:
     -e2d
-{% for drive in drives if drive.mount != primary_drive %}
+{% for drive in extra_drives %}
+
 [/drives/{{ drive.mount | basename }}]
-  /host/mnt/{{ drive.mount | basename }}
+  /host/drives/{{ drive.mount | basename }}
   accs:
-    r: {{ copyparty_user }}
+    {{ 'A' if extra_drives_writable | bool else 'r' }}: {{ copyparty_user }}
   flags:
     -e2d
 {% endfor %}
+{% if usb_automount_enabled | bool %}
+
+[/drives/usb]
+  /host/usb
+  accs:
+    {{ 'A' if extra_drives_writable | bool else 'r' }}: {{ copyparty_user }}
+  flags:
+    -e2d
+{% endif %}

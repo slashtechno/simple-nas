@@ -1,0 +1,5 @@
+# Ansible-managed. Mounts a USB drive or card reader that is not one of ours.
+# Skipped by UUID: every drive in `drives` (fstab mounts those) and the root and boot filesystems.
+{% set _skip = (drives | selectattr('uuid', 'defined') | map(attribute='uuid') | list)
+   + (ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/firmware']) | map(attribute='uuid') | reject('equalto', 'N/A') | list) %}
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_USAGE}=="filesystem", ENV{ID_FS_UUID}!="{{ _skip | unique | join('|') }}", RUN{program}+="/usr/bin/systemd-mount --no-block --collect -o nosuid,nodev,noexec{{ '' if extra_drives_writable | bool else ',ro' }} $devnode"

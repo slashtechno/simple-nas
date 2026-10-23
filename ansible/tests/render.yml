@@ -16,6 +16,7 @@
     repo: "{{ playbook_dir }}/.."
     # Normally set by the inventory or by a task at deploy time.
     ansible_user: pi
+    ansible_mounts: []   # a fact, gathered on a real host
     garage_is_first_deploy: false
   tasks:
     - name: Find every role's defaults and templates

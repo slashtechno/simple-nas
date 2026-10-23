@@ -14,7 +14,15 @@ services:
       - {{ copyparty_files_dir }}:/files:rw
       - {{ copyparty_config_dir }}:/cfg:rw
       - {{ copyparty_hist_dir }}:/hist:rw
-      - {{ copyparty_host_mnt_dir }}:/host/mnt:ro,rslave
+{# Extra drives (see /drives in copyparty.conf). Role drives are never bound in. rslave lets drives
+   plugged in later show up without restarting the container. A bind mount's :ro does NOT cover
+   mounts that arrive after the container starts, so plugged-in drives are made read-only on the host. #}
+{% for drive in extra_drives %}
+      - {{ drive.mount }}:/host/drives/{{ drive.mount | basename }}:{{ 'rw' if extra_drives_writable | bool else 'ro' }},rslave
+{% endfor %}
+{% if usb_automount_enabled | bool %}
+      - /run/media/system:/host/usb:rslave
+{% endif %}
 {% if copyparty_fast_enabled | bool %}
       - {{ copyparty_fast_dir }}:/fast:rw
 {% endif %}

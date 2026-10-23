@@ -1,5 +1,4 @@
 ---
-copyparty_host_mnt_dir: /mnt   # host directory browsable under /drives in Copyparty UI
 # Cap thumbnailer RAM; the upstream default allows ~2.4 GiB on a 4 GB Pi (60% of
 # system RAM). 1 GiB is a safe cap on both the Pi 4 and Pi 5.
 copyparty_th_ram_max: "1"

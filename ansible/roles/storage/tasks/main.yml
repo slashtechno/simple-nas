@@ -24,6 +24,17 @@
     quiet: true
   when: "'nas' in group_names"
 
+# A drive with no uuid is a plain directory on the root filesystem (the microSD card): it is created
+# below but never put in fstab. The backup role refuses to run unless its drive is a real mount.
+- name: Validate that the backup role is on a mounted drive
+  ansible.builtin.assert:
+    that: drives | selectattr('mount', 'equalto', backup_drive) | selectattr('uuid', 'defined') | list | length == 1
+    fail_msg: >-
+      The `backup` role is on {{ backup_drive }}, which has no `uuid`. A backup on the same microSD
+      card as the data is not a backup. Give the backup role to a USB drive.
+    quiet: true
+  when: backup_drive | length > 0
+
 - name: Create mount points
   ansible.builtin.file:
     path: "{{ item.mount }}"
@@ -38,7 +49,7 @@
     fstype: "{{ item.fstype }}"
     opts: "{{ item.options }}"
     state: mounted
-  loop: "{{ drives }}"
+  loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
 
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:
@@ -56,7 +67,7 @@
     group: root
     mode: "0644"
   notify: Reload udev rules
-  when: drives | length > 0
+  when: drives | selectattr('uuid', 'defined') | list | length > 0
 
 - name: Install remount systemd service (self-heals a drive that drops offline and reconnects)
   ansible.builtin.copy:
@@ -66,7 +77,47 @@
     group: root
     mode: "0644"
   notify: Reload systemd daemon
-  when: drives | length > 0
+  when: drives | selectattr('uuid', 'defined') | list | length > 0
+
+# Plugged-in USB drives and card readers (not in `drives`) are mounted by systemd-mount under
+# /run/media/system/<label>, read-only unless extra_drives_writable. udev's own mount namespace is
+# private, so the rule calls systemd-mount rather than mount. /run is a tmpfs: tmpfiles.d recreates
+# the directory at boot (before Docker binds it into Copyparty) and sweeps empty folders left behind
+# by drives that were unplugged.
+- name: Install the USB automount rule and its tmpfiles entry
+  when: usb_automount_enabled | bool
+  block:
+    - name: Install the USB automount udev rule
+      ansible.builtin.template:
+        src: 98-usb-automount.rules.j2
+        dest: /etc/udev/rules.d/98-usb-automount.rules
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Reload udev rules
+
+    - name: Create the USB mount directory now and at every boot
+      ansible.builtin.copy:
+        dest: /etc/tmpfiles.d/usb-automount.conf
+        content: |
+          # Ansible-managed. Recreates the USB mount directory at boot; the age cleans up empty folders.
+          d /run/media/system 0755 root root 1h
+        owner: root
+        group: root
+        mode: "0644"
+      register: usb_automount_tmpfiles
+
+    - name: Apply the tmpfiles entry
+      ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/usb-automount.conf
+      when: usb_automount_tmpfiles.changed  # noqa: no-handler (one command, only needed when the file changed)
+      changed_when: true
+
+- name: Remove the USB automount rule when it is switched off
+  ansible.builtin.file:
+    path: /etc/udev/rules.d/98-usb-automount.rules
+    state: absent
+  notify: Reload udev rules
+  when: not usb_automount_enabled | bool
 
 # The NAS's drive-level layout. Each service role creates its own data directories below these.
 - name: Create the NAS directory structure

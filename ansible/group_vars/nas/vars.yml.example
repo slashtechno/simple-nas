@@ -15,6 +15,7 @@ pics_enabled: false   # photo culling and sharing; needs vault_github_read_token
 garage_enabled: false   # needs manual init after first deploy (see docs/services.md#garage-s3)
 crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 backup_enabled: true
+usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # --- Tailscale ---
