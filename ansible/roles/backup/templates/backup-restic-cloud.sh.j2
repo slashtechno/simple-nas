@@ -5,7 +5,7 @@ set -o pipefail
 # otherwise this silently writes onto the root filesystem until it fills up
 # (this has happened: a USB dropout unmounted the drive mid-write, and cron
 # kept "succeeding" against the bare mountpoint directory).
-if ! mountpoint -q {{ backup_drive }}; then
+if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
 fi

@@ -5,7 +5,7 @@ set -o pipefail
 # otherwise this silently writes multi-GB restic data onto the root filesystem
 # until it fills up (this has happened: a USB dropout unmounted the drive
 # mid-write, and cron kept "succeeding" against the bare mountpoint directory).
-if ! mountpoint -q {{ backup_drive }}; then
+if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
 fi
@@ -41,7 +41,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
   # list stable: restic forget groups snapshots by host and paths, so changing
   # it starts a new group and the old group's last snapshots stay until you
   # forget them by hand. Use restic_local_excludes to skip things instead.
-  restic backup {{ (restic_local_paths + [service_dumps_dir]) | unique | join(' ') }} \
+  restic backup {{ (restic_local_paths + [service_dumps_dir]) | unique | map('quote') | join(' ') }} \
     --exclude-file "$EXCLUDE_FILE" \
     --tag daily \
     --verbose
@@ -64,7 +64,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
     echo "Repository stats:"
     restic stats || { echo "ERROR: restic stats failed!"; exit 1; }
     echo "Free space on HDD:"
-    df -h {{ backup_drive }}
+    df -h {{ backup_drive | quote }}
   else
     echo "ERROR: Backup failed (restic exit code $backup_rc)!"
     exit 1

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-if ! mountpoint -q {{ backup_drive }}; then
+if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — skipping integrity check." >&2
   exit 1
 fi

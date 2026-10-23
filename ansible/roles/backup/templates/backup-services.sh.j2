@@ -19,7 +19,7 @@ SCRIPTS_DIR="{{ service_dump_scripts_dir }}"
 
 # Refuse to run if the backup drive isn't mounted — otherwise this silently
 # creates $DUMP_DIR (and writes DB dumps into it) on the root filesystem.
-if ! mountpoint -q {{ backup_drive }}; then
+if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to write dumps onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
 fi
