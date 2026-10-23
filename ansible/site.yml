@@ -14,8 +14,8 @@
   pre_tasks:
     - name: Check the host runs a Debian-family OS
       ansible.builtin.assert:
-        that: ansible_facts.os_family == "Debian"
-        fail_msg: "{{ inventory_hostname }} is {{ ansible_facts.os_family }}; the roles use apt and need Debian, Raspberry Pi OS or Ubuntu."
+        that: ansible_facts['os_family'] == "Debian"
+        fail_msg: "{{ inventory_hostname }} is {{ ansible_facts['os_family'] }}; the roles use apt and need Debian, Raspberry Pi OS or Ubuntu."
         quiet: true
       tags: [always]
 

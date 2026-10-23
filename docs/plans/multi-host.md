@@ -11,7 +11,7 @@ Manage the NAS and other always-on machines (a second Pi, later an x64 desktop) 
 
 ## Supported systems
 
-**Debian family only**: Raspberry Pi OS, Debian, and **Ubuntu Server** (decided). An `assert` on `ansible_os_family` in `common` fails an unsupported host at the start with a clear message. Fedora and other RPM distros would add SELinux `:Z` labels on every bind mount, `dnf` package names and `firewalld`; that stays out until there is a Fedora host.
+**Debian family only**: Raspberry Pi OS, Debian, and **Ubuntu Server** (decided). An `assert` on `ansible_facts.os_family` in `site.yml` fails an unsupported host at the start with a clear message. Fedora and other RPM distros would add SELinux `:Z` labels on every bind mount, `dnf` package names and `firewalld`; that stays out until there is a Fedora host.
 
 Ubuntu Server specifics to design for, so it works there and not just on Pi OS:
 

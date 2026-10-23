@@ -65,9 +65,9 @@
 
 - name: Download zellij
   ansible.builtin.get_url:
-    url: "https://github.com/zellij-org/zellij/releases/download/{{ zellij_version }}/zellij-{{ ansible_architecture }}-unknown-linux-musl.tar.gz"
+    url: "https://github.com/zellij-org/zellij/releases/download/{{ zellij_version }}/zellij-{{ ansible_facts['architecture'] }}-unknown-linux-musl.tar.gz"
     dest: "/opt/zellij/{{ zellij_version }}/zellij.tar.gz"
-    checksum: "sha256:{{ zellij_sha256[ansible_architecture] }}"
+    checksum: "sha256:{{ zellij_sha256[ansible_facts['architecture']] }}"
     mode: "0644"
 
 - name: Unpack zellij
