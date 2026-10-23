@@ -1,5 +1,6 @@
 ---
-garage_version: v2.3.0   # pin a specific version; check https://garagehq.deuxfleurs.fr/_releases.html
+# renovate: datasource=docker depName=dxflrs/garage
+garage_version: v2.3.0  # pin a specific version; check https://garagehq.deuxfleurs.fr/_releases.html
 garage_s3_port: 3900
 garage_rpc_port: 3901
 garage_web_port: 3902

@@ -111,6 +111,14 @@ ansible-playbook site.yml -e docker_pull_policy=always --ask-vault-pass         
 ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass   # one service
 ```
 
+To see what is newer, run `just outdated`. It reads the pinned versions (the `FROM` lines, and the `*_version:` keys that carry a `# renovate:` comment) and lists the ones with a newer release. It opens no pull requests and changes nothing. Then:
+
+1. Read the release notes of the service you want to update.
+2. Edit that one line (`just tags <image>` lists the tags you can choose from).
+3. `just preview <service>`, then `just deploy <service>`.
+
+Floating tags (`latest`, `release`, `nightly`) are not checked, because there is no version to compare. Pin one to a real version, and add a `# renovate: datasource=docker depName=<image>` comment above its `*_version:` key, to include it. Immich's Postgres and Valkey are pinned by digest and skipped on purpose; take those from Immich's release notes. The config is `renovate.json` at the repo root.
+
 Copyparty and cloudflared build their own images from local Dockerfiles (`build: always`) and always rebuild, so this doesn't apply to them. Copyparty's base image is pinned (`FROM copyparty/iv:<version>` in `roles/copyparty/files/Dockerfile`), so to update it, change that tag (check the [releases](https://github.com/9001/copyparty/releases) first) and redeploy.
 
 ### Copyparty: add users or change volume layout
@@ -186,6 +194,8 @@ Common commands live in `ansible/justfile`. [`just`](https://just.systems) is a 
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
 | `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags` |
 | `just preview [tags]` | The same with `--check --diff`, which changes nothing |
+| `just outdated` | Lists newer versions of pinned images (Renovate in Docker, read-only). Needs Docker and `jq`; not part of `check` |
+| `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'` |
 
 Lint config and the reason for each skipped rule: `.ansible-lint`. Keep it at zero failures.
 

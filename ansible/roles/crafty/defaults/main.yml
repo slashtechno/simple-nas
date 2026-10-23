@@ -1,4 +1,5 @@
 ---
+# renovate: datasource=docker depName=registry.gitlab.com/crafty-controller/crafty-4
 crafty_version: latest
 crafty_panel_port: 28443   # host port only; the container always listens on 8443
 crafty_mc_ports: "25565-25575"   # Java servers; a range is one docker-proxy per port, so keep it small

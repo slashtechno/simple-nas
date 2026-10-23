@@ -31,6 +31,32 @@ test:
 # Everything CI runs. Run this before committing.
 check: lint syntax test
 
+# List newer versions of pinned images (read-only, needs Docker + jq; not part of `check`)
+outdated:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    out="$(mktemp -d)"
+    # Renovate runs in Docker so its Node version doesn't depend on this machine.
+    # Bump the tag deliberately; the image is large, so the first run is slow.
+    docker run --rm -v "$PWD/..":/repo:ro -v "$out":/out -w /repo \
+        -e RENOVATE_CONFIG_FILE=/repo/renovate.json \
+        renovate/renovate:44.164.6 renovate --platform=local \
+        --report-type=file --report-path=/out/report.json >"$out/renovate.log" 2>&1 \
+        || { cat "$out/renovate.log"; exit 1; }
+    updates="$(jq -r '.repositories.local.packageFiles[][] | .packageFile as $f | .deps[]
+        | select(.updates | length > 0)
+        | [$f, .depName, .currentValue, ([.updates[] | .newVersion // .newValue] | join(", "))] | @tsv' \
+        "$out/report.json" | sort -u)"
+    if [ -z "$updates" ]; then
+        echo "Nothing newer than the pinned versions. (Floating tags like latest are not checked.)"
+    else
+        printf 'FILE\tIMAGE\tPINNED\tNEWER\n%s\n' "$updates" | column -t -s "$(printf '\t')"
+    fi
+
+# List tags of one image to pick a version, e.g. `just tags copyparty/iv '^1\.'` (newest `count` shown)
+tags image filter='.' count='30':
+    docker run --rm gcr.io/go-containerregistry/crane:v0.22.1 ls {{ image }} | grep -E -- '{{ filter }}' | sort -V | tail -n {{ count }}
+
 # Deploy: `just deploy` for everything, `just deploy crafty` for one service
 deploy tags='':
     ansible-playbook site.yml --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }}
