@@ -113,8 +113,8 @@
     minute: "0"
     hour: "2"
     job: >-
-      /bin/bash {{ nas_scripts_dir }}/backup-restic-local.sh
-      >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
+      /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
+      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
       logger -t nas-backup "backup-restic-local failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly cloud backup (Sunday 4 AM)
@@ -125,8 +125,8 @@
     hour: "4"
     weekday: "0"
     job: >-
-      /bin/bash {{ nas_scripts_dir }}/backup-restic-cloud.sh
-      >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
+      /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
+      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
       logger -t nas-backup "backup-restic-cloud failed or {{ backup_drive }} not mounted"
 
 - name: Schedule weekly restic integrity check (Wednesday 3 AM)
@@ -137,6 +137,6 @@
     hour: "3"
     weekday: "3"
     job: >-
-      /bin/bash {{ nas_scripts_dir }}/restic-check.sh
-      >> {{ backup_logs_dir }}/backup-cron.log 2>&1 ||
+      /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
+      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
       logger -t nas-backup "restic-check failed or {{ backup_drive }} not mounted"
