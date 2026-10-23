@@ -3,6 +3,6 @@
 # geerlingguy.docker writes this one variable to /etc/docker/daemon.json. A dict set in a host's
 # host_vars replaces the same dict from group_vars instead of merging, so the options owners edit
 # stay separate settings in vars.yml and are combined here.
-docker_daemon_options:
-  log-driver: json-file
-  log-opts: "{{ docker_log_opts }}"
+docker_daemon_options: >-
+  {{ {'log-driver': 'json-file', 'log-opts': docker_log_opts}
+     | combine({'data-root': docker_data_root} if docker_data_root | length > 0 else {}) }}

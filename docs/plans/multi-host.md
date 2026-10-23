@@ -1,6 +1,6 @@
 # Multi-host plan (NAS + general servers)
 
-Status: planned and fully decided; nothing is implemented. All implementation goes on a branch; only docs go straight to main. The only open items are tests (see "What is verified and what is not").
+Status: implementation is under way on the branch `multi-host-refactor`. Done and deployed to pi5: the structural split (1a), the base roles (sudoers, Tailscale install, zellij, Ghostty terminfo, SSH keys, log rotation), the copyparty renames, the Gitea runner bind mount and the `docker_data_root` option. Funnel moved to its own NAS-only role (`tailscale_funnel`) and all versions are in `group_vars/all/versions.yml`. The overclock role is dropped until a host needs it. Everything else below is still planned. All implementation goes on a branch; only docs go straight to main.
 
 ## Goal
 
@@ -268,12 +268,12 @@ This is a major change: **each step updates its docs in the same commit** as the
 Decisions and things to do by hand before work starts:
 
 1. In the Zero Trust dashboard, check whether the existing tunnel can be migrated to remotely managed.
-2. Confirm the Cloudflare API token has Tunnel Write and DNS Edit.
+2. ~~Confirm the Cloudflare API token has Tunnel Write and DNS Edit.~~ Confirmed by the owner.
 3. Run the netplan spike on pi5 (commands and pass criteria in `networking.md`).
 4. Run the first deploy on each new host with `-K`; the sudoers task removes the need afterward.
 5. Disable Tailscale key expiry for each server.
 6. When installing Ubuntu on the x64 box, do not choose the Docker snap.
-7. Publish the Google Drive OAuth app to Production (or backups stop after 7 days), and run `rclone authorize "drive"` on the Mac when the refactor reaches that step.
+7. Run `rclone authorize "drive"` on the Mac when the refactor reaches that step. No custom OAuth app: the remote keeps rclone's default client and the existing throttle (owner decision). If the backup stops after a week, the refresh-token expiry for "Testing" apps is the thing to check.
 8. Run the data-root tests (below) right after the cutover, on pi5 with the real drive; I give the exact commands.
 
 ## Settled by a test
@@ -304,7 +304,7 @@ Not verified, with the test that settles each:
 | Open item | Test |
 |---|---|
 | Whether `RequiresMountsFor=` stops Docker when a `nofail` mount is missing | Step 4b, pi5: reboot with the drive unplugged; Docker and containerd must be inactive |
-| Whether containerd `root` in `config.toml` moves image layers (and `false` for the snapshotter flag) | Step 4b, pi5: set it, pull an image, `du` both directories |
+| ~~Whether containerd `root` in `config.toml` moves image layers~~ | **Settled 2026-10-23 on pi5: it does** (see docs/storage.md); the snapshotter-flag fallback is not needed |
 | Whether `netplan try` rolls back with the NetworkManager renderer; duplicate profiles next to `90-NM-*.yaml` | The spike in `networking.md` |
 | `caddy.auto_https: "off"` as a global label | Read the generated Caddyfile when Caddy is first built |
 | Whether the existing tunnel can be migrated to remotely managed | The Zero Trust dashboard |
