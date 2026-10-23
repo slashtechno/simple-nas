@@ -164,6 +164,17 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ---
 
+## If the backup drive disconnects
+
+`nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted, so `/mnt/backup` silently becomes a small plain directory on the root filesystem. This happened once, caused by a Pi-side USB brown-out rather than the drive. If it recurs, run `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'`; undervoltage points at the PSU, cable or hub.
+
+Two guards cover it:
+
+1. The backup scripts and the `restic check` job run `mountpoint -q /mnt/backup` first. On failure they log to `journalctl -t nas-backup` and write nothing to root.
+2. `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` through a oneshot systemd service whenever a filesystem reappears, so a reconnected drive remounts within seconds.
+
+Check with `mountpoint /mnt/backup`, `journalctl -t nas-backup` and `systemctl status nas-drive-remount.service`.
+
 ## Disaster recovery (both drives fail)
 
 1. Re-flash Pi OS, re-run `ansible-playbook site.yml`. This needs `vault.yml` and its vault password, which hold `vault_restic_password` and exist only on your own machine. Without them neither restic repo can be opened, so keep a copy of both somewhere that is not the Pi.

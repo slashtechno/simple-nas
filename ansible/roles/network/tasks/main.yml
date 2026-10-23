@@ -4,7 +4,7 @@
     name: "{{ nas_network }}"
     state: present
 
-# Direct Ethernet link to a laptop (see README.md#direct-ethernet-link).
+# Direct Ethernet link to a laptop (see docs/services.md#direct-ethernet-link).
 # Assumes eth0 is idle (Pi runs on wifi) — if eth0 is ever your Ansible
 # management connection instead, enabling this will drop that connection.
 - name: Set up direct Ethernet link on eth0

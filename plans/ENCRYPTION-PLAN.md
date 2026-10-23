@@ -93,13 +93,13 @@ without assuming you have your phone on you.
   it's just gating a button that hits the releaser).
 - Boot-ordering fix: `immich_db_data_location`, `gitea_data_dir`,
   `copyparty_config_dir`, `garage_data_dir` (vars.yml) all live under
-  `{{ main_drive }}/docker`, which will sit under the gocryptfs mount.
+  `{{ fast_drive }}/docker`, which will sit under the gocryptfs mount.
   Compose auto-start must be disabled/gated so containers don't start (and
   Postgres doesn't `initdb`) against an empty directory before unlock.
 - Benchmark `gocryptfs -init -xchacha` vs default AES mode on the Pi 4 before
   committing — the SoC likely lacks ARM crypto extensions, so AES is
   software-only and may not sustain the measured 117MB/s direct-link speed
-  (README.md).
+  (see docs/services.md#direct-ethernet-link).
 - Accept as a known tradeoff: after any reboot with nobody unlocking, the
   2 AM / 4 AM cron backups will no-op until manually unlocked (existing
   `logger` calls in the backup role are the detection path — no new work
@@ -115,5 +115,5 @@ without assuming you have your phone on you.
    `storage`/`backup` Ansible roles to mount post-unlock instead of at boot.
 4. Fix Docker Compose boot ordering so services start only after mount.
 5. Add passkey path for day-to-day unlock from own devices.
-6. Update `BACKUPS.md` / `README.md` to document the new unlock flow and the
+6. Update `BACKUPS.md` and `docs/storage.md` to document the new unlock flow and the
    reboot-then-no-backup-until-unlocked tradeoff.

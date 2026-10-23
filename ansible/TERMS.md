@@ -92,10 +92,10 @@ Every role in `roles/` follows Ansible's fixed directory convention:
 | Directory | Purpose | Used here? |
 |---|---|---|
 | `tasks/main.yml` | The actual steps | Always |
-| `handlers/main.yml` | Tasks that only run when *notified* | Most roles |
+| `handlers/main.yml` | Tasks that only run when *notified* | Some roles |
 | `templates/*.j2` | Jinja2 files rendered with variables | Most roles |
 | `files/*` | Static files copied verbatim, no templating | Some roles |
-| `defaults/main.yml` | Role's own fallback variable values (lowest precedence) | Only `tailscale/` |
+| `defaults/main.yml` | Role's own fallback variable values (lowest precedence) | Roles with settings only they read |
 | `meta/main.yml` | Role dependencies (run automatically before this role) | Only `common/` |
 
 `templates/` vs `files/` is a real distinction: `ansible.builtin.template` runs
@@ -170,8 +170,9 @@ Ansible's own control-flow keywords (`when`, `loop`, `notify`, etc., see below).
 - `ansible.builtin.shell` — full shell semantics, used once (cloudflared's
   credential-migration `find | cp` pipeline) because `command` can't pipe
 - `ansible.builtin.include_role` — pull in a role by name from inside a task
-  list rather than a play's `roles:` list (tailscale role uses this to invoke
-  the Galaxy-installed `artis3n.tailscale.machine` role)
+  list rather than a play's `roles:` list (the tailscale role invokes the
+  Galaxy-installed `artis3n.tailscale.machine` role this way, and the pics role
+  calls `github_clone`)
 
 `command`/`shell` are "escape hatches" because Ansible's philosophy is that a
 dedicated module is idempotent by construction — it checks current state and
@@ -228,16 +229,18 @@ runs:
 
 ## 6. Variables and Vault — where config actually lives
 
-Ansible has a variable-precedence system; this repo exercises three tiers:
+Ansible has a variable-precedence system; this repo exercises four tiers:
 
 1. **`roles/*/defaults/main.yml`** — lowest precedence, a role's own fallback
-   (only `tailscale/` defines any: `tailscale_args`, `tailscale_funnel_enabled`,
-   `tailscale_funnel_port`).
+   for settings only that role reads (for example `crafty_panel_port`).
+   Settings shared between roles go in `vars.yml` instead.
 2. **`group_vars/nas/vars.yml`** — this project's actual config file, auto-loaded
    for any host in the `nas` group, no explicit include needed. Every
    `<service>_enabled`, every path (`main_drive`, `gitea_data_dir`,
    `homebridge_config_dir`, ...), every non-secret setting lives here.
-3. **`group_vars/nas/vault.yml`** — same auto-loading mechanism, but the file is
+3. **`group_vars/nas/versions.yml`** — same auto-loading, holds every image
+   version so an update is a one-line edit in one file.
+4. **`group_vars/nas/vault.yml`** — same auto-loading mechanism, but the file is
    encrypted at rest with `ansible-vault` (AES256). Only decrypted in-memory at
    run time, when `--ask-vault-pass` is passed.
 

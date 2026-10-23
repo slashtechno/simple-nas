@@ -10,8 +10,8 @@ gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
-garage_enabled: true    # needs post-deploy init (see ansible/README.md)
-crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
+garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
+crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
@@ -205,7 +205,7 @@ cloudflared_ingress:
 
 # --- Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers) ---
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
-# so it can't route internet traffic. See README.md#direct-ethernet-link.
+# so it can't route internet traffic. See docs/services.md#direct-ethernet-link.
 direct_link_enabled: true
 direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link

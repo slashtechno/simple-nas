@@ -12,9 +12,9 @@ copyparty_enabled: true
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
-pics_enabled: false   # photo culling and sharing; needs vault_github_read_token (see README.md)
-garage_enabled: false   # needs manual init after first deploy (see README.md)
-crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see README.md
+pics_enabled: false   # photo culling and sharing; needs vault_github_read_token (see docs/services.md#pics-photo-culling-and-sharing)
+garage_enabled: false   # needs manual init after first deploy (see docs/services.md#garage-s3)
+crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
@@ -33,7 +33,7 @@ nas_base_dir: /opt/nas             # where compose projects are deployed on the 
 nas_scripts_dir: "{{ nas_base_dir }}/scripts"                       # backup/helper scripts installed on the Pi
 service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"      # one dump script per service with a live database (see BACKUPS.md)
 nas_network: nas-services          # shared Docker network name
-docker_pull_policy: missing        # "always" to pull newer images on every run — see README.md#update-service-images
+docker_pull_policy: missing        # "always" to pull newer images on every run — see ansible/README.md#update-service-images
 
 # --- Storage ---
 # Drives are the source of truth: every nas_drives entry declares which
@@ -219,7 +219,7 @@ cloudflared_ingress:
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
 # so it can't route internet traffic. Laptop's IP is auto-assigned via a
 # scoped dnsmasq (DHCP only, no DNS/gateway) — no manual laptop config needed.
-# See README.md#direct-ethernet-link.
+# See docs/services.md#direct-ethernet-link.
 direct_link_enabled: false
 direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link
