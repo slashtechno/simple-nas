@@ -111,21 +111,12 @@ Today's role creates a **locally managed** tunnel (`config_src: local`). Cloudfl
 
 ### Public hostnames for ad-hoc apps
 
-No router port forwarding is needed: cloudflared connects outward. For the ad-hoc host the choice is:
+Owner decision: **no Cloudflare Access, no wildcard.** Tunnels are only for what must be reached outside Tailscale. Everything else is reached over Tailscale, which already authenticates every device.
 
-| Way | Per new app | Notes |
-|---|---|---|
-| **Wildcard to Caddy** (recommended for the ad-hoc host) | Docker labels only | One DNS record `*.<domain>` and one ingress rule `*.<domain>` → `http://caddy:80`, applied once by Ansible. Caddy routes by hostname from the labels. Nothing changes in Cloudflare or the repo per app |
-| Rule per app in `cloudflared_ingress` | Repo change and deploy | What the NAS does. Explicit, easy to read; the right choice for the NAS |
-| Dashboard rules | Cloudflare UI | Not declarative; the owner wants to avoid it |
-
-The NAS keeps explicit rules. An explicit DNS record wins over a wildcard, so both can share a zone. Constraints to decide:
-
-- **Use a dedicated domain for ad-hoc apps.** Cloudflare Access on `*.example.com` would also gate Immich and WebDAV and break the mobile apps. Access on a separate domain protects every ad-hoc app at once. Access lives in the Cloudflare account and survives rebuilds, so its one-time setup is acceptable.
-- **Free certificates cover one level.** `*.apps.example.com` is not covered without paid Advanced Certificate Manager (Cloudflare's Universal SSL limitations page).
-- **One wildcard points at one tunnel**, so one ad-hoc host per domain. A second ad-hoc host (the x64 box) needs another domain or Caddy routes over Tailscale. Decide when it exists.
-- **Redirect loop.** cloudflared sends plain HTTP to Caddy, and Caddy's automatic HTTPS would redirect and loop. Set the global option once on the Caddy container (`caddy.auto_https: off` by the label rules, inferred; verify when built) rather than `http://` in every app's labels.
-- The wildcard exposes every labeled container. Treat "add a label" as "publish to the internet" unless Access is in front.
+- **Default for ad-hoc apps: tailnet only.** Reach them at `http://<host>:<port>` over MagicDNS, or through Caddy if a name is wanted. Nothing is published.
+- **To publish one app:** add a `hostname` and `service` entry to that host's `cloudflared_ingress`, exactly as the NAS does today, and deploy. The reconcile tasks create the DNS record and report orphans. It is a one-line repo change and nothing is done in the Cloudflare UI.
+- **Why not a wildcard:** a wildcard to Caddy makes every labeled container public the moment it starts. Many self-hosted apps have weak or no login, and without Access nothing sits in front of them. Explicit entries keep "public" a deliberate act.
+- A wildcard (and Access, on a separate domain) stays a later option if the one-line entry becomes annoying; nothing here blocks it.
 
 ## rclone and offsite backends
 
@@ -222,7 +213,7 @@ This is a major change: **each step updates its docs in the same commit** as the
 
 Decisions and things to do by hand before work starts:
 
-1. Dedicated domain for ad-hoc apps, and the one-time Cloudflare Access setup on it.
+1. (Dropped: no dedicated domain or Cloudflare Access needed.)
 2. In the Zero Trust dashboard, check whether the existing tunnel can be migrated to remotely managed.
 3. Confirm the Cloudflare API token has Tunnel Write and DNS Edit.
 4. Run the netplan spike on pi5 (commands and pass criteria in `networking.md`).

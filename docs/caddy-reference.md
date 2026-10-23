@@ -74,29 +74,14 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## With cloudflared
 
-No router port forwarding is needed. See "Public hostnames for ad-hoc apps" in the [multi-host plan](./plans/multi-host.md). The short version for a wildcard setup:
+No router port forwarding is needed. Public hostnames are explicit entries in `cloudflared_ingress` (see "Public hostnames for ad-hoc apps" in the [multi-host plan](./plans/multi-host.md)); a wildcard to Caddy was considered and not chosen, because every labeled container would become public.
+
+For a published app, point the entry at Caddy and use an `http://` site address, since Cloudflare terminates TLS:
 
 ```yaml
-# tunnel ingress (one rule, set once by Ansible)
-- hostname: "*.apps-domain.example"
-  service: http://caddy:80
-```
-
-```yaml
-# on the Caddy container: turn off automatic HTTPS once.
-# cloudflared sends plain HTTP, so Caddy's redirect to HTTPS would loop.
 labels:
-  caddy.auto_https: "off"
-```
-
-`caddy.auto_https: "off"` is inferred from the README's rule that a label with no nesting becomes a global option (its example is `caddy.email`). The README does not show this exact line, so confirm it in the generated Caddyfile when it is first built. Quote `off`: unquoted, YAML reads it as the boolean `false`.
-
-```yaml
-# each app: labels only
-labels:
-  caddy: notes.apps-domain.example
+  caddy: http://notes.example.com
   caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
-- Every labeled app becomes public. Use a **dedicated domain** and put Cloudflare Access on the whole domain; Access on a wildcard under the NAS's domain would also gate Immich and WebDAV.
-- The free Universal certificate covers one subdomain level: `notes.apps-domain.example` works, `notes.apps.example.com` does not.
+If cloudflared reaches Caddy over plain HTTP, Caddy's automatic HTTPS redirect can loop. A global `caddy.auto_https: "off"` label on the Caddy container should prevent it (inferred from the README's `caddy.email` global-option example; confirm in the generated Caddyfile when built; quote `off` or YAML reads it as `false`).
