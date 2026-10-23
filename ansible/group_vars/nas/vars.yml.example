@@ -133,6 +133,7 @@ pics_website: ""          # e.g. "example.com" — watermarked + linked from the
 pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
 
 # --- Cloudflare Tunnel ---
+# Tunnel name: other hosts default to <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
 cf_tunnel_name: pi-nas-tunnel
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"
