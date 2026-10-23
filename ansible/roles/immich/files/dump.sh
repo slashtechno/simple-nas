@@ -11,16 +11,20 @@ DB_USER="${IMMICH_DB_USER:-immich}"
 DB_PASSWORD="${IMMICH_DB_PASSWORD:-}"   # optional; passed to pg_dumpall as PGPASSWORD
 DUMP="$DUMP_DIR/immich-db-$(date +%Y%m%dT%H%M%S).sql.gz"
 
-if ! docker ps -q -f name="^${CONTAINER}$" >/dev/null 2>&1; then
-  echo "Warning: Immich container not running" >&2
-  exit 0
+if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]; then
+  echo "ERROR: container $CONTAINER is not running; no dump made" >&2
+  exit 1
 fi
 
 echo "Dumping Immich DB..."
 env_args=()
 [ -n "$DB_PASSWORD" ] && env_args=(-e "PGPASSWORD=$DB_PASSWORD")
-if ! docker exec -t "${env_args[@]}" "$CONTAINER" \
-     pg_dumpall --clean --if-exists --username="$DB_USER" | gzip > "$DUMP"; then
+# Write to a .tmp name and rename on success, so a half-written dump never
+# looks like a good one (and never counts toward the "keep 3").
+if ! docker exec "${env_args[@]}" "$CONTAINER" \
+     pg_dumpall --clean --if-exists --username="$DB_USER" | gzip > "$DUMP.tmp"; then
+  rm -f "$DUMP.tmp"
   echo "Error: Immich DB dump failed (check DB credentials)" >&2
   exit 1
 fi
+mv "$DUMP.tmp" "$DUMP"

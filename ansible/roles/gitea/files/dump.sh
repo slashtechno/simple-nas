@@ -9,16 +9,16 @@ CONTAINER="${GITEA_CONTAINER:-gitea}"
 APP_INI="${GITEA_APP_INI:-/data/gitea/conf/app.ini}"
 TARGET="/tmp/gitea-dump-$(date +%Y%m%dT%H%M%S).zip"
 
-if ! docker ps -q -f name="^${CONTAINER}$" >/dev/null 2>&1; then
-  echo "Warning: Gitea container not running" >&2
-  exit 0
+if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]; then
+  echo "ERROR: container $CONTAINER is not running; no dump made" >&2
+  exit 1
 fi
 
 # Run as the git user (the container's runtime user) with an explicit config
 # and target file so the output is deterministic.
 if ! docker exec --user git "$CONTAINER" test -r "$APP_INI"; then
-  echo "Warning: gitea config not readable at $APP_INI; skipping gitea dump" >&2
-  exit 0
+  echo "ERROR: gitea config not readable at $APP_INI; no dump made" >&2
+  exit 1
 fi
 
 echo "Creating Gitea dump..."
@@ -28,5 +28,6 @@ if docker exec --user git "$CONTAINER" gitea dump \
   docker exec "$CONTAINER" rm -f "$TARGET"
   echo "Gitea dump written to $DUMP_DIR/$(basename "$TARGET")"
 else
-  echo "Warning: gitea dump failed" >&2
+  echo "ERROR: gitea dump failed" >&2
+  exit 1
 fi

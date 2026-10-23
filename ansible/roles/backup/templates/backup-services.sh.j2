@@ -31,7 +31,11 @@ failed=false
 for script in "$SCRIPTS_DIR"/*.sh; do
   name="$(basename "$script" .sh)"
   echo "Running dump script: $name"
-  bash "$script" "$DUMP_DIR" || { echo "ERROR: dump script $name failed" >&2; failed=true; }
+  if ! bash "$script" "$DUMP_DIR"; then
+    echo "ERROR: dump script $name failed" >&2
+    failed=true
+    continue   # keep the old dumps: they may be the only good ones
+  fi
   # Keep only the last 3 dumps of this service
   find "$DUMP_DIR" -maxdepth 1 -name "${name}-*" -type f | sort -r | tail -n +4 | xargs -r rm -f
 done
