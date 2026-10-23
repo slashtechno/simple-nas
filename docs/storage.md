@@ -16,9 +16,10 @@ Which paths a service uses depends on the roles a drive claims; the microSD is n
 
 - NAS services (Immich, Copyparty, Gitea and the rest) build their paths from `fast_drive` and `primary_drive`, so a `nas` host must claim all three roles.
 - Backups need a drive with the `backup` role; the deploy fails without one.
+- Docker's own storage (images, layers) is on the microSD unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).
 - Dockge and Caddy on a general server keep their data under `/opt/nas` and Dockge's stacks in `/opt/stacks`, on the microSD, whatever `drives` says. To put them on a drive, set `dockge_data_dir`, `caddy_data_dir` and `dockge_stacks_dir` in the host's `host_vars`.
 
-A general server with one USB drive that holds no role (it is only mounted, at `/mnt/data`):
+A general server with one USB drive that holds no role, so it is only mounted at `/mnt/data` (point `dockge_stacks_dir` or `docker_data_root` into it to use it):
 
 ```yaml
 drives:
