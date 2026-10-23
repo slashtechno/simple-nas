@@ -61,9 +61,7 @@ venv.bak/
 *.sqlite3
 
 # Cloudflared tunnel files
-cloudflared/ingress.yml
 cloudflared/*.json
-cloudflared/config.yml
 
 # Ansible secrets and local inventory (never commit these)
 ansible/group_vars/nas/vault.yml

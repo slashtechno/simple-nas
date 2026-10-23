@@ -46,7 +46,9 @@ cloudflared_ingress:
     service: "http://newservice:8080"
 ```
 
-Then `just deploy cloudflared`. Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID), using the longest matching domain. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone. A hostname with no matching domain is skipped with a warning. An optional `path` regex on a rule limits what the hostname forwards; the rest gets the catch-all 404.
+Then `just deploy cloudflared`. Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID), using the longest matching domain. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone. A hostname with no matching domain gets no DNS record and the deploy says so. Rules take only `hostname` and `service` (a `path:` fails the deploy); anything else gets the catch-all 404.
+
+The tunnel is remotely managed: its rules live at Cloudflare, set by the deploy through the API from your machine, and the server holds only a tunnel token (`/opt/nas/cloudflared/token`). A DNS record that points at a different tunnel is replaced; one that points at this tunnel for a hostname you removed is reported and left for you to delete. If the deploy stops because the tunnel is "locally managed", it was made by the older setup: open Zero Trust, Networks, Tunnels in the Cloudflare dashboard, use the tunnel's migrate option, and deploy again. The old `*.json` credentials file in `/opt/nas/cloudflared/` is no longer used; delete it once the tunnel works.
 
 ## Tailscale Funnel
 

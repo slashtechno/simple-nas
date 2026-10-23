@@ -49,6 +49,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
+  no_log: true   # the password would show in --diff
 
 - name: Initialize local restic repository (idempotent)
   ansible.builtin.command:
@@ -85,6 +86,7 @@
     group: "{{ ansible_user }}"
     mode: "0600"
     force: false
+  no_log: true   # the rendered file holds the OAuth token and would show in --diff
   when: vault_rclone_gdrive_token | default('') | length > 0
 
 # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,

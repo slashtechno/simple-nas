@@ -1,21 +1,178 @@
 ---
-# If migrating, copy tunnel credentials from the old location so the init
-# container reuses the existing tunnel instead of trying to create a new one.
-- name: Check for existing tunnel credentials in new location
-  ansible.builtin.find:
-    paths: "{{ nas_base_dir }}/cloudflared"
-    patterns: "*.json"
-  register: existing_creds
+# The tunnel is remotely managed: its ingress rules live at Cloudflare and the container only
+# needs a token. Every API call runs on the machine running Ansible (delegate_to: localhost), so the
+# broad API token (cf_api_token) never reaches a server; the server gets the tunnel token only.
+# Changing cloudflared_ingress and deploying updates the rules, creates the DNS records and
+# reports leftovers. Cloudflare's API: https://developers.cloudflare.com/api/
+- name: No ingress rule may carry a path (a service that needs two surfaces publishes two ports)
+  ansible.builtin.assert:
+    that: cloudflared_ingress | selectattr('path', 'defined') | list | length == 0
+    fail_msg: "A cloudflared_ingress rule sets `path:`. Keep rules to hostname + service — see the note above the list in group_vars/nas/vars.yml."
 
-- name: Migrate tunnel credentials from old location (skips if already present)
-  ansible.builtin.shell: |
-    find /home/{{ ansible_user }}/simple-nas/cloudflared \
-      -maxdepth 1 -name '*.json' -exec cp {} {{ nas_base_dir }}/cloudflared/ \;
-  when: existing_creds.matched == 0
-  changed_when: true
-  ignore_errors: true   # noqa: ignore-errors (no-op if the old dir doesn't exist)
+# --- The tunnel ---
+- name: Look up the tunnel by name
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/accounts/{{ cf_account_id }}/cfd_tunnel?name={{ cf_tunnel_name }}&is_deleted=false"
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+  delegate_to: localhost
+  become: false
+  check_mode: false   # read-only
+  changed_when: false
+  register: cloudflared_lookup
 
-- name: Create cloudflared directory
+- name: Note the tunnel if it exists
+  ansible.builtin.set_fact:
+    cloudflared_existing: "{{ cloudflared_lookup.json.result | first | default({}) }}"
+
+# A tunnel made by the old setup keeps its rules in a file on the host, which this role no longer
+# writes. Cloudflare can convert it in place (the tunnel ID and DNS records survive).
+- name: Stop if the tunnel is still locally managed
+  ansible.builtin.assert:
+    that: cloudflared_existing.config_src | default('cloudflare') == 'cloudflare'
+    fail_msg: >-
+      The tunnel "{{ cf_tunnel_name }}" is locally managed. In the Cloudflare dashboard open Zero Trust,
+      Networks, Tunnels, click the tunnel and use its migrate option; then deploy again. If there is no
+      such option, delete the tunnel there and deploy to create a new one (DNS records are repointed).
+    quiet: true
+
+- name: Create the tunnel (remotely managed)
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/accounts/{{ cf_account_id }}/cfd_tunnel"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+    body_format: json
+    body:
+      name: "{{ cf_tunnel_name }}"
+      config_src: cloudflare
+  delegate_to: localhost
+  become: false
+  register: cloudflared_created
+  when: cloudflared_existing | length == 0
+
+# Empty only in --check mode before the tunnel has been created.
+- name: Note the tunnel ID
+  ansible.builtin.set_fact:
+    cloudflared_tunnel_id: "{{ cloudflared_existing.id | default(cloudflared_created.json.result.id | default('')) }}"
+
+# PUT replaces the whole rule list and has no "already up to date" reply, so it reports no change.
+- name: Set the tunnel's ingress rules
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/accounts/{{ cf_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+    body_format: json
+    body:
+      config:
+        ingress: "{{ cloudflared_ingress + [{'service': 'http_status:404'}] }}"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  when: cloudflared_tunnel_id | length > 0
+
+# --- DNS: one proxied CNAME per hostname, to <tunnel id>.cfargotunnel.com ---
+# Each hostname goes in the zone of the longest matching domain in cf_zones.
+- name: Pick the DNS zone for each hostname
+  ansible.builtin.set_fact:
+    cloudflared_dns: >-
+      {%- set found = namespace(records=[]) -%}
+      {%- for rule in cloudflared_ingress -%}
+        {%- set best = namespace(domain='', zone='') -%}
+        {%- for domain, zone in cf_zones.items() -%}
+          {%- if (rule.hostname == domain or rule.hostname.endswith('.' + domain)) and domain | length > best.domain | length -%}
+            {%- set best.domain = domain -%}
+            {%- set best.zone = zone -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {%- if best.zone -%}
+          {%- set found.records = found.records + [{'hostname': rule.hostname, 'zone': best.zone}] -%}
+        {%- endif -%}
+      {%- endfor -%}
+      {{ found.records }}
+
+- name: Say which hostnames get no DNS record
+  ansible.builtin.debug:
+    msg: "No DNS record for {{ item }}: its domain is not in cf_zones."
+  loop: "{{ cloudflared_ingress | map(attribute='hostname') | difference(cloudflared_dns | map(attribute='hostname')) }}"
+
+- name: Look up the existing DNS records (CNAME only; other record types are never touched)
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/zones/{{ item.zone }}/dns_records?type=CNAME&name={{ item.hostname }}"
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+  delegate_to: localhost
+  become: false
+  check_mode: false   # read-only
+  changed_when: false
+  loop: "{{ cloudflared_dns }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+  register: cloudflared_dns_lookup
+
+- name: Delete DNS records that point at a different tunnel
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/zones/{{ item.item.zone }}/dns_records/{{ item.json.result[0].id }}"
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+  delegate_to: localhost
+  become: false
+  loop: "{{ cloudflared_dns_lookup.results }}"
+  loop_control:
+    label: "{{ item.item.hostname }}"
+  when:
+    - cloudflared_tunnel_id | length > 0
+    - item.json.result | length > 0
+    - item.json.result[0].content != cloudflared_tunnel_id + '.cfargotunnel.com'
+
+- name: Create missing DNS records
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/zones/{{ item.item.zone }}/dns_records"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+    body_format: json
+    body:
+      type: CNAME
+      name: "{{ item.item.hostname }}"
+      content: "{{ cloudflared_tunnel_id }}.cfargotunnel.com"
+      ttl: 1
+      proxied: true
+  delegate_to: localhost
+  become: false
+  loop: "{{ cloudflared_dns_lookup.results }}"
+  loop_control:
+    label: "{{ item.item.hostname }}"
+  when:
+    - cloudflared_tunnel_id | length > 0
+    - (item.json.result | length == 0) or (item.json.result[0].content != cloudflared_tunnel_id + '.cfargotunnel.com')
+
+# Records are reported, never deleted: one might be in use by something this repo does not know about.
+- name: Look up the DNS records that point at this tunnel
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/zones/{{ item }}/dns_records?type=CNAME&content={{ cloudflared_tunnel_id }}.cfargotunnel.com&per_page=100"
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+  delegate_to: localhost
+  become: false
+  check_mode: false   # read-only
+  changed_when: false
+  loop: "{{ cf_zones.values() | unique | list }}"
+  register: cloudflared_pointing_here
+  when: cloudflared_tunnel_id | length > 0
+
+- name: Report DNS records for hostnames that are no longer in cloudflared_ingress
+  ansible.builtin.debug:
+    msg: "{{ item }} still points at this tunnel but is not in cloudflared_ingress. Delete the record in Cloudflare if it is unused."
+  loop: >-
+    {{ cloudflared_pointing_here.results | default([]) | selectattr('json', 'defined')
+       | map(attribute='json.result') | flatten | map(attribute='name')
+       | difference(cloudflared_ingress | map(attribute='hostname')) }}
+
+# --- On the host ---
+- name: Create the cloudflared directory
   ansible.builtin.file:
     path: "{{ nas_base_dir }}/cloudflared"
     state: directory
@@ -23,50 +180,51 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-- name: Copy cloudflared build files
+- name: Fetch the tunnel token
+  ansible.builtin.uri:
+    url: "{{ cloudflared_api_url }}/accounts/{{ cf_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/token"
+    headers:
+      Authorization: "Bearer {{ cf_api_token }}"
+  delegate_to: localhost
+  become: false
+  check_mode: false   # read-only
+  changed_when: false
+  no_log: true
+  register: cloudflared_token
+  when: cloudflared_tunnel_id | length > 0
+
+# The image runs as user 65532, so only that user can read the token.
+- name: Write the tunnel token
   ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "{{ nas_base_dir }}/cloudflared/{{ item }}"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0644"
+    content: "{{ cloudflared_token.json.result }}"
+    dest: "{{ nas_base_dir }}/cloudflared/token"
+    owner: "65532"
+    group: "65532"
+    mode: "0400"
+  no_log: true
+  when: cloudflared_tunnel_id | length > 0
+  notify: Restart cloudflared
+
+# Left by the old setup (a build step, an init script and the rules it generated). The tunnel
+# credentials (*.json) are kept: delete them yourself once the tunnel works.
+- name: Remove the old build and init files
+  ansible.builtin.file:
+    path: "{{ nas_base_dir }}/cloudflared/{{ item }}"
+    state: absent
   loop:
     - Dockerfile.init
     - Dockerfile.runtime
+    - create_tunnel.sh
+    - ingress.yml
+    - config.yml
 
-- name: Copy create_tunnel.sh (executable)
-  ansible.builtin.copy:
-    src: create_tunnel.sh
-    dest: "{{ nas_base_dir }}/cloudflared/create_tunnel.sh"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
+- name: Remove the old init container
+  community.docker.docker_container:
+    name: cloudflared-init
+    state: absent
 
-- name: No ingress rule may carry a path (a service that needs two surfaces publishes two ports)
-  ansible.builtin.assert:
-    that: cloudflared_ingress | selectattr('path', 'defined') | list | length == 0
-    fail_msg: "A cloudflared_ingress rule sets `path:`. Keep rules to hostname + service — see the note above the list in group_vars/nas/vars.yml."
-
-- name: Render ingress.yml
-  ansible.builtin.template:
-    src: ingress.yml.j2
-    dest: "{{ nas_base_dir }}/cloudflared/ingress.yml"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0644"
-  notify: Reinit cloudflared
-
-- name: Render docker-compose.yml
-  ansible.builtin.template:
-    src: docker-compose.yml.j2
-    dest: "{{ nas_base_dir }}/cloudflared/docker-compose.yml"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0640"
-  notify: Reinit cloudflared
-
-- name: Start cloudflared
-  community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/cloudflared"
-    state: present
-    build: always
+- name: Deploy cloudflared
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: cloudflared

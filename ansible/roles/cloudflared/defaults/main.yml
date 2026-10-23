@@ -1,0 +1,3 @@
+---
+# Cloudflare's API. Change only to point the tasks at a test server.
+cloudflared_api_url: https://api.cloudflare.com/client/v4

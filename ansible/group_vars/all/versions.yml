@@ -32,9 +32,8 @@ homebridge_image: homebridge/homebridge:2026-08-28
 restic_image: restic/restic:latest
 backup_status_python_image: python:3.14-slim
 
-# Cloudflare Tunnel (built on the Pi)
-cloudflared_image: cloudflare/cloudflared:latest
-alpine_image: alpine:latest
+# Cloudflare Tunnel: https://github.com/cloudflare/cloudflared/releases (needs 2025.4.0+ for --token-file)
+cloudflared_image: cloudflare/cloudflared:2026.10.3
 
 # Dockge (ad-hoc app manager): https://github.com/louislam/dockge/releases. Only `nightly` moves.
 dockge_image: louislam/dockge:1.5.0
