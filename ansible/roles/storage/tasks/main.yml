@@ -9,9 +9,11 @@
         == (nas_drives | map(attribute='roles', default=[]) | flatten | unique | length)
       - (nas_drives | map(attribute='roles', default=[]) | flatten)
         | difference(['fast', 'primary', 'backup']) | length == 0
+      - ['fast', 'primary', 'backup'] | difference(nas_drives | map(attribute='roles', default=[]) | flatten) | length == 0
     fail_msg: >-
       Invalid nas_drives role map: each role (fast/primary/backup) must be
-      claimed by exactly one drive, unknown role names are not allowed
+      claimed by exactly one drive (an unclaimed role would silently use a folder on the microSD),
+      unknown role names are not allowed
       (allowed: fast, primary, backup, any drive may hold several).
       Current map: {{ nas_drive_mounts }}
 

@@ -57,6 +57,13 @@
 # Zellij is not in Debian's apt. Each version gets its own directory and /usr/local/bin/zellij
 # points at the current one, so a new zellij_version installs next to the old one.
 # Old versions are left behind; delete /opt/zellij/<version> when you like.
+- name: Check that zellij has a build for this CPU
+  ansible.builtin.assert:
+    that: ansible_facts['architecture'] in zellij_sha256
+    fail_msg: >-
+      No zellij download is listed for {{ ansible_facts['architecture'] }}. Add its sha256 to
+      zellij_sha256 in group_vars/all/versions.yml (the release page has the .sha256sum files).
+
 - name: Create the zellij directory for this version
   ansible.builtin.file:
     path: "/opt/zellij/{{ zellij_version }}"
@@ -94,6 +101,7 @@
     path: /etc/containerd/config.toml
     regexp: '^root\s*='
     line: 'root = "{{ docker_data_root }}/containerd"'
+    create: true        # a fresh install may have no config.toml yet
     insertbefore: BOF   # a top-level key must precede any [table] in TOML
     state: "{{ 'present' if docker_data_root | length > 0 else 'absent' }}"
   notify: Restart containerd
