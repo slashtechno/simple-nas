@@ -20,8 +20,8 @@ backup_status_enabled: true   # read-only web dashboard for backup status/snapsh
 # --- Tailscale ---
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
 # any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
-# (roles/tailscale/defaults/main.yml) only gives Copyparty a public ts.net name; pics' public pages
-# go through the Cloudflare tunnel with a path allowlist.
+# (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
+# pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
 
 # --- Dump scripts ---
 # One dump script per service with a live database (see docs/backups.md).
@@ -152,7 +152,7 @@ gitea_ssh_port: "2222"
 # Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
 # above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
 # your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
-# path-limited cloudflared_ingress entry below.
+# cloudflared_ingress entry below, which points at pics_public_port.
 pics_repo: owner/lab
 pics_public_url: "https://photos.example.com"
 pics_public_port: 8001   # container-internal (never published): the tunnel points here.
@@ -166,13 +166,15 @@ pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home p
 cf_tunnel_name: pi-nas-tunnel
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"
-# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (longest matching domain wins).
+# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
 # Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones.
 cf_zones:
   example.com: your_zone_id
   other-domain.example: your_other_zone_id
 
-# One entry per public hostname. The service value is the internal Docker address.
+# One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
+# address). No `path:`. The hostname must contain one domain from cf_zones above. Where a service
+# has a private surface, it publishes two ports and the tunnel points at the guest one.
 cloudflared_ingress:
   - hostname: immich.example.com
     service: "http://immich_server:2283"
@@ -181,7 +183,7 @@ cloudflared_ingress:
   # pics' guest surface: share pages and the portfolio, with no owner routes in it. The owner app
   # stays on the Pi's LAN/tailnet port (pics_port); this file never forwards it.
   - hostname: photos.example.com
-    service: "http://pics:8001"
+    service: "http://pics:{{ pics_public_port }}"
   - hostname: copyparty.example.com
     service: "http://copyparty:3923"
   - hostname: s3.example.com

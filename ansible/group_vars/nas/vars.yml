@@ -154,7 +154,7 @@ gitea_ssh_port: "2222"
 cf_tunnel_name: pi-nas-tunnel
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"
-# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (longest matching domain wins).
+# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
 # Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones.
 cf_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222

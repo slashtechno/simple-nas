@@ -46,9 +46,11 @@ cloudflared_ingress:
     service: "http://newservice:8080"
 ```
 
-Then `just deploy cloudflared`. Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID), using the longest matching domain. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone. A hostname with no matching domain gets no DNS record and the deploy says so. Rules take only `hostname` and `service` (a `path:` fails the deploy); anything else gets the catch-all 404.
+Then `just deploy cloudflared`. Each hostname's DNS record is created in the zone from `cf_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cf_zones`, and the API token needs DNS:Edit on that zone. The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain, or more than one. Anything not listed gets a 404.
 
-The tunnel is remotely managed: its rules live at Cloudflare, set by the deploy through the API from your machine, and the server holds only a tunnel token (`/opt/nas/cloudflared/token`). A DNS record that points at a different tunnel is replaced; one that points at this tunnel for a hostname you removed is reported and left for you to delete. If the deploy stops because the tunnel is "locally managed", it was made by the older setup: open Zero Trust, Networks, Tunnels in the Cloudflare dashboard, use the tunnel's migrate option, and deploy again. The old `*.json` credentials file in `/opt/nas/cloudflared/` is no longer used; delete it once the tunnel works.
+If a hostname already has a DNS record, the deploy replaces it only when it points at a Cloudflare tunnel (such as one you deleted). A record of any other kind stops the deploy with a message naming it; delete it in the Cloudflare dashboard if it is unused. Records for hostnames you removed from the list are reported and left alone.
+
+The tunnel is remotely managed: its rules live at Cloudflare, set by the deploy through the API from your machine, and the server holds only a tunnel token (`/opt/nas/cloudflared/token`). A DNS record that points at a different tunnel is replaced; one that points at this tunnel for a hostname you removed is reported and left for you to delete. If a tunnel with that name does not exist, the deploy creates it. If it exists but is "locally managed" (made by the older setup), the deploy stops: use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel, which takes the public hostnames offline until the next deploy. The old `*.json` credentials file in `/opt/nas/cloudflared/` is no longer used; delete it once the tunnel works.
 
 ## Tailscale Funnel
 
@@ -84,7 +86,7 @@ For general servers (the `servers_general` group), not the NAS. **Dockge** (`doc
 
 **Caddy** (`caddy_enabled`, off by default) gives apps names from container labels; the syntax is in [caddy-reference.md](./caddy-reference.md). Apps are reachable over Tailscale at `http://<host>:<port>` without it. Stacks that want a name join the `nas-services` network, which every server has.
 
-Public access is not automatic: add one entry to that host's `cloudflared_ingress` (see [Cloudflare](#cloudflare-add-a-public-hostname)). Removal: `ansible-playbook teardown.yml --tags dockge,caddy --limit <host>`.
+Public access is not available on these hosts yet: cloudflared runs only on the NAS, and its tunnel, token and `cloudflared_ingress` list belong to the NAS. Until a general server gets its own tunnel (a role play and a tunnel name per host), reach its apps over Tailscale. Removal: `ansible-playbook teardown.yml --tags dockge,caddy --limit <host>`.
 
 Both mount the Docker socket, so anything that can reach their UI or set a label controls Docker on that host.
 
