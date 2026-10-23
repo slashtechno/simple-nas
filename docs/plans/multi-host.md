@@ -18,7 +18,7 @@ Ubuntu Server specifics to design for, so it works there and not just on Pi OS:
 - **Do not install Docker from the installer's snap.** It conflicts with `geerlingguy.docker`. The `common` role asserts that no docker snap is present.
 - **Networking is netplan, rendered by systemd-networkd**, not NetworkManager (see Networking).
 - **cloud-init** also writes `/etc/netplan/50-cloud-init.yaml`, so the network-config switch applies there too.
-- The default user is `ubuntu` with passwordless sudo from cloud-init; the become-password setting below is then unnecessary and left unset for that host.
+- The installer's first user is on password sudo, so the first run uses `-K` as on any new host (see Sudo).
 - The direct-link dnsmasq uses `port=0` (DHCP only), so it does not collide with systemd-resolved on port 53. Keep it that way.
 - Ubuntu on a Pi needs the Pi's firmware path (`/boot/firmware/config.txt`), and the overclock role runs on Pi hosts only.
 
@@ -61,7 +61,11 @@ Things that break if the files are split carelessly:
 
 ### Sudo
 
-Pi OS no longer ships passwordless sudo, and pi5 asks for a password. Decision: **store `ansible_become_password` in each host's `host_vars/<host>/vault.yml`.** This keeps the OS's default (an SSH key alone is not root), needs no bootstrap play and no `-K`, and `just deploy` works as it is. The alternative, a `NOPASSWD` drop-in, makes any SSH key root and needs a bootstrap run first. The Pi 4 has passwordless sudo today, so its host needs no password. Checked: the shipped scripts and cron jobs never call `sudo` (only error messages mention it, and `copyparty-funnel.sh` is run by hand), so password sudo breaks nothing.
+Pi OS no longer ships passwordless sudo, and pi5 asks for a password. Ubuntu Server's installer also leaves its first user on password sudo (only cloud images such as the Pi's Ubuntu image start with passwordless sudo). The Pi 4 is passwordless today.
+
+Decision (owner's preference): **one managed sudoers drop-in, applied once with the password.** A task in `common` writes `/etc/sudoers.d/90-ansible` (`{{ ansible_user }} ALL=(ALL) NOPASSWD:ALL`, mode `0440`, `validate: visudo -cf %s`). The first run on a new host uses `-K` (`--ask-become-pass`) and types the password once; later runs need nothing. It is the same on Pi OS, Debian and Ubuntu, there is no password in the vault, and the task is idempotent, so a host that already has passwordless sudo reports no change. Trade-off: anyone holding the SSH key is root. That was already true of the Pi 4, and the key is the only way in. The `ansible_become_password` vault alternative is dropped.
+
+Checked: the shipped scripts and cron jobs never call `sudo` (only messages mention it; `copyparty-funnel.sh` is run by hand).
 
 ### Tailscale
 
@@ -100,6 +104,8 @@ Today's role creates a **locally managed** tunnel (`config_src: local`). Cloudfl
 - These API calls run with `delegate_to: localhost`, so the broad `CF_API_TOKEN` never lands on a server. Today it is rendered into a 0640 compose file. The owner's API token needs Tunnel Write and DNS Edit.
 - **Removed:** `create_tunnel.sh`, both Dockerfiles, the init container, and the dead "migrate credentials from old location" task. That is roughly 200 lines of shell and a build step replaced by documented API calls.
 - Tunnel names become per host.
+- **Keep what `create_tunnel.sh` does today for DNS**, as Ansible tasks: a record that points at the wrong tunnel is deleted and recreated, and records still pointing at this tunnel for hostnames no longer in `cloudflared_ingress` are **reported, never deleted** (read from the script, `create_tunnel.sh` lines ~225-270). An orphan report that only warns is not cleanup, so the open question is whether to delete orphans automatically; the plan keeps today's report-only behavior unless the owner says otherwise.
+- The old tunnel is deleted through the API at the migration, so no orphan tunnel is left behind.
 
 **Migration of the existing tunnel.** Not documented in what I found. The owner checks the Zero Trust dashboard for a migrate option on the existing tunnel. If it exists, the tunnel ID and CNAMEs survive. If not, a new tunnel is created at step 3, Ansible repoints the CNAMEs, and there is a brief public outage while DNS moves. pi5 runs the new tunnel alongside the Pi 4 first.
 
@@ -220,7 +226,7 @@ Decisions and things to do by hand before work starts:
 2. In the Zero Trust dashboard, check whether the existing tunnel can be migrated to remotely managed.
 3. Confirm the Cloudflare API token has Tunnel Write and DNS Edit.
 4. Run the netplan spike on pi5 (commands and pass criteria in `networking.md`).
-5. Put `ansible_become_password` in pi5's vault (a new file, same password).
+5. Run the first deploy on each new host with `-K`; the sudoers task removes the need afterward.
 6. Disable Tailscale key expiry for each server.
 7. When installing Ubuntu on the x64 box, do not choose the Docker snap.
 
