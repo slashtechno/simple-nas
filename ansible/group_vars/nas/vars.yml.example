@@ -4,7 +4,6 @@
 
 # --- Enable/disable services ---
 # Set false to skip a service. To remove one already deployed, run teardown.yml --tags <name> first.
-storage_enabled: true   # set false if the drives are already mounted another way
 immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true

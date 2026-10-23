@@ -231,3 +231,13 @@
     user: "{{ ansible_user }}"
     state: absent
   when: not (backup_cloud_enabled | default(false) | bool)
+
+- name: Remove the offsite backup script and lists when the offsite backup is off
+  ansible.builtin.file:
+    path: "{{ nas_scripts_dir }}/{{ item }}"
+    state: absent
+  loop:
+    - backup-restic-cloud.sh
+    - backup-paths.txt
+    - restic-excludes-cloud.txt
+  when: not (backup_cloud_enabled | default(false) | bool)
