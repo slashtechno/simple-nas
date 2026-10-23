@@ -247,7 +247,7 @@ When connecting an app to Garage, use:
 
 Off by default. Set `crafty_enabled: true` in `vars.yml` and deploy with `--tags crafty`. One container runs every server, and everything lives under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`), so moving or backing up all your worlds is one directory.
 
-- Panel: `https://<pi-ip>:8443` (self-signed cert). First admin password: `docker logs crafty`, or `<crafty_data_dir>/config/default-creds.txt`.
+- Panel: `https://<pi-ip>:28443` (`crafty_panel_port`) (self-signed cert). First admin password: `docker logs crafty`, or `<crafty_data_dir>/config/default-creds.txt`.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server in the panel.
 - `crafty_memory_limit` caps all servers combined. On a 4 GB Pi it competes with Immich, so start small.
 - Not behind Cloudflare Tunnel (raw TCP and self-signed HTTPS don't fit). Friends join over LAN, a router port-forward of the game port, or Tailscale.
