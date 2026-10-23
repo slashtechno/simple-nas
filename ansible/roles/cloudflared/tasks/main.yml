@@ -276,3 +276,4 @@
     name: compose_service
   vars:
     compose_service_name: cloudflared
+  when: cloudflared_tunnel_id | length > 0   # empty only in --check, before the tunnel exists

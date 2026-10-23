@@ -14,10 +14,9 @@ export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 # should become a failed cron run, not a lock held forever.
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
-# One log file per run (not a single ever-growing file): the dashboard needs
-# to tell "did the most recent check pass" apart from "did any check ever
-# pass", and restic's own success line ("no errors were found") contains the
-# substring "error" — a naive grep across a cumulative log always matches it.
+# One log file per day; every run appends a "=== Integrity Check" header, and the dashboard
+# judges only the text after the last header. 2>&1 matters: restic prints its "error:" lines on
+# stderr, and the dashboard counts them in this log.
 LOG_FILE="{{ backup_logs_dir }}/restic-check-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
@@ -31,4 +30,4 @@ mkdir -p "$(dirname "$LOG_FILE")"
     echo "ERROR: restic check failed (exit $check_rc)!"
     exit 1
   fi
-} | tee -a "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
