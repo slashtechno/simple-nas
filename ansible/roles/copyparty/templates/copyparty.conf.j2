@@ -82,6 +82,13 @@
 {% endfor %}
 {% endif %}
 
+{% if copyparty_fast_enabled | bool %}
+[/fast]
+  /fast
+  accs:
+    A: {{ copyparty_user }}
+
+{% endif %}
 [/drives]
   /tmp/drives-root
   accs:

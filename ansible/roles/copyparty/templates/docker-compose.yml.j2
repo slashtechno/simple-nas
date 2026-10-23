@@ -15,6 +15,9 @@ services:
       - {{ copyparty_config_dir }}:/cfg:rw
       - {{ copyparty_hist_dir }}:/hist:rw
       - {{ copyparty_host_mnt_dir }}:/host/mnt:ro,rslave
+{% if copyparty_fast_enabled | bool %}
+      - {{ copyparty_fast_dir }}:/fast:rw
+{% endif %}
 {% if copyparty_collab_dir is defined and copyparty_collab_dir %}
       - {{ copyparty_collab_dir }}:/collab:rw
 {% endif %}

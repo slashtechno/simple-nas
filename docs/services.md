@@ -20,6 +20,8 @@ The config is rendered by `roles/copyparty/templates/copyparty.conf.j2` into the
 
 Apps that talk to Copyparty get a service account. Add an entry to `copyparty_service_accounts` in `vars.yml` (user, password variable, and one or more volumes, each a folder plus permissions) and put its password in the vault. Each volume is mounted at `/<folder>`, stored in `copyparty_files_dir/<folder>`, with the admin as owner. Those folders then disappear for every other account with access to `/`, such as pocketpi's. Leave out `d` unless the app must delete: without it Copyparty also refuses to overwrite, so the app can't destroy anything. `vars.yml.example` has an example.
 
+`/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for working space that benefits from SSD speed. It exists only when the fast and primary roles are on different drives (`copyparty_fast_enabled`); on a one- or two-drive setup where they share a drive it would just be a folder of `/`, so it is not created. `/` stays the bulk volume, so existing URLs and shares keep working. A real `fast/` folder inside `files/` would be hidden behind the volume once it is enabled.
+
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. The base image version is in `ansible/group_vars/all/versions.yml`; see "Update service images" in [ansible/README.md](../ansible/README.md).
 
 ## Clone a private GitHub repo

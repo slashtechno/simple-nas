@@ -20,6 +20,15 @@
     - "{{ copyparty_config_dir }}"
     - "{{ copyparty_hist_dir }}"
 
+- name: Create the /fast volume directory
+  ansible.builtin.file:
+    path: "{{ copyparty_fast_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: copyparty_fast_enabled | bool
+
 - name: Copy Docker build files
   ansible.builtin.copy:
     src: "{{ item.src }}"

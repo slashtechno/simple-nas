@@ -9,3 +9,8 @@ copyparty_version_checker_enabled: true   # vc-url points at the upstream adviso
 # account in copyparty_service_accounts. WebDAV lacks the modtimes rclone needs; SFTP has them.
 copyparty_sftp_enabled: false
 copyparty_sftp_port: 3922
+
+# A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on
+# different drives; with one drive it would just be a folder of /. See docs/storage.md.
+copyparty_fast_enabled: "{{ fast_drive != main_drive }}"
+copyparty_fast_dir: "{{ fast_drive }}/fast"
