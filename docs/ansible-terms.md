@@ -105,7 +105,7 @@ Keywords any task can carry:
 - **`register:`**: capture a result. Garage sets `garage_is_first_deploy` from the registered `meta/` listing.
 - **`changed_when:`, `failed_when:`**: override what counts as changed or failed. The restic-init task fails only if it errored and the message wasn't "already exists", so re-running is harmless.
 - **`notify:` and handlers**: a changed task triggers a named handler, which runs once at the end of the play. If a rendered `docker-compose.yml` is byte-identical to the one on the Pi, nothing is notified and the container isn't touched.
-- **`ignore_errors: true`**: keep going after a failure (teardown of a project that may not exist, migrating credentials that may not exist).
+- **`ignore_errors: true`**: keep going after a failure (teardown of a project that may not exist).
 - **`become_user:`**: escalate to a specific user. restic-init runs as `ansible_user` because that user's home holds `.restic-password`.
 - **`environment:`**: set environment variables for one task only (restic's repo and password file, git's token).
 - **`block:`**: group tasks under one `tags:` or `when:`.

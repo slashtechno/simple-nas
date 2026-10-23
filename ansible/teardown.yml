@@ -92,26 +92,12 @@
         data_paths:
           - "{{ crafty_data_dir }}"
 
+    # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
     - name: Stop and remove Cloudflared
       tags: [cloudflared]
-      block:
-        - name: Down Cloudflared compose project
-          community.docker.docker_compose_v2:
-            project_src: "{{ nas_base_dir }}/cloudflared"
-            state: absent
-            remove_volumes: false
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
-
-        - name: Remove Cloudflared compose/config files (credentials kept unless remove_data=true)
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - "{{ nas_base_dir }}/cloudflared/docker-compose.yml"
-            - "{{ nas_base_dir }}/cloudflared/token"
-
-        # The tunnel itself lives at Cloudflare; the next deploy finds it by name and reuses it.
-        # Old *.json credentials from the previous setup are not touched; delete them by hand.
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: cloudflared
 
     - name: Stop and remove backup-status
       tags: [backup-status]
