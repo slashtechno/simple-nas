@@ -121,7 +121,7 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 For general servers (the `servers_general` group), not the NAS.
 
-**Dockge** (`dockge_enabled`, default on) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`/opt/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`, default on) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`, default off) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `nas-services` network.
 
@@ -129,4 +129,4 @@ Public access is off unless the host sets `cloudflared_enabled` ([Cloudflare](#c
 
 Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
 
-Nothing backs up `/opt/stacks` or `dockge_data_dir` yet; per-host backups are planned in [plans/multi-host.md](./plans/multi-host.md#per-host-backups).
+Stacks, Dockge's data and Caddy's data sit on the host's `fast` drive, so the host's backup covers them ([backups.md](./backups.md)).

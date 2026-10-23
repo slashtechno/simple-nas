@@ -64,14 +64,14 @@ Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has 
 
 ## Per-host backups
 
-Built: the `backup` role also runs on `servers_general` hosts. Set `backup_enabled: true` in the host's `host_vars` and give one drive in `drives` the `backup` role. Without `fast`/`primary` roles it backs up the user's home; add paths such as `/opt/stacks` in `restic_local_paths` (files only root can read are skipped). The offsite copy is off unless `backup_cloud_enabled: true` and `restic_cloud_repository` (its own path per host) are set. `backup-status` runs on the NAS only.
+Built: the `backup` role also runs on `servers_general` hosts. Set `backup_enabled: true` in the host's `host_vars` and give one drive in `drives` the `backup` role. It backs up the host's `fast` drive, where Dockge's stacks and data live (files only root or a container can read are skipped). The offsite copy is off unless `backup_cloud_enabled: true` and `restic_cloud_repository` (its own path per host) are set. `backup-status` runs on the NAS only.
 
 Open:
 - Move `vault_cf_api_token`, `vault_cf_account_id`, `vault_restic_password` and `vault_rclone_gdrive_token` from `group_vars/nas/vault.yml` to a new `group_vars/all/vault.yml` (copy `vault.yml.example`). Move them, do not copy: a key left in `nas/vault.yml` wins.
 - Test a general host's backup on pi5 with a real drive: `just preview backup --limit pi5`, then deploy.
 - Pi microSD to a USB drive: restic backs up files, not a bootable image. A bootable clone needs another tool (`rpi-clone`).
 - A second drive in the same machine covers drive failure, not theft or fire. Only hosts with a cloud repository have an offsite copy.
-- Decide the paths for a general server that runs Dockge ([services.md](../services.md#ad-hoc-app-platform)): its stacks may be root- or container-owned, which the ansible user cannot read.
+- Stacks whose containers write as root are skipped by the backup (it runs as the ansible user); see [backups.md](../backups.md).
 
 ## Public hostnames for ad-hoc apps
 

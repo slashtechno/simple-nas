@@ -24,6 +24,16 @@
     quiet: true
   when: "'nas' in group_names"
 
+# A general server keeps Dockge's and Caddy's data on its fast drive (dockge_data_dir and the others in group_vars/all/vars.yml).
+- name: Validate that a general server has a fast drive
+  ansible.builtin.assert:
+    that: fast_drive | length > 0
+    fail_msg: >-
+      This host is in the `servers_general` group, so `drives` in host_vars/{{ inventory_hostname }}/vars.yml must give
+      the `fast` role to a drive. A folder on the microSD card works: `- { mount: /srv/apps, roles: [fast] }`.
+    quiet: true
+  when: "'servers_general' in group_names"
+
 # A `drives` entry without `uuid` is a folder on the microSD card: created, never put in fstab.
 - name: Validate that the backup role is on a mounted drive
   ansible.builtin.assert:
@@ -119,15 +129,15 @@
   notify: Reload udev rules
   when: not usb_automount_enabled | bool
 
-# The NAS's Docker directory. Each service role creates its own data directories below it; the backup role creates its own.
-- name: Create the NAS Docker directory
+# The Docker directory on the fast drive. Each service role creates its own data directories below it; the backup role creates its own.
+- name: Create the Docker directory on the fast drive
   ansible.builtin.file:
     path: "{{ fast_drive }}/docker"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-  when: "'nas' in group_names"
+  when: fast_drive | length > 0
 
 - name: Create /opt/nas base directory
   ansible.builtin.file:

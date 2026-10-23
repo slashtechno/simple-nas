@@ -95,10 +95,14 @@ restic_command_timeout: "2h"
 restic_cache_dir: "{{ fast_drive + '/restic-cache' if fast_drive else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 
 # --- Data directories of the general-server services (teardown.yml also reads them) ---
-# Dockge's own database (users, settings). Back this up with the stacks.
-dockge_data_dir: "{{ nas_base_dir }}/dockge/data"
+# They sit on the host's `fast` drive, which a general server must claim (docs/storage.md), so the
+# default backup covers them.
+# The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
+dockge_stacks_dir: "{{ fast_drive }}/stacks"
+# Dockge's own database (users, settings).
+dockge_data_dir: "{{ fast_drive }}/docker/dockge"
 # Caddy's certificates and state. Losing it means certificates are issued again.
-caddy_data_dir: "{{ nas_base_dir }}/caddy/data"
+caddy_data_dir: "{{ fast_drive }}/docker/caddy"
 
 # --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
 # A failed backup job always goes to the system log (`journalctl -t nas-backup`). Set this to also send it

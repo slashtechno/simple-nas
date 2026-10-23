@@ -100,9 +100,10 @@
         - "{{ repo }}/group_vars/all/derived.yml"
 
     # After include_vars, which would reset drives to the example's empty list.
-    - name: Give the host one backup drive and no fast or primary drive
+    - name: Give the host a fast folder on the microSD and a backup drive
       ansible.builtin.set_fact:
         drives:
+          - {mount: /srv/apps, roles: [fast]}
           - {uuid: "1111-AAAA", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
 
     - name: Find the templates of the roles that run on general servers
@@ -128,11 +129,14 @@
       loop_control:
         label: "{{ item.1.path | basename }}"
 
-    - name: The default local paths are the system paths, not empty strings
+    - name: The general-server paths follow the fast drive, and the default backup covers them
       ansible.builtin.assert:
         that:
-          - restic_local_paths == ['/home/pi']
-          - restic_cache_dir == '/home/pi/.cache/restic'
+          - dockge_stacks_dir == '/srv/apps/stacks'
+          - dockge_data_dir == '/srv/apps/docker/dockge'
+          - caddy_data_dir == '/srv/apps/docker/caddy'
+          - restic_local_paths == ['/srv/apps']
+          - restic_cache_dir == '/srv/apps/restic-cache'
 
     # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
     # that does not use ntfy only writes to the system log. The shell check runs on both outputs.

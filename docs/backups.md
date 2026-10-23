@@ -2,7 +2,7 @@
 
 `just deploy backup` (from `ansible/`) installs the scripts and cron jobs on the NAS. Nothing to set up by hand.
 
-On another host (`servers_general`), set `backup_enabled: true` in its `host_vars` and give one drive in `drives` the `backup` role. It then backs up the user's home daily. Add other paths (such as `/opt/stacks`) in `restic_local_paths`; the job runs as the ansible user, so files only root can read are skipped and the log says "unreadable source files". The Sunday cloud copy runs only with `backup_cloud_enabled: true` and a `restic_cloud_repository` of that host's own. The dashboard (`backup-status`) is NAS only.
+On a general server (`servers_general`), set `backup_enabled: true` in its `host_vars` and give a drive in `drives` the `backup` role. It then backs up its `fast` drive daily (Dockge's stacks and data, Caddy's data). The job runs as the ansible user, so files owned by root or by a container's user are skipped and the log says "unreadable source files"; a stack whose containers write as root needs its data dumped or chowned. The Sunday cloud copy runs only with `backup_cloud_enabled: true` and a `restic_cloud_repository` of that host's own. The dashboard (`backup-status`) is NAS only.
 
 restic keeps its cache in `restic_cache_dir` (`<fast_drive>/restic-cache`). It is safe to delete: that only costs speed.
 

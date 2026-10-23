@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml` (`group_vars/all/vars.yml` sets `drives: []` for hosts that list none). Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:`, the roles it fills. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Hosts in the `nas` group must claim all three roles.
+Drives are listed per host, in `host_vars/<host>/vars.yml` (`group_vars/all/vars.yml` sets `drives: []` for hosts that list none). Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:`, the roles it fills. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host must claim is in the table under [Examples](#examples).
 
 | Role | Holds |
 |---|---|
@@ -12,18 +12,27 @@ Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked
 
 ## Examples
 
-Which paths a service uses depends on the roles a drive claims; the microSD is never used unless you say so.
+The rule is the same on every host: a drive claims roles, and service paths follow the roles. The microSD is used only through an entry without a `uuid` (see below).
 
-- NAS services (Immich, Copyparty, Gitea and the rest) build their paths from `fast_drive` and `primary_drive`, so a `nas` host must claim all three roles.
-- Backups need a drive with the `backup` role; the deploy fails without one.
-- Docker's own storage (images, layers) is on the microSD unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).
-- Dockge and Caddy on a general server keep their data under `/opt/nas` and Dockge's stacks in `/opt/stacks`, on the microSD, whatever `drives` says. To put them on a drive, set `dockge_data_dir`, `caddy_data_dir` and `dockge_stacks_dir` in the host's `host_vars`.
+| Host group | Must claim | Paths that follow |
+|---|---|---|
+| `nas` | `fast`, `primary`, `backup` | All NAS service data; backups |
+| `servers_general` | `fast` | Dockge's stacks and data and Caddy's data (`dockge_stacks_dir`, `dockge_data_dir`, `caddy_data_dir`); backups |
 
-A general server with one USB drive that holds no role, so it is only mounted at `/mnt/data` (point `dockge_stacks_dir` or `docker_data_root` into it to use it):
+`backup` is needed wherever `backup_enabled` is true. Docker's own storage (images, layers) is separate: it stays on the microSD unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).
+
+A general server that keeps its apps on the microSD (a folder, nothing mounted):
 
 ```yaml
 drives:
-  - { uuid: "1111-AAAA", mount: /mnt/data, fstype: ext4, options: "defaults,nofail" }
+  - { mount: /srv/apps, roles: [fast] }
+```
+
+A general server with one USB drive for apps and backups. The backup drive must have a `uuid`:
+
+```yaml
+drives:
+  - { uuid: "1111-AAAA", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, backup] }
 ```
 
 A one-drive NAS:
