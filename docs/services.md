@@ -11,6 +11,7 @@ Setup steps and gotchas for services that need more than `<name>_enabled: true`.
 | Garage | `roles/garage` | [Garage](#garage-s3) |
 | Crafty | `roles/crafty` | [Crafty](#crafty-minecraft-servers) |
 | Homebridge | `roles/homebridge` | [Homebridge](#homebridge) |
+| Dockge, Caddy | `roles/dockge`, `roles/caddy` | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Direct Ethernet link | `roles/network` | [Direct Ethernet link](#direct-ethernet-link) |
 
 ## Copyparty accounts and volumes
@@ -74,6 +75,18 @@ Runs with `network_mode: host` (HomeKit's mDNS discovery needs it), so it can't 
 Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale doesn't substitute: HomeKit decides local versus remote by Wi-Fi network identity and multicast mDNS, not IP reachability, so off Wi-Fi the Home app shows the bridge offline even with Tailscale connected. Tailscale does reach Homebridge's admin UI at `http://<pi-tailscale-ip>:8581`, which is a plain HTTP page.
 
 The role only deploys the container; the image creates its own `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. The HomeKit PIN and plugins are configured there and persist across deploys.
+
+## Ad-hoc app platform
+
+For general servers (the `servers_general` group), not the NAS. **Dockge** (`dockge_enabled`, on by default) is a web UI at `http://<host>:5001` over plain `compose.yaml` stacks in `/opt/stacks`. Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
+
+**Caddy** (`caddy_enabled`, off by default) gives apps names from container labels; the syntax is in [caddy-reference.md](./caddy-reference.md). Apps are reachable over Tailscale at `http://<host>:<port>` without it. Stacks that want a name join the `nas-services` network, which every server has.
+
+Public access is not automatic: add one entry to that host's `cloudflared_ingress` (see [Cloudflare](#cloudflare-add-a-public-hostname)). Removal: `ansible-playbook teardown.yml --tags dockge,caddy --limit <host>`.
+
+Both mount the Docker socket, so anything that can reach their UI or set a label controls Docker on that host.
+
+Back up `/opt/stacks` and Dockge's data directory with the host's other files once per-host backups exist (see [plans/multi-host.md](./plans/multi-host.md#per-host-backups)).
 
 ## Direct Ethernet link
 

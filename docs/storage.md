@@ -19,6 +19,8 @@ The step-by-step plan for the next drive upgrade is in [plans/drive-migration.md
 
 ## Docker's own storage
 
+<a id="dockges-storage-rule"></a>
+
 Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/var/lib/containerd`, on the microSD card unless you move them. Docker 29 stores image layers through containerd, and Docker's `data-root` setting does not move those, so both are set together.
 
 **The rule: state lives in bind mounts under a drive role, never in Docker's own storage.** Anything in Docker's storage can then be deleted and re-created (images re-pull, containers are recreated by `just deploy`). New services follow the same rule.

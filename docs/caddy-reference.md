@@ -1,6 +1,6 @@
 # caddy-docker-proxy reference
 
-A cheat sheet for the optional reverse proxy in [plans/multi-host.md](./plans/multi-host.md). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Not deployed yet.
+A cheat sheet for the optional reverse proxy in [plans/multi-host.md](./plans/multi-host.md). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` (opt-in: `caddy_enabled`).
 
 ## What it does
 
@@ -11,23 +11,23 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 ```yaml
 services:
   caddy:
-    image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine   # pin it; put the version in versions.yml
+    image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine   # pinned in versions.yml
     ports:
       - 80:80
       - 443:443/tcp
       - 443:443/udp
     environment:
-      - CADDY_INGRESS_NETWORKS=caddy
+      - CADDY_INGRESS_NETWORKS=nas-services
     networks:
-      - caddy
+      - nas-services
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - caddy_data:/data        # certificates; losing it means re-issuing them
     restart: unless-stopped
 
 networks:
-  caddy:
-    external: true              # create once: docker network create caddy
+  nas-services:
+    external: true              # the network role creates it on every server
 
 volumes:
   caddy_data: {}
@@ -37,13 +37,13 @@ The README shows `ci-alpine`, a CI build with no stability guarantee. Use a vers
 
 ## Label syntax
 
-Labels go on the app's container, which must join the same `caddy` network.
+Labels go on the app's container, which must join the same `nas-services` network.
 
 ```yaml
 services:
   whoami:
     image: traefik/whoami
-    networks: [caddy]
+    networks: [nas-services]
     labels:
       caddy: whoami.example.com                    # site address
       caddy.reverse_proxy: "{{upstreams 80}}"      # port the app listens on inside the container
@@ -64,7 +64,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 ## Gotchas for this repo
 
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
-- **Shared network.** Every stack declares the external `caddy` network. A container not on it is invisible to `{{upstreams}}`.
+- **Shared network.** Every stack declares the external `nas-services` network (`nas_network`). A container not on it is invisible to `{{upstreams}}`.
 - **TLS.**
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.
@@ -84,4 +84,4 @@ labels:
   caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
-If cloudflared reaches Caddy over plain HTTP, Caddy's automatic HTTPS redirect can loop. A global `caddy.auto_https: "off"` label on the Caddy container should prevent it (inferred from the README's `caddy.email` global-option example; confirm in the generated Caddyfile when built; quote `off` or YAML reads it as `false`).
+Tested on pi5 (2026-10-23): a container with `caddy: http://whoami.test` and `caddy.reverse_proxy: "{{upstreams 80}}"` answered `200` over plain HTTP with no redirect, so no global `auto_https` label is needed as long as the site address starts with `http://`.

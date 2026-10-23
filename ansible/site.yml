@@ -107,3 +107,16 @@
     - role: backup-status
       tags: [backup-status]
       when: backup_status_enabled | default(true)
+
+- name: Ad-hoc app platform for general servers
+  hosts: servers_general
+  become: true
+
+  roles:
+    - role: dockge
+      tags: [dockge]
+      when: dockge_enabled | default(true)
+
+    - role: caddy
+      tags: [caddy]
+      when: caddy_enabled | default(false)

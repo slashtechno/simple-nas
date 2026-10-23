@@ -1,0 +1,7 @@
+---
+# Caddy's certificates and state. Losing it means certificates are issued again.
+caddy_data_dir: "{{ nas_base_dir }}/caddy/data"
+# Host ports Caddy listens on. Skip publishing them (and let cloudflared reach caddy:80 over the
+# Docker network) on a host that is only reached through the tunnel.
+caddy_http_port: 80
+caddy_https_port: 443

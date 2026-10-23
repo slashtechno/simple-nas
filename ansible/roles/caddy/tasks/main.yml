@@ -1,0 +1,14 @@
+---
+- name: Create Caddy data directory
+  ansible.builtin.file:
+    path: "{{ caddy_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy caddy
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: caddy

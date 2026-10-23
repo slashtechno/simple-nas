@@ -1,0 +1,9 @@
+---
+# Where the compose stacks live on the host. Dockge needs the same path inside and outside its
+# container, so this is also mounted at the same path. Each stack is a directory with a compose.yaml.
+dockge_stacks_dir: /opt/stacks
+# Dockge's own database (users, settings). Back this up with the stacks.
+dockge_data_dir: "{{ nas_base_dir }}/dockge/data"
+# Port the web UI is published on. It listens on every interface, so it is reachable on the LAN and
+# the tailnet; Dockge asks you to create an account on first visit.
+dockge_port: 5001

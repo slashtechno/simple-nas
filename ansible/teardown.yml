@@ -250,3 +250,30 @@
       register: rmdir_result
       changed_when: rmdir_result.rc == 0
       failed_when: false   # non-empty dir is fine — means some services remain
+
+# Dockge and Caddy on general servers. The stacks you created in Dockge are yours: this removes
+# only the two containers and their compose files (with remove_data=true, also their own data,
+# but never dockge_stacks_dir).
+- name: Tear down the ad-hoc app platform
+  hosts: servers_general
+  become: true
+
+  vars:
+    remove_data: false   # override with -e remove_data=true to also delete data dirs
+
+  tasks:
+    - name: Stop and remove Dockge
+      tags: [dockge]
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: dockge
+        data_paths:
+          - "{{ dockge_data_dir }}"
+
+    - name: Stop and remove Caddy
+      tags: [caddy]
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: caddy
+        data_paths:
+          - "{{ caddy_data_dir }}"

@@ -1,0 +1,21 @@
+# Ansible-managed — do not edit directly, edit the dockge_* settings and re-deploy.
+# Dockge has the Docker socket, so it controls every container on this host. Stacks you create in
+# its UI are plain compose.yaml files in {{ dockge_stacks_dir }}; those are yours, not Ansible's.
+services:
+  dockge:
+    image: {{ dockge_image }}
+    container_name: dockge
+    restart: unless-stopped
+    ports:
+      - "{{ dockge_port }}:5001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ dockge_data_dir }}:/app/data
+      - {{ dockge_stacks_dir }}:{{ dockge_stacks_dir }}
+    environment:
+      DOCKGE_STACKS_DIR: {{ dockge_stacks_dir }}
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "1"

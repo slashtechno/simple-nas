@@ -11,3 +11,9 @@ direct_link_iface: eth0
 direct_link_ip: 10.10.20.1        # Pi's address on the link
 direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
 direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
+
+# Ad-hoc app platform (general servers only; see docs/services.md#ad-hoc-app-platform).
+# Dockge: web UI for compose stacks in dockge_stacks_dir. Default: true.
+# Caddy: reverse proxy that names apps from container labels. Default: false.
+dockge_enabled: true
+caddy_enabled: false
