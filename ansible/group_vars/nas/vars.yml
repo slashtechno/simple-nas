@@ -1,8 +1,9 @@
-# Copy to vars.yml and customize. Secrets go in vault.yml (ansible-vault encrypted).
+# Copy to vars.yml and fill in your values.
+# Secrets (passwords, tokens) go in vault.yml, never in this file.
+# Settings private to one service default in roles/<name>/defaults/main.yml; set one here only to override it.
 
 # --- Enable/disable services ---
-# Set false to skip a service entirely. It won't be deployed or started.
-# To remove a service you previously deployed, run teardown.yml --tags <name> first.
+# Set false to skip a service. To remove one already deployed, run teardown.yml --tags <name> first.
 immich_enabled: true
 copyparty_enabled: true
 gitea_enabled: true
@@ -18,8 +19,8 @@ backup_status_enabled: true   # read-only web dashboard for backup status/snapsh
 # --- Tailscale ---
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
 # any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
-# (roles/tailscale/defaults/main.yml) only gives Copyparty a public ts.net name; pics' public pages
-# go through the Cloudflare tunnel with a path allowlist.
+# (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
+# pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
 
 # --- Dump scripts ---
 # One dump script per service with a live database (see docs/backups.md).
@@ -56,28 +57,21 @@ restic_local_excludes: []
 restic_cloud_extra_paths: []
 # Same syntax; added after the defaults in restic-excludes-cloud.txt.j2.
 restic_cloud_excludes: []
-# restic's local index/snapshot cache lives on the fast drive — it keeps
-# cache reads off the spinning backup drive and off Google Drive round-trips
-# (this matters most for the rclone/gdrive repo; see restic's cache docs).
-# Same-filesystem caching is near-pointless, so this only pays off once the
-# cache drive differs from the repo drive. Excluded from backups below.
+# restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
+# off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
 restic_cache_dir: "{{ fast_drive }}/restic-cache"
 restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
-# rclone's default Google Drive OAuth client is shared by every rclone user, so its request quota runs out
-# during a burst of small-file uploads (seen: 403 RATE_LIMIT_EXCEEDED on the first cloud backup).
-# The throttle works around it. Owner decision: no custom OAuth client; see docs/backups.md.
+# rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
+# fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
-# Every restic invocation in the backup scripts is wrapped in `timeout` with
-# this value. Without it, a stalled rclone/network pipe can deadlock restic
-# indefinitely while holding the repo lock — seen in practice: a cloud backup
-# hung for 6 days straight (2m of CPU time burned across the whole span),
-# silently blocking every later cloud backup/prune behind its stale lock.
+# Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
+# rclone or network pipe cannot hold the repo lock indefinitely.
 restic_command_timeout: "2h"
 
 # Service data split across drive roles: random-IO data (Docker, DBs,
 # configs) on the fast drive; bulk data (photos, files) on the primary.
-# Today these resolve to the same physical drive (T7) — no migration needed.
+# When both roles resolve to the same drive, this changes nothing on disk.
 immich_upload_location: "{{ primary_drive }}/photos"
 immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ primary_drive }}/files"
@@ -93,13 +87,16 @@ crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 # --- Copyparty ---
 copyparty_user: "{{ vault_copyparty_user }}"
 copyparty_pass: "{{ vault_copyparty_pass }}"
-copyparty_collab_dir: "{{ primary_drive }}/collab"
+copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
 copyparty_port: 3923
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at
-# /<folder>, stored in copyparty_files_dir/<folder>. No d on photos: without delete, Copyparty also
-# refuses overwrites, so pics can't destroy a photo. It may delete only in photos-trash.
+# /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
+# too. Two entries can't share a folder. Passwords go in vault.yml.
 copyparty_service_accounts:
+  # Example: a photo app. No d on photos: without delete, Copyparty also refuses
+  # overwrites (it renames instead), so the app can't destroy a photo. It may
+  # delete only in its own photos-trash volume.
   - user: photos
     pass: "{{ vault_copyparty_photos_pass }}"
     volumes:
@@ -107,15 +104,18 @@ copyparty_service_accounts:
       - { folder: photos-trash, perms: rwmd }
 
 # --- pics ---
-# Owner pages: http://<pi>:8100 on the LAN. Only guest pages are public, via the path-limited ingress below.
+# Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
+# above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
+# your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
+# cloudflared_ingress entry below, which points at pics_public_port.
 pics_repo: slashtechno/lab
 pics_public_url: "https://pics.angad.me"
-pics_public_port: 8001    # container-internal (never published): the tunnel points here.
-                          # Container ports can't collide with other services — each has its own
-                          # namespace. Only pics_port (above) is published on the Pi.
-pics_artist: ""
-pics_website: ""                # e.g. "example.com"; watermarked + linked from the home page
-pics_instagram: ""              # e.g. "@you"; watermarked + linked from the home page
+pics_public_port: 8001   # container-internal (never published): the tunnel points here.
+                         # Container ports can't collide with other services — separate namespaces.
+                         # Only pics_port is published on the Pi (LAN + tailnet).
+pics_artist: ""           # written into the EXIF of public downloads
+pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
+pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
 
 # --- Gitea ---
 gitea_root_url: "https://git.slashtechno.com/"
@@ -124,6 +124,7 @@ gitea_ssh_domain: "git.slashtechno.com"
 gitea_ssh_port: "2222"
 
 # --- Cloudflare Tunnel ---
+# Tunnel name: other hosts default to <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
 cf_tunnel_name: pi-nas-tunnel
 cf_api_token: "{{ vault_cf_api_token }}"
 cf_account_id: "{{ vault_cf_account_id }}"
@@ -133,12 +134,12 @@ cf_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
   angad.me: f0cf329b896c61d1f5bc2a4c53c03647
 
-# Ingress rules for cloudflared (hostname -> internal service URL). Keep these boring: a hostname
-# and a service, nothing else. Where a service needs a private surface, it publishes two ports and
-# this file points the tunnel at the guest one.
+# One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
+# address). No `path:`. The hostname must contain one domain from cf_zones above. Where a service
+# has a private surface, it publishes two ports and the tunnel points at the guest one.
 cloudflared_ingress:
-  # pics serves its guest surface (share pages + portfolio, no owner routes at all) on 8001; the
-  # owner app is on the Pi's LAN/tailnet port (pics_port) and is never forwarded here.
+  # pics' guest surface: share pages and the portfolio, with no owner routes in it. The owner app
+  # stays on the Pi's LAN/tailnet port (pics_port); this file never forwards it.
   - hostname: pics.angad.me
     service: "http://pics:{{ pics_public_port }}"
   - hostname: immich.slashtechno.com
@@ -148,6 +149,8 @@ cloudflared_ingress:
   - hostname: copyparty.slashtechno.com
     service: "http://copyparty:3923"
   - hostname: s3.slashtechno.com
+    # Caddy CORS proxy sits on 3900; it handles OPTIONS preflights and injects
+    # Access-Control-Allow-Origin before forwarding to Garage internally.
     service: "http://garage-cors-proxy:3900"
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
