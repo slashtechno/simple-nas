@@ -22,7 +22,7 @@ How it works now is in [ansible/README.md](../../ansible/README.md), [networking
 
 1. In the Cloudflare Zero Trust dashboard, check whether the existing tunnel (`pi-nas-tunnel`) has a migrate-to-remotely-managed option. If it does not, the deploy stops until the tunnel is deleted, and public hostnames are offline until the next deploy repoints the CNAMEs.
 2. Test cloudflared against real Cloudflare, and `cloudflared tunnel run --token-file` on the pinned image (`--help`).
-3. Run the netplan spike on pi5 ([networking.md](../networking.md#to-do-netplan-spike-on-pi5)). If it passes, the network role renders one netplan file per host. If not, the role stays on `nmcli` and the `"Wired connection 1"` profile name becomes a per-host variable.
+3. Run the netplan spike on pi5 (steps under [Networking decisions still open](#networking-decisions-still-open)). If it passes, the network role renders one netplan file per host. If not, the role stays on `nmcli` and the `"Wired connection 1"` profile name becomes a per-host variable.
 4. Join pi5 to Tailscale by hand (`sudo tailscale up`) and disable key expiry for each server in the Tailscale admin console.
 5. Run the first deploy on each new host with `-K`.
 6. Publish the Google OAuth app to Production, or the Drive refresh token expires after 7 days ([backups.md](../backups.md)).
@@ -58,11 +58,6 @@ Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has 
 
 ### Later
 
-- Netplan on pi5 (optional; the roles use `nmcli`). By hand, with a monitor or Ethernet as a way back in:
-  1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
-  2. Write `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try` and do not press Enter. The change must roll back after the timeout.
-  3. Run `sudo netplan try` again and confirm. `nmcli con show` must show one profile per interface or SSID, with no duplicates next to the `netplan-*` ones.
-  4. Remove the test file and run `sudo netplan apply`.
 - Repurpose the Pi 4 as a general server, then add the x64 box.
 - Check the ARM-only builds (rawpy, Dockerfile ARGs) when the x64 box is added.
 - On Ubuntu Server: do not install Docker from the installer's snap; the first run uses `-K`.
@@ -84,8 +79,12 @@ Apps on general servers are tailnet-only by default, at `http://<host>:<port>` o
 
 ## Networking decisions still open
 
-- Netplan or `nmcli` for per-host profiles (the spike above settles it). Netplan would apply with `netplan try`, which reverts if the connection is not confirmed. Risks: Imager's `90-NM-*.yaml` files may produce duplicate profiles, and `netplan try` may not roll back under the NetworkManager renderer.
-- Pass criteria: after applying an Ansible-written netplan file, `nmcli con show` lists one profile per interface or SSID, and `netplan try` rolls back when not confirmed.
+- Netplan or `nmcli` for per-host profiles (the spike below settles it). Netplan would apply with `netplan try`, which reverts if the connection is not confirmed. Risks: Imager's `90-NM-*.yaml` files may produce duplicate profiles, and `netplan try` may not roll back under the NetworkManager renderer.
+- Netplan spike, by hand on pi5 with a monitor or Ethernet as a way back in. Passes when `netplan try` rolls back an unconfirmed change and `nmcli con show` lists one profile per interface or SSID:
+  1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
+  2. Write `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try` and do not press Enter. The change must roll back after the timeout.
+  3. Run `sudo netplan try` again and confirm. There must be no duplicates next to the `netplan-*` profiles.
+  4. Remove the test file and run `sudo netplan apply`.
 - No multi-backend abstraction either way.
 
 ## Docs still to update
