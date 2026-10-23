@@ -6,7 +6,7 @@
 
 # bcrypt hash of the ntfy login password (the one you type into the ntfy app):
 # `docker run --rm -it binwiederhier/ntfy user hash`, then paste the line it prints.
-vault_ntfy_password_hash: "$2a$10$changemechangemechangemechangemechangemechangemechangeme"
+vault_ntfy_password_hash: "$2a$10$changeMechangeMechangeMechangeMechangeMechangeMechang"
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
 vault_copyparty_pass: "yourpassword"

@@ -78,6 +78,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`, off by default, 
 1. Make the secrets: a login password's hash with `docker run --rm -it binwiederhier/ntfy user hash` and a token with `docker run --rm binwiederhier/ntfy token generate`. The hash goes in `vault_ntfy_password_hash` (`group_vars/nas/vault.yml`), the token in `vault_ntfy_token` (`group_vars/all/vault.yml`).
 2. Set `ntfy_enabled: true` and `ntfy_alert_url: "http://localhost:8090/alerts"` (topic `alerts`) in `group_vars/nas/vars.yml`; `just deploy ntfy,backup`.
 3. In the ntfy app, add the server `http://<nas-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale.
+4. Test the chain: on the NAS run `bash /opt/nas/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but the `alerts` user and its token, so the published port is not open to the LAN. The user and token are set from the compose file at every start; the data directory only holds message history.
 - Another host sends alerts to the same server by setting `ntfy_alert_url` to `http://<nas-tailscale-name>:8090/alerts` in its `host_vars`; it needs `vault_ntfy_token` (shared vault).

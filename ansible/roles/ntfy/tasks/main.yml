@@ -3,8 +3,13 @@
   ansible.builtin.assert:
     that:
       - vault_ntfy_password_hash is defined
+      - vault_ntfy_password_hash is match('^\\$2[aby]\\$[0-9]{2}\\$.{53}$')
       - vault_ntfy_token is defined
-    fail_msg: vault_ntfy_password_hash or vault_ntfy_token is missing from the vault. vault.yml.example says how to make them.
+      - vault_ntfy_token is match('^tk_[A-Za-z0-9]{29}$')
+    fail_msg: >-
+      vault_ntfy_password_hash must be a bcrypt hash and vault_ntfy_token "tk_" plus 29 letters or digits,
+      both in the vault. A placeholder makes ntfy refuse to start, and alerts then fail silently.
+      vault.yml.example says how to make them.
     quiet: true
 
 - name: Create the ntfy data directory
