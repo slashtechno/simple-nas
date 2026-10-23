@@ -8,7 +8,7 @@ Every `nas_drives` entry in `group_vars/nas/vars.yml` lists the `roles:` it fill
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `main_drive` and `backup_drive`, defined in `vars.yml` from `nas_drive_mounts`. When roles share a drive nothing changes on disk. Adding a dedicated drive for a role later moves that role's paths to the new mount point, and you move the data there once.
+Service paths come from `fast_drive`, `main_drive` and `backup_drive`, worked out from `nas_drives` in `group_vars/nas/derived.yml`. When roles share a drive nothing changes on disk. Adding a dedicated drive for a role later moves that role's paths to the new mount point, and you move the data there once.
 
 To add or replace a drive:
 1. Format it and add or point a `nas_drives` entry at it (a new UUID, either on the same mount or a new `mount:` with updated `roles`).

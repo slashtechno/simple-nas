@@ -1,0 +1,19 @@
+---
+# Included by render.yml once per vars.yml. Fails if the file has a key its example lacks.
+# Every host's vars.yml shares host_vars/vars.yml.example.
+- name: Pick the example for {{ real_file }}
+  ansible.builtin.set_fact:
+    example_file: "{{ repo + '/host_vars/vars.yml.example' if '/host_vars/' in real_file else real_file + '.example' }}"
+
+- name: Read the keys of the file and its example
+  ansible.builtin.include_vars:
+    file: "{{ item.file }}"
+    name: "{{ item.name }}"
+  loop:
+    - {file: "{{ real_file }}", name: real_vars}
+    - {file: "{{ example_file }}", name: example_vars}
+
+- name: Every key in {{ real_file | basename }} must also be in the example
+  ansible.builtin.assert:
+    that: (real_vars.keys() | list | difference(example_vars.keys() | list)) | length == 0
+    fail_msg: "In {{ real_file }} but missing from {{ example_file }}: {{ real_vars.keys() | list | difference(example_vars.keys() | list) }}"

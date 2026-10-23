@@ -4,7 +4,8 @@
 # shellchecks the rendered scripts. It catches:
 #   - a template using a variable that isn't defined in vars.yml.example,
 #     vault.yml.example, versions.yml or the role's defaults/
-#   - a key in vars.yml that is missing from vars.yml.example
+#   - a key in a vars.yml (group_vars/all, group_vars/nas, host_vars/<host>) that is missing from
+#     its example file
 #   - template syntax errors
 - name: Render all role templates against the example vars
   hosts: localhost
@@ -36,26 +37,29 @@
           - defaults_files | length > 0
           - template_files | length > 0
 
-    - name: Load the example vars, the vault example, the versions and every role's defaults
+    - name: Load the example vars, the vault example, the versions, the derived values and every role's defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
-        {{ [repo + '/group_vars/nas/vars.yml.example',
+        {{ [repo + '/group_vars/all/vars.yml.example',
+            repo + '/group_vars/nas/vars.yml.example',
+            repo + '/host_vars/vars.yml.example',
             repo + '/group_vars/nas/vault.yml.example',
-            repo + '/group_vars/nas/versions.yml'] + defaults_files }}
+            repo + '/group_vars/nas/versions.yml',
+            repo + '/group_vars/nas/derived.yml'] + defaults_files }}
 
-    - name: Read the keys of vars.yml and vars.yml.example
-      ansible.builtin.include_vars:
-        file: "{{ item.file }}"
-        name: "{{ item.name }}"
-      loop:
-        - {file: "{{ repo }}/group_vars/nas/vars.yml", name: real_vars}
-        - {file: "{{ repo }}/group_vars/nas/vars.yml.example", name: example_vars}
+    - name: Find every host's vars.yml
+      ansible.builtin.find:
+        paths: "{{ repo }}/host_vars"
+        patterns: ["vars.yml"]
+        recurse: true
+      register: host_vars_found
 
-    - name: Every key in vars.yml must also be in vars.yml.example
-      ansible.builtin.assert:
-        that: (real_vars.keys() | list | difference(example_vars.keys() | list)) | length == 0
-        fail_msg: "In vars.yml but missing from vars.yml.example: {{ real_vars.keys() | list | difference(example_vars.keys() | list) }}"
+    - name: Every key in each vars.yml must also be in its example
+      ansible.builtin.include_tasks: check_keys.yml
+      loop: "{{ [repo + '/group_vars/all/vars.yml', repo + '/group_vars/nas/vars.yml'] + (host_vars_found.files | map(attribute='path') | list) }}"
+      loop_control:
+        loop_var: real_file
 
     - name: Create one output directory per role
       ansible.builtin.file:

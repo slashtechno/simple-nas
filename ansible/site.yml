@@ -1,9 +1,26 @@
 ---
-# Full NAS deployment playbook.
+# Full deployment playbook.
 # Run with: ansible-playbook site.yml --ask-vault-pass
 #
+# Two plays: every server gets the base roles, then the NAS group gets storage, services and backups.
+# To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
-# To disable services permanently, set <name>_enabled: false in vars.yml
+# To disable services permanently, set <name>_enabled: false in group_vars/nas/vars.yml
+
+- name: Base setup for every server
+  hosts: servers
+  become: true
+
+  roles:
+    - role: common
+      tags: [common]
+
+    - role: tailscale
+      tags: [tailscale]
+      when: tailscale_enabled | default(true)
+
+    - role: network
+      tags: [network]
 
 - name: Deploy NAS
   hosts: nas
@@ -20,19 +37,9 @@
       tags: [always]
 
   roles:
-    - role: common
-      tags: [common]
-
-    - role: tailscale
-      tags: [tailscale]
-      when: tailscale_enabled | default(true)
-
     - role: storage
       tags: [storage]
       when: storage_enabled | default(true)
-
-    - role: network
-      tags: [network]
 
     - role: immich
       tags: [immich]

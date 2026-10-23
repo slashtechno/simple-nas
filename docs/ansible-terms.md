@@ -10,7 +10,7 @@ This is a reference for what the repo actually uses, not a tutorial. For operati
 |---|---|
 | `ansible.cfg` | Project settings, read automatically from this directory |
 | `inventory/hosts.yml` | Who to run against |
-| `group_vars/nas/` | What values to run with (`vars.yml`, `versions.yml`, `vault.yml`) |
+| `group_vars/all/`, `group_vars/nas/`, `host_vars/<host>/` | What values to run with: every server, the NAS group, one host (`vars.yml`, `versions.yml`, `derived.yml`, `vault.yml`) |
 | `requirements.yml` | Collections and roles to install first (`just deps`) |
 | `site.yml`, `teardown.yml` | The playbooks |
 | `roles/*/` | How to deploy each piece |
@@ -22,7 +22,7 @@ This is a reference for what the repo actually uses, not a tutorial. For operati
 - `become = True`, `become_method = sudo`: every task runs as root, so tasks don't repeat `become: true`.
 - `pipelining = True`: faster deploys over SSH.
 
-The inventory is `groups → hosts → connection vars`. `nas:` is the group that `hosts: nas` in `site.yml` matches. The host key is only a nickname. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
+The inventory is `groups → hosts → connection vars`. `servers` is the parent of `nas` and `servers_general`; the first play in `site.yml` runs on `hosts: servers`, the second on `hosts: nas`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 
 `requirements.yml` installs:
 
@@ -112,12 +112,14 @@ Keywords any task can carry:
 
 ## 6. Variables and vault
 
-Config comes from four sources, lowest precedence first:
+Config comes from these sources, lowest precedence first:
 
 1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_panel_port`.
-2. `group_vars/nas/vars.yml`: the shared config, auto-loaded for the `nas` group. Enabled flags, paths and non-secret settings.
-3. `group_vars/nas/versions.yml`: every image version.
-4. `group_vars/nas/vault.yml`: secrets, encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given.
+2. `group_vars/all/vars.yml`: settings every server reads (timezone, base paths).
+3. `group_vars/nas/`: loaded for hosts in the `nas` group. `vars.yml` holds enabled flags, paths and non-secret settings, `versions.yml` every image version, `derived.yml` values computed from the others (not edited), `vault.yml` secrets.
+4. `host_vars/<host>/vars.yml`: one host's settings, such as the direct link. Beats group values.
+
+`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host only loads the vault files of its own groups, so a server outside `nas` needs no vault password.
 
 `vars.yml` refers to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and `vars.yml` stays safe to commit because the values exist only in the encrypted file.
 

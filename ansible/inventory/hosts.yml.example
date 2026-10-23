@@ -1,8 +1,11 @@
 all:
   children:
-    nas:           # group name — matches "hosts: nas" in site.yml
-      hosts:
-        pi:        # nickname shown in Ansible output (not a hostname or DNS name)
-          ansible_host: 123.456.789.109 
-          ansible_user: user       
-          ansible_ssh_private_key_file: ~/.ssh/id_rsa  # run ssh-add ~/.ssh/id_rsa
+    servers:       # every machine Ansible manages: gets the base roles (site.yml, first play)
+      children:
+        nas:               # the NAS: storage, services, backups (site.yml, second play)
+          hosts:
+            pi:            # nickname shown in Ansible output (not a hostname or DNS name); also names host_vars/<nickname>/
+              ansible_host: 123.456.789.109   # a Tailscale (MagicDNS) name works from any network
+              ansible_user: user
+              ansible_ssh_private_key_file: ~/.ssh/id_rsa  # run ssh-add ~/.ssh/id_rsa
+        servers_general:   # ad-hoc app servers; leave empty if you have none

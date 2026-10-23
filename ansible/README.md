@@ -10,8 +10,11 @@ Ansible owns what it deploys; you own everything else. Files it manages (`/opt/n
 brew install ansible just uv   # uv runs the linters; Docker is only needed for `just tags`
 cd ansible/
 just deps
-cp inventory/hosts.yml.example inventory/hosts.yml    # set the Pi's IP and username
+cp inventory/hosts.yml.example inventory/hosts.yml    # set each host's address and username
+cp group_vars/all/vars.yml.example group_vars/all/vars.yml
 cp group_vars/nas/vars.yml.example group_vars/nas/vars.yml
+mkdir host_vars/<host>                                # named after the host in the inventory
+cp host_vars/vars.yml.example host_vars/<host>/vars.yml   # keep only the options that host needs
 cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml
 # fill in vault.yml with real secrets, then encrypt it:
 ansible-vault encrypt group_vars/nas/vault.yml
@@ -26,18 +29,26 @@ ansible-vault encrypt group_vars/nas/vault.yml
 | `just check` | Everything below; run before committing (CI runs it too) |
 | `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
 | `just syntax` | Both playbooks parse |
-| `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in `vars.yml` missing from `vars.yml.example` |
-| `just deploy [tags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich` |
-| `just preview [tags]` | The same with `--check --diff`, which changes nothing |
+| `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` missing from its example |
+| `just deploy [tags] [flags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pi5 -K` |
+| `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 
 `--check` does not create directories, so on a first deploy a later step can fail with "not a directory". That is a preview limit, not a bug.
 
 ## Change a setting
 
-Edit `group_vars/nas/vars.yml` (or `vault.yml` for secrets), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared, network and storage.
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared, network and storage.
 
-Settings used by one role are in that role's `defaults/main.yml`. Settings shared between roles or with `teardown.yml` are in `group_vars/nas/vars.yml`, mirrored in `vars.yml.example`. Image versions are all in `group_vars/nas/versions.yml`.
+| Setting | File |
+|---|---|
+| Used by one role | that role's `defaults/main.yml` |
+| Every server (timezone, base paths) | `group_vars/all/vars.yml`, mirrored in `vars.yml.example` |
+| The NAS group (services, drives, backups) | `group_vars/nas/vars.yml`, mirrored in `vars.yml.example` |
+| One host (direct link) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
+| Secrets | a `vault.yml` next to the file they belong with |
+| Image versions | `group_vars/nas/versions.yml` |
+| Computed from the above | `group_vars/nas/derived.yml`; not edited |
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 

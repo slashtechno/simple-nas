@@ -38,7 +38,7 @@ Fully automated: daily local, weekly cloud, weekly integrity check, plus a read-
 |---|---|
 | [ansible/README.md](./ansible/README.md) | Setup, `just` commands, changing settings, updating images, adding a service |
 | `ansible/roles/` | One role per service |
-| `ansible/group_vars/nas/` | Settings (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`) |
+| `ansible/group_vars/`, `ansible/host_vars/` | Settings (`vars.yml`) for all servers, the NAS group and single hosts; image versions (`versions.yml`); secrets (`vault.yml`) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the direct Ethernet link |

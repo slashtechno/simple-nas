@@ -16,52 +16,16 @@ backup_enabled: true
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # --- Tailscale ---
-# Every service that publishes a host port is reachable at http://<pi-tailscale-ip>:<port> from any
-# device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. (The funnel
-# below is only for giving one service a public ts.net name, which pics does not use — its public
-# pages go through the Cloudflare tunnel with a path allowlist.)
-tailscale_args: ""                 # extra flags for `tailscale up`, e.g. "--advertise-exit-node"
-tailscale_funnel_enabled: false    # set true to expose Copyparty at your ts.net hostname
-tailscale_funnel_port: 3923
+# Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
+# any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
+# (roles/tailscale/defaults/main.yml) only gives Copyparty a public ts.net name; pics' public pages
+# go through the Cloudflare tunnel with a path allowlist.
 
-# --- General ---
-timezone: America/Chicago
-nas_base_dir: /opt/nas          # where compose projects are deployed on the Pi
-nas_scripts_dir: "{{ nas_base_dir }}/scripts"                       # backup/helper scripts installed on the Pi
-service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"      # one dump script per service with a live database (see docs/backups.md)
-nas_network: nas-services       # shared Docker network name
-docker_pull_policy: missing     # "always" to pull newer images on every run
+# --- Dump scripts ---
+# One dump script per service with a live database (see docs/backups.md).
+service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"
 
-# --- Storage paths on the Pi ---
-# Drives are the source of truth; every drive entry below declares which
-# roles it fills via `roles:` (a list, so one drive can hold several roles —
-# a single-drive NAS is one entry with roles: [fast, primary, backup]).
-# Allowed roles, exactly one claim each (validated by the storage role):
-#   fast    — SSD; random-IO data (Docker, Immich DB, configs) + caches
-#             (restic cache, copyparty hist/thumbnails)
-#   primary — bulk data (photos, files)
-#   backup  — restic local repo, service dumps, logs
-# Right now fast and primary share the T7 — when the 2TB WD + 4TB drives
-# arrive, give each their own entry; service paths split automatically.
-# Every role has a fallback below, so an unclaimed role never resolves to
-# something surprising — but the storage role's assert fails the deploy if
-# any role is claimed twice or uses an unknown role name.
-nas_role_fallbacks:
-  fast: /mnt/t7
-  primary: /mnt/main
-  backup: /mnt/backup
-nas_drive_mounts: >-
-  {%- set _m = {} -%}
-  {%- for _d in nas_drives if _d.roles is defined -%}
-  {%- for _r in _d.roles -%}
-  {%- set _ = _m.update({_r: _d.mount}) -%}
-  {%- endfor -%}{%- endfor -%}
-  {{ nas_role_fallbacks | combine(_m) }}
-
-fast_drive: "{{ nas_drive_mounts.fast }}"
-main_drive: "{{ nas_drive_mounts.primary }}"
-backup_drive: "{{ nas_drive_mounts.backup }}"
-
+# --- Backups (docs/backups.md) ---
 restic_repo_path: "{{ backup_drive }}/restic-repo"
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
@@ -127,6 +91,20 @@ garage_data_dir: "{{ fast_drive }}/docker/garage"
 crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 cloudflared_dir: "{{ nas_base_dir }}/cloudflared"
 
+# --- Drives ---
+# Drives are the source of truth; every drive entry below declares which
+# roles it fills via `roles:` (a list, so one drive can hold several roles —
+# a single-drive NAS is one entry with roles: [fast, primary, backup]).
+# Allowed roles, exactly one claim each (validated by the storage role):
+#   fast    — SSD; random-IO data (Docker, Immich DB, configs) + caches
+#             (restic cache, copyparty hist/thumbnails)
+#   primary — bulk data (photos, files)
+#   backup  — restic local repo, service dumps, logs
+# Right now fast and primary share the T7 — when the 2TB WD + 4TB drives
+# arrive, give each their own entry; service paths split automatically.
+# fast_drive, main_drive and backup_drive are worked out from these entries in
+# derived.yml. The storage role's assert fails the deploy if any role is
+# claimed twice or uses an unknown role name.
 # fstab entries — idempotent, no-ops if drives already mounted.
 # Find UUIDs on the Pi: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
 nas_drives:
@@ -202,12 +180,3 @@ cloudflared_ingress:
     service: "http://garage-cors-proxy:3900"
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
-
-# --- Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers) ---
-# Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
-# so it can't route internet traffic. See docs/services.md#direct-ethernet-link.
-direct_link_enabled: true
-direct_link_iface: eth0
-direct_link_ip: 10.10.20.1        # Pi's address on the link
-direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
-direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits

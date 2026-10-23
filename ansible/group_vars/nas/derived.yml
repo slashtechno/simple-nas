@@ -1,0 +1,19 @@
+# Values computed from the settings in vars.yml. Tracked, and not meant to be edited:
+# change nas_drives in vars.yml and these follow.
+
+# Where each drive role lives when no drive claims it.
+nas_role_fallbacks:
+  fast: /mnt/t7
+  primary: /mnt/main
+  backup: /mnt/backup
+nas_drive_mounts: >-
+  {%- set _m = {} -%}
+  {%- for _d in nas_drives if _d.roles is defined -%}
+  {%- for _r in _d.roles -%}
+  {%- set _ = _m.update({_r: _d.mount}) -%}
+  {%- endfor -%}{%- endfor -%}
+  {{ nas_role_fallbacks | combine(_m) }}
+
+fast_drive: "{{ nas_drive_mounts.fast }}"
+main_drive: "{{ nas_drive_mounts.primary }}"
+backup_drive: "{{ nas_drive_mounts.backup }}"

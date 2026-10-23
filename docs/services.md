@@ -79,7 +79,7 @@ The role only deploys the container; the image creates its own `config.json` and
 
 The Pi's Ethernet port is idle (the Pi normally runs on wifi). Cabled straight to a laptop, it gives about 117 MB/s, against about 4.3 MB/s over Tailscale on wifi (measured). The Pi side is a static `10.10.20.1`. The laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port.
 
-1. Set `direct_link_enabled: true` in `vars.yml`, then `just deploy network`.
+1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`, then `just deploy network`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `https://10.10.20.1:3923` for Copyparty. Expect a certificate warning: Copyparty serves its own self-signed certificate on the same port as HTTP.
 
