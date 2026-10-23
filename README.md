@@ -37,10 +37,14 @@ Fully automated: daily local, weekly cloud, weekly integrity check, plus a read-
 | Doc | Covers |
 |---|---|
 | [ansible/README.md](./ansible/README.md) | Setup, `just` commands, changing settings, updating images, adding a service |
+| `ansible/roles/` | One role per service |
+| `ansible/group_vars/nas/` | Settings (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`) |
+| `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the direct Ethernet link |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Planned drive upgrade and the backup steps that follow it |
 | [docs/plans/encryption.md](./docs/plans/encryption.md) | Planned encryption at rest (not started) |
+| [docs/dumps/](./docs/dumps/) | Decisions log and deferred work from the maintainability refactor |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

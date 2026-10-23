@@ -11,6 +11,7 @@
     # The container runs as uid 10001 and must own its data folder
     - { path: "{{ pics_data_dir }}", owner: "10001" }
 
+# include_role, not import_role (AGENTS.md exception): kept as deployed. import_role would expand and tag every inner task, and that has not been tested.
 - name: Fetch the pics source
   ansible.builtin.include_role:
     name: github_clone

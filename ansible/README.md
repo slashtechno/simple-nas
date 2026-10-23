@@ -7,7 +7,7 @@ Ansible owns what it deploys; you own everything else. Files it manages (`/opt/n
 ## First-time setup
 
 ```bash
-brew install ansible just
+brew install ansible just uv   # uv runs the linters; Docker is only needed for `just tags`
 cd ansible/
 just deps
 cp inventory/hosts.yml.example inventory/hosts.yml    # set the Pi's IP and username
