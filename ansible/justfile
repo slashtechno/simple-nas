@@ -45,7 +45,7 @@ outdated:
         || { cat "$out/renovate.log"; exit 1; }
     updates="$(jq -r '.repositories.local.packageFiles[][] | .packageFile as $f | .deps[]
         | select(.updates | length > 0)
-        | [$f, .depName, .currentValue, ([.updates[] | .newVersion // .newValue] | join(", "))] | @tsv' \
+        | [$f, .depName, .currentValue, ([.updates[] | .newValue // .newVersion] | join(", "))] | @tsv' \
         "$out/report.json" | sort -u)"
     if [ -z "$updates" ]; then
         echo "Nothing newer than the pinned versions. (Floating tags like latest are not checked.)"

@@ -1,28 +1,30 @@
 {
   "description": [
-    "Only used by `just outdated` (in ansible/), which runs Renovate read-only to list newer versions.",
-    "No bot, no pull requests. See ansible/README.md, 'Update service images'."
+    "Only used by `just outdated` (in ansible/), which runs Renovate read-only to list newer versions. No bot, no pull requests.",
+    "It reads Dockerfile FROM lines, literal image: lines in compose templates, and '# renovate:' annotated *_version keys in role defaults.",
+    "Compose templates with a templated image tag (immich, garage, crafty) are not valid YAML to Renovate and are skipped, which is why those versions live in annotated variables."
   ],
   "extends": [],
-  "enabledManagers": ["custom.regex", "dockerfile", "docker-compose"],
+  "enabledManagers": [
+    "custom.regex",
+    "dockerfile",
+    "docker-compose"
+  ],
   "docker-compose": {
-    "managerFilePatterns": ["/docker-compose\\.yml\\.j2$/"]
+    "managerFilePatterns": [
+      "/docker-compose\\.yml\\.j2$/"
+    ]
   },
   "customManagers": [
     {
       "description": "A '# renovate: datasource=docker depName=<image>' comment above any '<name>_version:' key in a role's defaults/main.yml",
       "customType": "regex",
-      "managerFilePatterns": ["/defaults/main\\.yml$/"],
+      "managerFilePatterns": [
+        "/defaults/main\\.yml$/"
+      ],
       "matchStrings": [
         "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\s*\\n\\s*\\w+_version:\\s*['\"]?(?<currentValue>[^'\"\\s#]+)"
       ]
-    }
-  ],
-  "packageRules": [
-    {
-      "description": "Immich's Postgres and Valkey are pinned by digest to match what that Immich release was tested with. Take them from Immich's release notes, not from here.",
-      "matchPackageNames": ["ghcr.io/immich-app/postgres", "docker.io/valkey/valkey"],
-      "enabled": false
     }
   ]
 }

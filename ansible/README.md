@@ -117,7 +117,7 @@ To see what is newer, run `just outdated`. It reads the pinned versions (the `FR
 2. Edit that one line (`just tags <image>` lists the tags you can choose from).
 3. `just preview <service>`, then `just deploy <service>`.
 
-Floating tags (`latest`, `release`, `nightly`) are not checked, because there is no version to compare. Pin one to a real version, and add a `# renovate: datasource=docker depName=<image>` comment above its `*_version:` key, to include it. Immich's Postgres and Valkey are pinned by digest and skipped on purpose; take those from Immich's release notes. The config is `renovate.json` at the repo root.
+Floating tags (`latest`, `release`, `nightly`) are not checked, because there is no version to compare. Pin one to a real version, and add a `# renovate: datasource=docker depName=<image>` comment above its `*_version:` key, to include it. It only sees `FROM` lines, literal `image:` lines and annotated variables. Images that appear only in a compose template with a templated tag (Immich's Postgres and Valkey, Caddy and garage-webui in the Garage file) are not checked; take Immich's from its release notes. The config is `renovate.json` at the repo root.
 
 Copyparty and cloudflared build their own images from local Dockerfiles (`build: always`) and always rebuild, so this doesn't apply to them. Copyparty's base image is pinned (`FROM copyparty/iv:<version>` in `roles/copyparty/files/Dockerfile`), so to update it, change that tag (check the [releases](https://github.com/9001/copyparty/releases) first) and redeploy.
 
