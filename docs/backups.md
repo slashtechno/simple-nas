@@ -49,28 +49,19 @@ rclone config
 # For the auth step, rclone gives you a URL — open it on your Mac and paste the token back
 ```
 
-The shared default Google OAuth client can hit `403 RATE_LIMIT_EXCEEDED` on a large
-first backup (the cloud script already throttles via `restic_cloud_rclone_args` to
-reduce this). If it keeps happening, get your own OAuth client: create a project +
-OAuth client ID (Desktop app) in [Google Cloud Console](https://console.cloud.google.com/),
-then `rclone config` → edit `gdrive-nas` → paste the client ID/secret (forces a one-time
-re-auth in the browser).
+The shared default Google OAuth client can hit `403 RATE_LIMIT_EXCEEDED` on a large first backup (the cloud script already throttles via `restic_cloud_rclone_args` to reduce this). If it keeps happening, get your own OAuth client: create a project + OAuth client ID (Desktop app) in [Google Cloud Console](https://console.cloud.google.com/), then `rclone config` → edit `gdrive-nas` → paste the client ID/secret (forces a one-time re-auth in the browser).
 
 ---
 
 ## Web dashboard (read-only)
 
-The `backup-status` role deploys a small read-only dashboard — job status, drive
-mount state, and the snapshot list for both repos:
+The `backup-status` role deploys a small read-only dashboard — job status, drive mount state, and the snapshot list for both repos:
 
 ```
 http://<your-pi-tailscale-host>:<backup_status_port>   # default port 8091
 ```
 
-Tailscale-only, no login needed: the container gets a **read-only** mount of the
-repo and password file, so it has no code path that can write to or delete a backup.
-Every action opens the exact SSH command to copy and run yourself. Disable with
-`backup_status_enabled: false`.
+Tailscale-only, no login needed: the container gets a **read-only** mount of the repo and password file, so it has no code path that can write to or delete a backup. Every action opens the exact SSH command to copy and run yourself. Disable with `backup_status_enabled: false`.
 
 ---
 
@@ -116,8 +107,7 @@ restic dump <snapshot-id> <path-in-snapshot> > recovered-file   # extract one fi
 
 ## Restore: files
 
-`--target` needs real free space — `/tmp` is tmpfs (RAM, a couple GB) and `/` is
-often nearly full, so prefer `/mnt/t7` or `/mnt/backup`.
+`--target` needs real free space — `/tmp` is tmpfs (RAM, a couple GB) and `/` is often nearly full, so prefer `/mnt/t7` or `/mnt/backup`.
 
 ```bash
 # Restore into a scratch path to inspect first (safe — doesn't touch originals)
@@ -127,8 +117,7 @@ restic restore latest --include /mnt/t7/files --target /mnt/t7/restore-scratch
 restic restore latest --target /
 ```
 
-**Restoring to another machine instead** (e.g. a USB drive on your Mac) skips the
-Pi's disk entirely — stream the snapshot as a tar over the same SSH connection:
+**Restoring to another machine instead** (e.g. a USB drive on your Mac) skips the Pi's disk entirely — stream the snapshot as a tar over the same SSH connection:
 
 ```bash
 ssh your-user@your-pi-ip 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITORY=/mnt/backup/restic-repo restic dump latest / --archive tar' \
@@ -136,10 +125,7 @@ ssh your-user@your-pi-ip 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSIT
 tar -xf /Volumes/YourDrive/snapshot.tar -C /Volumes/YourDrive/restored/
 ```
 
-No need for Tailscale's `tailcat` — restic only runs on the Pi, plain SSH already
-does the job. Speed depends on `tailscale status` showing `direct` vs `relay`.
-exFAT/FAT32 destinations lose Unix permissions/symlinks on extract — use APFS or
-ext4 if that matters.
+No need for Tailscale's `tailcat` — restic only runs on the Pi, plain SSH already does the job. Speed depends on `tailscale status` showing `direct` vs `relay`. exFAT/FAT32 destinations lose Unix permissions/symlinks on extract — use APFS or ext4 if that matters.
 
 ---
 
