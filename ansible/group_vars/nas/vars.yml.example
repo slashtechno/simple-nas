@@ -41,7 +41,7 @@ service_dumps_dir: "{{ backup_drive }}/service-dumps"
 # starts a new snapshot group; the old group's last snapshots stay until you
 # run `restic forget --path <old path> ...` by hand (see docs/plans/drive-migration.md).
 # To skip something, add it to restic_local_excludes instead: excludes never split a group.
-restic_local_paths: "{{ [main_drive, fast_drive] | unique }}"
+restic_local_paths: "{{ [primary_drive, fast_drive] | unique }}"
 # Extra patterns for the local backup to skip, added AFTER the defaults in
 # roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
 # restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
@@ -81,9 +81,9 @@ restic_cache_dir: "{{ fast_drive }}/restic-cache"
 # Service data split across drive roles: random-IO data (Docker, DBs,
 # configs) on the fast drive; bulk data (photos, files) on the primary.
 # When both roles resolve to the same drive, this changes nothing on disk.
-immich_upload_location: "{{ main_drive }}/photos"
+immich_upload_location: "{{ primary_drive }}/photos"
 immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
-copyparty_files_dir: "{{ main_drive }}/files"
+copyparty_files_dir: "{{ primary_drive }}/files"
 copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
 copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
 gitea_data_dir: "{{ fast_drive }}/docker/gitea"
@@ -93,40 +93,10 @@ homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
 garage_data_dir: "{{ fast_drive }}/docker/garage"
 crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 
-# --- Drives ---
-# Drives are the source of truth: every nas_drives entry declares which
-# roles it fills via `roles:` (a list — one drive can hold several roles;
-# a single-drive NAS is one entry with roles: [fast, primary, backup]).
-# Allowed roles, exactly one claim each (validated by the storage role;
-# unknown role names and double claims fail the deploy):
-#   fast    — SSD; random-IO data (Docker, Immich DB, configs) + caches
-#             (restic cache, copyparty hist/thumbnails)
-#   primary — bulk data (photos, files)
-#   backup  — restic local repo, service dumps, logs
-# fast_drive, main_drive and backup_drive are worked out from these entries in derived.yml.
-# The example below uses a 2-drive layout: fast and primary share one drive until more are added.
-# fstab entries — idempotent, no-ops if drives already mounted.
-# Find UUIDs on the Pi: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
-nas_drives:
-  - uuid: "your-fast-drive-uuid"
-    mount: /mnt/t7
-    fstype: ext4
-    options: defaults,nofail   # nofail = Pi still boots if drive is unplugged
-    roles: [fast, primary]     # one drive doing both roles (2-drive setup)
-  - uuid: "your-backup-drive-uuid"
-    mount: /mnt/backup
-    fstype: ext4
-    options: defaults,nofail
-    roles: [backup]
-# 3-drive example (fast split onto its own SSD):
-#   T7/SSD entry: roles: [fast]
-#   large data drive /mnt/main: roles: [primary]
-#   backup drive: roles: [backup]
-
 # --- Copyparty ---
 copyparty_user: "{{ vault_copyparty_user }}"
 copyparty_pass: "{{ vault_copyparty_pass }}"
-copyparty_collab_dir: "{{ main_drive }}/collab"   # shared directory for friends
+copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
 copyparty_port: 3923
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at

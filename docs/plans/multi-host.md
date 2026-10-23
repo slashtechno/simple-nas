@@ -150,7 +150,7 @@ The same restic pattern on every host; only the inputs change: what to back up, 
 - Pi microSD to a 128GB USB drive: restic backs up files (`/etc`, `/opt`, home), not a bootable image. A bootable clone is a different tool (`rpi-clone`).
 - x64 256GB SSD to its 512GB SSD: same pattern.
 - A second drive in the same machine covers drive failure, not theft or fire. Only the NAS has an offsite copy.
-- Checked: the `backup` and `backup-status` roles never read `nas_drives`. They use `backup_drive` and `main_drive` (derived from it), `restic_local_paths` and the repository settings, so a host needs `nas_drives` entries with a `backup` role, and its own `restic_local_paths`. Nothing in the role is NAS-specific.
+- Checked: the `backup` and `backup-status` roles never read `drives`. They use `backup_drive` and `primary_drive` (derived from it), `restic_local_paths` and the repository settings, so a host needs `drives` entries with a `backup` role, and its own `restic_local_paths`. Nothing in the role is NAS-specific.
 
 ## Base roles
 
@@ -175,7 +175,7 @@ The owner asked that every option, its default and its meaning be easy to find a
 | Per-host setting (wifi, drives, data root) | `host_vars/<host>/vars.yml` and an example | Owner |
 | Secrets | `vault.yml` files and examples | Owner |
 | Image and tool versions | `group_vars/all/versions.yml` | Owner (`just tags`) |
-| **Derived values** (`nas_drive_mounts`, `fast_drive`, `main_drive`, `backup_drive`) | a tracked `group_vars/nas/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
+| **Derived values** (`drive_mounts`, `fast_drive`, `primary_drive`, `backup_drive`) | a tracked `group_vars/nas/derived.yml` | **Nobody**: Jinja logic does not belong in the file the owner copies and edits |
 
 **One comment shape for every option**, in defaults files and example files alike, modeled on the restic comments already in `vars.yml.example`:
 
@@ -235,7 +235,7 @@ Wanted: a lightweight Coolify-like layer for apps the owner starts by hand, with
 
 ## Cutover from the Pi 4 to pi5
 
-Everything under `/mnt/t7` (Docker app data, Immich photos and database, Copyparty files, Homebridge, Gitea, Crafty) and `/mnt/backup` moves by plugging the drives into pi5; `nas_drives` uses UUIDs. By step 4, cloudflared and rclone come from the vault. What is left on the Pi 4's microSD:
+Everything under `/mnt/t7` (Docker app data, Immich photos and database, Copyparty files, Homebridge, Gitea, Crafty) and `/mnt/backup` moves by plugging the drives into pi5; `drives` uses UUIDs. By step 4, cloudflared and rclone come from the vault. What is left on the Pi 4's microSD:
 
 | State | What to do |
 |---|---|

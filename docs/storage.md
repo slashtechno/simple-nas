@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Every `nas_drives` entry in `group_vars/nas/vars.yml` lists the `roles:` it fills. One drive can hold several roles (a one-drive NAS is `roles: [fast, primary, backup]` on a single entry). Each role is claimed by exactly one drive; the storage role's assert fails the deploy on duplicates or unknown names.
+Every `drives` entry in `group_vars/nas/vars.yml` lists the `roles:` it fills. One drive can hold several roles (a one-drive NAS is `roles: [fast, primary, backup]` on a single entry). Each role is claimed by exactly one drive; the storage role's assert fails the deploy on duplicates or unknown names.
 
 | Role | Holds |
 |---|---|
@@ -8,10 +8,10 @@ Every `nas_drives` entry in `group_vars/nas/vars.yml` lists the `roles:` it fill
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `main_drive` and `backup_drive`, worked out from `nas_drives` in `group_vars/nas/derived.yml`. When roles share a drive nothing changes on disk. Adding a dedicated drive for a role later moves that role's paths to the new mount point, and you move the data there once.
+Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/nas/derived.yml`. When roles share a drive nothing changes on disk. Adding a dedicated drive for a role later moves that role's paths to the new mount point, and you move the data there once.
 
 To add or replace a drive:
-1. Format it and add or point a `nas_drives` entry at it (a new UUID, either on the same mount or a new `mount:` with updated `roles`).
+1. Format it and add or point a `drives` entry at it (a new UUID, either on the same mount or a new `mount:` with updated `roles`).
 2. `just deploy storage`.
 3. Copy the data over, for example `rsync -aHAX`.
 
@@ -27,7 +27,7 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 
 ### Put it on a drive
 
-1. Mount the drive (it must be in `nas_drives`, or already mounted on a non-NAS host) and create nothing by hand.
+1. Mount the drive (it must be in `drives`, or already mounted on a non-NAS host) and create nothing by hand.
 2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (documented in `group_vars/all/vars.yml.example`).
 3. Stop everything that holds the old location. `docker.socket` is included because socket activation would restart Docker in the middle of the change:
    ```bash

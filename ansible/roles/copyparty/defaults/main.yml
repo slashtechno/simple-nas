@@ -12,5 +12,5 @@ copyparty_sftp_port: 3922
 
 # A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on
 # different drives; with one drive it would just be a folder of /. See docs/storage.md.
-copyparty_fast_enabled: "{{ fast_drive != main_drive }}"
+copyparty_fast_enabled: "{{ fast_drive != primary_drive }}"
 copyparty_fast_dir: "{{ fast_drive }}/fast"

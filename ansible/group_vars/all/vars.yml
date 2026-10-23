@@ -6,6 +6,11 @@ timezone: America/Chicago
 # Where compose projects and helper scripts are deployed on the host.
 nas_base_dir: /opt/nas
 nas_scripts_dir: "{{ nas_base_dir }}/scripts"
+# Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
+storage_enabled: true
+# This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
+# (explained in host_vars/vars.yml.example).
+drives: []
 # Name of the shared Docker network the services join.
 nas_network: nas-services
 # Docker image pull policy. Allowed: missing, always. Default: missing.

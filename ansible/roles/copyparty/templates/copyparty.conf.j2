@@ -95,7 +95,7 @@
     r: {{ copyparty_user }}
   flags:
     -e2d
-{% for drive in nas_drives if drive.mount != main_drive %}
+{% for drive in drives if drive.mount != primary_drive %}
 [/drives/{{ drive.mount | basename }}]
   /host/mnt/{{ drive.mount | basename }}
   accs:

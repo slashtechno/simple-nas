@@ -1,28 +1,35 @@
 ---
-- name: Validate drive role map
+# Every host: a role is claimed at most once and only known roles are used.
+- name: Validate the drive roles
   ansible.builtin.assert:
     that:
-      - nas_drive_mounts.fast is match('^/')
-      - nas_drive_mounts.primary is match('^/')
-      - nas_drive_mounts.backup is match('^/')
-      - (nas_drives | map(attribute='roles', default=[]) | flatten | length)
-        == (nas_drives | map(attribute='roles', default=[]) | flatten | unique | length)
-      - (nas_drives | map(attribute='roles', default=[]) | flatten)
+      - (drives | map(attribute='roles', default=[]) | flatten | length)
+        == (drives | map(attribute='roles', default=[]) | flatten | unique | length)
+      - (drives | map(attribute='roles', default=[]) | flatten)
         | difference(['fast', 'primary', 'backup']) | length == 0
-      - "['fast', 'primary', 'backup'] | difference(nas_drives | map(attribute='roles', default=[]) | flatten) | length == 0"
     fail_msg: >-
-      Invalid nas_drives role map: each role (fast/primary/backup) must be
-      claimed by exactly one drive (an unclaimed role would silently use a folder on the microSD),
-      unknown role names are not allowed
-      (allowed: fast, primary, backup, any drive may hold several).
-      Current map: {{ nas_drive_mounts }}
+      Invalid drive roles in `drives`: a role (fast, primary, backup) can be claimed by only one drive,
+      and no other role names exist. Any one drive may hold several roles.
+      Current map: {{ drive_mounts }}
+    quiet: true
+
+# The NAS stores everything on its drives, so there all three roles must exist. Otherwise a service
+# would silently write to an empty folder on the microSD card.
+- name: Validate that the NAS has a drive for every role
+  ansible.builtin.assert:
+    that: drive_mounts.values() | select('equalto', '') | list | length == 0
+    fail_msg: >-
+      This host is in the `nas` group, so `drives` in host_vars/{{ inventory_hostname }}/vars.yml must give
+      each of fast, primary and backup to a drive. Current map: {{ drive_mounts }}
+    quiet: true
+  when: "'nas' in group_names"
 
 - name: Create mount points
   ansible.builtin.file:
     path: "{{ item.mount }}"
     state: directory
     mode: "0755"
-  loop: "{{ nas_drives }}"
+  loop: "{{ drives }}"
 
 - name: Add drives to fstab
   ansible.posix.mount:
@@ -31,7 +38,7 @@
     fstype: "{{ item.fstype }}"
     opts: "{{ item.options }}"
     state: mounted
-  loop: "{{ nas_drives }}"
+  loop: "{{ drives }}"
 
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:
@@ -39,7 +46,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     state: directory
-  loop: "{{ nas_drives }}"
+  loop: "{{ drives }}"
 
 - name: Install udev rule to trigger a remount when a drive reappears
   ansible.builtin.copy:
@@ -49,6 +56,7 @@
     group: root
     mode: "0644"
   notify: Reload udev rules
+  when: drives | length > 0
 
 - name: Install remount systemd service (self-heals a drive that drops offline and reconnects)
   ansible.builtin.copy:
@@ -58,9 +66,10 @@
     group: root
     mode: "0644"
   notify: Reload systemd daemon
+  when: drives | length > 0
 
-# Drive-level layout only. Each service role creates its own data directories.
-- name: Create NAS directory structure
+# The NAS's drive-level layout. Each service role creates its own data directories below these.
+- name: Create the NAS directory structure
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
@@ -73,6 +82,7 @@
     - "{{ restic_repo_path }}"
     - "{{ backup_logs_dir }}"
     - "{{ service_dumps_dir }}"
+  when: "'nas' in group_names"
 
 - name: Create /opt/nas base directory
   ansible.builtin.file:

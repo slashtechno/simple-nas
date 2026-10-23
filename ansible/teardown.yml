@@ -179,14 +179,21 @@
           ansible.builtin.command: udevadm control --reload-rules
           changed_when: true
 
+    # Same guard as the network role's revert: only where the link was set up (its dnsmasq file exists).
+    - name: Check whether the direct link is set up
+      tags: [network]
+      ansible.builtin.stat:
+        path: /etc/dnsmasq.d/direct-link.conf
+      register: teardown_direct_link_conf
+
     - name: Remove direct Ethernet link config
       tags: [network]
+      when: teardown_direct_link_conf.stat.exists
       block:
         - name: Remove static direct-link profile
           community.general.nmcli:
             conn_name: direct-link
             state: absent
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Re-enable auto-connect on the default eth0 DHCP profile
           community.general.nmcli:
@@ -195,20 +202,17 @@
             ifname: "{{ direct_link_iface }}"
             autoconnect: true
             state: present
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove direct-link dnsmasq config
           ansible.builtin.file:
             path: /etc/dnsmasq.d/direct-link.conf
             state: absent
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Stop and disable dnsmasq
           ansible.builtin.systemd:
             name: dnsmasq
             state: stopped
             enabled: false
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
     # ── Shared infrastructure (only removed when ALL services are gone) ────
 

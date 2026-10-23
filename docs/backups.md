@@ -18,7 +18,7 @@ Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). 
 
 | Data | Local (daily, HDD) | Cloud (Sunday, Google Drive) |
 |---|---|---|
-| Photos, Copyparty files (`main_drive`) | Yes | No |
+| Photos, Copyparty files (`primary_drive`) | Yes | No |
 | Service data under `fast_drive/docker` (Gitea, pics, Homebridge, Garage, Crafty, Copyparty config) | Yes | Only Copyparty config |
 | Immich database | Dump only (raw Postgres dir excluded) | Dump only |
 | Gitea database and repos | Dump, plus raw data (SSH host keys excluded) | Dump only |

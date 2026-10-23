@@ -11,9 +11,9 @@
 {{ copyparty_config_dir }}/copyparty
 {{ copyparty_hist_dir }}
 {{ restic_cache_dir }}
-{{ main_drive }}/lost+found
-{{ main_drive }}/immich_model_cache
-{{ main_drive }}/**/.cache
+{{ primary_drive }}/lost+found
+{{ primary_drive }}/immich_model_cache
+{{ primary_drive }}/**/.cache
 # Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
 # still backed up. Add "!{{ crafty_data_dir }}/backups" to restic_local_excludes to back them up too.
 {{ crafty_data_dir }}/backups

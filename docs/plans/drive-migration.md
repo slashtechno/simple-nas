@@ -24,7 +24,7 @@ Hardware notes:
 ## 1. Backup drive swap (low risk, do first)
 
 1. Format the ST4000NM0033 as ext4 on the Pi; grab its UUID.
-2. Point the existing `nas_drives` backup entry's `uuid:` at it (mount stays `/mnt/backup`).
+2. Point the existing `drives` backup entry's `uuid:` at it (mount stays `/mnt/backup`).
 3. `ansible-playbook site.yml --tags storage,backup --ask-vault-pass`
    - storage role wipes/creates nothing destructive; fstab entry is idempotent.
    - `restic init` runs automatically (new repo on the new drive).
@@ -36,7 +36,7 @@ Hardware notes:
 
 ## 2. Primary drive swap + fast/primary split
 
-1. Format the P10 as ext4 → `nas_drives` entry: `mount: /mnt/main`, `roles: [primary]`. Trim the T7 entry to `roles: [fast]`.
+1. Format the P10 as ext4 → `drives` entry: `mount: /mnt/main`, `roles: [primary]`. Trim the T7 entry to `roles: [fast]`.
 2. `ansible-playbook site.yml --tags storage` — mounts `/mnt/main`, creates the dir tree there.
 3. Stop services for a consistent copy:
    ```bash
@@ -82,4 +82,4 @@ Decision rule: kernel ≥ 6.1 → Option A is safe and saves an evening; Option 
 
 ## Backup follow-up after the drive split
 
-The local backup lists `main_drive` and `fast_drive` as separate paths. When they stop being the same drive, the first backup afterwards creates a new restic snapshot group. Once it has run, remove the old `/mnt/t7` group's snapshots by hand (`restic snapshots`, then `restic forget <id> --prune`); `forget` leaves them alone.
+The local backup lists `primary_drive` and `fast_drive` as separate paths. When they stop being the same drive, the first backup afterwards creates a new restic snapshot group. Once it has run, remove the old `/mnt/t7` group's snapshots by hand (`restic snapshots`, then `restic forget <id> --prune`); `forget` leaves them alone.
