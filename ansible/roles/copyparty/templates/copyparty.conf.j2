@@ -33,9 +33,9 @@
   xff-hdr: cf-connecting-ip
   rproxy: 1
   shr: /shares
-{% if sftp_enabled | bool %}
+{% if copyparty_sftp_enabled | bool %}
   # sftp-pw reuses [accounts] below, no separate credential store.
-  sftp: {{ sftp_port }}
+  sftp: {{ copyparty_sftp_port }}
   sftp-pw
 {% endif %}
 
@@ -44,7 +44,7 @@
 {% for u in vault_copyparty_collab_users | default([]) %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
-{% if sftp_enabled | bool %}
+{% if copyparty_sftp_enabled | bool %}
   {{ vault_pocketpi_nas_user }}: {{ vault_pocketpi_nas_pass }}
 {% endif %}
 {% for s in copyparty_service_accounts | default([]) %}
@@ -55,7 +55,7 @@
   /files
   accs:
     A: {{ copyparty_user }}
-{% if sftp_enabled | bool %}
+{% if copyparty_sftp_enabled | bool %}
     rwmd: {{ vault_pocketpi_nas_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
 
