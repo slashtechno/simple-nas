@@ -38,18 +38,25 @@ Caveats:
 
 ---
 
-## One-time setup: rclone (Google Drive)
+## Offsite repository (`restic_cloud_repository`)
 
-Ansible sets up restic automatically, but rclone OAuth needs a browser. Run this on the Pi:
+The URL scheme picks the backend. The deploy runs `restic init` on it and **fails if that fails** (no rclone remote, bad credentials, unreachable server), so a cloud backup that could never run is noticed at deploy time. An existing repository is left alone.
 
-```bash
-rclone config
-# n) New remote → name: gdrive-nas → type: Google Drive
-# scope: 3 (drive.file — rclone-created files only)
-# For the auth step, rclone gives you a URL — open it on your Mac and paste the token back
-```
+### Google Drive (default)
 
-The shared default Google OAuth client can hit `403 RATE_LIMIT_EXCEEDED` on a large first backup (the cloud script already throttles via `restic_cloud_rclone_args` to reduce this). If it keeps happening, get your own OAuth client: create a project + OAuth client ID (Desktop app) in [Google Cloud Console](https://console.cloud.google.com/), then `rclone config` → edit `gdrive-nas` → paste the client ID/secret (forces a one-time re-auth in the browser).
+Google Drive goes through rclone, whose login needs a browser. The token lives in the vault, so a new host needs no manual rclone setup:
+
+1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`. Sign in; it prints a JSON token.
+2. Put that JSON in `vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
+3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive-nas` remote **only if the file does not exist**. rclone writes refreshed tokens back into that file, so overwriting it on every deploy would replace a fresh token with the old one.
+
+To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive-nas:` there.
+
+The remote uses rclone's default Google OAuth client, which is shared with every rclone user and can hit `403 RATE_LIMIT_EXCEEDED` on a large first backup. The cloud script throttles with `restic_cloud_rclone_args` for that reason. A custom OAuth client is not used (owner decision); if the throttle is not enough, `rclone config` → edit `gdrive-nas` → client ID/secret is the way to add one. Google also expires the refresh token after 7 days for an app in "Testing" status, and after 6 months unused; if cloud backups stop with an auth error, re-run step 1 and replace `rclone.conf`.
+
+### SFTP (if you want it later)
+
+Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the host's SSH client, so on the NAS user (the one running cron) set up key login to that server by hand: a key without a passphrase in `~/.ssh`, and the server's host key in `~/.ssh/known_hosts` (`ssh-keyscan host >> ~/.ssh/known_hosts`, checked against the fingerprint). Without the host key the cron run waits on a prompt and fails. Nothing in the repo manages this yet; it is added when there is a real SFTP target.
 
 ---
 

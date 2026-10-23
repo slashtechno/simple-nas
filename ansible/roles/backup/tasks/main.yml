@@ -64,19 +64,31 @@
   become: true
   become_user: "{{ ansible_user }}"
 
-# The cloud repo needs rclone's one-time OAuth setup first (see docs/backups.md) —
-# on a fresh Pi that hasn't done that yet, skip init rather than fail the
-# whole deploy; it'll pick up automatically on a later run once configured.
-- name: Check whether the gdrive-nas rclone remote is configured
-  ansible.builtin.command:
-    cmd: rclone listremotes
-  check_mode: false   # read-only probe; the cloud init task reads its stdout
-  register: rclone_remotes
-  changed_when: false
-  failed_when: false
-  become: true
-  become_user: "{{ ansible_user }}"
+# Google Drive is reached through rclone, whose remote needs an OAuth token. It comes from the vault
+# (vault_rclone_gdrive_token, made with `rclone authorize` on a computer with a browser). The file is
+# written only when it does not exist: rclone writes refreshed tokens back into it, so overwriting
+# it on every deploy would replace a fresh token with the stale one from the vault.
+- name: Create the rclone config directory
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.config/rclone"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0700"
+  when: vault_rclone_gdrive_token | default('') | length > 0
 
+- name: Write the rclone Google Drive remote (only if there is no rclone.conf yet)
+  ansible.builtin.template:
+    src: rclone.conf.j2
+    dest: "/home/{{ ansible_user }}/.config/rclone/rclone.conf"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+    force: false
+  when: vault_rclone_gdrive_token | default('') | length > 0
+
+# A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
+# unreachable server) fails the deploy, so a backup that would never run is noticed now.
 - name: Initialize cloud restic repository (idempotent)
   ansible.builtin.command:
     cmd: >-
@@ -91,7 +103,6 @@
     - "'already exists' not in restic_cloud_init.stderr"
   become: true
   become_user: "{{ ansible_user }}"
-  when: "'gdrive-nas:' in rclone_remotes.stdout"
 
 - name: Schedule daily local backup (2 AM)
   ansible.builtin.cron:
