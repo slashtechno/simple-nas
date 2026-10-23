@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml` (`group_vars/all/vars.yml` sets `drives: []` for hosts that list none). Each entry has `uuid`, `mount`, `fstype`, `options` and, optionally, the `roles:` it fills. One drive can hold several roles. Each role is claimed by at most one drive per host. The storage role runs on every server and its assert fails the deploy on duplicate claims or unknown role names. Hosts in the `nas` group must claim all three roles.
+Drives are listed per host, in `host_vars/<host>/vars.yml` (`group_vars/all/vars.yml` sets `drives: []` for hosts that list none). Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:`, the roles it fills. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Hosts in the `nas` group must claim all three roles.
 
 | Role | Holds |
 |---|---|
@@ -8,7 +8,7 @@ Drives are listed per host, in `host_vars/<host>/vars.yml` (`group_vars/all/vars
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. A role nobody claimed is an empty string. When roles share a drive nothing changes on disk. Adding a dedicated drive for a role later moves that role's paths to the new mount point, and you move the data there once.
+Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. A role nobody claimed is an empty string. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
 
 ## Examples
 
@@ -52,16 +52,18 @@ The `backup` role needs an entry with a `uuid`, or the deploy fails. Downsides o
 
 ## Plugged-in USB drives (`/drives`)
 
-Set `usb_automount_enabled: true` (already on in `group_vars/nas`) and any USB drive or card reader you plug in appears in Copyparty under `/drives/<label>`. A camera's SD card in a reader works. The host mounts it at `/run/media/system/<label>`.
+Set `usb_automount_enabled: true` (on in `group_vars/nas`, off elsewhere) and any USB drive or card reader you plug in appears in Copyparty under `/drives/<label>`. A camera's SD card in a reader works. The host mounts it at `/run/media/system/<label>`.
 
 - It is read-only. To change or delete files on it, set `usb_automount_writable: true`.
 - Programs on it cannot be run.
 - Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
 - After unplugging, its empty folder stays until the next reboot or up to a day. Unplugging a writable drive without unmounting can corrupt it.
-- Re-deploy to apply: `just deploy storage copyparty`.
+- Re-deploy to apply: `just deploy storage,copyparty`.
+
+## Adding, replacing or retiring a drive
 
 To add or replace a drive:
-1. Format it and add or point a `drives` entry at it (a new UUID, either on the same mount or a new `mount:` with updated `roles`).
+1. Format it and add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated).
 2. `just deploy storage`.
 3. Copy the data over, for example `rsync -aHAX`.
 
@@ -79,29 +81,29 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 
 ### Put it on a drive
 
-1. Mount the drive (add it to `drives` in the host's `host_vars`) and create nothing by hand.
-2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (documented in `group_vars/all/vars.yml.example`).
-3. Stop everything that holds the old location. `docker.socket` is included because socket activation would restart Docker in the middle of the change:
+1. Add the drive to `drives` in the host's `host_vars` and deploy it (`just deploy storage`).
+2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (see `group_vars/all/vars.yml.example`).
+3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change):
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service
    ```
-4. Deploy the base roles (`just deploy common --limit <host>`). This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`, and a `RequiresMountsFor=` drop-in for both services, so neither starts before the drive is mounted.
-5. Start them: `sudo systemctl start containerd.service docker.service`.
-6. `just deploy` again so compose pulls the images and recreates the containers.
-7. When the stacks are healthy, delete the old `/var/lib/docker` and `/var/lib/containerd` contents to free the microSD.
+4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`, and a `RequiresMountsFor=` drop-in for both services, so neither starts before the drive is mounted.
+5. `sudo systemctl start containerd.service docker.service`.
+6. `just deploy --limit <host>`, so compose pulls the images and recreates the containers.
+7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the microSD.
 
-Going back is the same procedure with `docker_data_root: ""`. Nothing is copied: layers are not moved with `rsync`, because overlay whiteouts, hardlinks and extended attributes are where copies go wrong. A change leaves the old directory behind as unused space.
+To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space.
 
-Run the stop step by hand rather than relying on handlers: Ansible only restarts a service when a task reports a change, so a run that failed after editing the file never restarts it on the next run.
+Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
 
-### What was tested
+### Not yet verified
 
-On pi5 (2026-10-23), with a directory on the microSD standing in for a drive: setting `docker_data_root` moved `Docker Root Dir` and containerd's `root`, a pulled image's layers landed under the data root, removing the setting reverted both, and a second deploy changed nothing. **Not yet tested:** that a missing `nofail` drive keeps Docker from starting. Test it after the drive move: reboot pi5 with the drive unplugged; `systemctl is-active docker containerd` must say `inactive`, not run on a directory on the microSD.
+- A missing `nofail` drive keeps Docker from starting. Reboot with the drive unplugged; `systemctl is-active docker containerd` must say `inactive`, not run from a directory on the microSD.
 
 ### Gitea runner registration
 
-The runner's registration used to be an anonymous Docker volume. It is now a bind mount (`gitea_runner_data_dir`, on the fast drive), so Docker keeps no state of its own. Nothing needs copying when you deploy this on a host that already ran the old runner: the runner starts with an empty directory and registers again with the token from the vault. The old registration then shows as an offline runner in Gitea's admin page (Site Administration, Actions, Runners); delete it there.
+The runner keeps its registration in `gitea_runner_data_dir` (on the fast drive), a bind mount. A new directory starts empty and registers again with the token from the vault. The old registration then shows as an offline runner in Gitea (Site Administration, Actions, Runners); delete it there.
 
 ### Leftover volumes
 
-`docker volume ls` on the Pi 4 shows volumes from older project names. Check that no container mounts one (`docker ps -a --filter volume=<name>`), then remove it by name with `docker volume rm`. Do not use `docker volume prune -a`: it also removes named volumes whose containers happen to be stopped, such as `immich_model-cache`.
+`docker volume ls` can list volumes from older project names. Check that no container mounts one (`docker ps -a --filter volume=<name>`), then `docker volume rm <name>`. Do not use `docker volume prune -a`: it also removes named volumes of stopped containers, such as `immich_model-cache`.

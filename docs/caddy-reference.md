@@ -1,39 +1,22 @@
 # caddy-docker-proxy reference
 
-A cheat sheet for the optional reverse proxy in [plans/multi-host.md](./plans/multi-host.md). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` (opt-in: `caddy_enabled`).
+Label syntax for the optional reverse proxy (design in [plans/multi-host.md](./plans/multi-host.md)). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` (opt-in: `caddy_enabled`).
 
 ## What it does
 
 It watches Docker. A container's **labels** become Caddy configuration, and Caddy reloads on its own. Adding an app means adding labels to its compose file and starting it; nothing else to edit.
 
-## Run it
+## What `roles/caddy` deploys
 
-```yaml
-services:
-  caddy:
-    image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine   # pinned in versions.yml
-    ports:
-      - 80:80
-      - 443:443/tcp
-      - 443:443/udp
-    environment:
-      - CADDY_INGRESS_NETWORKS=nas-services
-    networks:
-      - nas-services
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - caddy_data:/data        # certificates; losing it means re-issuing them
-    restart: unless-stopped
+Runs on hosts in `servers_general` when `caddy_enabled: true` (default false). The image is pinned in `versions.yml` (`caddy_image`); the README's `ci-alpine` tag is an unstable CI build, so use a version tag.
 
-networks:
-  nas-services:
-    external: true              # the network role creates it on every server
+| Setting | Default | Meaning |
+|---|---|---|
+| `caddy_http_port` | 80 | Host port for HTTP |
+| `caddy_https_port` | 443 | Host port for HTTPS (TCP and UDP) |
+| `caddy_data_dir` | `/opt/nas/caddy/data` | Certificates and state; losing it means certificates are issued again |
 
-volumes:
-  caddy_data: {}
-```
-
-The README shows `ci-alpine`, a CI build with no stability guarantee. Use a version tag. The `roles/caddy` compose file publishes `caddy_http_port` and `caddy_https_port` on the host. Behind cloudflared you can ignore them: cloudflared reaches `caddy:80` over the Docker network.
+The container joins `nas-services` (`nas_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
 ## Label syntax
 
@@ -59,22 +42,22 @@ services:
 | `caddy_0`, `caddy_1` (with matching `caddy_0.reverse_proxy`, ...) | Separate site blocks in one container |
 | `caddy_ingress_network: name` | Use this network for `{{upstreams}}` on this container |
 
-Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. The README has no basic-auth example, so check that one against the output of the Caddyfile it generates.
+Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. The README has no basic-auth example; check the generated Caddyfile before relying on it.
 
 ## Gotchas for this repo
 
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
-- **Shared network.** Every stack declares the external `nas-services` network (`nas_network`). A container not on it is invisible to `{{upstreams}}`.
+- **Shared network.** A stack must declare the external `nas-services` network (`nas_network`) and join it; a container not on it is invisible to `{{upstreams}}`.
 - **TLS.**
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.
   - Avoid custom Caddy builds with DNS-challenge plugins. They add a build to maintain.
-- **Docker socket.** The proxy has full control of Docker through it. It is on a trusted home host, but anything that can set labels can publish a route.
-- **Modes.** The default (standalone: controller and server in one container) is the one to use. The controller/server split is for Swarm clusters.
+- **Docker socket.** The proxy has full control of Docker through it. Anything that can set labels on a container can publish a route.
+- **Modes.** The role runs the standalone mode (controller and server in one container). The controller/server split is for Swarm clusters.
 
 ## With cloudflared
 
-No router port forwarding is needed. Public hostnames are explicit entries in `cloudflared_ingress` (see "Public hostnames for ad-hoc apps" in the [multi-host plan](./plans/multi-host.md)); a wildcard to Caddy was considered and not chosen, because every labeled container would become public.
+No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress` ([design](./plans/multi-host.md#public-hostnames-for-ad-hoc-apps)); there is no wildcard to Caddy, because every labeled container would become public. Today `cloudflared` is deployed only on the `nas` group, so publishing an app from a `servers_general` host is part of the multi-host plan, not built.
 
 For a published app, point the entry at Caddy and use an `http://` site address, since Cloudflare terminates TLS:
 
@@ -84,4 +67,4 @@ labels:
   caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
-Tested on pi5 (2026-10-23): a container with `caddy: http://whoami.test` and `caddy.reverse_proxy: "{{upstreams 80}}"` answered `200` over plain HTTP with no redirect, so no global `auto_https` label is needed as long as the site address starts with `http://`.
+An `http://` site address gets a plain `200` with no redirect, so no global `auto_https` label is needed (checked on pi5 with `caddy: http://whoami.test`).

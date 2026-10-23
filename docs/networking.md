@@ -1,50 +1,52 @@
 # Networking
 
-What is true today applies to the Pi 4 NAS. Parts marked **Planned** come from [plans/multi-host.md](./plans/multi-host.md) and are not built yet.
+Per-host network settings in `host_vars` and a self-reverting apply are not built yet; they are marked **Planned** (design in [plans/multi-host.md](./plans/multi-host.md)). Everything else here is current.
 
 ## If a Pi drops off the network
 
 Work down the list; stop when you can reach it.
 
-1. **Tailscale.** If the Pi is online through any connection (home wifi, a phone hotspot), it is reachable at its Tailscale name from anywhere: `ssh user@<name>`. Tailscale needs the node key to be valid; disable key expiry for each server in the admin console, or a headless Pi locks you out after 180 days.
-2. **Direct Ethernet link**, if enabled: plug a cable between your laptop and the Pi; see [services.md](./services.md#direct-ethernet-link).
-3. **Local console:** plug in a monitor and keyboard.
+1. **Tailscale.** If the Pi is online by any route (home wifi, a phone hotspot), `ssh user@<tailscale name>` reaches it from anywhere. Disable key expiry for each server in the Tailscale admin console; a headless Pi with an expired node key (180 days by default) locks you out.
+2. **Direct Ethernet link**, if enabled: cable between laptop and Pi; see [services.md](./services.md#direct-ethernet-link).
+3. **Local console:** monitor and keyboard.
 
-Once you can log in, list the profiles and choose the one you want:
+Once logged in:
 
 ```bash
-nmcli con show                 # profiles, and which are active
+nmcli con show                 # saved profiles, and which are active
 nmcli con up "<home profile>"  # switch to home wifi
 nmcli device wifi list         # networks the Pi can see right now
 ```
 
-If the Pi is on a phone hotspot and stays there after home wifi returns, `nmcli con up "<home profile>"` over Tailscale moves it back. This is expected behavior, described next.
-
 ## How the Pi picks a network
 
-- NetworkManager's `autoconnect-priority` chooses among saved networks that are **in range**. It knows nothing about whether the network has internet. With home wifi up and the ISP down, the Pi stays on home wifi and does not try the hotspot.
-- NetworkManager's documentation says autoconnect "never replaces or competes with an already active profile". A Pi on the hotspot therefore probably stays there when home wifi comes back, though some bug reports describe priority being ignored. This has not been tested on these Pis.
-- There is no switch-back automation, deliberately: it would be code with no current use. If one is needed later, the two usual shapes are a NetworkManager **dispatcher script** (an executable file in `/etc/NetworkManager/dispatcher.d/`, owned by root and not writable by others, run with the interface name and an event such as `up` or `down`) or a systemd timer that runs `nmcli device wifi rescan` and `nmcli con up`. Write and test it on the Pi when there is a real need.
+- NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
+- Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot probably stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale. Not verified on these Pis.
+- There is no switch-back automation. If one is needed, the options are a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`, root-owned, run with the interface name and an event such as `up`) or a systemd timer running `nmcli device wifi rescan` and `nmcli con up`.
 - The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
 
 ## Rules for changing network config
 
-- Never change the connection Ansible is using without a way back in (Tailscale or ethernet).
-- Always `--check --diff` first.
-- **Planned:** apply with a built-in revert (`netplan try`, or a timed `nmcli` revert) so a bad change undoes itself.
+- Do not change the connection Ansible is using without a way back in (Tailscale or Ethernet).
+- Run `just preview network --limit <host>` first.
+- **Planned:** apply with a built-in revert (`netplan try`, or a timed `nmcli` revert).
 
-## Who owns the config
+## What `roles/network` does
 
-cloud-init (Raspberry Pi Imager, Ubuntu) configures a machine once at first boot. After that, Ansible owns networking, and `roles/network` writes `/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init cannot rewrite it. Per-host network settings in `host_vars` are **planned**. Ansible never edits `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates. Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The decision between netplan and `nmcli` waits on the spike below.
+- Creates the shared Docker network `nas_network` (`nas-services`).
+- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
+- Sets up the direct Ethernet link when `direct_link_enabled` is true (`direct_link_*` in `host_vars`).
+- Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
+- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. Netplan vs `nmcli` for per-host profiles is undecided until the spike below is done.
 
-### Spike on pi5 (run by hand; nothing in the repo is involved)
+## To do: netplan spike on pi5
 
-pi5 is not serving anything, so this is safe. Keep a monitor handy or stay connected over ethernet.
+Run by hand on pi5, which serves nothing. Keep a monitor handy or stay connected over Ethernet.
 
-1. `sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/` (keep copies).
-2. Write a test file such as `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then run `sudo netplan try`. Do not press Enter on the confirmation prompt.
-3. **Pass 1:** the change was rolled back after the timeout.
-4. Run `sudo netplan try` again and confirm; run `nmcli con show`. **Pass 2:** exactly one profile per interface or SSID, with no duplicates next to the `netplan-*` ones.
-5. Remove the test file and run `sudo netplan apply` to return to the starting state.
+1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
+2. Write a test file such as `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try`. Do not press Enter at the prompt.
+3. Pass 1: the change rolls back after the timeout.
+4. Run `sudo netplan try` again and confirm; run `nmcli con show`. Pass 2: one profile per interface or SSID, no duplicates next to the `netplan-*` ones.
+5. Remove the test file and run `sudo netplan apply`.
 
 If either pass fails, the plan falls back to `nmcli` with per-host profile names.
