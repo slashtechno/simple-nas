@@ -23,8 +23,9 @@
 {% endif %}
   xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
-  # Sort file2.txt before file10.txt, and show times in the container's timezone
-  # (TZ in docker-compose.yml.j2) instead of UTC. Clients can still override both in the UI.
+  # Sort file2.txt before file10.txt, and default the UI's time display to the viewer's local
+  # timezone instead of UTC (this is a browser-side default; the server's TZ is not involved).
+  # Clients can still override both in the UI.
   nsort
   localtime
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
