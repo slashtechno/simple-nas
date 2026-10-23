@@ -43,6 +43,7 @@ Fully automated: daily local, weekly cloud, weekly integrity check, plus a read-
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the direct Ethernet link |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive |
+| [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, and how it picks a network |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | Cheat sheet for the optional caddy-docker-proxy reverse proxy |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Planned drive upgrade and the backup steps that follow it |

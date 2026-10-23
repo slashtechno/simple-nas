@@ -74,19 +74,29 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## With cloudflared
 
-No router port forwarding is needed. See "How public access works with cloudflared" in the multi-host plan. The short version for a wildcard setup:
+No router port forwarding is needed. See "Public hostnames for ad-hoc apps" in the [multi-host plan](./plans/multi-host.md). The short version for a wildcard setup:
 
 ```yaml
-# tunnel ingress (one rule)
-- hostname: "*.example.com"
+# tunnel ingress (one rule, set once by Ansible)
+- hostname: "*.apps-domain.example"
   service: http://caddy:80
 ```
 
 ```yaml
-# each app
+# on the Caddy container: turn off automatic HTTPS once.
+# cloudflared sends plain HTTP, so Caddy's redirect to HTTPS would loop.
 labels:
-  caddy: http://notes.example.com
+  caddy.auto_https: "off"
+```
+
+`caddy.auto_https: "off"` is inferred from the README's rule that a label with no nesting becomes a global option (its example is `caddy.email`). The README does not show this exact line, so confirm it in the generated Caddyfile when it is first built. Quote `off`: unquoted, YAML reads it as the boolean `false`.
+
+```yaml
+# each app: labels only
+labels:
+  caddy: notes.apps-domain.example
   caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
-Every labeled app becomes public. Put Cloudflare Access in front, or use a dedicated domain.
+- Every labeled app becomes public. Use a **dedicated domain** and put Cloudflare Access on the whole domain; Access on a wildcard under the NAS's domain would also gate Immich and WebDAV.
+- The free Universal certificate covers one subdomain level: `notes.apps-domain.example` works, `notes.apps.example.com` does not.
