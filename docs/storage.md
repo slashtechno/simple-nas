@@ -12,7 +12,7 @@ Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked
 
 ## Examples
 
-A general server with only the microSD needs no `drives` at all. With one USB drive for app data and no roles:
+A general server that uses only its microSD card needs no `drives` entry. A general server with one USB drive for app data and no roles:
 
 ```yaml
 drives:
@@ -96,9 +96,9 @@ To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; 
 
 Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
 
-### Not yet verified
+### Check after a reboot with the drive unplugged
 
-- A missing `nofail` drive keeps Docker from starting. Reboot with the drive unplugged; `systemctl is-active docker containerd` must say `inactive`, not run from a directory on the microSD.
+With `docker_data_root` on a `nofail` drive, a missing drive keeps Docker from starting: `systemctl is-active docker containerd` says `inactive`, and neither runs from a directory on the microSD.
 
 ### Gitea runner registration
 

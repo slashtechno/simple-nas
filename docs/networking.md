@@ -21,7 +21,7 @@ nmcli device wifi list         # networks the Pi can see right now
 ## How the Pi picks a network
 
 - NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
-- Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot probably stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale. Not verified on these Pis.
+- Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale.
 - There is no switch-back automation. If one is needed, the options are a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`, root-owned, run with the interface name and an event such as `up`) or a systemd timer running `nmcli device wifi rescan` and `nmcli con up`.
 - The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
 
@@ -37,7 +37,7 @@ nmcli device wifi list         # networks the Pi can see right now
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true (`direct_link_*` in `host_vars`).
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. Netplan vs `nmcli` for per-host profiles is undecided until the spike below is done.
+- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The roles manage connections with `nmcli`, not netplan.
 
 ## Direct Ethernet link
 
@@ -50,15 +50,3 @@ Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about
 The link can't reach the internet or collide with a VPN:
 - `dnsmasq` hands out DHCP only (no DNS, no gateway), and neither end has a gateway, so there is no route off the cable.
 - `10.10.20.0/30` has two usable addresses, too small to overlap common VPN or home-router ranges such as `10.8.0.0/24` or `192.168.1.0/24`.
-
-## To do: netplan spike on pi5
-
-Run by hand on pi5, which serves nothing. Keep a monitor handy or stay connected over Ethernet.
-
-1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
-2. Write a test file such as `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try`. Do not press Enter at the prompt.
-3. Pass 1: the change rolls back after the timeout.
-4. Run `sudo netplan try` again and confirm; run `nmcli con show`. Pass 2: one profile per interface or SSID, no duplicates next to the `netplan-*` ones.
-5. Remove the test file and run `sudo netplan apply`.
-
-If either pass fails, the plan falls back to `nmcli` with per-host profile names.

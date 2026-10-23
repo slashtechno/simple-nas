@@ -8,9 +8,9 @@ How it works now is in [ansible/README.md](../../ansible/README.md), [networking
 
 - Groups `servers` > `nas`, `servers_general`; settings split into `group_vars/all`, `group_vars/nas`, `host_vars/<host>`; `derived.yml`; render test covers all of them.
 - Base roles on every server: sudoers drop-in, Tailscale install (`state: present`, join by hand), zellij, Ghostty terminfo, SSH keys, log rotation, cloud-init network switch, Docker snap check.
-- `docker_data_root` with containerd `root` and mount guards (containerd `root` verified on pi5); Gitea runner bind mount.
+- `docker_data_root` with containerd `root` and mount guards; Gitea runner bind mount.
 - Copyparty option renames, `tailscale_funnel` as its own NAS-only role, all versions in `versions.yml`.
-- Cloudflared with a remotely managed tunnel (token and ingress through the API); tested on pi5 against a fake API only. Runs on general servers too (own tunnel and `cloudflared_ingress` per host; the deploy fails if two hosts list one hostname).
+- Cloudflared with a remotely managed tunnel (token and ingress through the API). Runs on general servers too (own tunnel and `cloudflared_ingress` per host; the deploy fails if two hosts list one hostname).
 - rclone Google Drive remote from the vault; a configured cloud repo that fails to initialise fails the deploy.
 - Dockge and caddy-docker-proxy roles for `servers_general`.
 - `just deploy` and `just preview` take `--limit` and extra flags (`-K`).
@@ -53,12 +53,16 @@ Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has 
 
 ### After the cutover
 
-- Docker data-root test on pi5 with the real drive: reboot with the drive unplugged; `systemctl is-active docker containerd` must say `inactive` (listed in [storage.md](../storage.md#not-yet-verified)).
+- Docker data-root test on pi5 with the real drive: reboot with the drive unplugged; `systemctl is-active docker containerd` must say `inactive` ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
 - Remove leftover Docker volumes on the Pi 4 or pi5 by hand ([storage.md](../storage.md#leftover-volumes)).
-- Hotspot behaviour: whether a Pi on a hotspot returns to home wifi by itself is untested; the recovery is `nmcli con up` ([networking.md](../networking.md)).
 
 ### Later
 
+- Netplan on pi5 (optional; the roles use `nmcli`). By hand, with a monitor or Ethernet as a way back in:
+  1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
+  2. Write `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try` and do not press Enter. The change must roll back after the timeout.
+  3. Run `sudo netplan try` again and confirm. `nmcli con show` must show one profile per interface or SSID, with no duplicates next to the `netplan-*` ones.
+  4. Remove the test file and run `sudo netplan apply`.
 - Repurpose the Pi 4 as a general server, then add the x64 box.
 - Check the ARM-only builds (rawpy, Dockerfile ARGs) when the x64 box is added.
 - On Ubuntu Server: do not install Docker from the installer's snap; the first run uses `-K`.
