@@ -159,7 +159,7 @@ Small, each on a standard module:
 - SSH authorized keys: `ansible.posix.authorized_key`.
 - **Ghostty terminfo:** pi5's `ncurses-term` has no `xterm-ghostty`. Copy it from the Mac (`infocmp -x xterm-ghostty`) and compile with `tic -x`.
 - **Zellij** (full build, decided): not in Debian trixie's apt (checked on pi5). Use the static musl release (aarch64 and x86_64; v0.45.1 today), pinned in `versions.yml` with its sha256 and installed to `/usr/local/bin` with `get_url` and `unarchive`.
-- Wifi and the cloud-init switch (Networking).
+- Wifi (Networking). The cloud-init switch is done in `roles/network` (tested on pi5; check mode, apply, idempotent).
 - Optional overclock (`arm_freq` in `/boot/firmware/config.txt`), off by default, Pi hosts only. Not on the NAS: its limits are IO and network, and an unstable clock risks data.
 
 ## Configuration conventions

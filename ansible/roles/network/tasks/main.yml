@@ -4,6 +4,25 @@
     name: "{{ nas_network }}"
     state: present
 
+# cloud-init (Raspberry Pi Imager, Ubuntu) sets up networking at first boot. From then on Ansible and
+# NetworkManager own it, so cloud-init is told to leave the network config alone. This is cloud-init's
+# documented switch; it changes nothing now, it only stops a later cloud-init run from rewriting it.
+- name: Check for cloud-init
+  ansible.builtin.stat:
+    path: /etc/cloud/cloud.cfg.d
+  register: network_cloud_init_dir
+
+- name: Stop cloud-init managing the network
+  ansible.builtin.copy:
+    content: |
+      # Ansible-managed (roles/network). Networking is configured by Ansible, not cloud-init.
+      network: {config: disabled}
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  when: network_cloud_init_dir.stat.exists
+
 # Direct Ethernet link to a laptop (see docs/services.md#direct-ethernet-link).
 # Assumes eth0 is idle (Pi runs on wifi) — if eth0 is ever your Ansible
 # management connection instead, enabling this will drop that connection.

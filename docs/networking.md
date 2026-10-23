@@ -35,7 +35,7 @@ If the Pi is on a phone hotspot and stays there after home wifi returns, `nmcli 
 
 ## Who owns the config
 
-**Planned:** cloud-init (Raspberry Pi Imager, Ubuntu) configures a machine once at first boot. After that, Ansible owns networking through each host's `host_vars`, and a base role tells cloud-init to stop managing network config. Ansible never edits `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates. Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The decision between netplan and `nmcli` waits on the spike below.
+cloud-init (Raspberry Pi Imager, Ubuntu) configures a machine once at first boot. After that, Ansible owns networking, and `roles/network` writes `/etc/cloud/cloud.cfg.d/99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init cannot rewrite it. Per-host network settings in `host_vars` are **planned**. Ansible never edits `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates. Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The decision between netplan and `nmcli` waits on the spike below.
 
 ### Spike on pi5 (run by hand; nothing in the repo is involved)
 
