@@ -53,7 +53,9 @@ Hardware notes:
 
 - becomes the offline rotation target: monthly `restic copy latest --repo /mnt/backup/restic-repo` to a second repo on the removable drive; unplug and store physically elsewhere.
 
-## 4. Pi 5 board swap (two options)
+## 4. Pi 5 board swap
+
+**Decided (D50): the Pi 5 comes first, before the 4TB and P10 purchases.** pi5 already has a fresh Pi OS install, so this is Option B below. The T7 and the 500GB HDD move to it as they are, and steps 0-3 then happen on pi5. The move, including state that lives on the Pi 4's microSD and does not travel with the drives (rclone config, cloudflared credentials, the runner registration), is in [multi-host.md](./multi-host.md#first-moving-the-nas-from-the-pi-4-to-pi5). The options below are kept for reference.
 
 *Option A: move the microSD (fastest — keeps exact OS/config state)*
 
