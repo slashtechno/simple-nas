@@ -32,10 +32,13 @@ Other consequences:
 
 Each step is a gate: the owner verifies it before the next starts, so a failure has one possible cause. pi5 has nothing on it and the Pi 4 keeps running the NAS until the cutover, so pi5 is a safe place to test the new structure.
 
-1. **Refactor on a branch** (below): the groups and vars split, the configuration conventions, log rotation, state moved out of Docker's storage, plus the fixes for the stray profile, Tailscale and sudo. Proof: `--list-tasks` for the Pi 4 is unchanged, `just check` passes, and the owner's `--check --diff` against the Pi 4 shows nothing unexpected.
+1. **Refactor on a branch**, in two parts so a diff has one possible cause:
+   - **1a, structural only:** the groups and vars split, `derived.yml`, option renames' mapping, the inventory and play layout. Proof: `--list-tasks` for the Pi 4 is unchanged, `just check` passes, and the owner's `--check --diff` shows nothing.
+   - **1b, behavior changes, one commit each, each stating its expected `--check --diff`:** log rotation (`daemon.json` gains `log-opts` and Docker restarts; a one-time recreate follows), the sudoers drop-in (`/etc/sudoers.d/90-ansible` appears), the Gitea runner bind mount (needs the copy step below), the copyparty option renames, pinned `cloudflared`, `tailscale_enabled: true` with `tailscale_up_skip` and `state: present`, the network role's profile-name variable. The owner checks `--check --diff` per commit.
 2. **pi5 joins `servers` only**, getting the base roles. The owner deploys and checks SSH, sudo, Tailscale, networking, zellij.
 3. **Cloudflared and rclone come from the vault while still on the Pi 4** (below), so the cutover copies no files. pi5 can run the same tunnel alongside the Pi 4 before the Pi 4 stops, which makes the cutover close to zero downtime.
 4. **Cutover:** pi5 moves into `nas`, the Pi 4 leaves it, the drives move ([checklist](#cutover-from-the-pi-4-to-pi5)).
+   - **4b, after cutover:** the Docker data-root tests (below), because they need a real drive and every drive is on the Pi 4 until now. `docker_data_root` ships unset in 1b.
 5. **Later:** per-host backups, the Pi 4 as a general server, the ad-hoc platform, then the x64 box.
 
 ## Ansible shape
@@ -185,7 +188,7 @@ crafty_memory_limit: 3g
 
 **Naming.** Role-private options carry the role name as a prefix. `.ansible-lint` skips `var-naming[no-role-prefix]` today (with a written reason that covers `register:` names and shared group vars). The refactor renames the options that break this on purpose, `sftp_enabled` and `host_mnt_dir` in the copyparty role, to `copyparty_sftp_enabled` and `copyparty_host_mnt_dir`, after grepping every use (templates, `teardown*.yml`, docs) and telling the owner to rename them in their own `vars.yml`.
 
-**Checks:** the render test's key-parity check ("a key in `vars.yml` that is missing from `vars.yml.example`") is extended to every pair after the split: `group_vars/all`, `group_vars/nas`, a `host_vars` example, and the vault examples. A new test also fails an option whose comment does not match the shape above only if that turns out cheap to write; otherwise review catches it.
+**Checks:** the render test's key-parity check ("a key in `vars.yml` that is missing from `vars.yml.example`") is extended to every pair after the split: `group_vars/all`, `group_vars/nas`, a `host_vars` example, and the vault examples. The render test also loads `derived.yml`. The comment shape is enforced by review, not by a test: a parser for comments would be code to maintain for little gain.
 
 **Decision for the owner: `meta/argument_specs.yml`?** Ansible (2.11+) validates a role's options at start: types, `choices`, `required`, with a description shown by `ansible-doc -t role`. Its docs state that the spec's `default` is documentation only, "the actual default for the role variable will always come from the role defaults", and that the two must be kept matching by hand. So it gives validation and a typed reference, at the cost of every default being written twice per role. Options: (a) **comments in `defaults/main.yml` as the single source** (recommended: plain, one place, matches the current repo); (b) argument specs for the roles that take many options, plus a render-test check that the defaults match. Recommendation is (a) now, revisit if wrong values reaching a role become a real source of failures. This is your call because it trades a typed reference against maintaining two copies.
 
@@ -197,24 +200,24 @@ crafty_memory_limit: 3g
 
 | Volume | What it holds | Plan |
 |---|---|---|
-| `gitea-runner` `/data` (anonymous) | Runner registration: real state | Bind mount on the fast drive (backed up with it) |
+| `gitea-runner` `/data` (anonymous) | Runner registration: real state | Bind mount on the fast drive (backed up with it). On the Pi 4 a bind mount starts empty, so the step is: stop the runner, `docker cp gitea-runner:/data/. <bind dir>`, deploy; re-registering is the fallback |
 | `immich_machine_learning` `/cache`, `immich_model-cache` | Model cache | Rebuilds; leave, or bind mount to avoid re-downloading |
 | `immich_redis` `/data` (anonymous) | Redis cache | Rebuilds |
 | `immich_microservices` `/data` (anonymous) | Container not in the repo; probably stale | Remove after checking it is not running |
-| `nas-docker_caddy_*`, `nas-docker_model-cache`, `simple-nas_model-cache` | Look like leftovers of older project names | Check, then `docker volume prune` |
+| `nas-docker_caddy_*`, `nas-docker_model-cache`, `simple-nas_model-cache` | Look like leftovers of older project names | Check that nothing mounts them, then `docker volume rm` by name. Not `docker volume prune`: it removes anonymous volumes only, and `-a` would also remove `act-toolcache` and `immich_model-cache` whenever their containers are down (Docker's prune docs) |
 
 **Rule:** a service's state is a bind mount under a drive role. Anything in Docker's storage can be deleted and re-created. New services (Dockge, Caddy's `caddy_data`) follow the same rule.
 
-**The `docker_data_root` option** (empty by default, so Docker's default stays; set per host in `host_vars`). When set, Ansible writes `data-root` through `geerlingguy.docker`'s `docker_daemon_options` (a dict written to `/etc/docker/daemon.json`; present in the installed role) and also places containerd's storage on the same drive. Two ways to cover containerd, to be chosen by a test on pi5, not by guesswork:
+**The `docker_data_root` option** (empty by default, so Docker's default stays; set per host in `host_vars`). `geerlingguy.docker` writes one variable, `docker_daemon_options`, as `/etc/docker/daemon.json`. **A dict set in a host's `host_vars` replaces the same dict from `group_vars` instead of merging**, so log rotation set in one scope would vanish when another scope sets the data root. So the owner-edited settings are separate scalars (`docker_log_opts`, `docker_data_root`), and `docker_daemon_options` is built once from them with `combine` (`data-root` included only when set) in the tracked `derived.yml`. When `docker_data_root` is set, Ansible also places containerd's storage on the same drive. Two ways to cover containerd, to be chosen by a test on pi5, not by guesswork:
 
 1. Set `root = "<path>/containerd"` in `/etc/containerd/config.toml` (the file ships with `containerd.io` and holds only `disabled_plugins = ["cri"]` on the Pi 4). Docker's daemon page names this file as the place to change containerd's location. Follows Docker's direction.
 2. Disable the containerd image store (`"features": {"containerd-snapshotter": false}`). Docker's reference shows only `true` and says switching backends hides images from the other backend. Whether `false` is honored by 29.x is **not confirmed in the docs**; it is only a fallback.
 
-Test: on pi5, with a throwaway directory, apply the option, restart, pull an image, and confirm with `du` that `/var/lib/docker` and `/var/lib/containerd` stay small. Record the result in `docs/` when done.
+Test (step 4b, after the cutover, on pi5 with a directory on the real drive): apply the option, restart, pull an image, and confirm with `du` that `/var/lib/docker` and `/var/lib/containerd` stay small. Record the result in `docs/` when done.
 
-**Changing it, and changing it back.** Because state is disposable the procedure is the same both ways: stop `docker.service` **and** `docker.socket` (socket activation restarts the daemon mid-change), change the setting, start, then `just deploy` so compose re-pulls images and recreates containers. No `rsync` of overlay layers (whiteouts, hardlinks and xattrs are where copies go wrong). The old directory stays behind as unused space; delete it once the stacks are healthy. Docker's docs do not give a migration procedure, so this is ours and is documented in `docs/storage.md`.
+**Changing it, and changing it back.** Because state is disposable the procedure is the same both ways: stop `docker.service`, `docker.socket` (socket activation restarts the daemon mid-change) **and** `containerd.service`, change the setting, start, then `just deploy` so compose re-pulls images and recreates containers. No `rsync` of overlay layers (whiteouts, hardlinks and xattrs are where copies go wrong). The old directory stays behind as unused space; delete it once the stacks are healthy. Docker's docs do not give a migration procedure, so this is ours and is documented in `docs/storage.md`.
 
-**Mount ordering.** A systemd drop-in for `docker.service` with `RequiresMountsFor=<data root>` adds `Requires=` and `After=` on the mount unit (systemd.unit). With `nofail` the fstab mount is only *wanted* by `local-fs.target` (systemd.mount), but `RequiresMountsFor=` adds its own `Requires=` on that mount unit, so a failed mount should stop Docker from starting rather than letting it create an empty directory on the SD. The docs I read do not state this combination explicitly. **Test on pi5:** reboot with the drive unplugged; `docker` must be inactive, not running on an SD directory.
+**Mount ordering.** On the Pi 4, `docker.service` has `Wants=containerd.service` (not `Requires=`) and `Requires=docker.socket` (`systemctl cat docker.service`), so a guard on Docker does not protect containerd. Both `docker.service` and `containerd.service` get a drop-in; otherwise containerd can start first and create its directory on the SD under the empty mount point, which the drive then hides. `geerlingguy.docker` does not manage `/etc/containerd/config.toml`, so the refactor adds a task (with a restart handler) for the `root` line and the two drop-ins. A systemd drop-in for `docker.service` with `RequiresMountsFor=<data root>` adds `Requires=` and `After=` on the mount unit (systemd.unit). With `nofail` the fstab mount is only *wanted* by `local-fs.target` (systemd.mount), but `RequiresMountsFor=` adds its own `Requires=` on that mount unit, so a failed mount should stop Docker from starting rather than letting it create an empty directory on the SD. The docs I read do not state this combination explicitly. **Test (step 4b):** reboot pi5 with the drive unplugged; `docker` must be inactive, not running on an SD directory.
 
 **Log rotation (do now, independent of the data root).** Docker's docs: the default `json-file` driver does no rotation; `local` rotates by default. Plan: `docker_daemon_options` sets `log-driver: json-file` with `log-opts: {max-size: "10m", max-file: "3"}` (values must be strings). **These apply only to containers created after the change**, and compose-only services recreate only when their rendered file changes, so the first deploy adds a one-time step: recreate every stack (`docker compose up -d --force-recreate` per project, documented in `ansible/README.md`). A daemon restart also restarts containers unless `live-restore` is set; deploy this when a brief restart is acceptable.
 
@@ -273,7 +276,7 @@ Decisions and things to do by hand before work starts:
 6. Disable Tailscale key expiry for each server.
 7. When installing Ubuntu on the x64 box, do not choose the Docker snap.
 8. Publish the Google Drive OAuth app to Production (or backups stop after 7 days), and run `rclone authorize "drive"` on the Mac when the refactor reaches that step.
-9. Run the data-root test on pi5 (below) when the refactor reaches it; I give the exact commands.
+9. Run the data-root tests (below) right after the cutover, on pi5 with the real drive; I give the exact commands.
 
 ## Open decisions
 
@@ -301,8 +304,8 @@ Not verified, with the test that settles each:
 
 | Open item | Test |
 |---|---|
-| Whether `RequiresMountsFor=` stops Docker when a `nofail` mount is missing | pi5: reboot with the drive unplugged; Docker must be inactive |
-| Whether containerd `root` in `config.toml` moves image layers (and `false` for the snapshotter flag) | pi5: set it, pull an image, `du` both directories |
+| Whether `RequiresMountsFor=` stops Docker when a `nofail` mount is missing | Step 4b, pi5: reboot with the drive unplugged; Docker and containerd must be inactive |
+| Whether containerd `root` in `config.toml` moves image layers (and `false` for the snapshotter flag) | Step 4b, pi5: set it, pull an image, `du` both directories |
 | Whether `netplan try` rolls back with the NetworkManager renderer; duplicate profiles next to `90-NM-*.yaml` | The spike in `networking.md` |
 | `caddy.auto_https: "off"` as a global label | Read the generated Caddyfile when Caddy is first built |
 | Whether the existing tunnel can be migrated to remotely managed | The Zero Trust dashboard |
