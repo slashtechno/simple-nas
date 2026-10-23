@@ -48,15 +48,7 @@ On pi5 (2026-10-23), with a directory on the microSD standing in for a drive: se
 
 ### Gitea runner registration
 
-The runner's registration used to be an anonymous Docker volume. It is now a bind mount (`gitea_runner_data_dir`, on the fast drive, so backups cover it). On a host that already runs the old runner, copy the registration across once, before the first deploy that includes this change:
-
-```bash
-sudo mkdir -p <gitea_runner_data_dir>
-docker stop gitea-runner
-docker cp gitea-runner:/data/. <gitea_runner_data_dir>/
-```
-
-Skipping this is safe: the runner registers again with the token from the vault.
+The runner's registration used to be an anonymous Docker volume. It is now a bind mount (`gitea_runner_data_dir`, on the fast drive), so Docker keeps no state of its own. Nothing needs copying when you deploy this on a host that already ran the old runner: the runner starts with an empty directory and registers again with the token from the vault. The old registration then shows as an offline runner in Gitea's admin page (Site Administration, Actions, Runners); delete it there.
 
 ### Leftover volumes
 
