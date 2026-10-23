@@ -321,6 +321,10 @@
         `${data.lock_count} lock${data.lock_count === 1 ? '' : 's'} found on the local repo`;
       document.getElementById('unlockCmd').textContent = `ssh ${target} '${localBase} restic unlock'`;
       lockWarning.style.display = '';
+    } else if (data.lock_count < 0) {
+      document.getElementById('lockWarningText').textContent = 'Could not check the local repo for locks';
+      document.getElementById('unlockCmd').textContent = '';
+      lockWarning.style.display = '';
     } else {
       lockWarning.style.display = 'none';
     }

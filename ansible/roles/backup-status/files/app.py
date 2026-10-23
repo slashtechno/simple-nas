@@ -123,6 +123,18 @@ def parse_restic_time(ts):
     return datetime.datetime.fromisoformat(ts)
 
 
+def last_run_completed(log_text):
+    """True if the most recent run in the log reached the Complete marker.
+
+    A log file holds every run of one day (the scripts append), so a failure
+    after an earlier success must not be hidden. Each run starts with a header
+    line "=== <Job>: <date>"; only the text after the last header counts.
+    """
+    headers = [m.start() for m in re.finditer(r"^=== (?!Complete)", log_text, re.MULTILINE)]
+    last_run = log_text[headers[-1]:] if headers else log_text
+    return COMPLETE_MARKER in last_run
+
+
 def parse_dated_job_log(glob_pattern, stale_after):
     """Status of the newest dated log matching the pattern.
 
@@ -137,7 +149,7 @@ def parse_dated_job_log(glob_pattern, stale_after):
     mtime = os.path.getmtime(path)
     age = time.time() - mtime
     return {
-        "ok": COMPLETE_MARKER in read_text(path),
+        "ok": last_run_completed(read_text(path)),
         "stale": age > stale_after,
         "last_run_human": human_ago(age),
         "detail_human": time.strftime("%a %H:%M", time.localtime(mtime)),
@@ -149,6 +161,8 @@ def build_local_daily_status(stale_after):
     and integrity jobs can only be judged from logs: this container has no
     cloud credentials and `restic check` leaves nothing to query.
     """
+    if not os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config")):
+        return {"ok": False, "stale": True, "last_run_human": None, "detail_human": "backup drive not mounted"}
     snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
     daily_times = [
         parse_restic_time(s["time"]) for s in snapshots if "daily" in (s.get("tags") or [])
@@ -161,18 +175,20 @@ def build_local_daily_status(stale_after):
     age = (now - latest).total_seconds()
     stale = age > stale_after
     detail = latest.strftime("%a %H:%M")
+    failed_since = False
 
     # A failed run newer than the last snapshot would otherwise look fine.
     log_path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"))
     if (
         log_path
         and os.path.getmtime(log_path) > latest.timestamp()
-        and COMPLETE_MARKER not in read_text(log_path)
+        and not last_run_completed(read_text(log_path))
     ):
         detail += " · a more recent attempt failed"
+        failed_since = True
 
     return {
-        "ok": not stale,
+        "ok": not stale and not failed_since,
         "stale": stale,
         "last_run_human": human_ago(age),
         "detail_human": detail,
@@ -250,7 +266,8 @@ def _snapshot_row(snap, repo):
 def build_snapshots():
     # No per-snapshot `restic stats`: it walks the whole tree and took 30s+
     # per snapshot on the HDD.
-    local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
+    mounted = os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
+    local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"])) if mounted else []
     cloud_snapshots = read_cloud_snapshots_cache()
 
     result = [_snapshot_row(s, "local") for s in local_snapshots]

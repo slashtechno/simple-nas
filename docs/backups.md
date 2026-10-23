@@ -10,7 +10,7 @@ All restic invocations use a local cache on the fast drive (`RESTIC_CACHE_DIR`, 
 |---|---|
 | Daily @ 2 AM | Immich DB dump + Gitea dump, then the local backup (see [What is backed up where](#what-is-backed-up-where)) → HDD via restic |
 | Sunday @ 4 AM | Same dumps, then the cloud paths → Google Drive via rclone + restic |
-| Wednesday @ 3 AM | `restic check` — verifies local repo integrity |
+| Wednesday @ 3 AM | `restic check` — verifies local repo integrity (the cloud repo is checked by hand, see below) |
 
 Dumps land in `/mnt/backup/service-dumps/` (pruned to the last 3 of each type). Logs go to `/mnt/backup/logs/`, one dated file per run. Every restic call is wrapped in a timeout (`restic_command_timeout`, default 2h), so a stalled network/rclone pipe fails the cron run instead of hanging indefinitely while holding the repo lock.
 
@@ -35,6 +35,16 @@ Caveats:
 - `restic forget` groups snapshots by host and paths, so changing `restic_local_paths` starts a new group. The old group stops growing but keeps its last snapshots until you remove them by hand (`restic forget --path <old path> --prune`). Excludes never split a group, so tune with `restic_local_excludes` first. Exclude lines use restic's syntax, not gitignore's: `**` for any depth, and a leading `!` re-includes something an earlier line excluded (check `restic version` on the Pi first: older releases may not support `!`).
 - To add a path to the cloud backup, put it in `restic_cloud_extra_paths`. Adding is safe. Removing one leaves its snapshots until you forget them by hand.
 - To give a new service a database dump, add `files/dump.sh` to its role and install it into `service_dump_scripts_dir` as `<service>.sh` (copy the Gitea role). Its dump files must start with `<service>-`. `teardown_service.yml` removes the script again.
+
+### Checking the cloud repo (manual)
+
+The cloud repository is not checked on a schedule: a full check reads the whole repo over the network. Run it yourself now and then, on the Pi:
+
+```bash
+sudo -E bash -c 'export RESTIC_PASSWORD_FILE=<restic_password_file> RESTIC_REPOSITORY=<restic_cloud_repository>; restic -o rclone.args="serve restic --stdio --tpslimit=10" check'
+```
+
+Add `--read-data-subset=5%` to also read a sample of the stored data.
 
 ---
 
@@ -68,7 +78,7 @@ The `backup-status` role deploys a small read-only dashboard — job status, dri
 http://<your-pi-tailscale-host>:<backup_status_port>   # default port 8091
 ```
 
-Tailscale-only, no login needed: the container gets a **read-only** mount of the repo and password file, so it has no code path that can write to or delete a backup. Every action opens the exact SSH command to copy and run yourself. Disable with `backup_status_enabled: false`.
+Reachable from the LAN and the tailnet, with no login (the port is published on the Pi): the container gets a **read-only** mount of the repo and password file, so it has no code path that can write to or delete a backup. Every action opens the exact SSH command to copy and run yourself. Disable with `backup_status_enabled: false`.
 
 ---
 
