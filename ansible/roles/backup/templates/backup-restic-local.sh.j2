@@ -26,6 +26,9 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
 {
   echo "=== Local Backup: $(date) ==="
+  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
+  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  restic unlock
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 

@@ -21,6 +21,9 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 {
   echo "=== Integrity Check: $(date) ==="
+  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
+  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  restic unlock
   restic check
   check_rc=$?
   if [ "$check_rc" -eq 0 ]; then
