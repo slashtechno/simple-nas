@@ -35,6 +35,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
+  diff: false   # holds the RPC secret and admin token
   notify: Restart Garage
 
 - name: Render Garage docker-compose.yml
@@ -44,6 +45,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
+  diff: false   # holds the admin token and the web UI password hash
   notify: Restart Garage
 
 - name: Render Caddyfile for CORS proxy

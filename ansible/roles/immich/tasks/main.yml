@@ -30,6 +30,7 @@
     name: compose_service
   vars:
     compose_service_name: immich
+    compose_service_has_secrets: true
 
 - name: Create the dump script directory
   ansible.builtin.file:

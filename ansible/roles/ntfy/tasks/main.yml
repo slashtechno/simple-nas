@@ -25,3 +25,4 @@
     name: compose_service
   vars:
     compose_service_name: ntfy
+    compose_service_has_secrets: true

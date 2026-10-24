@@ -52,13 +52,15 @@
   loop_control:
     label: "{{ item.1.folder }}"   # keeps the password out of Ansible's output
 
-- name: Render full copyparty config directly (no runtime sed processing)
+# Holds the account passwords. The container runs as root, so the owner-only mode is enough.
+- name: Render the Copyparty config
   ansible.builtin.template:
     src: copyparty.conf.j2
     dest: "{{ copyparty_config_dir }}/copyparty.conf"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: "0644"
+    mode: "0600"
+  diff: false   # the passwords would show in --diff
   notify: Restart Copyparty
 
 - name: Render Copyparty docker-compose.yml

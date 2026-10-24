@@ -2,6 +2,7 @@
 # Deploys roles/<compose_service_name>/templates/docker-compose.yml.j2 to {{ nas_base_dir }}/<compose_service_name>.
 # `state: present` recreates containers whose definition changed, so these services need no restart handler.
 # Roles with other config files, builds or start modes (garage, copyparty, pics, ...) do this inline.
+# A service whose compose file holds a secret sets `compose_service_has_secrets: true`, which keeps the file out of --diff.
 # Use import_role, not include_role: only imported tasks pick up --tags.
 #   - ansible.builtin.import_role: {name: compose_service}
 #     vars: {compose_service_name: <role>}
@@ -20,6 +21,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
+  diff: "{{ not (compose_service_has_secrets | default(false)) }}"
 
 - name: Start {{ compose_service_name }}
   community.docker.docker_compose_v2:
