@@ -1,52 +1,54 @@
 # Simple NAS
 
-Ansible playbooks that set up Raspberry Pis (any Debian-family host) as a NAS and as general Docker servers. The NAS runs Docker services on the drives plugged into it; the inventory lists the hosts and their groups.
+Ansible playbooks that set up Raspberry Pis (any Debian-family host) as home servers that run Docker services on the drives plugged into them.
 
-NAS services (group `nas`):
+Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in: a service is deployed on a host only when that host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Every flag defaults to false. Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
-- **Immich**: photo library (Google Photos alternative)
-- **Copyparty**: file sharing
-- **Gitea**: Git server
-- **Homebridge**: HomeKit bridge
-- **pics**: photo gallery (opt-in)
-- **Garage**: S3-compatible object storage (opt-in)
-- **Crafty Controller**: Minecraft servers (opt-in)
-- **Backup status**: read-only backup dashboard
-- **Cloudflare Tunnel**: public hostnames without port forwarding
-- **Tailscale**: private remote access, installed on every server
+| Service | What it is | Needs | Doc |
+|---|---|---|---|
+| Immich | Photo library (Google Photos alternative) | `primary` and `fast` drive roles, `vault_immich_db_password` | [services.md](./docs/services.md#immich) |
+| Copyparty | File sharing | `primary` and `fast` drive roles, Copyparty vault entries | [services.md](./docs/services.md#copyparty-accounts-and-volumes) |
+| Gitea | Git server | `fast` drive role | [services.md](./docs/services.md#gitea) |
+| Homebridge | HomeKit bridge | `fast` drive role | [services.md](./docs/services.md#homebridge) |
+| pics | Photo culling and sharing | `fast` drive role, Copyparty, pics vault entries | [services.md](./docs/services.md#pics-photo-culling-and-sharing) |
+| Garage | S3-compatible object storage | `fast` drive role, Garage vault entries | [services.md](./docs/services.md#garage-s3) |
+| Crafty Controller | Minecraft servers | `fast` drive role, RAM headroom | [services.md](./docs/services.md#crafty-minecraft-servers) |
+| ntfy | Push alerts for failed backups | `fast` drive role, ntfy vault entries | [services.md](./docs/services.md#ntfy-failure-alerts) |
+| Cloudflare Tunnel (`cloudflared`) | Public hostnames without port forwarding | Cloudflare vault entries | [services.md](./docs/services.md#cloudflare-add-a-public-hostname) |
+| Dockge | Web UI for your own compose stacks | `fast` drive role | [services.md](./docs/services.md#ad-hoc-app-platform) |
+| Caddy | Names for apps, routed by container label | `fast` drive role | [caddy-reference.md](./docs/caddy-reference.md) |
+| Backups (`backup`) | Daily local, weekly cloud, weekly integrity check | `backup` drive role for local, `restic_cloud_repository` for cloud, `vault_restic_password` | [backups.md](./docs/backups.md) |
+| Backup status | Read-only backup dashboard | `backup_local_enabled` | [backups.md](./docs/backups.md) |
+| Tailscale | Private remote access, installed on every server | none | [networking.md](./docs/networking.md) |
+| Tailscale Funnel | Copyparty on a public ts.net name | Tailscale joined by hand | [services.md](./docs/services.md#tailscale-funnel) |
+| Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | none | [networking.md](./docs/networking.md#direct-ethernet-link) |
 
-General servers (group `servers_general`) get **Dockge** (web UI for compose stacks) and, opt-in, **Caddy** (names for apps).
-
-Every server also gets Docker, Tailscale, drive mounts and the base packages. Which hosts exist is set in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
+A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
 
 ```
-NAS host
-├─ microSD         (OS)
+A host
+├─ root drive      (OS)
 ├─ fast drive      (Docker data, databases, configs)
 ├─ primary drive   (photos, files)     the fast and primary roles can share one drive
 └─ backup drive    (restic repo, dumps, logs)
 
 Internet → Cloudflare Tunnel (hostnames come from cloudflared_ingress)
-  ├─ immich.example.com    → Immich      (:2283)
-  ├─ gitea.example.com     → Gitea       (:3000)
-  ├─ copyparty.example.com → Copyparty   (:3923)
-  └─ s3.example.com        → Garage S3   (:3900)
+  ├─ <host-a>.example.com  → a service on the Docker network
+  └─ <host-b>.example.com  → another service on the Docker network
 ```
-
-Drive roles are explained in [docs/storage.md](./docs/storage.md).
 
 <details>
 <summary>Only two drives? That works: one for data, one for backups.</summary>
 
-A drive can fill several roles, so the NAS needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
+A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
 
 ```yaml
 drives:
-  - { uuid: "your-ssd-uuid",    mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
+  - { uuid: "your-ssd-uuid",    mount: /mnt/ssd,    fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
   - { uuid: "your-backup-uuid", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
 ```
 
-More examples, including general servers: [docs/storage.md](./docs/storage.md#examples).
+More examples: [docs/storage.md](./docs/storage.md#examples).
 
 </details>
 
@@ -54,24 +56,25 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 
 ## Backups
 
-Fully automated: daily local, weekly cloud, weekly integrity check, plus a read-only status dashboard. Schedules, what is covered and restore steps are in [docs/backups.md](./docs/backups.md).
+Fully automated once enabled: daily local, weekly cloud, weekly integrity check, plus a read-only status dashboard. Schedules, what is covered and restore steps are in [docs/backups.md](./docs/backups.md).
 
 ## Docs
 
 | Doc | Covers |
 |---|---|
-| [ansible/README.md](./ansible/README.md) | Which files hold what, setup, `just` commands, changing settings, updating images, adding a service |
+| [ansible/README.md](./ansible/README.md) | Task index, which files hold what, setup, adding a host, `just` commands, vault, updating images, adding a service |
+| [docs/variables.md](./docs/variables.md) | Every setting, its default and its vault entries (generated by `just docs`; do not edit) |
 | `ansible/roles/` | One role per service |
-| `ansible/group_vars/`, `ansible/host_vars/` | Settings (`vars.yml`) for all servers, the NAS group and single hosts; image versions (`versions.yml`); secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
+| `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml`), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
-| [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform and the direct Ethernet link |
+| [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
-| [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, and how it picks a network |
+| [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | Cheat sheet for the optional caddy-docker-proxy reverse proxy |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Checklist for the planned drive upgrade and the backup steps that follow it |
 | [docs/plans/encryption.md](./docs/plans/encryption.md) | Planned encryption at rest (not started) |
-| [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Step-by-step cutover: NAS to pi5, pi4 to a general server, hostnames |
+| [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Step-by-step cutover to a second host |
 | [docs/dumps/](./docs/dumps/) | Decisions log and deferred work from the maintainability refactor |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

@@ -10,7 +10,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 |---|---|
 | `ansible.cfg` | Project settings, read automatically from this directory |
 | `inventory/hosts.yml` | Who to run against |
-| `group_vars/all/`, `group_vars/nas/`, `host_vars/<host>/` | What values to run with: every server, the NAS group, one host (`vars.yml`, `versions.yml`, `derived.yml`, `vault.yml`) |
+| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `derived.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
 | `requirements.yml` | Collections and roles to install first (`just deps`) |
 | `site.yml`, `teardown.yml` | The playbooks |
 | `roles/*/` | How to deploy each piece |
@@ -24,7 +24,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 - `interpreter_python = /usr/bin/python3`: fixed so Ansible does not warn about discovering Python.
 - `pipelining = True`: faster deploys over SSH.
 
-The inventory is `groups → hosts → connection vars`. `servers` is the parent of `nas` and `servers_general`. The plays in `site.yml` run on `servers` (base roles), `nas` (services and backups) and `servers_general` (Dockge, Caddy). A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
+The inventory is `groups → hosts → connection vars`. This repo has one group, `servers`, and both playbooks run on it. The group carries no settings; what a host runs is set in its own `host_vars/<host>/vars.yml`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 
 `requirements.yml` installs:
 
@@ -33,21 +33,21 @@ The inventory is `groups → hosts → connection vars`. `servers` is the parent
 
 ## 2. Playbooks
 
-A playbook is a list of plays. Each play runs roles or tasks against a group of hosts. `site.yml` has three plays; the one for the `nas` group looks like this (abridged):
+A playbook is a list of plays. Each play runs roles or tasks against a group of hosts. `site.yml` is one play over `servers`. Each service is a task that imports a role, and the task's `when` is the service's flag:
 
 ```yaml
-- name: Deploy NAS
-  hosts: nas
-  become: true
-  roles:
-    - role: immich
-      tags: [immich]
-      when: immich_enabled | default(true)
+- name: Deploy immich
+  ansible.builtin.import_role:
+    name: immich
+  tags: [immich]
+  when: immich_enabled | bool
 ```
 
 - **`tags`**: run a subset, e.g. `--tags immich` or `--tags backup,storage`.
-- **`when`**: `immich_enabled | default(true)` means "use the flag if set, otherwise true". This is how `<service>_enabled: false` skips a service. Core services default to true, opt-in ones (pics, crafty, garage, caddy) to false.
-- **`roles:` vs `tasks:`**: `site.yml` is all roles. `teardown.yml` is tasks, one entry per service with its own `tags:`, mostly through `teardown_service.yml`, in one play for `nas` and one for `servers_general`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
+- **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every flag defaults to false in `group_vars/all/defaults.yml`, so a service is skipped unless a host asks for it.
+- **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
+- **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS and that Docker is not a snap; they carry `tags: [always]`.
+- **`teardown.yml`** is one play of tasks, one entry per service with its own `tags:`, mostly through `teardown_service.yml`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
 
 ## 3. Role anatomy
 
@@ -74,7 +74,6 @@ Files:
 - `template`: render a `.j2` file, then push it
 - `find`: search for files into a registered variable (Garage's first-deploy check)
 - `git`: clone a repo (pics, through `github_clone`)
-- `get_url`, `unarchive`: download and unpack a release (zellij)
 - `lineinfile`: set one line in a file (containerd's `config.toml`)
 - `ansible.posix.authorized_key`: add SSH public keys
 - `stat`: check whether a path exists
@@ -88,10 +87,9 @@ System:
 - `systemd`, `systemd_service`: control or query a unit
 
 Docker:
-- `docker_network`: create the shared `services` network
+- `docker_network`: create the shared Docker network (`docker_network`, named `services`)
 - `docker_compose_v2`: `docker compose up`/`down` for a `project_src:` directory
 - `docker_container`: remove or run one container outside compose (cloudflared removes a leftover init container)
-- `docker_container_exec`: run a command in a running container (Garage reloads Caddy this way)
 
 Flow and escape hatches:
 - `uri`: call an HTTP API (the cloudflared role calls Cloudflare's)
@@ -125,12 +123,14 @@ Keywords any task can carry:
 Config comes from these sources, lowest precedence first:
 
 1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_panel_port`.
-2. `group_vars/all/`: loaded for every host. `vars.yml` holds settings every server reads (timezone, base paths, SSH keys, Docker options, `drives: []`), `versions.yml` every image and tool version, `derived.yml` values computed from the others (`fast_drive`, `primary_drive`, `backup_drive`, `docker_daemon_options`), `vault.yml` the secrets every host needs (Cloudflare token and account, restic password, rclone token). Backup settings (`restic_*`) are here too.
-3. `group_vars/nas/`: loaded for hosts in the `nas` group. `vars.yml` holds enabled flags, paths and non-secret settings, `vault.yml` secrets.
-4. `host_vars/<host>/vars.yml`: one host's settings, such as `drives` and the direct link. Beats group values.
+2. `group_vars/all/defaults.yml`: settings several roles share, each with a default, including every `<name>_enabled` flag (all false). Not edited per host.
+3. `group_vars/all/vars.yml`: your values that apply to every host (timezone, SSH keys, Cloudflare zones). `versions.yml` holds every image and tool version, `derived.yml` values computed from the others (`fast_drive`, `primary_drive`, `backup_drive`, `docker_daemon_options`), `vault.yml` the secrets hosts share (Cloudflare token and account, restic password, rclone token, ntfy token).
+4. `host_vars/<host>/vars.yml`: one host's settings, such as its flags, `drives` and the direct link. Beats everything above. `host_vars/<host>/vault.yml` holds that host's service secrets.
 
-`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads the vault files of `all` and of its own groups. A key defined in both takes the group's value.
+Every setting, its default and every vault name is listed in [variables.md](./variables.md), which is generated from the comments in these files.
 
-`vars.yml` refers to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and `vars.yml` stays safe to commit because the values exist only in the encrypted file.
+`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
 
-Edit a vault with `ansible-vault edit group_vars/nas/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.
+Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `defaults.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
+
+Edit a vault with `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.

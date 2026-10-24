@@ -60,8 +60,7 @@ The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enab
     restic_local_rules:
       - /mnt/data                                  # back up this drive
       - /home/pi/notes                             # and this folder
-      - "- /mnt/data/downloads"                    # but not this folder inside it
-      - "- **/*.iso"                               # nor any .iso file
+      - "- **/*.iso"                               # but no .iso file
       - "- !/mnt/data/downloads/keep.iso"          # except this one
   ```
 - `restic_cloud_rules`: default `(long; see the file)`. The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".

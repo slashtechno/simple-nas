@@ -32,7 +32,7 @@ all:
                 copyparty_fast: false
                 unclaimed: [backup]
                 cloud: true
-                rules: ["- /srv/apps/tmp", "- !/srv/apps/tmp/keep"]
+                rules: ["- /srv/apps/tmp/*", "- !/srv/apps/tmp/keep"]
                 services: [immich, gitea]
             # A folder on the root drive for services, a USB drive for backups.
             root-folder-usb-backup:
@@ -55,7 +55,7 @@ all:
                 cache_dir: /mnt/data/restic-cache
                 copyparty_fast: false
                 unclaimed: []
-                rules: ["- /mnt/data/tmp", "- !/mnt/data/tmp/keep"]
+                rules: ["- /mnt/data/tmp/*", "- !/mnt/data/tmp/keep"]
             # Three drives, one per role.
             three-drives:
               fixture_drives:

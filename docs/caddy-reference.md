@@ -1,6 +1,6 @@
 # caddy-docker-proxy reference
 
-Label syntax for the optional reverse proxy (design in [plans/multi-host.md](./plans/multi-host.md)). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` (opt-in: `caddy_enabled`).
+Label syntax for the optional reverse proxy (design in [plans/multi-host.md](./plans/multi-host.md)). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` on a host that sets `caddy_enabled: true`.
 
 ## What it does
 
@@ -8,13 +8,9 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 ## What `roles/caddy` deploys
 
-Runs on hosts in `servers_general` when `caddy_enabled: true` (default false). The image is pinned in `versions.yml` (`caddy_image`); the README's `ci-alpine` tag is an unstable CI build, so use a version tag.
+Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. The image is pinned in `versions.yml` (`caddy_image`); the README's `ci-alpine` tag is an unstable CI build, so use a version tag.
 
-| Setting | Default | Meaning |
-|---|---|---|
-| `caddy_http_port` | 80 | Host port for HTTP |
-| `caddy_https_port` | 443 | Host port for HTTPS (TCP and UDP) |
-| `caddy_data_dir` | `<fast drive>/docker/caddy` | Certificates and state; losing it means certificates are issued again |
+Settings (`caddy_http_port`, `caddy_https_port`, `caddy_data_dir`) and their defaults are in [variables.md](./variables.md). Losing `caddy_data_dir` means certificates are issued again.
 
 The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
@@ -57,7 +53,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## With cloudflared
 
-No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress` ([design](./plans/multi-host.md#public-hostnames-for-ad-hoc-apps)); there is no wildcard to Caddy, because every labeled container would become public. Today `cloudflared` is deployed only on the `nas` group, so publishing an app from a `servers_general` host is part of the multi-host plan, not built.
+No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress` ([design](./plans/multi-host.md#public-hostnames-for-ad-hoc-apps)); there is no wildcard to Caddy, because every labeled container would become public. Any host that sets `cloudflared_enabled: true` runs its own tunnel with its own `cloudflared_ingress`; see [services.md](./services.md#cloudflare-add-a-public-hostname).
 
 For a published app, point the entry at Caddy and use an `http://` site address, since Cloudflare terminates TLS:
 

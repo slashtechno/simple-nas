@@ -1,6 +1,6 @@
 # Encryption-at-rest plan (not started)
 
-Transparent encryption for the `fast` and `primary` drives (`/mnt/t7` today) and the plaintext parts of the `backup` drive. Nothing is implemented. The decisions below are settled; the open questions and the order of work are at the end.
+Transparent encryption for the `fast` and `primary` drives (see [storage.md](../storage.md)) and the plaintext parts of the `backup` drive. Nothing is implemented. The decisions below are settled; the open questions and the order of work are at the end.
 
 ## Goal
 
@@ -12,8 +12,8 @@ Requirement: unlockable from any device, including one you do not own, without n
 
 - **gocryptfs**, not LUKS. Encrypts files on the existing ext4, so the drives are not reformatted and no full-disk unlock at boot is needed. Recoverable from a Mac via `brew install gocryptfs macfuse`, no VM needed.
 - **Don't encrypt `restic-repo` on the backup drive.** restic already encrypts it with its own password; a second layer would tie two recovery paths to one key.
-- **Do encrypt `service-dumps/` on the backup drive.** `backup-services.sh` writes plaintext database dumps there before restic reads them.
-- **No automatic unlock (no Tang, no keyfile on the SD card, no polling with a stored secret).** A host that unlocks itself holds what it needs to unlock at rest, and theft hands that to the attacker.
+- **Do encrypt `service-dumps/` on the backup drive.** `backup-services.sh` writes plaintext database dumps there (`service_dumps_dir`) before restic reads them. A host with no local backup keeps them in `/var/lib/backup-work/service-dumps` on the root drive, which needs the same treatment.
+- **No automatic unlock (no Tang, no keyfile on the root drive, no polling with a stored secret).** A host that unlocks itself holds what it needs to unlock at rest, and theft hands that to the attacker.
 - **Two-tier unlock, by context:**
   - **Day-to-day (own devices):** passkey (WebAuthn/FIDO2) — phishing resistant, private key never leaves the device, synced across own devices via platform keychain.
   - **Break-glass (no trusted device, e.g. travel):** a single human-memorable one-time word (e.g. "chicken"), rotated by hand from a trusted device after each use. A keylogger learns nothing reusable because the word is one-time; throttling (below) handles guessing.
@@ -29,9 +29,9 @@ Requirement: unlockable from any device, including one you do not own, without n
 
 - Exact backoff curve and alert channel (email? push? which service?).
 - Whether passkey verification also runs through the same releaser service, or is handled separately (e.g. an authenticated page gated by browser-native WebAuthn, no server-side passkey verification needed if it's just gating a button that hits the releaser).
-- Boot-ordering fix: `immich_db_data_location`, `gitea_data_dir`, `copyparty_config_dir`, `garage_data_dir` (vars.yml) all live under `{{ fast_drive }}/docker`, which would sit under the gocryptfs mount. Compose auto-start must wait for the unlock, or Postgres runs `initdb` on an empty directory.
+- Boot-ordering fix: `immich_db_data_location`, `gitea_data_dir`, `copyparty_config_dir`, `garage_data_dir` (defaults in `ansible/group_vars/all/defaults.yml`) all live under `{{ fast_drive }}/docker`, which would sit under the gocryptfs mount. Compose auto-start must wait for the unlock, or Postgres runs `initdb` on an empty directory.
 - Benchmark `gocryptfs -init -xchacha` against the default AES mode on the NAS host before committing. The Pi 4 SoC likely lacks ARM crypto extensions, so AES there may not keep up with the direct link's 117 MB/s (docs/networking.md#direct-ethernet-link).
-- Known tradeoff: after a reboot nobody unlocks, the 2 AM and Sunday 4 AM backups fail until unlocked; the cron lines already log the failure with `logger -t backup`.
+- Known tradeoff: after a reboot nobody unlocks, the daily 02:00 and Sunday 04:00 backups fail until unlocked; the cron lines already log the failure with `logger -t backup` (through `alert.sh`).
 
 ## Order of work
 
@@ -40,4 +40,4 @@ Requirement: unlockable from any device, including one you do not own, without n
 3. Move the `fast` and `primary` drives and `service-dumps` to gocryptfs; change the `storage` and `backup` roles to mount after unlock instead of at boot.
 4. Fix Docker Compose boot ordering so services start only after mount.
 5. Add passkey path for day-to-day unlock from own devices.
-6. Update `docs/backups.md` and `docs/storage.md` to document the new unlock flow and the reboot-then-no-backup-until-unlocked tradeoff.
+6. Update [backups.md](../backups.md) and [storage.md](../storage.md) to document the new unlock flow and the reboot-then-no-backup-until-unlocked tradeoff.

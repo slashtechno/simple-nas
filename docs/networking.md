@@ -32,9 +32,9 @@ nmcli device wifi list         # networks the Pi can see right now
 
 ## What `roles/network` does
 
-- Creates the shared Docker network `docker_network` (`services`).
+- Creates the shared Docker network `docker_network` (`services`) on every host.
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
-- Sets up the direct Ethernet link when `direct_link_enabled` is true (`direct_link_*` in `host_vars`).
+- Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings have no defaults: copy them from `ansible/host_vars/vars.yml.example` into the host's `vars.yml`.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
 - Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The direct link uses `nmcli`, not netplan. It expects the default Ethernet profile to be named `Wired connection 1`, as on Raspberry Pi OS; on a host where it has another name, the link's disable and revert steps fail.
 
@@ -42,7 +42,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
-1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`, then `just deploy network`.
+1. Copy the `direct_link_*` block from `ansible/host_vars/vars.yml.example` into `host_vars/<host>/vars.yml` and set `direct_link_enabled: true`, then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `https://10.10.20.1:3923` for Copyparty. Expect a certificate warning: Copyparty serves its own self-signed certificate on the same port as HTTP.
 

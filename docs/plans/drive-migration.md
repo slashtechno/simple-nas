@@ -10,7 +10,7 @@ Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles 
 | `primary` | WD_BLACK P10 2TB | `/mnt/main` | photos, files, collab |
 | `backup` | Seagate ST4000NM0033 4TB | `/mnt/backup` | restic repo, service dumps, logs |
 
-Current: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has `[backup]`.
+Starting layout: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has `[backup]`.
 
 ## 0. Vet the new drives
 
@@ -27,10 +27,11 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 ## 1. Backup drive swap (low risk, first)
 
 - [ ] Format the ST4000NM0033 as ext4 on the host and note its UUID.
-- [ ] Set the `uuid:` of the `backup` entry in `drives` to it (mount stays `/mnt/backup`).
-- [ ] `just deploy storage,backup --limit <host>`. The storage role only adds the fstab line; the backup role runs `restic init` on the new drive.
-- [ ] After the 2 AM cron (or `/opt/services/scripts/backup-restic-local.sh` by hand), check `restic snapshots` and `restic check` on the new repo.
-- [ ] Keep the old repo on the 500GB HDD until 2-3 verified snapshots exist on the new one.
+- [ ] Unmount the old backup drive (`sudo umount /mnt/backup`) and plug in the new one.
+- [ ] Set the `uuid:` of the `backup` entry in `drives` to the new drive (mount stays `/mnt/backup`).
+- [ ] `just deploy storage,backup --limit <host>`. The storage role updates the fstab line for `/mnt/backup` and mounts the new drive; the backup role runs `restic init` on it.
+- [ ] After the 02:00 `backup-local` cron job (or `/opt/services/scripts/backup-restic-local.sh` by hand), check `restic snapshots` and `restic check` on the new repo.
+- [ ] Keep the old drive, unplugged or mounted at another path (a `drives` entry with no `roles`), until 2-3 verified snapshots exist on the new one.
 
 ## 2. Primary drive and fast/primary split
 
@@ -42,13 +43,31 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 
 ## 3. Backup follow-up after the split
 
-The local backup lists `primary_drive` and `fast_drive` as separate paths. Once they are different drives, the first backup creates a new restic snapshot group.
+The default `restic_local_rules` lists the `primary` and `fast` mounts as separate paths. While both roles are on the T7 that is one path. Once they are different drives it is two, so the first backup starts a new restic snapshot group ([backups.md](../backups.md#choosing-what-is-backed-up)).
 
-- [ ] After that backup, remove the old `/mnt/t7` group's snapshots by hand (`restic snapshots`, then `restic forget <id> --prune`). `forget` leaves them alone otherwise.
+- [ ] After that backup, list the groups with `restic snapshots --group-by host,paths`, then remove the old group's snapshots by hand (`restic forget <snapshot-id> --prune`). The retention policy never touches a group that no longer grows.
 
 ## 4. Retire the old 500GB HDD
 
-- [ ] Use it as an offline copy: monthly `restic copy latest --repo /mnt/backup/restic-repo` into a second repo on the removable drive; unplug it and store it elsewhere.
+- [ ] Use it as an offline copy: plug it in, mount it (for example at `/mnt/offline`), and copy the snapshots into a second repository on it. `restic copy` takes the destination as the repository (`-r`) and the source with `--from-repo`; each repository needs its own password option (the same password file here).
+- [ ] Create the second repository once, with the source's chunker settings so the copy deduplicates:
+
+  ```bash
+  restic -r /mnt/offline/restic-repo init \
+    --password-file ~/.restic-password \
+    --from-repo /mnt/backup/restic-repo --from-password-file ~/.restic-password \
+    --copy-chunker-params
+  ```
+
+- [ ] Each month, copy new snapshots. Already-copied snapshots are skipped:
+
+  ```bash
+  restic -r /mnt/offline/restic-repo copy \
+    --password-file ~/.restic-password \
+    --from-repo /mnt/backup/restic-repo --from-password-file ~/.restic-password
+  ```
+
+- [ ] Unplug the drive and store it elsewhere.
 
 ## Not done on purpose
 

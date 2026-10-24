@@ -108,8 +108,7 @@ service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
 #   restic_local_rules:
 #     - /mnt/data                                  # back up this drive
 #     - /home/pi/notes                             # and this folder
-#     - "- /mnt/data/downloads"                    # but not this folder inside it
-#     - "- **/*.iso"                               # nor any .iso file
+#     - "- **/*.iso"                               # but no .iso file
 #     - "- !/mnt/data/downloads/keep.iso"          # except this one
 # The service dumps dir is always added, and caches and live database directories are always skipped
 # (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
