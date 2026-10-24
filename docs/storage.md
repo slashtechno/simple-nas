@@ -59,7 +59,7 @@ drives:
   - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
 ```
 
-Keep `nofail` on every drive so a missing drive does not stop the host booting.
+Keep `nofail` on every drive. Without it a missing drive drops a headless host into emergency mode and it stays unreachable. `nofail` alone lets Docker start anyway, and a container then writes into the empty mount point on the root drive. So the deploy also makes Docker wait for every drive that holds service data (role `fast` or `primary`) with `RequiresMountsFor=` (`roles/common`), and the backup scripts refuse to run when one is unmounted. The backup drive is left out: a missing backup drive must not stop the services. The hand-off is in [the reboot check](#check-after-a-reboot-with-the-drive-unplugged).
 
 ## Using the root drive for fast or primary
 
@@ -128,7 +128,7 @@ Stop the services by hand: Ansible restarts a service only when a task reports a
 
 ### Check after a reboot with the drive unplugged
 
-With `docker_data_root` on a `nofail` drive, a missing drive keeps Docker from starting: `systemctl is-active docker containerd` says `inactive`, and neither runs from a directory on the root drive.
+With a service-data drive unplugged, Docker does not start: `systemctl is-active docker` says `inactive`, and the containers do not run from the empty mount point on the root drive. Plug the drive back in: `drive-remount.service` mounts it and starts Docker. Unplugging a drive while the host runs stops Docker the same way, and replugging restarts it. With the backup drive unplugged the services keep running and the backup scripts refuse to run until it is back.
 
 ### Gitea runner registration
 

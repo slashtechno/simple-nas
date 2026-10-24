@@ -223,6 +223,17 @@ drive_mounts: >-
   {%- set _ = _m.update({_r: _d.mount}) -%}
   {%- endfor -%}{%- endfor -%}
   {{ _m }}
+# The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
+# Docker waits for these mounts and the backup scripts refuse to run without them, so nothing writes
+# service data, or backs up an empty folder, under a mount point whose drive is missing.
+# The backup drive is not listed: a missing backup drive must not stop the services.
+data_drive_mounts: >-
+  {%- set _m = [] -%}
+  {%- for _d in drives if _d.uuid is defined -%}
+  {%- if _d.roles | default([]) | intersect(['fast', 'primary']) | length > 0 and _d.mount not in _m -%}
+  {%- set _ = _m.append(_d.mount) -%}
+  {%- endif -%}{%- endfor -%}
+  {{ _m }}
 fast_drive: >-
   {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its
   `drives` has roles: [fast]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}

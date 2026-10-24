@@ -10,6 +10,15 @@ if ! mountpoint -q {{ backup_drive | quote }}; then
 fi
 
 {% endif %}
+{% for mount in data_drive_mounts %}
+# Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
+# snapshot counts toward retention and pushes out good ones.
+if ! mountpoint -q {{ mount | quote }}; then
+  echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (USB connection, then: sudo mount -a)." >&2
+  exit 1
+fi
+{% endfor %}
+
 export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
 # restic's cache avoids re-reading packs over the network. The environment variable overrides it for a manual run.

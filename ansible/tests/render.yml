@@ -245,7 +245,7 @@
           loop: [backup-restic-cloud.sh, backup-paths.txt, restic-excludes-cloud.txt]
           register: cloud_files
 
-        # Local backup: the offsite script guards the backup drive.
+        # The offsite script refuses to run unless every data drive is mounted, and the backup drive when it is local.
         - name: The offsite backup follows the layout
           vars:
             offsite_script: "{{ cloud_files.results[0].content | b64decode }}"
@@ -253,7 +253,7 @@
             offsite_excludes: "{{ cloud_files.results[2].content | b64decode }}"
           ansible.builtin.assert:
             that:
-              - "('mountpoint -q' in offsite_script) == (backup_local_enabled | bool)"
+              - "offsite_script | regex_findall('mountpoint -q') | length == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0)"
               - "not offsite_paths is search('(?m)^- ')"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
 
