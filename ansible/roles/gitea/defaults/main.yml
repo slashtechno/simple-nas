@@ -5,3 +5,12 @@ gitea_port: 3000
 gitea_db_type: sqlite3
 # Path of the SQLite database inside the container.
 gitea_db_path: /data/gitea/gitea.db
+
+# Public URL Gitea puts in links.
+gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
+# Host name Gitea serves its web pages for.
+gitea_domain: "{{ undef(hint='Set gitea_domain (the public host name, e.g. git.example.com) in group_vars/all/vars.yml') }}"
+# Host name shown in SSH clone URLs.
+gitea_ssh_domain: "{{ undef(hint='Set gitea_ssh_domain (the host name for SSH clones, e.g. git.example.com) in group_vars/all/vars.yml') }}"
+# SSH port for git clones, published on the host.
+gitea_ssh_port: "2222"

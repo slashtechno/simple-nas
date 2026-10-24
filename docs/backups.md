@@ -1,6 +1,6 @@
 # Backups
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in `ansible/group_vars/all/defaults.yml` (the `restic_*` ones) or `ansible/roles/backup/defaults/main.yml`.
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache, alerts) or `ansible/group_vars/all/defaults.yml` (repositories, retention, logs).
 
 ## Switching backups on
 
@@ -40,7 +40,7 @@ Paths below use `/mnt/backup` for the backup drive and `/mnt/t7` for the fast an
 
 ## What is backed up where
 
-What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/group_vars/all/defaults.yml`. With the defaults on a NAS:
+What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/roles/backup/defaults/main.yml`. With the defaults on a NAS:
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
@@ -51,7 +51,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 | Gitea database and repositories | Dump, plus the raw data (SSH host keys excluded) | Dump only |
 | Restic password | No | No |
 
-- The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden.
+- The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
 - Both repositories always include `service_dumps_dir` as well.
 - Always excluded: `restic_cache_dir`, `**/.cache` folders, `lost+found` on the primary drive, Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, and Crafty's own `backups/` archives. The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
@@ -77,7 +77,7 @@ restic_local_rules:
 ```
 
 - Quote the `- ` lines in YAML, as above.
-- Setting a list replaces its default. Start from the default paths in `ansible/group_vars/all/defaults.yml` and add to them, or the default drives drop out.
+- Setting a list replaces its default. Start from the default paths in `ansible/roles/backup/defaults/main.yml` and add to them, or the default drives drop out.
 - A `- !` line cannot bring back a file inside a folder that a `- ` line left out as a whole. To keep one file out of an excluded folder, exclude the folder's other contents by pattern instead.
 - `- !` needs restic 0.13.0 or newer (Debian bookworm ships 0.14).
 - After editing, run `just deploy backup`.
@@ -243,7 +243,7 @@ Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl statu
 
 ## Disaster recovery (all drives fail)
 
-1. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and their vault password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
+1. Get the vault password from Bitwarden first; without it nothing below works. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and that password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
 2. Pull from the cloud repository. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password

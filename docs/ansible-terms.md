@@ -131,7 +131,7 @@ Every shared setting and its default is in `ansible/group_vars/all/defaults.yml`
 
 `vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
 
-Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `defaults.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
+Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `roles/copyparty/defaults/main.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
 
 Edit a vault with `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.
 
@@ -141,7 +141,7 @@ Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a f
 
 | Expression | Means | Used in |
 |---|---|---|
-| `{{ undef(hint='...') }}` | "No default: the owner must set this." Reading the variable before it is set stops the run and prints the hint. The setting is listed in `vars.yml.example`. | `pics_repo`, `gitea_*` in `group_vars/all/defaults.yml` |
+| `{{ undef(hint='...') }}` | "No default: the owner must set this." Reading the variable before it is set stops the run and prints the hint. The setting is listed in `vars.yml.example`. | `pics_repo` in `roles/pics/defaults/main.yml`, `gitea_domain` in `roles/gitea/defaults/main.yml` |
 | `x \| mandatory('message')` | Stops the run with that message if `x` is missing. Used so an unclaimed drive role names what to add. | `fast_drive`, `primary_drive`, `backup_drive` in `group_vars/all/defaults.yml` |
 | `a \| combine(b)` | Merges two dictionaries; `b` wins. | `docker_daemon_options` in `group_vars/all/defaults.yml` |
 | `list \| map(attribute='x')` | The `x` of every item in a list of dictionaries. | `roles/storage/tasks/main.yml` |
@@ -151,6 +151,15 @@ Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a f
 | `list \| flatten` | A list of lists as one list. | `roles/cloudflared/tasks/main.yml` |
 | `names \| map('extract', hostvars)` | Looks each host name up in `hostvars`, the variables of every host in the inventory. | `roles/cloudflared/tasks/main.yml` |
 | `a if cond else b` | Picks `a` or `b`. | many templates |
+| `x \| quote` | Shell-quotes `x` so a space or `$` in it cannot break a command. | `roles/backup/templates/`, `roles/pics/templates/pics.env.j2` |
+| `x \| replace('a', 'b')` | Replaces text. | `roles/ntfy/templates/docker-compose.yml.j2` (a `$` in a compose file is written `$$`) |
+| `list \| unique`, `\| sort`, `\| first`, `\| join(', ')` | Drop duplicates; sort; the first item; glue items into one string. | `roles/backup/templates/backup-restic-local.sh.j2`, `roles/storage/templates/98-usb-automount.rules.j2` |
+| `list \| select`, `\| reject('match', 're')` | Keeps the truthy items; drops the ones matching a regular expression. | `roles/backup/templates/backup-paths.txt.j2`, `restic-excludes-local.txt.j2` |
+| `list \| subelements('volumes')` | One pair per item and per entry of its sub-list, so a loop sees both. | `roles/copyparty/tasks/main.yml` |
+| `x is defined`, `x is match('re')` | Tests: is the variable set; does the text match a regular expression. | `roles/ntfy/tasks/main.yml` |
+| `x \| password_hash(...)`, `\| hash('sha256')`, `\| b64encode` | Hash a password; hash a string; base64-encode it. | `roles/garage/templates/docker-compose.yml.j2`, `roles/github_clone/tasks/main.yml` |
+| `x \| from_json`, `\| to_json`, `\| trim` | Text to data; data to text; strip surrounding whitespace. | `roles/tailscale_funnel/tasks/main.yml` |
+| `{%- set _ = d.update({...}) -%}` | Calls a method inside a template. `{%-` and `-%}` trim the blank lines around the tag. | `drive_mounts` in `group_vars/all/defaults.yml` |
 | `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. | `roles/*/templates/` |
 
 To try an expression without deploying: `ansible localhost -m debug -a "msg={{ ['a','b'] | difference(['a']) }}"`.

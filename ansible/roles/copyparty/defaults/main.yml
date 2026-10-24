@@ -14,3 +14,8 @@ copyparty_sftp_port: 3922
 copyparty_fast_enabled: "{{ 'fast' in drive_mounts and 'primary' in drive_mounts and drive_mounts.fast != drive_mounts.primary }}"
 # Where the /fast volume lives.
 copyparty_fast_dir: "{{ fast_drive }}/fast"
+
+# The Copyparty admin login, from the vault.
+copyparty_user: "{{ vault_copyparty_user }}"
+# The Copyparty admin password, from the vault.
+copyparty_pass: "{{ vault_copyparty_pass }}"

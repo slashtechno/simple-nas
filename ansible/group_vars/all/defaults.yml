@@ -96,37 +96,10 @@ restic_repo_path: "{{ backup_drive }}/restic-repo"
 restic_cloud_repository: ""
 # File holding the restic repository password, written from vault_restic_password.
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
+# Where backup logs and service dumps live: on the backup drive with a local backup, else on the root drive.
+backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/backup-work' }}"
 # Where the backup logs are written.
 backup_logs_dir: "{{ backup_work_dir }}/logs"
-# Where the dump.d scripts write database dumps before each backup; the local backup includes this directory.
-service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
-# What the local (daily) backup copies and skips, one rule per line:
-#   /path        back this path up (an absolute path)
-#   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
-#   - !pattern   put back something an earlier "- " line left out
-# Example:
-#   restic_local_rules:
-#     - /mnt/data                                  # back up this drive
-#     - /home/pi/notes                             # and this folder
-#     - "- **/*.iso"                               # but no .iso file
-#     - "- !/mnt/data/downloads/keep.iso"          # except this one
-# The service dumps dir is always added, and caches and live database directories are always skipped
-# (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
-# Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
-# the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic reports
-# "unreadable source files" in the log and the run still counts as done.
-# CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
-# group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
-# (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
-restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
-# The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
-# every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the
-# host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to
-# upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".
-restic_cloud_rules: >-
-  {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
-     + ([] if backup_local_enabled | bool else restic_local_rules)
-     + [services_dir] }}
 # restic forget options for the local repository: snapshots kept per day, week and month.
 restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 # restic forget options for the offsite repository: snapshots kept per week and month.
@@ -134,13 +107,6 @@ restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 # rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
 # fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
-# Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
-# rclone or network pipe cannot hold the repo lock indefinitely.
-restic_command_timeout: "2h"
-# restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
-# off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
-# A host without a fast drive keeps it in the user's ~/.cache.
-restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 
 # --- Data directories (teardown.yml also reads them) ---
 # One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
@@ -179,21 +145,10 @@ garage_data_dir: "{{ fast_drive }}/docker/garage"
 crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 
 # --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
-# A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it
-# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the host that runs ntfy (roles/ntfy). The login token
-# is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
-ntfy_alert_url: ""
 # File on the host holding vault_ntfy_token, read by alert.sh.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
 
 # --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
-# Cloudflare API token, from the vault.
-cloudflared_api_token: "{{ vault_cloudflared_api_token }}"
-# Cloudflare account ID, from the vault.
-cloudflared_account_id: "{{ vault_cloudflared_account_id }}"
-# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
-# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones. Example: `example.com: <zone id>`.
-cloudflared_zones: {}
 # Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
 # One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
 # The hostname must contain one domain from cloudflared_zones. A hostname may appear on only one host; the deploy fails otherwise.
@@ -205,10 +160,6 @@ cloudflared_ingress: []
 # (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
 # pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
 
-# The Copyparty admin login, from the vault.
-copyparty_user: "{{ vault_copyparty_user }}"
-# The Copyparty admin password, from the vault.
-copyparty_pass: "{{ vault_copyparty_pass }}"
 copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
 # Host port of Copyparty's web UI and WebDAV.
 copyparty_port: 3923
@@ -225,33 +176,6 @@ copyparty_port: 3923
 #       - { folder: photos-trash, perms: rwmd }
 copyparty_service_accounts: []
 
-# --- pics ---
-# Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
-# above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
-# your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
-# cloudflared_ingress entry, which points at pics_public_port.
-
-# GitHub repository (owner/name) that pics builds from.
-pics_repo: "{{ undef(hint='Set pics_repo (owner/name of the private GitHub repo pics builds from) in group_vars/all/vars.yml') }}"
-# Public URL of pics' guest pages: the Cloudflare hostname that points at pics_public_port.
-pics_public_url: "{{ undef(hint='Set pics_public_url (e.g. https://photos.example.com) in group_vars/all/vars.yml') }}"
-# Container-internal port of the guest pages (never published): the tunnel points here. Only pics_port is
-# published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
-pics_public_port: 8001
-pics_artist: ""           # written into the EXIF of public downloads
-pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
-pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
-
-# --- Gitea ---
-# Public URL Gitea puts in links.
-gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
-# Host name Gitea serves its web pages for.
-gitea_domain: "{{ undef(hint='Set gitea_domain (the public host name, e.g. git.example.com) in group_vars/all/vars.yml') }}"
-# Host name shown in SSH clone URLs.
-gitea_ssh_domain: "{{ undef(hint='Set gitea_ssh_domain (the host name for SSH clones, e.g. git.example.com) in group_vars/all/vars.yml') }}"
-# SSH port for git clones, published on the host.
-gitea_ssh_port: "2222"
-
 # --- Computed values (not edited) ---
 # Worked out from the settings above and in vars.yml. Change the inputs, not these.
 
@@ -266,6 +190,9 @@ docker_daemon_options: >-
 # Code that works without a role asks `'fast' in drive_mounts`; code that needs one reads
 # fast_drive / primary_drive / backup_drive, which fail with a message naming the missing role.
 # Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
+# How it is built: `{% for %}` loops over the drives and each drive's roles, and `_m.update({role: mount})`
+# fills a dictionary. `{%- set _ = ... -%}` is the usual way to call a method in Jinja, because a plain
+# `{{ }}` would print its result; the `-` trims the blank lines the tags would leave.
 drive_mounts: >-
   {%- set _m = {} -%}
   {%- for _d in drives -%}
@@ -283,5 +210,3 @@ backup_drive: >-
   {{ drive_mounts.backup | mandatory('Host ' ~ inventory_hostname ~ ' uses the backup drive role, but no entry in its
   `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
 
-# Where backup logs and service dumps live: on the backup drive with a local backup, else on the root drive.
-backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/backup-work' }}"

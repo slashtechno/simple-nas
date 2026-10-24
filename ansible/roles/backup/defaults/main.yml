@@ -1,0 +1,41 @@
+---
+# A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it
+# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the host that runs ntfy (roles/ntfy). The login token
+# is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
+ntfy_alert_url: ""
+# What the local (daily) backup copies and skips, one rule per line:
+#   /path        back this path up (an absolute path)
+#   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
+#   - !pattern   put back something an earlier "- " line left out
+# Example:
+#   restic_local_rules:
+#     - /mnt/data                                  # back up this drive
+#     - /home/pi/notes                             # and this folder
+#     - "- **/*.iso"                               # but no .iso file
+#     - "- !/mnt/data/downloads/keep.iso"          # except this one
+# The service dumps dir is always added, and caches and live database directories are always skipped
+# (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
+# Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
+# the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic reports
+# "unreadable source files" in the log and the run still counts as done.
+# CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
+# group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
+# (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
+restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
+# The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
+# every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the
+# host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to
+# upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".
+restic_cloud_rules: >-
+  {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
+     + ([] if backup_local_enabled | bool else restic_local_rules)
+     + [services_dir] }}
+# Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
+# rclone or network pipe cannot hold the repo lock indefinitely.
+restic_command_timeout: "2h"
+# restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
+# off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
+# A host without a fast drive keeps it in the user's ~/.cache.
+restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
+# Where the dump.d scripts write database dumps before each backup; the local backup includes this directory.
+service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
