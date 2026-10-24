@@ -17,9 +17,13 @@
 # state: present installs Tailscale if missing but never upgrades it during a deploy; the role's
 # default, latest, would. Upgrade by hand with `sudo apt upgrade tailscale`.
 # include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of the collection role.
+# Skipped under --check: the collection reads `tailscale status --json` with a plain command task, which
+# --check skips, so its next task then fails parsing the empty output. A preview therefore does not show
+# Tailscale's install.
 - name: Install Tailscale
   ansible.builtin.include_role:
     name: artis3n.tailscale.machine
   vars:
     state: present
     tailscale_up_skip: true
+  when: not ansible_check_mode
