@@ -4,5 +4,5 @@
 # add|change: a card put into a reader that is already plugged in sends only `change`. A repeat mount of a mounted device fails harmlessly.
 # nosuid,nodev,noexec: nothing on a plugged-in drive can run. ro: see usb_automount_writable.
 {% set _skip = (drives | selectattr('uuid', 'defined') | map(attribute='uuid') | list)
-   + (ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/firmware']) | map(attribute='uuid') | reject('equalto', 'N/A') | list) %}
+   + (ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/efi', '/boot/firmware']) | map(attribute='uuid') | reject('equalto', 'N/A') | list) %}
 ACTION=="add|change", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_USAGE}=="filesystem", ENV{ID_FS_UUID}!="{{ (_skip | map('upper') | list + _skip | map('lower') | list) | unique | join('|') }}", RUN{program}+="/usr/bin/systemd-mount --no-block --collect -o nosuid,nodev,noexec{{ '' if usb_automount_writable | bool else ',ro' }} $devnode"

@@ -68,6 +68,21 @@
   notify: Reload systemd daemon
   when: drives | selectattr('uuid', 'defined') | list | length > 0
 
+# Without a drive that has a `uuid`, nothing needs the remount rule; remove it if an earlier config installed it.
+- name: Remove the remount udev rule when no drive is mounted by uuid
+  ansible.builtin.file:
+    path: /etc/udev/rules.d/99-nas-drive-remount.rules
+    state: absent
+  notify: Reload udev rules
+  when: drives | selectattr('uuid', 'defined') | list | length == 0
+
+- name: Remove the remount systemd service when no drive is mounted by uuid
+  ansible.builtin.file:
+    path: /etc/systemd/system/nas-drive-remount.service
+    state: absent
+  notify: Reload systemd daemon
+  when: drives | selectattr('uuid', 'defined') | list | length == 0
+
 # USB drives plugged in are mounted at /run/media/system/<label>. The rule calls systemd-mount, not mount,
 # because udev runs in its own mount namespace. /run is wiped at boot, so tmpfiles.d recreates the directory.
 - name: Install the USB automount rule and its tmpfiles entry
