@@ -76,5 +76,4 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Checklist for the planned drive upgrade and the backup steps that follow it |
 | [docs/plans/encryption.md](./docs/plans/encryption.md) | Planned encryption at rest (not started) |
 | [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Step-by-step cutover to a second host |
-| [docs/dumps/](./docs/dumps/) | Decision log of the maintainability refactor |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

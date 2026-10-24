@@ -1,6 +1,6 @@
 # caddy-docker-proxy reference
 
-Label syntax for the optional reverse proxy (design in [plans/multi-host.md](./plans/multi-host.md)). Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` on a host that sets `caddy_enabled: true`.
+Label syntax for the optional reverse proxy. Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` on a host that sets `caddy_enabled: true`.
 
 ## What it does
 
@@ -53,7 +53,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## With cloudflared
 
-No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress` ([design](./plans/multi-host.md#public-hostnames-for-ad-hoc-apps)); there is no wildcard to Caddy, because every labeled container would become public. Any host that sets `cloudflared_enabled: true` runs its own tunnel with its own `cloudflared_ingress`; see [services.md](./services.md#cloudflare-add-a-public-hostname).
+No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress`; there is no wildcard to Caddy, because every labeled container would become public. Any host that sets `cloudflared_enabled: true` runs its own tunnel with its own `cloudflared_ingress`; see [services.md](./services.md#cloudflare-add-a-public-hostname).
 
 For a published app, point the entry at Caddy and use an `http://` site address, since Cloudflare terminates TLS:
 
