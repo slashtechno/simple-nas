@@ -9,6 +9,11 @@
 {{ copyparty_config_dir }}/copyparty
 {{ copyparty_hist_dir }}
 {% endif %}
+{% if garage_enabled | bool %}
+# Root-owned and a live database: the backup user cannot read it, and Garage's dump (garage.sh) carries a
+# consistent copy.
+{{ garage_data_dir }}/meta
+{% endif %}
 {% if crafty_enabled | bool %}
 # Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
 # still backed up. Add "!{{ crafty_data_dir }}/backups" as a "- !" line of restic_local_rules or restic_cloud_rules to back them up too.

@@ -5,10 +5,10 @@ set -euo pipefail
 # {{ service_dumps_dir }}/. Called by the restic backup scripts before they run.
 #
 # Each service with a live database installs its own script there from its role
-# (roles/immich/files/dump.sh, roles/gitea/files/dump.sh), so a service that is
+# (roles/immich/files/dump.sh, roles/gitea/files/dump.sh, roles/garage/files/dump.sh), so a service that is
 # not deployed leaves no script. A script receives the dump directory as $1 and
 # names its output <script name>-*, e.g. immich.sh writes immich-db-*.sql.gz.
-# Services that are plain files (Copyparty, pics, Homebridge, Garage, Crafty)
+# Services that are plain files (Copyparty, pics, Homebridge, Crafty)
 # need no script: restic copies them directly.
 #
 # The loop below is deliberate, not run-parts: run-parts only runs names made of

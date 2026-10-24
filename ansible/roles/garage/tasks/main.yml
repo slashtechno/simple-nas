@@ -31,6 +31,24 @@
     - "{{ garage_data_dir }}/meta"
     - "{{ garage_data_dir }}/data"
 
+- name: Create the dump script directory
+  ansible.builtin.file:
+    path: "{{ service_dump_scripts_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+# Garage's metadata is root-owned, so the backup copies it through this script, not as plain files
+# (see backup-services.sh). teardown_service.yml removes it again.
+- name: Install the Garage dump script
+  ansible.builtin.copy:
+    src: dump.sh
+    dest: "{{ service_dump_scripts_dir }}/garage.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
 - name: Check if Garage meta directory already has data (i.e., cluster was already bootstrapped)
   ansible.builtin.find:
     path: "{{ garage_data_dir }}/meta"

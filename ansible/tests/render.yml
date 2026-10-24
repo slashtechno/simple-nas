@@ -137,6 +137,7 @@
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "(garage_data_dir ~ '/meta') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"

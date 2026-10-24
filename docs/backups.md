@@ -55,7 +55,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 - Both repositories always include `service_dumps_dir` as well.
 - With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). The offsite list is not checked: it is short on purpose.
 - Always excluded: `restic_cache_dir`, `**/.cache` folders, `lost+found` on the primary drive, Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, and Crafty's own `backups/` archives. The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
-- Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
+- Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`, `roles/garage/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 ## Choosing what is backed up
 
@@ -230,6 +230,25 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 /opt/services/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-<timestamp>.zip
 # Gitea is stopped before restore and started after automatically
 ```
+
+---
+
+## Restore: Garage
+
+Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database, so `<garage_data_dir>/meta` is excluded from the file backup and reaches it through `garage-meta-<timestamp>.tar.gz` in `service-dumps` (the data blocks under `<garage_data_dir>/data` are plain files in the backup). The tarball holds the node key: keep it as private as the vault.
+
+```bash
+cd /opt/services/garage && docker compose stop garage
+tar -xzf /mnt/backup/service-dumps/garage-meta-<timestamp>.tar.gz -C /tmp/garage-restore
+# the newest snapshot is a single LMDB file: it becomes data.mdb of the db.lmdb directory
+sudo mv <garage_data_dir>/meta/db.lmdb <garage_data_dir>/meta/db.lmdb.old
+sudo mkdir <garage_data_dir>/meta/db.lmdb
+sudo cp /tmp/garage-restore/snapshots/<newest>/db.lmdb <garage_data_dir>/meta/db.lmdb/data.mdb
+sudo cp /tmp/garage-restore/node_key /tmp/garage-restore/node_key.pub /tmp/garage-restore/cluster_layout <garage_data_dir>/meta/
+docker compose start garage
+```
+
+This restore has not been rehearsed on a real host. Try it once into a scratch Garage before relying on it, and keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
 
 ---
 
