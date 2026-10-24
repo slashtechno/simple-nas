@@ -20,7 +20,6 @@ Every server gets Docker, Tailscale, the drive mounts and the base packages. Eve
 | Backups (`backup`) | Daily local, weekly cloud, weekly integrity check | [backups.md](./docs/backups.md) |
 | Backup status | Read-only backup dashboard | [backups.md](./docs/backups.md) |
 | Tailscale | Private remote access, installed on every server | [networking.md](./docs/networking.md) |
-| Tailscale Funnel | Copyparty on a public ts.net name | [services.md](./docs/services.md#tailscale-funnel) |
 | Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | [networking.md](./docs/networking.md#direct-ethernet-link) |
 
 What each service needs (drive roles, vault entries) is in [docs/services.md](./docs/services.md#what-each-service-needs). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).

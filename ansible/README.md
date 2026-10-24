@@ -105,7 +105,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ### Tags, `--limit` and `-K`
 
-- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name: `storage`, `common`, `tailscale` (also the Funnel), `network`, `immich`, `copyparty`, `gitea`, `homebridge`, `pics`, `crafty`, `dockge`, `caddy`, `cloudflared`, `garage`, `backup`, `ntfy`, `backup_status`. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. A tag that matches no role (a typo, or `backup-status` for `backup_status`) runs nothing and still exits successfully. A tag only selects a role; a role whose flag is false on the host is still skipped.
+- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name: `storage`, `common`, `tailscale`, `network`, `immich`, `copyparty`, `gitea`, `homebridge`, `pics`, `crafty`, `dockge`, `caddy`, `cloudflared`, `garage`, `backup`, `ntfy`, `backup_status`. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. A tag that matches no role (a typo, or `backup-status` for `backup_status`) runs nothing and still exits successfully. A tag only selects a role; a role whose flag is false on the host is still skipped.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host in `servers`.
 - **`-K`** (`--ask-become-pass`) asks for the host's sudo password. It is needed only for a host's first deploy.
 

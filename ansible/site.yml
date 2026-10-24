@@ -65,13 +65,6 @@
     - name: Apply the base roles' handlers
       ansible.builtin.meta: flush_handlers
 
-    # The funnel publishes Copyparty, and needs Tailscale joined (by hand, docs/networking.md).
-    - name: Tailscale Funnel for Copyparty
-      ansible.builtin.import_role:
-        name: tailscale_funnel
-      tags: [tailscale]
-      when: copyparty_enabled | bool
-
     - name: Deploy immich
       ansible.builtin.import_role:
         name: immich

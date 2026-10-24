@@ -8,8 +8,7 @@
 #   - Physical drive mounts/fstab entries (storage role) — never unmounted.
 #   - The restic encryption password (~/.restic-password) — deleting it would
 #     make the existing backup repo permanently unreadable.
-#   - Tailscale login/Funnel state — this playbook doesn't touch tailnet
-#     membership or Funnel exposure either way.
+#   - Tailscale login — this playbook doesn't touch tailnet membership.
 #
 # Every host runs every block, whatever it has enabled, so --limit is required: one command must
 # never reach all of them. Removing a service that was never deployed does nothing.
@@ -135,48 +134,6 @@
       ansible.builtin.import_tasks: teardown_service.yml
       vars:
         service: cloudflared
-
-    # The Funnel publishes Copyparty to the internet, so it goes off with --tags copyparty as well as --tags tailscale.
-    # A host not joined to Tailscale serves no Funnel.
-    - name: Turn off the Tailscale Funnel and remove its helper script
-      tags: [copyparty, tailscale]
-      block:
-        - name: Read whether Tailscale is joined
-          ansible.builtin.command:
-            cmd: tailscale status --json
-          register: teardown_tailscale_status
-          failed_when: false
-          changed_when: false
-
-        - name: Work out whether Tailscale is joined
-          ansible.builtin.set_fact:
-            teardown_tailscale_joined: >-
-              {{ teardown_tailscale_status.stdout | trim | length > 0
-                 and (teardown_tailscale_status.stdout | from_json).BackendState | default('') == 'Running' }}
-
-        # On a joined host a failed read stops the play: the Funnel must not be left on unnoticed.
-        - name: Read the Funnel status
-          ansible.builtin.command:
-            cmd: tailscale funnel status --json
-          register: teardown_funnel_status
-          changed_when: false
-          when: teardown_tailscale_joined
-
-        # `funnel off` fails when no Funnel is set up, so it only runs while :443 is on.
-        - name: Turn off the Funnel on :443
-          ansible.builtin.command:
-            cmd: tailscale funnel --https=443 off
-          changed_when: true
-          when:
-            - teardown_tailscale_joined
-            - >-
-              ((teardown_funnel_status.stdout | trim | from_json if teardown_funnel_status.stdout | trim else {}).AllowFunnel | default({})
-              | dict2items | selectattr('key', 'match', '.*:443$') | selectattr('value') | list | length) > 0
-
-        - name: Remove copyparty-funnel.sh
-          ansible.builtin.file:
-            path: "{{ scripts_dir }}/copyparty-funnel.sh"
-            state: absent
 
     - name: Stop and remove backup-status
       tags: [backup_status]

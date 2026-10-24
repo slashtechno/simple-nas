@@ -174,8 +174,7 @@ direct_link_prefix: 30
 
 # --- Copyparty ---
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
-# any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
-# (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
+# any device on your tailnet. That needs nothing extra: no `tailscale serve`. pics' guest
 # pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
 # Host port of Copyparty's web UI and WebDAV.
 copyparty_port: 3923

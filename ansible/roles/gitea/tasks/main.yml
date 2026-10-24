@@ -17,14 +17,6 @@
     compose_service_name: gitea
     compose_service_has_secrets: true
 
-- name: Create the dump script directory
-  ansible.builtin.file:
-    path: "{{ service_dump_scripts_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-
 # Gitea has a live database, so the backup runs this dump script first
 # (see backup-services.sh). teardown_service.yml removes it again.
 - name: Install the Gitea dump script

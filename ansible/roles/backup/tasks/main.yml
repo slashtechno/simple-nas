@@ -96,22 +96,6 @@
        + [restic_cache_dir, backup_logs_dir, service_dumps_dir]
        + ([restic_repo_path] if backup_local_enabled | bool else []) }}
 
-- name: Create scripts directory
-  ansible.builtin.file:
-    path: "{{ scripts_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-
-- name: Create the dump script directory
-  ansible.builtin.file:
-    path: "{{ service_dump_scripts_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-
 - name: Render backup scripts that reference deployment-specific paths
   ansible.builtin.template:
     src: "{{ item }}.j2"

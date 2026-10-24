@@ -1,4 +1,0 @@
----
-# Expose Copyparty publicly through Tailscale Funnel (https://<host>.<tailnet>.ts.net).
-# Allowed: true, false. Default: false.
-tailscale_funnel_enabled: false

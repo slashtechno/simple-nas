@@ -99,13 +99,13 @@ Flow and escape hatches:
 - `assert`: fail early with a message (the storage role's drive checks)
 - `set_fact`: set a variable mid-play
 - `debug`: print a message during the run (the cloudflared role lists leftover DNS records)
-- `meta: flush_handlers`: run pending handlers now instead of at the end of the play (site.yml, before the Funnel)
+- `meta: flush_handlers`: run pending handlers now instead of at the end of the play (site.yml, before the service roles)
 - `import_role`, `import_tasks`: pull in a role or task file when the playbook is parsed, so `--tags` still select tasks inside it. This repo uses these.
 - `include_role`: the same at run time, where tags don't reach inside. Used only where a role is called mid-task: tailscale calls `artis3n.tailscale.machine`, and pics calls `github_clone`.
 - `command`: run one binary, no shell features
 - `shell`: full shell, for when a pipe is needed (no role uses it)
 
-Dedicated modules check state and change only what's wrong. `command` and `shell` run every time, so they carry `changed_when` or `failed_when` to say when something really changed. The Tailscale Funnel tasks show it: a read-only `funnel status --json` task (`changed_when: false`, `check_mode: false`) runs first, and the enable and disable tasks fire only when the state differs.
+Dedicated modules check state and change only what's wrong. `command` and `shell` run every time, so they carry `changed_when` or `failed_when` to say when something really changed.
 
 ## 5. Task keywords
 
@@ -167,7 +167,6 @@ Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a f
 | `list \| subelements('volumes')` | One pair per item and per entry of its sub-list, so a loop sees both. | `roles/copyparty/tasks/main.yml` |
 | `x is defined`, `x is match('re')` | Tests: is the variable set; does the text match a regular expression. | `roles/ntfy/tasks/main.yml` |
 | `x \| password_hash(...)`, `\| hash('sha256')`, `\| b64encode` | Hash a password; hash a string; base64-encode it. | `roles/garage/templates/docker-compose.yml.j2`, `roles/github_clone/tasks/main.yml` |
-| `x \| from_json`, `\| to_json`, `\| trim` | Text to data; data to text; strip surrounding whitespace. | `roles/tailscale_funnel/tasks/main.yml` |
 | `{%- set _ = d.update({...}) -%}` | Calls a method inside a template. `{%-` and `-%}` trim the blank lines around the tag. | `drive_mounts` in `group_vars/all/defaults.yml` |
 | `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. | `roles/*/templates/` |
 

@@ -13,14 +13,19 @@
     mode: "0440"
     validate: visudo -cf %s
 
-# The parent of every compose project and of the scripts directory.
-- name: Create the base directory for compose projects
+# The parent of every compose project, then the scripts directory and the dump script directory inside it.
+# Several roles install into the last two, so they are created here once.
+- name: Create the base directory for compose projects, scripts and dump scripts
   ansible.builtin.file:
-    path: "{{ services_dir }}"
+    path: "{{ item }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
+  loop:
+    - "{{ services_dir }}"
+    - "{{ scripts_dir }}"
+    - "{{ service_dump_scripts_dir }}"
 
 - name: Install base packages
   ansible.builtin.apt:

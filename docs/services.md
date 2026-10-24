@@ -22,7 +22,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Crafty | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | `roles/ntfy` | `fast` drive role; `vault_ntfy_password_hash`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Cloudflare Tunnel | `roles/cloudflared` | `cloudflared_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
-| Tailscale, Funnel | `roles/tailscale`, `roles/tailscale_funnel` | Tailscale joined by hand; Copyparty for the Funnel | [Funnel](#tailscale-funnel) |
+| Tailscale | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Dockge, Caddy | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Backups | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) | [backups.md](./backups.md) |
 | Direct Ethernet link | `roles/network` | none | [networking.md](./networking.md#direct-ethernet-link) |
@@ -118,10 +118,6 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 - `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
-
-## Tailscale Funnel
-
-Set `tailscale_funnel_enabled: true` and `copyparty_enabled: true` in the host's `vars.yml` to expose Copyparty (port `copyparty_port`) at your ts.net hostname, then `just deploy tailscale --limit <host>`. The host must have joined Tailscale (`sudo tailscale up`, once, by hand).
 
 ## Garage (S3)
 

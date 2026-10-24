@@ -1,0 +1,3 @@
+---
+# Cloudflare's API. A role's vars/ file holds constants: unlike defaults/, a host_vars file cannot override it.
+cloudflared_api_url: https://api.cloudflare.com/client/v4
