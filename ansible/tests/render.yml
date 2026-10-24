@@ -51,11 +51,18 @@
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template and every branch of a template renders.
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's SFTP, /fast
+    # and USB volumes) are switched on in the task after this one.
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
       loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup_local, backup_cloud, backup_status]
+
+    - name: Turn on Copyparty's optional volumes and listeners
+      ansible.builtin.set_fact:
+        copyparty_sftp_enabled: true
+        copyparty_fast_enabled: true
+        usb_automount_enabled: true
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:

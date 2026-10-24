@@ -71,5 +71,3 @@ ansible/inventory/hosts.yml
 
 # Agent session artifacts
 .pi-subagents/
-
-# One-time migration helper for the owner's existing hosts; delete after use.

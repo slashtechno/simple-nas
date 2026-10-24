@@ -65,7 +65,9 @@
 - name: Check the backup drive is mounted
   ansible.builtin.assert:
     that: backup_drive_mountpoint.rc == 0
-    fail_msg: "{{ backup_drive }} is not mounted. Mount the backup drive (docs/storage.md) and deploy again."
+    fail_msg: >-
+      {{ backup_drive }} is not mounted. Plug the backup drive in and deploy again. Only a `drives` entry with a
+      `uuid` is mounted by the storage role (docs/storage.md), so give the backup drive one.
     quiet: true
   when: backup_local_enabled | bool
 

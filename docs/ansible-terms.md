@@ -23,6 +23,8 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 - `inventory = inventory/hosts.yml`: the default inventory.
 - `interpreter_python = /usr/bin/python3`: fixed so Ansible does not warn about discovering Python.
 - `pipelining = True`: faster deploys over SSH.
+- `stdout_callback = default`, `result_format = yaml`: how task results print.
+- `collections_path = ~/.ansible/collections`: where Galaxy-installed collections live.
 
 The inventory is `groups → hosts → connection vars`. This repo has one group, `servers`, and both playbooks run on it. The group carries no settings; what a host runs is set in its own `host_vars/<host>/vars.yml`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 

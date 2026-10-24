@@ -13,7 +13,7 @@ A host needs two files:
 - `ansible/host_vars/<host>/vars.yml`: `drives`, the `<name>_enabled` flags, `backup_local_enabled` / `backup_cloud_enabled`, `restic_cloud_repository`, and the cloudflared settings (`cloudflared_enabled`, `cloudflared_tunnel_name`, `cloudflared_ingress`). Start from `host_vars/vars.yml.example`; `host_vars/pi4/vars.yml` is a working example.
 - `ansible/host_vars/<host>/vault.yml`: copy `host_vars/vault.yml.example`, keep the keys the host's services use, then `ansible-vault encrypt host_vars/<host>/vault.yml` with the same password as the other vault files.
 
-A host with no flags set deploys only the base roles. Secrets every host shares are in `group_vars/all/vault.yml`, under these names: `vault_cloudflared_api_token`, `vault_cloudflared_account_id`, `vault_restic_password`, `vault_rclone_gdrive_token`. A key in a host vault wins over the same key in `group_vars/all/vault.yml`.
+A host with no flags set deploys only the base roles. Secrets every host shares are in `group_vars/all/vault.yml`, under these names: `vault_cloudflared_api_token`, `vault_cloudflared_account_id`, `vault_restic_password`, `vault_rclone_gdrive_token`, `vault_ntfy_token`. A key in a host vault wins over the same key in `group_vars/all/vault.yml`.
 
 ## Cutover from the Pi 4 to pi5
 
@@ -35,7 +35,7 @@ Does not travel with the drives:
 2. **Vault keys.** In `group_vars/all/vault.yml`, the Cloudflare keys are `vault_cloudflared_api_token` and `vault_cloudflared_account_id`. Rename them if they still have the old names `vault_cf_api_token` and `vault_cf_account_id`. Check that no encrypted vault file still holds the old names.
    Rename the SFTP keys `vault_pocketpi_nas_user` and `vault_pocketpi_nas_pass` to `vault_pocketpi_sftp_user` and `vault_pocketpi_sftp_pass` the same way (`ansible-vault edit` on the host's `vault.yml`, or on `group_vars/all/vault.yml` if shared).
    Rename the Gitea runner: it registers as `<host>-runner`, but act_runner registers only when `.runner` is missing from its data directory (checked in the image's `run.sh`). To rename a runner that is registered under `pi-nas-runner`, delete `<gitea_runner_data_dir>/.runner` on the host, redeploy, then delete the old entry under Gitea's Site Administration, Actions, Runners.
-   The rclone remote is named `gdrive`. the script in cutover step 2 renames the `[gdrive-nas]` section of the ansible user's `rclone.conf` to `[gdrive]`. `host_vars/pi4/vars.yml` already uses `rclone:gdrive:/...`; change `restic_cloud_repository` the same way (same path) for any other host that uses the old remote.
+   The rclone remote is named `gdrive`. The script in cutover step 2 renames the `[gdrive-nas]` section of the ansible user's `rclone.conf` to `[gdrive]`. `host_vars/pi4/vars.yml` already uses `rclone:gdrive:/...`; change `restic_cloud_repository` the same way (same path) for any other host that uses the old remote.
 3. **Google OAuth.** Publish the OAuth app to Production, or the Drive refresh token expires after 7 days ([backups.md](../backups.md)).
 4. **Do not create `host_vars/pi5/` yet.** With a `drives:` block in place, any deploy to pi5 tries to mount drives that are not attached. Cutover step 8 creates it.
 5. **ntfy (optional).** Failure alerts to your phone: [services.md](../services.md#ntfy-failure-alerts).

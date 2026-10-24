@@ -42,7 +42,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
-1. Copy the `direct_link_*` block from `ansible/host_vars/vars.yml.example` into `host_vars/<host>/vars.yml` and set `direct_link_enabled: true`, then `just deploy network --limit <host>`.
+1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml` (the address and port settings keep their defaults from `ansible/group_vars/all/defaults.yml` unless you override them), then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `http://10.10.20.1:3923` for Copyparty.
 

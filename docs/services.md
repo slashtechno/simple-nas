@@ -51,12 +51,14 @@ Git hosting with an optional Actions runner.
 
 Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_service_accounts` in `group_vars/all/vars.yml` or the host's `vars.yml` (user, password variable, volumes as folder plus permissions) and put the password in the vault. The example is in the comment above `copyparty_service_accounts` in `ansible/group_vars/all/defaults.yml`.
 
-- Each volume is mounted at `/<folder>` and stored in `copyparty_files_dir/<folder>`, owned by the admin. Those folders then vanish for other accounts that have `/`, such as pocketpi's.
+- Each volume is mounted at `/<folder>` and stored in `copyparty_files_dir/<folder>`, owned by the admin. Those folders then vanish for other accounts that have `/`, such as the SFTP account for pocketpi's sync.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
 `/drives` shows USB drives and cards plugged into the host (`usb_automount_enabled`), read-only unless `usb_automount_writable`. Drives listed in `drives` are never shown. See [storage.md](./storage.md#plugged-in-usb-drives-drives).
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
+
+`copyparty_sftp_enabled: true` opens an SFTP listener on `copyparty_sftp_port` for the pocketpi sync. Its account is `vault_pocketpi_sftp_user` and `vault_pocketpi_sftp_pass` from the vault, with read, write, move and delete on `/files`.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).
 

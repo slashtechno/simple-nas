@@ -16,7 +16,7 @@ RUN apk add --no-cache \
     libheif-dev \
     libwebp-dev \
     py3-pip
-    # git and cmake were only for compiling rawpy; see the rawpy block below
+    # git and cmake are needed only to compile rawpy; see the rawpy block below
     # git \
     # cmake
 
