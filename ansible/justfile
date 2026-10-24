@@ -25,7 +25,7 @@ test:
     set -euo pipefail
     out="$(mktemp -d)"
     ansible-playbook -i tests/inventory.yml tests/render.yml -e "out_dir=$out"
-    uvx --from shellcheck-py shellcheck --severity=warning "$out"/*/*.sh "$out"/general/*/*.sh
+    find "$out" -name '*.sh' -print0 | xargs -0 uvx --from shellcheck-py shellcheck --severity=warning
     echo "Rendered templates are in $out"
 
 # Everything CI runs. Run this before committing.

@@ -1,12 +1,53 @@
 ---
-# Hosts for tests/render.yml. group_names in the templates comes from here.
+# Hosts for tests/render.yml. No group carries behaviour; `layouts` only tells the test which hosts
+# are drive-layout fixtures. Each fixture sets `fixture_drives` (the host's `drives`) and `expect`.
 all:
   vars:
     ansible_connection: local
   children:
-    nas:
+    servers:
       hosts:
-        render-nas:
-    servers_general:
-      hosts:
-        render-general:
+        # Every drive role claimed: every template can render against it.
+        render-full:
+      children:
+        layouts:
+          hosts:
+            # Only the root drive: no role claimed, nothing but the user's home to back up.
+            root-only:
+              fixture_drives: []
+              expect:
+                local_paths: [/home/pi]
+                cache_dir: /home/pi/.cache/restic
+                copyparty_fast: false
+                unclaimed: [fast, primary, backup]
+            # A folder on the root drive for services, a USB drive for backups.
+            root-folder-usb-backup:
+              fixture_drives:
+                - {mount: /srv/apps, roles: [fast, primary]}
+                - {uuid: "1111-AAAA", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
+              expect:
+                local_paths: [/srv/apps]
+                cache_dir: /srv/apps/restic-cache
+                copyparty_fast: false
+                unclaimed: []
+            # Two drives: one for services and data, one for backups.
+            two-drives:
+              fixture_drives:
+                - {uuid: "2222-BBBB", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, primary]}
+                - {uuid: "3333-CCCC", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
+              expect:
+                local_paths: [/mnt/data]
+                cache_dir: /mnt/data/restic-cache
+                copyparty_fast: false
+                unclaimed: []
+            # Three drives, one per role.
+            three-drives:
+              fixture_drives:
+                - {uuid: "4444-DDDD", mount: /mnt/fast, fstype: ext4, options: "defaults,nofail", roles: [fast]}
+                - {uuid: "5555-EEEE", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}
+                - {uuid: "6666-FFFF", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
+              expect:
+                local_paths: [/mnt/primary, /mnt/fast]
+                cache_dir: /mnt/fast/restic-cache
+                copyparty_fast: true
+                unclaimed: []

@@ -10,39 +10,19 @@
     fail_msg: >-
       Invalid drive roles in `drives`: a role (fast, primary, backup) can be claimed by only one drive,
       and no other role names exist. Any one drive may hold several roles.
-      Current map: {{ drive_mounts }}
+      Current `drives`: {{ drives }}
     quiet: true
 
-# The NAS stores everything on its drives, so there all three roles must exist. Otherwise a service
-# would silently write to an empty folder on the microSD card.
-- name: Validate that the NAS has a drive for every role
-  ansible.builtin.assert:
-    that: drive_mounts.values() | select('equalto', '') | list | length == 0
-    fail_msg: >-
-      This host is in the `nas` group, so `drives` in host_vars/{{ inventory_hostname }}/vars.yml must give
-      each of fast, primary and backup to a drive. Current map: {{ drive_mounts }}
-    quiet: true
-  when: "'nas' in group_names"
-
-# A general server keeps Dockge's and Caddy's data on its fast drive (dockge_data_dir and the others in group_vars/all/vars.yml).
-- name: Validate that a general server has a fast drive
-  ansible.builtin.assert:
-    that: fast_drive | length > 0
-    fail_msg: >-
-      This host is in the `servers_general` group, so `drives` in host_vars/{{ inventory_hostname }}/vars.yml must give
-      the `fast` role to a drive. A folder on the microSD card works: `- { mount: /srv/apps, roles: [fast] }`.
-    quiet: true
-  when: "'servers_general' in group_names"
-
-# A `drives` entry without `uuid` is a folder on the microSD card: created, never put in fstab.
+# A `drives` entry without `uuid` is a folder on the root drive: created, never put in fstab.
+# A backup there would die with the root drive, so the backup role needs an entry with a `uuid`.
 - name: Validate that the backup role is on a mounted drive
   ansible.builtin.assert:
-    that: drives | selectattr('mount', 'equalto', backup_drive) | selectattr('uuid', 'defined') | list | length == 1
+    that: drives | selectattr('mount', 'equalto', drive_mounts.backup) | selectattr('uuid', 'defined') | list | length == 1
     fail_msg: >-
-      The `backup` role is on {{ backup_drive }}, which has no `uuid`. A backup on the same microSD
-      card as the data is not a backup. Give the backup role to an entry that has a `uuid`.
+      The `backup` role is on {{ drive_mounts.backup }}, which has no `uuid`, so it is a folder on the root
+      drive. A backup on the same drive as the system is not a backup. Give the backup role to an entry that has a `uuid`.
     quiet: true
-  when: backup_drive | length > 0
+  when: "'backup' in drive_mounts"
 
 - name: Create mount points
   ansible.builtin.file:
@@ -137,7 +117,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-  when: fast_drive | length > 0
+  when: "'fast' in drive_mounts"
 
 - name: Create /opt/nas base directory
   ansible.builtin.file:

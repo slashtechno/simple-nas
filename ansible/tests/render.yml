@@ -7,10 +7,10 @@
 #   - a key in a vars.yml (group_vars/all, group_vars/nas, host_vars/<host>) that is missing from
 #     its example file
 #   - template syntax errors
-#   - a backup or cloudflared template that needs a NAS-only variable on a general server (second play)
-# The hosts come from tests/inventory.yml, so group_names inside the templates is real.
+#   - a drive layout (tests/inventory.yml) that resolves to the wrong paths, or a role nobody
+#     claimed that does not fail with a message naming it
 - name: Render all role templates against the example vars
-  hosts: render-nas
+  hosts: render-full
   become: false
   gather_facts: false
   vars:
@@ -51,6 +51,14 @@
             repo + '/group_vars/nas/vault.yml.example',
             repo + '/group_vars/all/vault.yml.example'] + defaults_files }}
 
+    # After include_vars, which would reset drives to the example's empty list.
+    - name: Claim every drive role on its own drive
+      ansible.builtin.set_fact:
+        drives:
+          - {uuid: "4444-DDDD", mount: /mnt/fast, fstype: ext4, options: "defaults,nofail", roles: [fast]}
+          - {uuid: "5555-EEEE", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}
+          - {uuid: "6666-FFFF", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
+
     - name: Find every host's vars.yml
       ansible.builtin.find:
         paths: "{{ repo }}/host_vars"
@@ -80,17 +88,16 @@
       loop_control:
         label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"
 
-# A general server has no group_vars/nas, so only the all/ examples are loaded. A backup template that
-# uses a NAS-only variable outside {% if 'nas' in group_names %} fails here as undefined.
-- name: Render the backup and cloudflared templates for a general server
-  hosts: render-general
+# One host per drive layout. Only the all/ examples are loaded, as on a host outside the `nas` group.
+- name: Check each drive layout
+  hosts: layouts
   become: false
   gather_facts: false
   vars:
     repo: "{{ playbook_dir }}/.."
     ansible_user: pi
   tasks:
-    - name: Load the all/ examples and the backup role's defaults
+    - name: Load the all/ examples and the Copyparty defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop:
@@ -98,69 +105,83 @@
         - "{{ repo }}/group_vars/all/vault.yml.example"
         - "{{ repo }}/group_vars/all/versions.yml"
         - "{{ repo }}/group_vars/all/derived.yml"
+        - "{{ repo }}/roles/copyparty/defaults/main.yml"
 
     # After include_vars, which would reset drives to the example's empty list.
-    - name: Give the host a fast folder on the microSD and a backup drive
+    - name: Give the host its fixture drives
       ansible.builtin.set_fact:
-        drives:
-          - {mount: /srv/apps, roles: [fast]}
-          - {uuid: "1111-AAAA", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
+        drives: "{{ fixture_drives }}"
 
-    - name: Find the templates of the roles that run on general servers
-      ansible.builtin.find:
-        paths: "{{ repo }}/roles/{{ item }}/templates"
-        patterns: ["*.j2"]
-      loop: [backup, cloudflared]
-      register: general_templates
+    - name: The paths follow the claimed roles
+      ansible.builtin.assert:
+        that:
+          - restic_local_paths == expect.local_paths
+          - restic_cache_dir == expect.cache_dir
+          - copyparty_fast_enabled | bool == expect.copyparty_fast
 
-    - name: Create the output directories
-      ansible.builtin.file:
-        path: "{{ out_dir }}/general/{{ item }}"
-        state: directory
-        mode: "0755"
-      loop: [backup, cloudflared]
+    - name: Read each drive role
+      ansible.builtin.set_fact:
+        role_probe: "{{ lookup('vars', item ~ '_drive') }}"
+      loop: [fast, primary, backup]
+      register: role_probes
+      ignore_errors: true   # noqa: ignore-errors (an unclaimed role is meant to fail here)
 
-    - name: Render them
-      ansible.builtin.template:
-        src: "{{ item.1.path }}"
-        dest: "{{ out_dir }}/general/{{ item.0.item }}/{{ item.1.path | basename | regex_replace('\\.j2$', '') }}"
-        mode: "0644"
-      loop: "{{ general_templates.results | subelements('files') }}"
+    - name: An unclaimed role fails with a message that names it; a claimed one does not fail
+      ansible.builtin.assert:
+        that:
+          - (item.failed | default(false)) == (item.item in expect.unclaimed)
+          - not item.failed | default(false) or item.item in item.msg
+      loop: "{{ role_probes.results }}"
       loop_control:
-        label: "{{ item.1.path | basename }}"
+        label: "{{ item.item }}"
 
-    - name: The general-server paths follow the fast drive, and the default backup covers them
-      ansible.builtin.assert:
-        that:
-          - dockge_stacks_dir == '/srv/apps/stacks'
-          - dockge_data_dir == '/srv/apps/docker/dockge'
-          - caddy_data_dir == '/srv/apps/docker/caddy'
-          - restic_local_paths == ['/srv/apps']
-          - restic_cache_dir == '/srv/apps/restic-cache'
+    - name: Render the backup templates
+      when: "'backup' in drive_mounts"
+      block:
+        - name: Find the backup templates
+          ansible.builtin.find:
+            paths: "{{ repo }}/roles/backup/templates"
+            patterns: ["*.j2"]
+          register: backup_templates
 
-    # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
-    # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
-    # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
-    - name: Turn on ntfy alerts for this host
-      ansible.builtin.set_fact:
-        ntfy_alert_url: http://localhost:8090/alerts
+        - name: Create the output directory
+          ansible.builtin.file:
+            path: "{{ out_dir }}/layouts/{{ inventory_hostname }}"
+            state: directory
+            mode: "0755"
 
-    - name: Render alert.sh with an ntfy topic set
-      ansible.builtin.template:
-        src: "{{ repo }}/roles/backup/templates/alert.sh.j2"
-        dest: "{{ out_dir }}/general/backup/alert-with-ntfy.sh"
-        mode: "0644"
+        - name: Render them
+          ansible.builtin.template:
+            src: "{{ item.path }}"
+            dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/{{ item.path | basename | regex_replace('\\.j2$', '') }}"
+            mode: "0644"
+          loop: "{{ backup_templates.files }}"
+          loop_control:
+            label: "{{ item.path | basename }}"
 
-    - name: Read both alert.sh renders
-      ansible.builtin.slurp:
-        src: "{{ out_dir }}/general/backup/{{ item }}"
-      loop: [alert.sh, alert-with-ntfy.sh]
-      register: alert_scripts
+        # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
+        # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
+        # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
+        - name: Turn on ntfy alerts for this host
+          ansible.builtin.set_fact:
+            ntfy_alert_url: http://localhost:8090/alerts
 
-    - name: Only the ntfy render sends anything, and never lets a failed send fail the job
-      ansible.builtin.assert:
-        that:
-          - "'curl' not in (alert_scripts.results[0].content | b64decode)"
-          - "'curl' in (alert_scripts.results[1].content | b64decode)"
-          - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
-          - "'|| true' in (alert_scripts.results[1].content | b64decode)"
+        - name: Render alert.sh with an ntfy topic set
+          ansible.builtin.template:
+            src: "{{ repo }}/roles/backup/templates/alert.sh.j2"
+            dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert-with-ntfy.sh"
+            mode: "0644"
+
+        - name: Read both alert.sh renders
+          ansible.builtin.slurp:
+            src: "{{ out_dir }}/layouts/{{ inventory_hostname }}/{{ item }}"
+          loop: [alert.sh, alert-with-ntfy.sh]
+          register: alert_scripts
+
+        - name: Only the ntfy render sends anything, and never lets a failed send fail the job
+          ansible.builtin.assert:
+            that:
+              - "'curl' not in (alert_scripts.results[0].content | b64decode)"
+              - "'curl' in (alert_scripts.results[1].content | b64decode)"
+              - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
+              - "'|| true' in (alert_scripts.results[1].content | b64decode)"

@@ -66,7 +66,7 @@ service_dumps_dir: "{{ backup_drive }}/service-dumps"
 # starts a new snapshot group; the old group's last snapshots stay until you
 # run `restic forget --path <old path> ...` by hand (see docs/plans/drive-migration.md).
 # To skip something, add it to restic_local_excludes instead: excludes never split a group.
-restic_local_paths: "{{ [primary_drive, fast_drive] | select | unique | list or ['/home/' ~ ansible_user] }}"
+restic_local_paths: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
 # Extra patterns for the local backup to skip, added AFTER the defaults in
 # roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
 # restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
@@ -94,7 +94,7 @@ restic_command_timeout: "2h"
 # restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
 # off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
 # A host without a fast drive keeps it in the user's ~/.cache.
-restic_cache_dir: "{{ fast_drive + '/restic-cache' if fast_drive else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
+restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 
 # --- Data directories of the general-server services (teardown.yml also reads them) ---
 # They sit on the host's `fast` drive, which a general server must claim (docs/storage.md), so the
