@@ -71,8 +71,6 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=10s` to each drive's
 - **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mounts within 10 seconds, for example a drive with a broken filesystem; the mount point is then a plain folder until you restart it.
 - **Backups:** the backup scripts check `mountpoint -q` before they write anything. The check opens the path, so it mounts the drive, or fails after 10 seconds and the script refuses to run.
 
-Containers are not restarted when a drive comes back: one that failed to start, or lost its mount, stays down. Restart the stacks with `just deploy '' --limit <host>` or `docker compose up -d`. Recovery is in [the reboot check](#check-after-a-reboot-with-the-drive-unplugged).
-
 ## Using the root drive for fast or primary
 
 A `drives` entry with no `uuid` is a folder on the root drive (the drive the OS boots from: an SD card, USB or NVMe drive). It is created, and nothing goes in fstab:
@@ -138,15 +136,12 @@ To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; 
 
 Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
 
-### Check after a reboot with the drive unplugged
+### With a drive missing
 
-With a drive unplugged and the host rebooted:
-
-1. `systemctl status mnt-t7.automount` says `active (waiting)`, and `time ls /mnt/t7` fails with `No such device` after about 10 seconds.
-2. Containers whose data is on that drive fail to start (`docker ps -a`). Nothing is written under `/mnt/t7` on the root drive: `ls -la /mnt/t7` stays empty.
-3. Plug the drive in. `ls /mnt/t7` mounts it. Then restart the stacks: `just deploy '' --limit <host>`.
-
-Unplug a drive while the host runs and the same follows once systemd has unmounted it. If a process still holds the mount, systemd cannot unmount it and every access returns an I/O error until `sudo umount -l /mnt/t7` or a reboot. The automount does not help there. With only the backup drive unplugged the services keep running, and the backup scripts refuse to run until it is back.
+- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 10 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
+- **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
+- **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
+- **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
 
 ### Gitea runner registration
 
