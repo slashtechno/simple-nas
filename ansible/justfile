@@ -13,7 +13,7 @@ deps:
 lint:
     uvx ansible-lint
     uvx --from shellcheck-py shellcheck --severity=warning roles/*/files/*.sh
-    uvx ruff check --isolated --select F,B roles/backup-status/files
+    uvx ruff check --isolated --select F,B roles/backup_status/files
 
 # Both playbooks parse
 syntax:

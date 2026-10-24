@@ -146,6 +146,6 @@
 
     - name: Deploy backup-status
       ansible.builtin.import_role:
-        name: backup-status
-      tags: [backup-status]
+        name: backup_status
+      tags: [backup_status]
       when: backup_status_enabled | bool

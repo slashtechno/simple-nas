@@ -7,5 +7,3 @@ skip_list:
   - var-naming[no-role-prefix]
   # compose_service and teardown_service are shared task files; the service name is the point.
   - name[template]
-  # Renaming backup-status would touch the role directory, site.yml, teardown.yml and the docs.
-  - role-name

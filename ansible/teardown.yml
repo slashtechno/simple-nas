@@ -136,7 +136,7 @@
         service: cloudflared
 
     - name: Stop and remove backup-status
-      tags: [backup-status]
+      tags: [backup_status]
       ansible.builtin.import_tasks: teardown_service.yml
       vars:
         service: backup-status
