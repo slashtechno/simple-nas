@@ -1,7 +1,7 @@
 # Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 #
 # Crafty runs every Minecraft server as a process inside this one container, so all servers
-# share its memory cap, its data root and its published ports. Not on nas-services and not in
+# share its memory cap, its data root and its published ports. Not on services and not in
 # cloudflared_ingress: the panel is HTTPS with a self-signed cert and Minecraft is raw TCP,
 # neither of which a Cloudflare tunnel can carry. Reach both over the LAN or Tailscale.
 services:

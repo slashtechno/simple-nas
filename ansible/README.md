@@ -1,8 +1,8 @@
 # NAS Ansible playbooks
 
-Each service is a role with its own Docker Compose project at `/opt/nas/<service>/` on the host, all on the shared Docker network `nas-services`. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
+Each service is a role with its own Docker Compose project at `/opt/services/<service>/` on the host, all on the shared Docker network `services`. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
-Files Ansible manages (`/opt/nas/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
+Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
 ## Which files hold what
 
@@ -100,7 +100,7 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass # also wipes 
 ## Add a new service
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
-2. `templates/docker-compose.yml.j2`: join the external `nas-services` network. Take the image from a variable defined in `versions.yml`.
+2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`.
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
 4. `defaults/main.yml`: settings only this role reads. Shared values (data dirs, enabled flags, ports used in `cloudflared_ingress`) go in `group_vars/nas/vars.yml` and `vars.yml.example`.
 5. `site.yml`: add `- role: myservice` with a tag and `when: myservice_enabled | default(false)` (opt-in; `true` only for core services), in the play for the group it runs on (`nas` or `servers_general`).

@@ -1,7 +1,7 @@
 ---
 - name: Create Garage compose directory
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}/garage"
+    path: "{{ services_dir }}/garage"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -31,7 +31,7 @@
 - name: Render garage.toml
   ansible.builtin.template:
     src: garage.toml.j2
-    dest: "{{ nas_base_dir }}/garage/garage.toml"
+    dest: "{{ services_dir }}/garage/garage.toml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
@@ -41,7 +41,7 @@
 - name: Render Garage docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2
-    dest: "{{ nas_base_dir }}/garage/docker-compose.yml"
+    dest: "{{ services_dir }}/garage/docker-compose.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
@@ -51,7 +51,7 @@
 - name: Render Caddyfile for CORS proxy
   ansible.builtin.template:
     src: Caddyfile.j2
-    dest: "{{ nas_base_dir }}/garage/Caddyfile"
+    dest: "{{ services_dir }}/garage/Caddyfile"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
@@ -59,6 +59,6 @@
 
 - name: Start Garage
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/garage"
+    project_src: "{{ services_dir }}/garage"
     state: present
     pull: "{{ docker_pull_policy }}"

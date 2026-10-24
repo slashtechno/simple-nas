@@ -9,7 +9,7 @@
 
 - name: Create backup-status compose directory
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}/backup-status"
+    path: "{{ services_dir }}/backup-status"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -18,7 +18,7 @@
 - name: Deploy backup-status app files
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ nas_base_dir }}/backup-status/{{ item }}"
+    dest: "{{ services_dir }}/backup-status/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
@@ -32,7 +32,7 @@
 - name: Render backup-status docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2
-    dest: "{{ nas_base_dir }}/backup-status/docker-compose.yml"
+    dest: "{{ services_dir }}/backup-status/docker-compose.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
@@ -40,6 +40,6 @@
 
 - name: Build and start backup-status
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/backup-status"
+    project_src: "{{ services_dir }}/backup-status"
     state: present
     build: always

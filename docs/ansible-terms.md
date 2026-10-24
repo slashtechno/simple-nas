@@ -88,7 +88,7 @@ System:
 - `systemd`, `systemd_service`: control or query a unit
 
 Docker:
-- `docker_network`: create the shared `nas-services` network
+- `docker_network`: create the shared `services` network
 - `docker_compose_v2`: `docker compose up`/`down` for a `project_src:` directory
 - `docker_container`: remove or run one container outside compose (cloudflared removes a leftover init container)
 - `docker_container_exec`: run a command in a running container (Garage reloads Caddy this way)

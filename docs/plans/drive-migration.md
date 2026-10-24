@@ -29,14 +29,14 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 - [ ] Format the ST4000NM0033 as ext4 on the host and note its UUID.
 - [ ] Set the `uuid:` of the `backup` entry in `drives` to it (mount stays `/mnt/backup`).
 - [ ] `just deploy storage,backup --limit <host>`. The storage role only adds the fstab line; the backup role runs `restic init` on the new drive.
-- [ ] After the 2 AM cron (or `/opt/nas/scripts/backup-restic-local.sh` by hand), check `restic snapshots` and `restic check` on the new repo.
+- [ ] After the 2 AM cron (or `/opt/services/scripts/backup-restic-local.sh` by hand), check `restic snapshots` and `restic check` on the new repo.
 - [ ] Keep the old repo on the 500GB HDD until 2-3 verified snapshots exist on the new one.
 
 ## 2. Primary drive and fast/primary split
 
 - [ ] Format the P10 as ext4. In `drives`, add `mount: /mnt/main`, `roles: [primary]` and change the T7 to `roles: [fast]`.
 - [ ] `just deploy storage --limit <host>` mounts `/mnt/main` and creates the directory tree.
-- [ ] Stop the services that write to `photos`, `files` and `collab` (`cd /opt/nas/<service> && docker compose down` for Immich, Copyparty and Gitea).
+- [ ] Stop the services that write to `photos`, `files` and `collab` (`cd /opt/services/<service> && docker compose down` for Immich, Copyparty and Gitea).
 - [ ] Copy: `rsync -aHAX /mnt/t7/photos/ /mnt/main/photos/`, the same for `files` and `collab`. Databases, Docker and config directories stay on the T7.
 - [ ] `just deploy`, then check Immich, Gitea and Copyparty. Copyparty re-scans its index on the first start (its `hist` database starts empty); that is expected.
 

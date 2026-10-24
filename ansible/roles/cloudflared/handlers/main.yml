@@ -2,5 +2,5 @@
 # A replaced token file is a new file, which a running container's bind mount does not follow.
 - name: Restart cloudflared
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/cloudflared"
+    project_src: "{{ services_dir }}/cloudflared"
     state: restarted

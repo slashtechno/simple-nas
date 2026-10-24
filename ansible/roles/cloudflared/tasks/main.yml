@@ -231,7 +231,7 @@
 # --- On the server ---
 - name: Create the cloudflared directory
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}/cloudflared"
+    path: "{{ services_dir }}/cloudflared"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -256,7 +256,7 @@
 - name: Write the tunnel token
   ansible.builtin.copy:
     content: "{{ cloudflared_token.json.result }}"
-    dest: "{{ nas_base_dir }}/cloudflared/token"
+    dest: "{{ services_dir }}/cloudflared/token"
     owner: "65532"
     group: "65532"
     mode: "0400"
@@ -268,7 +268,7 @@
 # Tunnel credentials (*.json) in the directory are not touched.
 - name: Remove files of the init-container setup
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}/cloudflared/{{ item }}"
+    path: "{{ services_dir }}/cloudflared/{{ item }}"
     state: absent
   loop:
     - Dockerfile.init

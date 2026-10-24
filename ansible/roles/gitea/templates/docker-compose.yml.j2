@@ -1,5 +1,5 @@
 networks:
-  {{ nas_network }}:
+  {{ docker_network }}:
     external: true
 
 services:
@@ -27,7 +27,7 @@ services:
       - "{{ gitea_ssh_port }}:22"
       - "{{ gitea_port }}:3000"
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}
 
 {% if vault_gitea_runner_token %}
   gitea-runner:
@@ -43,7 +43,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ gitea_runner_data_dir }}:/data
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}
     depends_on:
       - gitea
 {% endif %}

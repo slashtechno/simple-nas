@@ -1,4 +1,4 @@
-# Ansible-managed. Triggered by 99-nas-drive-remount.rules whenever a block
+# Ansible-managed. Triggered by 99-drive-remount.rules whenever a block
 # device reappears — re-mounts any fstab entry that isn't currently mounted
 # (e.g. a backup drive that dropped offline and came back). No-op otherwise.
 [Unit]

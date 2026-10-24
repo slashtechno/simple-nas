@@ -1,5 +1,5 @@
 networks:
-  {{ nas_network }}:
+  {{ docker_network }}:
     external: true
 
 services:
@@ -12,7 +12,7 @@ services:
     # injects the flag automatically; subsequent runs omit it.
     command: ["/garage", "server"{% if garage_is_first_deploy | default(True) %}, "--single-node"{% endif %}]
     volumes:
-      - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
+      - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta
       - {{ garage_data_dir }}/data:/var/lib/garage/data
     environment:
@@ -23,18 +23,18 @@ services:
       - "{{ garage_admin_port }}:{{ garage_admin_port }}"
       - "{{ garage_rpc_port }}:{{ garage_rpc_port }}"
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}
 
   garage-cors-proxy:
     image: {{ garage_caddy_image }}
     container_name: garage-cors-proxy
     restart: unless-stopped
     volumes:
-      - {{ nas_base_dir }}/garage/Caddyfile:/etc/caddy/Caddyfile:ro
+      - {{ services_dir }}/garage/Caddyfile:/etc/caddy/Caddyfile:ro
     ports:
       - "{{ garage_s3_port }}:{{ garage_s3_port }}"
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}
 
   garage-webui:
     image: {{ garage_webui_image }}
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
     # webui reads garage.toml to discover the admin API and S3 settings
     volumes:
-      - {{ nas_base_dir }}/garage/garage.toml:/etc/garage.toml:ro
+      - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
     environment:
       # Points at Garage's admin API and S3 API — both internal to the Docker network
       API_BASE_URL: "http://garage:{{ garage_admin_port }}"
@@ -57,4 +57,4 @@ services:
       # would rewrite the file and restart Garage on each deploy. The 22nd salt character is limited to . O e u, hence the fixed O
       AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt", (vault_garage_webui_pass | hash("sha256"))[:21] ~ "O") | replace("$", "$$") }}'
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}

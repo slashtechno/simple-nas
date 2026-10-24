@@ -50,8 +50,8 @@
 
 - name: Install udev rule to trigger a remount when a drive reappears
   ansible.builtin.copy:
-    src: 99-nas-drive-remount.rules
-    dest: /etc/udev/rules.d/99-nas-drive-remount.rules
+    src: 99-drive-remount.rules
+    dest: /etc/udev/rules.d/99-drive-remount.rules
     owner: root
     group: root
     mode: "0644"
@@ -60,8 +60,8 @@
 
 - name: Install remount systemd service (self-heals a drive that drops offline and reconnects)
   ansible.builtin.copy:
-    src: nas-drive-remount.service
-    dest: /etc/systemd/system/nas-drive-remount.service
+    src: drive-remount.service
+    dest: /etc/systemd/system/drive-remount.service
     owner: root
     group: root
     mode: "0644"
@@ -71,14 +71,14 @@
 # Without a drive that has a `uuid`, nothing needs the remount rule; remove it if an earlier config installed it.
 - name: Remove the remount udev rule when no drive is mounted by uuid
   ansible.builtin.file:
-    path: /etc/udev/rules.d/99-nas-drive-remount.rules
+    path: /etc/udev/rules.d/99-drive-remount.rules
     state: absent
   notify: Reload udev rules
   when: drives | selectattr('uuid', 'defined') | list | length == 0
 
 - name: Remove the remount systemd service when no drive is mounted by uuid
   ansible.builtin.file:
-    path: /etc/systemd/system/nas-drive-remount.service
+    path: /etc/systemd/system/drive-remount.service
     state: absent
   notify: Reload systemd daemon
   when: drives | selectattr('uuid', 'defined') | list | length == 0

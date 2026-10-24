@@ -1,5 +1,5 @@
 networks:
-  {{ nas_network }}:
+  {{ docker_network }}:
     external: true
 
 services:
@@ -32,4 +32,4 @@ services:
       - "{{ copyparty_sftp_port }}:{{ copyparty_sftp_port }}"
 {% endif %}
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}

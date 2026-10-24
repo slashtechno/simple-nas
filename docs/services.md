@@ -38,7 +38,7 @@ To change anything else, edit `copyparty.conf.j2` or the variables, then `just d
 
 ## pics: photo culling and sharing
 
-Opt-in (`pics_enabled: true`). The `pics` role clones the private `lab` repo (`pics_repo`), builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed) and runs it on `nas-services`. It uses the `photos` service account in `copyparty_service_accounts`.
+Opt-in (`pics_enabled: true`). The `pics` role clones the private `lab` repo (`pics_repo`), builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed) and runs it on `services`. It uses the `photos` service account in `copyparty_service_accounts`.
 
 1. In `vars.yml`, copy the `pics_*` entries and the `photos.example.com` entry in `cloudflared_ingress` from `vars.yml.example`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
@@ -67,9 +67,9 @@ The NAS group runs a tunnel by default (`cloudflared_enabled: true` in `group_va
 - Hostnames not listed get a 404.
 - An existing DNS record is replaced only if it points at a Cloudflare tunnel. A record of any other kind stops the deploy with a message naming it; delete it in the Cloudflare dashboard if unused.
 - A record pointing at this tunnel for a hostname you removed from the list is reported and left for you to delete.
-- The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the NAS holds only a tunnel token (`/opt/nas/cloudflared/token`). If no tunnel named `cf_tunnel_name` exists, the deploy creates it.
+- The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the NAS holds only a tunnel token (`/opt/services/cloudflared/token`). If no tunnel named `cf_tunnel_name` exists, the deploy creates it.
 - If a tunnel with that name exists but is "locally managed", the deploy stops. Use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel (public hostnames are offline until the next deploy).
-- A leftover `*.json` credentials file in `/opt/nas/cloudflared/` is not used and not touched; delete it by hand.
+- A leftover `*.json` credentials file in `/opt/services/cloudflared/` is not used and not touched; delete it by hand.
 
 ## ntfy: failure alerts
 
@@ -78,11 +78,11 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`, off by default, 
 1. Make the secrets: a login password's hash with `docker run --rm -it binwiederhier/ntfy user hash` and a token with `docker run --rm binwiederhier/ntfy token generate`. The hash goes in `vault_ntfy_password_hash` (`group_vars/nas/vault.yml`), the token in `vault_ntfy_token` (`group_vars/all/vault.yml`).
 2. Set `ntfy_enabled: true` and `ntfy_alert_url: "http://localhost:8090/alerts"` (topic `alerts`) in `group_vars/nas/vars.yml`; `just deploy ntfy,backup`.
 3. In the ntfy app, add the server `http://<nas-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale.
-4. Test the chain: on the NAS run `bash /opt/nas/scripts/alert.sh "test"` and check the phone gets it.
+4. Test the chain: on the NAS run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but the `alerts` user and its token, so the published port is not open to the LAN. The user and token are set from the compose file at every start; the data directory only holds message history.
 - Another host sends alerts to the same server by setting `ntfy_alert_url` to `http://<nas-tailscale-name>:8090/alerts` in its `host_vars`; it needs `vault_ntfy_token` (shared vault).
-- `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t nas-backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
+- `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the NAS being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
 
@@ -110,7 +110,7 @@ Opt-in (`crafty_enabled: true`). One container runs every server. All data is un
 
 ## Homebridge
 
-Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `nas-services` and not in `cloudflared_ingress`.
+Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `services` and not in `cloudflared_ingress`.
 
 - Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale does not replace it: off home Wi-Fi the Home app shows the bridge offline even with Tailscale connected.
 - The admin UI is reachable over Tailscale at `http://<pi-tailscale-ip>:8581` (plain HTTP).
@@ -123,9 +123,9 @@ For general servers (the `servers_general` group), not the NAS.
 
 **Dockge** (`dockge_enabled`, default on) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
 
-**Caddy** (`caddy_enabled`, default off) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `nas-services` network.
+**Caddy** (`caddy_enabled`, default off) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 
-Public access is off unless the host sets `cloudflared_enabled` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `nas-services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit <host>`.
+Public access is off unless the host sets `cloudflared_enabled` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit <host>`.
 
 Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
 

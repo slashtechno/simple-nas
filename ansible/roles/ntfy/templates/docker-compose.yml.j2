@@ -2,7 +2,7 @@
 # Users, access and the token are set here at every start; the compose file is mode 0640 because
 # it holds them. `$` is written `$$` because compose would otherwise read it as a variable.
 networks:
-  {{ nas_network }}:
+  {{ docker_network }}:
     external: true
 
 services:
@@ -29,4 +29,4 @@ services:
       NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
 {% endif %}
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}

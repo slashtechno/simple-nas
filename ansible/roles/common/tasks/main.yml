@@ -16,7 +16,7 @@
 # The parent of every compose project and of the scripts directory.
 - name: Create the base directory for compose projects
   ansible.builtin.file:
-    path: "{{ nas_base_dir }}"
+    path: "{{ services_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"

@@ -1,6 +1,6 @@
 # Ansible-managed — do not edit directly. The tunnel's rules are cloudflared_ingress in vars.yml.
 networks:
-  {{ nas_network }}:
+  {{ docker_network }}:
     external: true
 
 services:
@@ -10,6 +10,6 @@ services:
     restart: unless-stopped
     command: tunnel run --token-file /etc/cloudflared/token
     volumes:
-      - {{ nas_base_dir }}/cloudflared/token:/etc/cloudflared/token:ro
+      - {{ services_dir }}/cloudflared/token:/etc/cloudflared/token:ro
     networks:
-      - {{ nas_network }}
+      - {{ docker_network }}

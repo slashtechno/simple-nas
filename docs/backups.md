@@ -28,13 +28,13 @@ Paths below use `/mnt/backup` for `backup_drive` and `/mnt/t7` for the fast and 
 | Service data under `fast_drive/docker` (Gitea, pics, Homebridge, Garage, Crafty, Copyparty config) | Yes | Only Copyparty config |
 | Immich database | Dump only (raw Postgres dir excluded) | Dump only |
 | Gitea database and repos | Dump, plus raw data (SSH host keys excluded) | Dump only |
-| Compose files and scripts (`/opt/nas`), rclone config | No | Yes |
+| Compose files and scripts (`/opt/services`), rclone config | No | Yes |
 | Restic password | No | Also copied to the cloud, but that copy is useless alone: you need the password to open the repo that holds it. The real copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden (see Disaster recovery). |
 
 Where each is declared:
 - Local paths and excludes: `restic_local_paths` and `restic_local_excludes` in `ansible/group_vars/all/vars.yml` (default on the NAS: `primary_drive` and `fast_drive`). The script adds the dumps directory itself. Default excludes (caches, `lost+found`, Copyparty's thumbnail cache) are in `roles/backup/templates/restic-excludes-local.txt.j2`; your extras are added after them.
-- Cloud paths and excludes: `restic_cloud_extra_paths` and `restic_cloud_excludes` in `vars.yml` (defaults in `restic-excludes-cloud.txt.j2`). The fixed cloud paths (`/opt/nas`, rclone config, restic password file, Copyparty config) are in `ansible/roles/backup/templates/backup-paths.txt.j2`.
-- Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` (`/opt/nas/scripts/dump.d/`) by that service's role: `roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
+- Cloud paths and excludes: `restic_cloud_extra_paths` and `restic_cloud_excludes` in `vars.yml` (defaults in `restic-excludes-cloud.txt.j2`). The fixed cloud paths (`/opt/services`, rclone config, restic password file, Copyparty config) are in `ansible/roles/backup/templates/backup-paths.txt.j2`.
+- Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` (`/opt/services/scripts/dump.d/`) by that service's role: `roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 Caveats:
 - Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent. Crafty's own `backups/` archives are excluded from the local backup (`restic-excludes-local.txt.j2`; they dedupe badly), so they exist only on the fast drive. To keep them, add `"!{{ crafty_data_dir }}/backups"` to `restic_local_excludes`, or add `{{ crafty_data_dir }}/backups` to `restic_cloud_extra_paths` for offsite. `teardown.yml -e remove_data=true` deletes all of `crafty_data_dir`, archives included; only the local restic copy of `servers/` survives, and nothing offsite.
@@ -109,14 +109,14 @@ For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive-nas:
 
 ## Checking backup status
 
-A failed job is written to the system log (`journalctl -t nas-backup`) and, with `ntfy_alert_url` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
+A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 ```bash
 restic snapshots                                  # add --tag daily or --tag weekly to filter
 tail -50 /mnt/backup/logs/backup-cron.log          # recent combined cron log
 
 # Trigger a job manually (same scripts cron uses)
-/bin/bash /opt/nas/scripts/backup-restic-local.sh    # or backup-restic-cloud.sh, restic-check.sh
+/bin/bash /opt/services/scripts/backup-restic-local.sh    # or backup-restic-cloud.sh, restic-check.sh
 ```
 
 ---
@@ -162,8 +162,8 @@ Speed over Tailscale depends on `tailscale status` showing `direct` rather than 
 
 ```bash
 ls -lh /mnt/backup/service-dumps/immich-db-*.sql.gz
-cd /opt/nas/immich && docker compose stop immich_server
-/opt/nas/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-<timestamp>.sql.gz
+cd /opt/services/immich && docker compose stop immich_server
+/opt/services/scripts/restore-services.sh immich /mnt/backup/service-dumps/immich-db-<timestamp>.sql.gz
 docker compose start immich_server
 ```
 
@@ -173,7 +173,7 @@ docker compose start immich_server
 
 ```bash
 ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
-/opt/nas/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-<timestamp>.zip
+/opt/services/scripts/restore-services.sh gitea /mnt/backup/service-dumps/gitea-dump-<timestamp>.zip
 # Gitea is stopped before restore and started after automatically
 ```
 
@@ -183,10 +183,10 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 `nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted by it, and `/mnt/backup` then becomes a plain directory on the root filesystem. Two guards cover this:
 
-1. The backup scripts and the `restic check` job run `mountpoint -q /mnt/backup` first. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t nas-backup`.
-2. `roles/storage/files/99-nas-drive-remount.rules` runs `mount -a` (through `nas-drive-remount.service`) whenever a filesystem appears, so a reconnected drive remounts within seconds.
+1. The backup scripts and the `restic check` job run `mountpoint -q /mnt/backup` first. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t backup`.
+2. `roles/storage/files/99-drive-remount.rules` runs `mount -a` (through `drive-remount.service`) whenever a filesystem appears, so a reconnected drive remounts within seconds.
 
-Check with `mountpoint /mnt/backup`, `journalctl -t nas-backup` and `systemctl status nas-drive-remount.service`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault.
+Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl status drive-remount.service`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault.
 
 ## Disaster recovery (both drives fail)
 

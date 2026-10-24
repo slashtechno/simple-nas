@@ -1,5 +1,5 @@
 ---
 - name: Restart backup-status
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/backup-status"
+    project_src: "{{ services_dir }}/backup-status"
     state: restarted

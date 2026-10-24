@@ -72,7 +72,7 @@
 
 - name: Create scripts directory
   ansible.builtin.file:
-    path: "{{ nas_scripts_dir }}"
+    path: "{{ scripts_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -89,7 +89,7 @@
 - name: Render backup scripts that reference deployment-specific paths
   ansible.builtin.template:
     src: "{{ item }}.j2"
-    dest: "{{ nas_scripts_dir }}/{{ item }}"
+    dest: "{{ scripts_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
@@ -100,7 +100,7 @@
 - name: Deploy backup scripts with no deployment-specific paths
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ nas_scripts_dir }}/{{ item }}"
+    dest: "{{ scripts_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
@@ -114,7 +114,7 @@
     - name: Render the local backup and check scripts
       ansible.builtin.template:
         src: "{{ item }}.j2"
-        dest: "{{ nas_scripts_dir }}/{{ item }}"
+        dest: "{{ scripts_dir }}/{{ item }}"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0755"
@@ -125,34 +125,34 @@
     - name: Render the local backup exclude list
       ansible.builtin.template:
         src: restic-excludes-local.txt.j2
-        dest: "{{ nas_scripts_dir }}/restic-excludes-local.txt"
+        dest: "{{ scripts_dir }}/restic-excludes-local.txt"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0644"
 
     - name: Schedule daily local backup (2 AM)
       ansible.builtin.cron:
-        name: nas-backup-local
+        name: backup-local
         user: "{{ ansible_user }}"
         minute: "0"
         hour: "2"
         job: >-
-          /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/backup-restic-local.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
           "backup-restic-local failed or {{ backup_drive }} not mounted"
 
     - name: Schedule weekly restic integrity check (Wednesday 3 AM)
       ansible.builtin.cron:
-        name: nas-restic-check
+        name: restic-check
         user: "{{ ansible_user }}"
         minute: "0"
         hour: "3"
         weekday: "3"
         job: >-
-          /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/restic-check.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
           "restic-check failed or {{ backup_drive }} not mounted"
 
 - name: Remove the local backup jobs and scripts when the local backup is off
@@ -164,12 +164,12 @@
         user: "{{ ansible_user }}"
         state: absent
       loop:
-        - nas-backup-local
-        - nas-restic-check
+        - backup-local
+        - restic-check
 
     - name: Remove the local backup scripts and exclude list
       ansible.builtin.file:
-        path: "{{ nas_scripts_dir }}/{{ item }}"
+        path: "{{ scripts_dir }}/{{ item }}"
         state: absent
       loop:
         - backup-restic-local.sh
@@ -209,7 +209,7 @@
     - name: Render the offsite backup script
       ansible.builtin.template:
         src: backup-restic-cloud.sh.j2
-        dest: "{{ nas_scripts_dir }}/backup-restic-cloud.sh"
+        dest: "{{ scripts_dir }}/backup-restic-cloud.sh"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0755"
@@ -217,7 +217,7 @@
     - name: Render the offsite path and exclude lists
       ansible.builtin.template:
         src: "{{ item }}.j2"
-        dest: "{{ nas_scripts_dir }}/{{ item }}"
+        dest: "{{ scripts_dir }}/{{ item }}"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0644"
@@ -268,15 +268,15 @@
 
     - name: Schedule weekly cloud backup (Sunday 4 AM)
       ansible.builtin.cron:
-        name: nas-backup-cloud
+        name: backup-cloud
         user: "{{ ansible_user }}"
         minute: "0"
         hour: "4"
         weekday: "0"
         job: >-
-          /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
           "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
 
 - name: Initialize local restic repository (idempotent)
@@ -296,14 +296,14 @@
 
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:
-    name: nas-backup-cloud
+    name: backup-cloud
     user: "{{ ansible_user }}"
     state: absent
   when: not backup_cloud_enabled | bool
 
 - name: Remove the offsite backup script and lists when the offsite backup is off
   ansible.builtin.file:
-    path: "{{ nas_scripts_dir }}/{{ item }}"
+    path: "{{ scripts_dir }}/{{ item }}"
     state: absent
   loop:
     - backup-restic-cloud.sh

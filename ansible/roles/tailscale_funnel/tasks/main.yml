@@ -43,7 +43,7 @@
 # Helper for toggling the Copyparty funnel by hand: copyparty-funnel.sh enable|disable|status
 - name: Create scripts directory
   ansible.builtin.file:
-    path: "{{ nas_scripts_dir }}"
+    path: "{{ scripts_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -52,7 +52,7 @@
 - name: Install copyparty-funnel.sh
   ansible.builtin.template:
     src: copyparty-funnel.sh.j2
-    dest: "{{ nas_scripts_dir }}/copyparty-funnel.sh"
+    dest: "{{ scripts_dir }}/copyparty-funnel.sh"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"

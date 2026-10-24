@@ -1,13 +1,13 @@
 ---
 - name: Restart Garage
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/garage"
+    project_src: "{{ services_dir }}/garage"
     state: restarted
 
 # A restart, not `caddy reload`: Ansible replaces the Caddyfile with a new file, and the running container
 # keeps seeing the old one through its single-file bind mount until it restarts.
 - name: Restart the Garage CORS proxy
   community.docker.docker_compose_v2:
-    project_src: "{{ nas_base_dir }}/garage"
+    project_src: "{{ services_dir }}/garage"
     services: [garage-cors-proxy]
     state: restarted

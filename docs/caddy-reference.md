@@ -16,17 +16,17 @@ Runs on hosts in `servers_general` when `caddy_enabled: true` (default false). T
 | `caddy_https_port` | 443 | Host port for HTTPS (TCP and UDP) |
 | `caddy_data_dir` | `<fast drive>/docker/caddy` | Certificates and state; losing it means certificates are issued again |
 
-The container joins `nas-services` (`nas_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
+The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
 ## Label syntax
 
-Labels go on the app's container, which must join the same `nas-services` network.
+Labels go on the app's container, which must join the same `services` network.
 
 ```yaml
 services:
   whoami:
     image: traefik/whoami
-    networks: [nas-services]
+    networks: [services]
     labels:
       caddy: whoami.example.com                    # site address
       caddy.reverse_proxy: "{{upstreams 80}}"      # port the app listens on inside the container
@@ -47,7 +47,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 ## Gotchas for this repo
 
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
-- **Shared network.** A stack must declare the external `nas-services` network (`nas_network`) and join it; a container not on it is invisible to `{{upstreams}}`.
+- **Shared network.** A stack must declare the external `services` network (`docker_network`) and join it; a container not on it is invisible to `{{upstreams}}`.
 - **TLS.**
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.

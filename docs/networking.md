@@ -32,7 +32,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 ## What `roles/network` does
 
-- Creates the shared Docker network `nas_network` (`nas-services`).
+- Creates the shared Docker network `docker_network` (`services`).
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true (`direct_link_*` in `host_vars`).
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.

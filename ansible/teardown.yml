@@ -152,9 +152,9 @@
             user: "{{ ansible_user }}"
             state: absent
           loop:
-            - nas-backup-local
-            - nas-backup-cloud
-            - nas-restic-check
+            - backup-local
+            - backup-cloud
+            - restic-check
 
         # Removes only the files the backup role installs. The dump scripts in dump.d
         # belong to the immich and gitea roles and go with their services; wiping
@@ -163,7 +163,7 @@
         # copyparty-funnel.sh is installed by the tailscale_funnel role.
         - name: Remove backup scripts
           ansible.builtin.file:
-            path: "{{ nas_scripts_dir }}/{{ item }}"
+            path: "{{ scripts_dir }}/{{ item }}"
             state: absent
           loop:
             - backup-restic-local.sh
@@ -188,7 +188,7 @@
             cmd: rmdir "{{ item }}"
           loop:
             - "{{ service_dump_scripts_dir }}"
-            - "{{ nas_scripts_dir }}"
+            - "{{ scripts_dir }}"
           register: rmdir_scripts
           changed_when: rmdir_scripts.rc == 0
           failed_when: false   # a non-empty or missing directory is fine
@@ -203,14 +203,14 @@
       block:
         - name: Stop and disable remount service
           ansible.builtin.systemd:
-            name: nas-drive-remount.service
+            name: drive-remount.service
             state: stopped
             enabled: false
           ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove remount systemd unit
           ansible.builtin.file:
-            path: /etc/systemd/system/nas-drive-remount.service
+            path: /etc/systemd/system/drive-remount.service
             state: absent
 
         - name: Remove the udev rules and the tmpfiles entry
@@ -218,7 +218,7 @@
             path: "{{ item }}"
             state: absent
           loop:
-            - /etc/udev/rules.d/99-nas-drive-remount.rules
+            - /etc/udev/rules.d/99-drive-remount.rules
             - /etc/udev/rules.d/98-usb-automount.rules
             - /etc/tmpfiles.d/usb-automount.conf
 
@@ -270,7 +270,7 @@
     - name: Remove shared Docker network
       tags: [network]
       community.docker.docker_network:
-        name: "{{ nas_network }}"
+        name: "{{ docker_network }}"
         state: absent
         force: true
       ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
@@ -278,7 +278,7 @@
     - name: Remove the base directory (only if empty)
       tags: [always]
       ansible.builtin.command:
-        cmd: rmdir "{{ nas_base_dir }}"
+        cmd: rmdir "{{ services_dir }}"
       register: rmdir_result
       changed_when: rmdir_result.rc == 0
       failed_when: false   # a non-empty directory is fine: some service remains

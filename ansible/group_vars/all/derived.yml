@@ -29,4 +29,4 @@ backup_drive: >-
   `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
 
 # Where backup logs and service dumps live: on the backup drive with a local backup, else on the root drive.
-backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/nas-backup' }}"
+backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/backup-work' }}"

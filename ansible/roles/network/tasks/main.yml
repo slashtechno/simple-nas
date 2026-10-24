@@ -1,7 +1,7 @@
 ---
 - name: Create shared Docker network
   community.docker.docker_network:
-    name: "{{ nas_network }}"
+    name: "{{ docker_network }}"
     state: present
 
 # cloud-init (Raspberry Pi Imager, Ubuntu) sets up networking at first boot. From then on Ansible and

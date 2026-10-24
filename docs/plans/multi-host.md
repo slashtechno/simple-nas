@@ -46,8 +46,8 @@ Does not travel with the drives:
 7. **Inventory** (`ansible/inventory/hosts.yml`): move `pi5` under `nas` and `pi4` under `servers_general`. Then `mkdir ansible/host_vars/pi5` and move the `drives:` block from `host_vars/pi4/vars.yml` to `host_vars/pi5/vars.yml` (same UUIDs); move the direct-link settings too if pi5 should have the link. Do not create pi5's file earlier: its next deploy would try to mount drives that are not attached.
 8. **Name pi5 like the old NAS.** If it is not logged in to Tailscale, run `sudo tailscale up`. Then `sudo tailscale set --hostname=pinas` and set the OS hostname ([Hostnames](#hostnames)). Disable key expiry for it in the Tailscale admin console.
 9. `just preview '' --limit pi5 -K`, then `just deploy '' --limit pi5 -K`.
-10. **Check:** Immich, Copyparty, Gitea, the public hostnames and Funnel; a backup run (`bash /opt/nas/scripts/backup-restic-local.sh`, then `restic snapshots`); `/mnt/backup` is mounted. Optionally reboot with a drive unplugged to test the Docker mount guard ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
-11. **Clean up:** delete the stale offline Gitea runner ([storage.md](../storage.md#gitea-runner-registration)), the old tunnel `*.json` credentials in `/opt/nas/cloudflared/`, and the old `pinas` node if it still shows in the Tailscale admin console.
+10. **Check:** Immich, Copyparty, Gitea, the public hostnames and Funnel; a backup run (`bash /opt/services/scripts/backup-restic-local.sh`, then `restic snapshots`); `/mnt/backup` is mounted. Optionally reboot with a drive unplugged to test the Docker mount guard ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
+11. **Clean up:** delete the stale offline Gitea runner ([storage.md](../storage.md#gitea-runner-registration)), the old tunnel `*.json` credentials in `/opt/services/cloudflared/`, and the old `pinas` node if it still shows in the Tailscale admin console.
 12. Keep the Pi 4 off for a week.
 
 ### The Pi 4 as a general server
