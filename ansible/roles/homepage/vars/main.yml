@@ -1,0 +1,14 @@
+---
+# One tile per service that publishes a web UI on a host port. A tile shows when its service is enabled on the
+# host. Immich and Homebridge have fixed ports; the rest follow their port setting in group_vars/all/defaults.yml.
+# Garage, Caddy and Cloudflare Tunnel have no web UI to link to. To add a tile, add a line here.
+homepage_tiles:
+  - {name: Immich, enabled: "{{ immich_enabled }}", href: "http://{{ homepage_host }}:2283", description: Photos}
+  - {name: Copyparty, enabled: "{{ copyparty_enabled }}", href: "http://{{ homepage_host }}:{{ copyparty_port }}", description: Files}
+  - {name: Gitea, enabled: "{{ gitea_enabled }}", href: "http://{{ homepage_host }}:{{ gitea_port }}", description: Git}
+  - {name: pics, enabled: "{{ pics_enabled }}", href: "http://{{ homepage_host }}:{{ pics_port }}", description: Photo culling and sharing}
+  - {name: Homebridge, enabled: "{{ homebridge_enabled }}", href: "http://{{ homepage_host }}:8581", description: HomeKit}
+  - {name: Crafty, enabled: "{{ crafty_enabled }}", href: "https://{{ homepage_host }}:{{ crafty_panel_port }}", description: Minecraft servers}
+  - {name: Dockge, enabled: "{{ dockge_enabled }}", href: "http://{{ homepage_host }}:{{ dockge_port }}", description: Compose stacks}
+  - {name: ntfy, enabled: "{{ ntfy_enabled }}", href: "http://{{ homepage_host }}:{{ ntfy_port }}", description: Alerts}
+  - {name: Backups, enabled: "{{ backup_status_enabled }}", href: "http://{{ homepage_host }}:{{ backup_status_port }}", description: Backup status}

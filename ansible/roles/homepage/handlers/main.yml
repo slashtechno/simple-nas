@@ -1,0 +1,6 @@
+---
+# Homepage reads settings.yaml only at start. It reloads services.yaml on its own.
+- name: Restart Homepage
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/homepage"
+    state: restarted

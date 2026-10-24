@@ -1,13 +1,12 @@
 ---
 # Host port of the start page.
 homepage_port: 3001
-# The address you open the page at and the tiles link to. The default is the inventory name, which is the host's
-# tailnet name. Homepage refuses any other address (a LAN IP, a full domain name) with a host validation error.
-homepage_host: "{{ inventory_hostname }}"
+# The address the tile links use, and the address you open the page at. The default is the address Ansible
+# reaches the host at (the full tailnet name in the inventory). The page also answers on the inventory name
+# with homepage_port; any other address (a LAN IP, a Caddy name) gets a host validation error, so set this
+# to the one you use.
+homepage_host: "{{ ansible_host | default(inventory_hostname) }}"
 # Extra tiles, shown in a "Links" group after the service tiles: a public hostname, a service on another host,
-# any web page. Each is {name, href}, with an optional description. For example:
-#   - {name: Photos, href: "https://photos.example.com", description: "Immich, public"}
+# any web page. Each is {name, href}, with an optional description. For example, a service on a second host:
+#   - {name: "Dockge on pi4", href: "http://{{ hostvars['pi4'].ansible_host }}:{{ hostvars['pi4'].dockge_port }}"}
 homepage_links: []
-# true puts a password login in front of the page. Needs vault_homepage_password and vault_homepage_auth_secret
-# (vault.yml.example). Homepage has no rate limit on password attempts, so keep the page off the internet.
-homepage_auth_enabled: false

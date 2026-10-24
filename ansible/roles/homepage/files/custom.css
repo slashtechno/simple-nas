@@ -1,0 +1,61 @@
+/* Ansible-managed. Catppuccin Mocha (dark) and Latte (light). Homepage's palette is ten variables, 50 (lightest
+   in a dark layout) to 900, each an "R G B" triplet; the logo gradient uses two accents (mauve, blue). */
+html.dark {
+  --color-50: 205 214 244;
+  --color-100: 186 194 222;
+  --color-200: 166 173 200;
+  --color-300: 147 153 178;
+  --color-400: 127 132 156;
+  --color-500: 108 112 134;
+  --color-600: 88 91 112;
+  --color-700: 69 71 90;
+  --color-800: 30 30 46;
+  --color-900: 24 24 37;
+  --color-logo-start: 203 166 247;
+  --color-logo-stop: 137 180 250;
+}
+html.light {
+  --color-50: 239 241 245;
+  --color-100: 230 233 239;
+  --color-200: 220 224 232;
+  --color-300: 204 208 218;
+  --color-400: 188 192 204;
+  --color-500: 172 176 190;
+  --color-600: 124 127 147;
+  --color-700: 92 95 119;
+  --color-800: 76 79 105;
+  --color-900: 76 79 105;
+  --color-logo-start: 136 57 239;
+  --color-logo-stop: 30 102 245;
+}
+/* Tile cards: Homepage's own card colours are too faint on Latte. */
+html.light .service > div {
+  background-color: rgb(var(--color-300) / 0.45);
+}
+html.light .service > div:hover {
+  background-color: rgb(var(--color-300) / 0.75);
+}
+/* Homepage starts in its dark layout unless the footer toggle saved light, whatever the device prefers. On a
+   device that prefers light, that layout gets the Latte colours, with the lightest shades as text. */
+@media (prefers-color-scheme: light) {
+  html.dark {
+    --color-50: 76 79 105;
+    --color-100: 92 95 119;
+    --color-200: 108 111 133;
+    --color-300: 124 127 147;
+    --color-400: 140 143 161;
+    --color-500: 156 160 176;
+    --color-600: 172 176 190;
+    --color-700: 204 208 218;
+    --color-800: 239 241 245;
+    --color-900: 230 233 239;
+    --color-logo-start: 136 57 239;
+    --color-logo-stop: 30 102 245;
+  }
+  html.dark .service > div {
+    background-color: rgb(var(--color-700) / 0.45);
+  }
+  html.dark .service > div:hover {
+    background-color: rgb(var(--color-700) / 0.75);
+  }
+}

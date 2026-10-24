@@ -1,16 +1,4 @@
 ---
-- name: Check the Homepage login secrets are in the vault
-  ansible.builtin.assert:
-    that:
-      - vault_homepage_password is defined
-      - vault_homepage_auth_secret is defined
-      - vault_homepage_auth_secret | length >= 32
-    fail_msg: >-
-      homepage_auth_enabled needs vault_homepage_password and vault_homepage_auth_secret (at least 32 characters)
-      in the vault that applies to {{ inventory_hostname }} (see vault.yml.example).
-    quiet: true
-  when: homepage_auth_enabled | bool
-
 - name: Create the Homepage config directory
   ansible.builtin.file:
     path: "{{ services_dir }}/homepage/config"
@@ -19,7 +7,8 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-# Homepage reloads this file when it changes, so there is no restart handler.
+# Homepage copies a default for any config file that is missing (example bookmarks, a search widget), so every
+# file it would copy is written here.
 - name: Render the Homepage tiles
   ansible.builtin.template:
     src: services.yaml.j2
@@ -28,9 +17,26 @@
     group: "{{ ansible_user }}"
     mode: "0644"
 
+- name: Render the Homepage settings
+  ansible.builtin.template:
+    src: settings.yaml.j2
+    dest: "{{ services_dir }}/homepage/config/settings.yaml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  notify: Restart Homepage
+
+- name: Copy the fixed Homepage config files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ services_dir }}/homepage/config/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop: [bookmarks.yaml, widgets.yaml, custom.css]
+
 - name: Deploy homepage
   ansible.builtin.import_role:
     name: compose_service
   vars:
     compose_service_name: homepage
-    compose_service_has_secrets: true

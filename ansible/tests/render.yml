@@ -26,9 +26,9 @@
         recurse: true
       register: found
 
-    - name: Split into defaults files and templates
+    - name: Split into defaults and constants files (roles/*/defaults and roles/*/vars) and templates
       ansible.builtin.set_fact:
-        defaults_files: "{{ found.files | map(attribute='path') | select('search', '/defaults/main.yml$') | sort }}"
+        defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(defaults|vars)/main.yml$') | sort }}"
         template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
@@ -68,7 +68,6 @@
     - name: Turn on the optional settings that add lines to a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
-        homepage_auth_enabled: true
         homepage_links: [{name: Example, href: "https://example.test", description: "a: b"}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
@@ -165,7 +164,7 @@
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'HOMEPAGE_AUTH_ENABLED' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "(inventory_hostname ~ ':' ~ homepage_port) in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0].Services | length == 9
           - >-

@@ -12,7 +12,6 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 
 ## Clean-up after a deploy
 
-- After `just deploy cloudflared --limit pinas` creates `pinas-tunnel`: delete the old `pi-nas-tunnel` in Cloudflare (Zero Trust, Networks, Tunnels).
 - Delete the stale `pi-nas-runner` entry in Gitea.
 - After the next Sunday offsite backup: `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
 

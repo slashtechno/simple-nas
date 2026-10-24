@@ -1,63 +1,24 @@
-# Ansible-managed — do not edit directly. One tile per enabled service that publishes a host port, then the tiles
-# in homepage_links. To add a tile for a service, copy a block in roles/homepage/templates/services.yaml.j2.
-{% set host = homepage_host %}
-{% set has_services = immich_enabled | bool or copyparty_enabled | bool or gitea_enabled | bool or pics_enabled | bool or homebridge_enabled | bool or crafty_enabled | bool or dockge_enabled | bool or ntfy_enabled | bool or backup_status_enabled | bool %}
-{% if has_services %}
+# Ansible-managed — do not edit directly. The tiles come from homepage_tiles (roles/homepage/vars/main.yml),
+# then homepage_links. Values go through to_json so a colon or quote in a name or description stays valid YAML.
+{% set tiles = homepage_tiles | selectattr('enabled') | list %}
+{% if tiles | length > 0 %}
 - Services:
-{% if immich_enabled | bool %}
-    - Immich:
-        href: http://{{ host }}:2283
-        description: Photos
-{% endif %}
-{% if copyparty_enabled | bool %}
-    - Copyparty:
-        href: http://{{ host }}:{{ copyparty_port }}
-        description: Files
-{% endif %}
-{% if gitea_enabled | bool %}
-    - Gitea:
-        href: http://{{ host }}:{{ gitea_port }}
-        description: Git
-{% endif %}
-{% if pics_enabled | bool %}
-    - pics:
-        href: http://{{ host }}:{{ pics_port }}
-        description: Photo culling and sharing
-{% endif %}
-{% if homebridge_enabled | bool %}
-    - Homebridge:
-        href: http://{{ host }}:8581
-        description: HomeKit
-{% endif %}
-{% if crafty_enabled | bool %}
-    - Crafty:
-        href: https://{{ host }}:{{ crafty_panel_port }}
-        description: Minecraft servers
-{% endif %}
-{% if dockge_enabled | bool %}
-    - Dockge:
-        href: http://{{ host }}:{{ dockge_port }}
-        description: Compose stacks
-{% endif %}
-{% if ntfy_enabled | bool %}
-    - ntfy:
-        href: http://{{ host }}:{{ ntfy_port }}
-        description: Alerts
-{% endif %}
-{% if backup_status_enabled | bool %}
-    - Backups:
-        href: http://{{ host }}:{{ backup_status_port }}
-        description: Backup status
-{% endif %}
+{% for tile in tiles %}
+    - {{ tile.name | to_json }}:
+        href: {{ tile.href | to_json }}
+        description: {{ tile.description | to_json }}
+{% endfor %}
 {% endif %}
 {% if homepage_links | length > 0 %}
 - Links:
 {% for link in homepage_links %}
     - {{ link.name | to_json }}:
         href: {{ link.href | to_json }}
-        description: {{ link.description | default('') | to_json }}
+{% if link.description is defined %}
+        description: {{ link.description | to_json }}
+{% endif %}
 {% endfor %}
 {% endif %}
-{% if not has_services and homepage_links | length == 0 %}
+{% if tiles | length == 0 and homepage_links | length == 0 %}
 []
 {% endif %}

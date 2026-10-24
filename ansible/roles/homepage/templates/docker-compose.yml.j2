@@ -1,6 +1,4 @@
 # Ansible-managed — do not edit directly, edit the homepage_* settings and re-deploy.
-# The compose file is mode 0640 because it can hold the login secrets. `$` is written `$$` because compose
-# would otherwise read it as a variable.
 networks:
   {{ docker_network }}:
     external: true
@@ -15,12 +13,7 @@ services:
     volumes:
       - {{ services_dir }}/homepage/config:/app/config
     environment:
-      HOMEPAGE_ALLOWED_HOSTS: "{{ homepage_host }}:{{ homepage_port }}"
-{% if homepage_auth_enabled | bool %}
-      HOMEPAGE_AUTH_ENABLED: "true"
-      HOMEPAGE_EXTERNAL_URL: "http://{{ homepage_host }}:{{ homepage_port }}"
-      HOMEPAGE_AUTH_SECRET: '{{ vault_homepage_auth_secret | replace("$", "$$") }}'
-      HOMEPAGE_AUTH_PASSWORD: '{{ vault_homepage_password | replace("$", "$$") }}'
-{% endif %}
+      # Homepage answers only on the exact host:port a request names; anything else gets a 400.
+      HOMEPAGE_ALLOWED_HOSTS: "{{ [homepage_host, inventory_hostname] | unique | map('regex_replace', '$', ':' ~ homepage_port) | join(',') }}"
     networks:
       - {{ docker_network }}

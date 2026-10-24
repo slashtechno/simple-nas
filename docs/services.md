@@ -23,7 +23,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflared_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
-| Homepage | Start page with a link to every enabled service | `roles/homepage` | none; `vault_homepage_password` and `vault_homepage_auth_secret` only with `homepage_auth_enabled` | [Homepage](#homepage) |
+| Homepage | Start page with a tile for each enabled service on the host | `roles/homepage` | none | [Homepage](#homepage) |
 | Dockge, Caddy | Web UI for your own compose stacks; names for apps, routed by container label | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Backups | Daily local and weekly cloud backups, a weekly integrity check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) | [backups.md](./backups.md) |
 | Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | `roles/network` | none | [networking.md](./networking.md#direct-ethernet-link) |
@@ -151,13 +151,14 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 ## Homepage
 
-A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) at `http://<host>:<homepage_port>` (3001) with one tile per enabled service that publishes a host port. Tile links are built from the same port settings the services use, so an overridden port is followed.
+A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) with one tile per enabled service on that host that has a web UI on a host port. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
 
-- `homepage_host` (default: the inventory name, which is the host's tailnet name) is the address in the tile links and the only address Homepage accepts. A LAN IP or a full domain name gets a host validation error; set `homepage_host` to the one you use.
-- The tiles are `roles/homepage/templates/services.yaml.j2`, one `{% if <name>_enabled %}` block per service. Garage, Caddy and Cloudflare Tunnel have no tile because they publish no host port. To add a tile for a service, copy a block.
-- Homepage has no login by default. `homepage_auth_enabled: true` adds a password login ([Homepage security](https://gethomepage.dev/installation/#security-authentication)); it needs `vault_homepage_password` and `vault_homepage_auth_secret` (at least 32 characters). It has no rate limit on password attempts, so keep it off the internet.
-- `homepage_links` adds your own tiles in a "Links" group: a public hostname, a service on another host, any page (the format is in `roles/homepage/defaults/main.yml`). Everything else Homepage reads (`settings.yaml` for title and theme, `bookmarks.yaml`, `widgets.yaml`, `custom.css`) is in `/opt/services/homepage/config` on the host. Ansible leaves those files alone, so edit them there; they are not in the repo or the backup, and teardown deletes them.
-- Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app; add one under the tile in `services.yaml.j2` with the key in the vault ([widgets](https://gethomepage.dev/widgets/)).
+- Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
+- The tiles are the `homepage_tiles` list in `roles/homepage/vars/main.yml`; add a line to add a tile. Links follow the services' port settings, except Immich (2283) and Homebridge (8581), which are fixed. Garage, Caddy and Cloudflare Tunnel have no web UI to link to. Crafty's panel uses a self-signed certificate, so its tile shows a browser warning.
+- `homepage_links` adds your own tiles in a "Links" group: a public hostname, a service on another host, any page. With two servers, run Homepage on one and add the other's services here; the format and an example are in `roles/homepage/defaults/main.yml`.
+- Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
+- The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.
+- Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app ([widgets](https://gethomepage.dev/widgets/)).
 
 ## Ad-hoc app platform
 

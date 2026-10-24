@@ -2,12 +2,21 @@
 # value with yours, starting from ../vars.yml.example; see "Using this repo for your own hosts" in ansible/README.md.
 # Settings for this one host. Options are explained in ../vars.yml.example and group_vars/all/vars.yml.example.
 
-# An ad-hoc app host: Dockge for compose stacks, Caddy for names. Stacks live in a folder on the root drive
-# (docs/storage.md#using-the-root-drive-for-fast-or-primary). It runs no backup: pinas owns the offsite
-# repository, and two hosts must never back up into one.
+# An ad-hoc app host: Dockge for compose stacks, Caddy for names. Stacks live on the fast drive. It backs up to its
+# own backup drive only: pinas owns the offsite repository, and two hosts must never back up into one.
 dockge_enabled: true
 caddy_enabled: true
+backup_local_enabled: true   # daily backup to the `backup` drive
 
 # --- Drives ---
 drives:
-  - { mount: /srv/apps, roles: [fast] }
+  - uuid: "652f3034-fd03-4a7e-b39a-a7d5262c371a"   # 128 GB USB stick, label primary → /mnt/apps
+    mount: /mnt/apps
+    fstype: ext4
+    options: defaults,nofail
+    roles: [fast, primary]
+  - uuid: "14d25e81-68c6-4b00-96b4-a1a6b5b81ede"   # 128 GB PNY USB stick (USB 2 port), label backup → /mnt/backup
+    mount: /mnt/backup
+    fstype: ext4
+    options: defaults,nofail
+    roles: [backup]
