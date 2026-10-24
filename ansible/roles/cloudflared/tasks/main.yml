@@ -27,12 +27,14 @@
     label: "{{ item.hostname | default(item) }}"
 
 # Two hosts serving one hostname would fight over its DNS record, so each hostname belongs to one host.
+# Only hosts with cloudflared_enabled count: a host that does not run a tunnel does not touch DNS.
 - name: Check that no other host serves the same hostname
   ansible.builtin.assert:
     that: >-
       cloudflared_ingress | map(attribute='hostname')
       | intersect(hostvars.keys() | difference([inventory_hostname])
-                  | map('extract', hostvars, 'cloudflared_ingress') | flatten | map(attribute='hostname') | list)
+                  | map('extract', hostvars) | selectattr('cloudflared_enabled')
+                  | map(attribute='cloudflared_ingress') | flatten | map(attribute='hostname') | list)
       | length == 0
     fail_msg: A hostname in cloudflared_ingress is also in another host's cloudflared_ingress. Each hostname belongs to one host.
     quiet: true

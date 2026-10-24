@@ -19,7 +19,7 @@ A host with no flags set deploys only the base roles. Secrets every host shares 
 
 Drives hold the data: everything under `/mnt/t7` (app data, Immich, Copyparty, Homebridge, Gitea, Crafty) and `/mnt/backup`. Docker's own storage is disposable and images re-pull.
 
-Rollback: move the drives back to the Pi 4 and run `just deploy '' --limit pi4`.
+Rollback, in this order: `ansible-playbook teardown.yml --limit pi5 --ask-vault-pass`; set `cloudflared_enabled: false` and `backup_cloud_enabled: false` in `host_vars/pi5/vars.yml` and the Pi 4's values back in `host_vars/pi4/vars.yml`; run `sudo tailscale set --hostname=pinas` on the Pi 4 and give pi5 another name; move the drives back; `just deploy '' --limit pi4`. The storage role writes the fstab lines again.
 
 Does not travel with the drives:
 
@@ -53,11 +53,11 @@ Does not travel with the drives:
 5. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --ask-vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
 6. Shut the Pi 4 down and leave its microSD untouched.
 7. Move both drives to pi5's blue USB 3 ports. Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has its own brick; the T7 and the later P10 are bus-powered, so check their combined draw or use a powered hub ([drive-migration.md](./drive-migration.md)).
-8. **Create pi5's files.** In `ansible/inventory/hosts.yml`, set pi5's `ansible_host`. Create `host_vars/pi5/vars.yml`, with the `drives:` block from `host_vars/pi4/vars.yml` (same UUIDs and mounts), the service flags the NAS runs, `backup_local_enabled: true`, `backup_cloud_enabled: true`, `restic_cloud_repository` (the NAS's existing path: pi5 takes over the NAS's offsite repository, which is safe only because the Pi 4 was shut down in step 6; two hosts must never run a cloud backup into one repository), `cloudflared_tunnel_name: pi-nas-tunnel`, `cloudflared_ingress`, and the direct-link settings if pi5 should have the link. Create `host_vars/pi5/vault.yml` from `host_vars/vault.yml.example` (the same secrets the Pi 4 uses), then encrypt it.
+8. **Create pi5's files.** In `host_vars/pi4/vars.yml`, set `cloudflared_enabled: false` and `backup_cloud_enabled: false` (a hostname belongs to one host, and two hosts must not back up into one repository). In `ansible/inventory/hosts.yml`, set pi5's `ansible_host`. Create `host_vars/pi5/vars.yml`, with the `drives:` block from `host_vars/pi4/vars.yml` (same UUIDs and mounts), the service flags the NAS runs, `backup_local_enabled: true`, `backup_cloud_enabled: true`, `restic_cloud_repository` (the NAS's existing path: pi5 takes over the NAS's offsite repository, which is safe only because the Pi 4 was shut down in step 6; two hosts must never run a cloud backup into one repository), `cloudflared_enabled: true`, `cloudflared_tunnel_name: pi-nas-tunnel`, `cloudflared_ingress`, and the direct-link settings if pi5 should have the link. Create `host_vars/pi5/vault.yml` from `host_vars/vault.yml.example` (the same secrets the Pi 4 uses), then encrypt it.
 9. **Name pi5 like the old NAS.** If it is not logged in to Tailscale, run `sudo tailscale up`. Then `sudo tailscale set --hostname=pinas` and set the OS hostname ([Hostnames](#hostnames)). Disable key expiry for it in the Tailscale admin console.
 10. `just preview '' --limit pi5 -K`, read the whole diff, then `just deploy '' --limit pi5 -K`.
 11. **Check:** Immich, Copyparty, Gitea, the public hostnames and Funnel; a backup run (`bash /opt/services/scripts/backup-restic-local.sh`, then `restic snapshots`); `/mnt/backup` is mounted. Optionally reboot with a drive unplugged to test the Docker mount guard ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
-12. **Prune the old snapshot group.** The first offsite backup under `/opt/services` starts a new snapshot group for that path. When `restic snapshots` on the cloud repo shows it, drop the old one: `restic -r <repo> forget --path /opt/nas --keep-last 1 --prune`.
+12. **Prune the old snapshot group.** The first offsite backup under `/opt/services` starts a new snapshot group for that path. When `restic snapshots` on the cloud repo shows it, list the groups with `restic -r <repo> snapshots --group-by host,paths`, then remove the old group's snapshots by hand with `restic -r <repo> forget <snapshot-id> --prune` (the same as in [backups.md](../backups.md)).
 13. **Clean up:** delete the stale offline Gitea runner ([storage.md](../storage.md#gitea-runner-registration)), the old tunnel `*.json` credentials in `/opt/services/cloudflared/`, and the old `pinas` node if it still shows in the Tailscale admin console.
 14. Keep the Pi 4 off for a week.
 
@@ -72,7 +72,7 @@ Does not travel with the drives:
 
 ### Hostnames
 
-The inventory name (`pi4`) is only a label in Ansible's output; the host's own hostname is separate and changes nothing in Ansible. It matters in three places: the Tailscale name (MagicDNS, WebDAV mounts, the Funnel URL), the shell prompt, and restic, which groups snapshots by hostname and paths. A repo that moves to pi5 keeps its snapshot groups only if pi5's hostname equals the old one (`pinas`); otherwise the old snapshots stay as a separate group until `restic forget --host pinas ...`.
+The inventory name (`pi4`) is only a label in Ansible's output; the host's own hostname is separate and changes nothing in Ansible. It matters in three places: the Tailscale name (MagicDNS, WebDAV mounts, the Funnel URL), the shell prompt, and restic, which groups snapshots by hostname and paths. A repo that moves to pi5 keeps its snapshot groups only if pi5's hostname equals the old one (`pinas`); otherwise the old snapshots stay as a separate group until you remove them by hand (step 12). The name move is symmetrical: the Pi 4 must give up `pinas` (and the rollback gives it back) before another host takes it.
 
 To rename a host:
 
