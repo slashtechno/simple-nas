@@ -1,7 +1,6 @@
 ---
-# Hosts set up with Tailscale's install script have a one-line apt source and keyring. The role
-# writes its own source for the same repository, and apt refuses two sources with different keys.
-# Once every host has been deployed once, these two tasks do nothing and can be deleted.
+# Tailscale's install script adds its own apt source and keyring. The role writes a source for the same
+# repository, and apt refuses two sources with different keys.
 - name: Remove the install script's Tailscale apt source
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/tailscale.list
@@ -17,7 +16,7 @@
 # there; Tailscale remembers them). No auth key is stored anywhere in this repo.
 # state: present installs Tailscale if missing but never upgrades it during a deploy; the role's
 # default, latest, would. Upgrade by hand with `sudo apt upgrade tailscale`.
-# include_role, not import_role (AGENTS.md exception): kept as deployed. import_role would expand and tag every inner task, and that has not been tested.
+# include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of the collection role.
 - name: Install Tailscale
   ansible.builtin.include_role:
     name: artis3n.tailscale.machine

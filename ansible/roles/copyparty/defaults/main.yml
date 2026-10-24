@@ -1,6 +1,5 @@
 ---
-# Cap thumbnailer RAM; the upstream default allows ~2.4 GiB on a 4 GB Pi (60% of
-# system RAM). 1 GiB is a safe cap on both the Pi 4 and Pi 5.
+# Cap in GiB on the thumbnailer's RAM. The upstream default is 60% of system RAM.
 copyparty_th_ram_max: "1"
 copyparty_version_checker_enabled: true   # vc-url points at the upstream advisory feed (disabled upstream by default)
 

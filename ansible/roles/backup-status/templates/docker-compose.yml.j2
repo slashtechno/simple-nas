@@ -11,8 +11,7 @@ services:
         PYTHON_IMAGE: {{ backup_status_python_image }}
     container_name: backup-status
     restart: unless-stopped
-    # All mounts are read-only — this container can list/read the repo and
-    # log files but has no path that can write to or delete a backup.
+    # Every mount is read-only, so the container cannot change or delete a backup.
     volumes:
       - {{ restic_repo_path }}:/data/restic-repo:ro
       - {{ backup_logs_dir }}:/data/logs:ro

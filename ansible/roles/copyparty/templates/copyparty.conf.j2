@@ -1,31 +1,23 @@
-# Ansible-managed — rendered directly by Ansible at deploy time.
-# All accounts, volumes, and drives are baked in.
-# To change: edit vars.yml/vault.yml and re-deploy.
+# Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
 [global]
   e2dsa
   e2ts
-  # WebDAV write support, once globally — covers all volumes. Upstream has
-  # no volflag inheritance (each volume is independent), but `daw` is ALSO a
-  # global option, so per-volume repetition is unnecessary. Scoped negation
-  # (`-daw` on a volume) still works here if ever needed (documented feature).
+  # WebDAV write support for every volume. Volumes do not inherit flags, but `daw` is also a global option.
   daw
-  # Thumbs/dbs/transcode cache on the fast drive (SSD) instead of a `.hist`
-  # dir inside each volume. One-time: first boot after this change re-runs
-  # the e2dsa index scan (db starts empty); thumbs regenerate lazily.
+  # Thumbnails, databases and the transcode cache live in this one directory (the fast drive) instead of a
+  # `.hist` folder inside each volume.
   hist: /hist
-  # Cap thumbnailer RAM; default would allow ~2.4 GiB on a 4 GB Pi.
+  # Cap thumbnailer RAM (copyparty_th_ram_max).
   th-ram-max: {{ copyparty_th_ram_max }}
 {% if copyparty_version_checker_enabled | bool %}
-  # Opt-in version checker: alerts in the log/UI when the running version is
-  # affected by a security advisory. Phone-home is intentional (your choice).
+  # Version checker: reports in the log and UI when the running version has a security advisory.
+  # It fetches the advisory feed from the URL below.
   vc-url: https://api.copyparty.eu/advisories
 {% endif %}
   xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
-  # Sort file2.txt before file10.txt, and default the UI's time display to the viewer's local
-  # timezone instead of UTC (this is a browser-side default; the server's TZ is not involved).
-  # Clients can still override both in the UI.
+  # Sort file2.txt before file10.txt, and show times in the viewer's local timezone (a browser-side default).
   nsort
   localtime
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
@@ -59,9 +51,7 @@
     rwmd: {{ vault_pocketpi_nas_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
 
-{# One volume per service-account folder, a subfolder of /files. No per-volume
-   flags needed: `daw` is set globally in [global], and volflags deliberately
-   do NOT carry between volumes (unlike what inheritance would offer). #}
+{# One volume per service-account folder, a subfolder of /files. #}
 {% for s in copyparty_service_accounts | default([]) %}
 {% for v in s.volumes %}
 [/{{ v.folder }}]

@@ -22,7 +22,7 @@
     # The container runs as uid 10001 and must own its data folder
     - { path: "{{ pics_data_dir }}", owner: "10001" }
 
-# include_role, not import_role (AGENTS.md exception): kept as deployed. import_role would expand and tag every inner task, and that has not been tested.
+# include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of github_clone.
 - name: Fetch the pics source
   ansible.builtin.include_role:
     name: github_clone
@@ -50,7 +50,7 @@
     mode: "0640"
   notify: Restart pics
 
-# Building takes several minutes on a Pi, so only rebuild when the source moved (or the image is missing)
+# Building takes several minutes on a Pi: rebuild only when the source moved or the image is missing.
 - name: Build and start pics
   community.docker.docker_compose_v2:
     project_src: "{{ nas_base_dir }}/pics"

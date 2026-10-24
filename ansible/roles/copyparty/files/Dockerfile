@@ -2,11 +2,8 @@
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
-# Install system dependencies for thumbnail generation
-# ffmpeg: video/audio thumbnails
-# vips: high-performance image processing (HEIF, AVIF, JXL)
-# libraw: RAW camera file decoding
-# build-base, python3-dev: for compiling Python packages without prebuilt wheels
+# ffmpeg: video and audio thumbnails. vips: image processing (HEIF, AVIF, JXL). libraw: RAW decoding.
+# build-base, python3-dev: for Python packages without prebuilt wheels.
 RUN apk add --no-cache \
     ffmpeg \
     vips-dev \
@@ -31,9 +28,8 @@ RUN apk add --no-cache \
 # RUN MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages setuptools cython numpy && \
 #     MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation git+https://github.com/letmaik/rawpy.git
 
-# Python packages the official image leaves out (HEIF/HEIC cannot ship in the official images):
-# pyvips: python bindings for vips
-# pillow-heif, pillow-avif-plugin: extended format support for Pillow
+# Python packages the official image leaves out because HEIF/HEIC cannot ship in it:
+# pyvips (bindings for vips), pillow-heif and pillow-avif-plugin (extra Pillow formats).
 RUN python3 -m pip install --no-cache-dir --break-system-packages \
     pyvips \
     pillow-heif \
