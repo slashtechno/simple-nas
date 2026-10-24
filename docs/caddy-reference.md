@@ -14,7 +14,7 @@ Runs on hosts in `servers_general` when `caddy_enabled: true` (default false). T
 |---|---|---|
 | `caddy_http_port` | 80 | Host port for HTTP |
 | `caddy_https_port` | 443 | Host port for HTTPS (TCP and UDP) |
-| `caddy_data_dir` | `/opt/nas/caddy/data` | Certificates and state; losing it means certificates are issued again |
+| `caddy_data_dir` | `<fast drive>/docker/caddy` | Certificates and state; losing it means certificates are issued again |
 
 The container joins `nas-services` (`nas_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
