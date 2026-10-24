@@ -7,7 +7,7 @@
       - "'photos' in (copyparty_service_accounts | default([]) | map(attribute='user'))"
     fail_msg: >-
       pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add a
-      copyparty_service_accounts entry with user: photos (see group_vars/all/vars.yml.example).
+      copyparty_service_accounts entry with user: photos (example in the comment above copyparty_service_accounts in group_vars/all/defaults.yml).
     quiet: true
 
 - name: Create pics directories

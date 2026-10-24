@@ -4,7 +4,7 @@ Each service is a role with its own Docker Compose project at `/opt/services/<se
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every flag defaults to false. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag defaults to false (`storage_enabled`, which mounts the drives, defaults to true). Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -93,6 +93,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
 | `just syntax` | Both playbooks parse |
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
+| `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
 | `just deploy [tags] [flags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pi5 -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
