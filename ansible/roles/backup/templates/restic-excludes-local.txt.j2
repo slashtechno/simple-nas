@@ -11,21 +11,7 @@
 {{ drive_mounts.primary }}/lost+found
 {{ drive_mounts.primary }}/**/.cache
 {% endif %}
-{% if gitea_enabled | bool %}
-{{ gitea_data_dir }}/ssh
-{% endif %}
-{% if immich_enabled | bool %}
-{{ immich_db_data_location }}
-{% endif %}
-{% if copyparty_enabled | bool %}
-{{ copyparty_config_dir }}/copyparty
-{{ copyparty_hist_dir }}
-{% endif %}
-{% if crafty_enabled | bool %}
-# Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
-# still backed up. Add "!{{ crafty_data_dir }}/backups" to restic_local_excludes to back them up too.
-{{ crafty_data_dir }}/backups
-{% endif %}
+{% include 'restic-excludes-services.txt.j2' %}
 
 # Yours: restic_local_excludes
 {% for pattern in restic_local_excludes %}

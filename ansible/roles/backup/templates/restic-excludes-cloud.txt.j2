@@ -7,10 +7,8 @@
 
 # Defaults: caches that can be rebuilt.
 {{ restic_cache_dir }}
-{% if copyparty_enabled | bool %}
-{{ copyparty_hist_dir }}
-{% endif %}
 **/.cache
+{% include 'restic-excludes-services.txt.j2' %}
 
 # Yours: restic_cloud_excludes
 {% for pattern in restic_cloud_excludes %}

@@ -55,7 +55,11 @@
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
-      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup, backup_cloud, backup_status]
+      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup, backup_status]
+
+    - name: Turn on the offsite backup
+      ansible.builtin.set_fact:
+        restic_cloud_repository: "rclone:gdrive-nas:/render-full-backups"
 
     - name: Read site.yml
       ansible.builtin.slurp:
@@ -130,6 +134,11 @@
       ansible.builtin.set_fact:
         drives: "{{ fixture_drives }}"
 
+    - name: Enable the fixture's services
+      ansible.builtin.set_fact:
+        "{{ item }}_enabled": true
+      loop: "{{ expect.services | default([]) }}"
+
     - name: The paths follow the claimed roles
       ansible.builtin.assert:
         that:
@@ -155,7 +164,7 @@
 
     - name: Only a claimed backup drive turns the local backup on
       ansible.builtin.assert:
-        that: (backup_local_enabled | bool) == ('backup' not in expect.unclaimed)
+        that: ('backup' in drive_mounts) == ('backup' not in expect.unclaimed)
 
     # Every layout renders the backup templates. A host without a backup drive skips the local-only ones,
     # which need the drive's path, and backs up its own data to the cloud instead.
@@ -181,7 +190,7 @@
           vars:
             local_only: '/(backup-restic-local\.sh|restic-check\.sh|restic-excludes-local\.txt)\.j2$'
           loop: >-
-            {{ backup_templates.files if backup_local_enabled | bool
+            {{ backup_templates.files if 'backup' in drive_mounts
                else backup_templates.files | rejectattr('path', 'search', local_only) | list }}
           loop_control:
             label: "{{ item.path | basename }}"
@@ -189,7 +198,7 @@
         - name: Read the offsite script and path list
           ansible.builtin.slurp:
             src: "{{ out_dir }}/layouts/{{ inventory_hostname }}/{{ item }}"
-          loop: [backup-restic-cloud.sh, backup-paths.txt]
+          loop: [backup-restic-cloud.sh, backup-paths.txt, restic-excludes-cloud.txt]
           register: cloud_files
 
         # Local backup: the offsite script guards the backup drive. None: the offsite list holds the host's own data.
@@ -197,10 +206,12 @@
           vars:
             offsite_script: "{{ cloud_files.results[0].content | b64decode }}"
             offsite_paths: "{{ cloud_files.results[1].content | b64decode }}"
+            offsite_excludes: "{{ cloud_files.results[2].content | b64decode }}"
           ansible.builtin.assert:
             that:
-              - "('mountpoint -q' in offsite_script) == (backup_local_enabled | bool)"
-              - backup_local_enabled | bool or expect.local_paths | select('in', offsite_paths) | list | length == expect.local_paths | length
+              - "('mountpoint -q' in offsite_script) == ('backup' in drive_mounts)"
+              - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
+              - "'backup' in drive_mounts or expect.local_paths | select('in', offsite_paths) | list | length == expect.local_paths | length"
 
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.

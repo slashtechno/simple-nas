@@ -20,6 +20,17 @@ all:
                 cache_dir: /home/pi/.cache/restic
                 copyparty_fast: false
                 unclaimed: [fast, primary, backup]
+            # Cloud only: a folder on the root drive and no backup drive. The offsite backup holds the data,
+            # so its exclude list must skip Immich's live database directory like the local one does.
+            root-folder-cloud:
+              fixture_drives:
+                - {mount: /srv/apps, roles: [fast, primary]}
+              expect:
+                local_paths: [/srv/apps]
+                cache_dir: /srv/apps/restic-cache
+                copyparty_fast: false
+                unclaimed: [backup]
+                services: [immich, gitea]
             # A folder on the root drive for services, a USB drive for backups.
             root-folder-usb-backup:
               fixture_drives:

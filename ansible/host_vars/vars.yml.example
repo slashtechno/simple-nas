@@ -30,9 +30,14 @@ cloudflared_ingress: []
 #   fast    SSD; random-IO data (Docker, Immich database, configs) and caches
 #   primary bulk data (photos, files)
 #   backup  restic local repo, service dumps, logs
-# Each role may be claimed by at most one drive. A NAS (the `nas` group) must claim all three; a
-# general server (`servers_general`) must claim `fast`, where Dockge's stacks and data live.
+# Each role may be claimed by at most one drive. A host needs a drive for every role its enabled services
+# use: an unclaimed role fails the deploy with a message naming it. No `backup` drive means no local backup.
 # A drive with no `roles:` is only mounted.
 # Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
 # Examples for a NAS and for a general server, and the `nofail` option: docs/storage.md#examples
 drives: []
+
+# --- Offsite backup ---
+# Setting this turns on the weekly offsite copy for this host; leave it out for none. Every host needs its own
+# path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
+restic_cloud_repository: ""   # e.g. "rclone:gdrive-nas:/<host>-backups"

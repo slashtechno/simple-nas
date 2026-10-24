@@ -17,7 +17,7 @@ set -euo pipefail
 DUMP_DIR="${DUMP_DIR:-{{ service_dumps_dir }}}"
 SCRIPTS_DIR="{{ service_dump_scripts_dir }}"
 
-{% if backup_local_enabled | bool %}
+{% if 'backup' in drive_mounts %}
 # Refuse to run if the backup drive isn't mounted — otherwise this silently
 # creates $DUMP_DIR (and writes DB dumps into it) on the root filesystem.
 if ! mountpoint -q {{ backup_drive | quote }}; then

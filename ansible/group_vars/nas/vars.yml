@@ -14,13 +14,8 @@ pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 backup_enabled: true
-backup_cloud_enabled: true   # weekly offsite copy; the repository is below
 usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
-
-# --- Backups ---
-# Offsite repository; every host needs its own path (docs/backups.md#offsite-repository-restic_cloud_repository).
-restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
 
 # --- Cloudflare Tunnel ---
 # Tunnel name: other hosts default to <hostname>-tunnel (roles/cloudflared/defaults/main.yml).

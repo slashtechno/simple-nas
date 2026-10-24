@@ -25,7 +25,6 @@ cloudflared_enabled: false
 dockge_enabled: false
 caddy_enabled: false
 backup_enabled: false
-backup_cloud_enabled: false
 backup_status_enabled: false
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
@@ -66,8 +65,8 @@ ssh_authorized_keys:
 
 # --- Backups (docs/backups.md) ---
 # The backup role runs on a host with `backup_enabled: true` (set per group or host). A drive with the
-# `backup` role adds the daily local backup and the weekly integrity check. The weekly offsite copy needs
-# `backup_cloud_enabled: true` and a repository below. A host needs at least one of the two.
+# `backup` role adds the daily local backup and the weekly integrity check. Setting `restic_cloud_repository`
+# below adds the weekly offsite copy. A host needs at least one of the two.
 # Without a backup drive, logs and service dumps live in /var/lib/nas-backup on the root drive.
 # One dump script per service with a live database.
 service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"
@@ -75,7 +74,8 @@ service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"
 restic_repo_path: "{{ backup_drive }}/restic-repo"
 # Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
 # "rclone:gdrive-nas:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
-# initialised. Give each host its own path: hosts sharing a repository would prune each other's snapshots.
+# initialised. Set it per host in host_vars (each host needs its own path: hosts sharing a repository would
+# prune each other's snapshots). Empty means no offsite copy.
 restic_cloud_repository: ""
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
 backup_logs_dir: "{{ backup_work_dir }}/logs"

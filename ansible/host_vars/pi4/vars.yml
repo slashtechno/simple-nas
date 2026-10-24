@@ -24,3 +24,6 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [backup]
+
+# Weekly offsite copy to Google Drive (docs/backups.md).
+restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
