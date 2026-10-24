@@ -56,7 +56,7 @@
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
-      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup_local, backup_cloud, backup_status]
+      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, homepage, caddy, backup_local, backup_cloud, backup_status]
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
@@ -68,6 +68,7 @@
     - name: Turn on the optional settings that add lines to a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
+        homepage_auth_enabled: true
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
@@ -163,6 +164,9 @@
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'HOMEPAGE_AUTH_ENABLED' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0].Services | length == 9
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"

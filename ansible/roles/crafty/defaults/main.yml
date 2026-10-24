@@ -1,6 +1,4 @@
 ---
-# Host port of the panel; the container always listens on 8443.
-crafty_panel_port: 28443
 # Java server ports; a range is one docker-proxy per port, so keep it small.
 crafty_mc_ports: "25565-25575"
 # Also publish 19132/udp for Bedrock servers.

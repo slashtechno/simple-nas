@@ -120,6 +120,12 @@
         data_paths:
           - "{{ dockge_data_dir }}"
 
+    - name: Stop and remove Homepage
+      tags: [homepage]
+      ansible.builtin.import_tasks: teardown_service.yml
+      vars:
+        service: homepage
+
     - name: Stop and remove Caddy
       tags: [caddy]
       ansible.builtin.import_tasks: teardown_service.yml

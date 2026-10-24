@@ -15,6 +15,7 @@ crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM
 backup_local_enabled: true   # daily backup to the `backup` drive
 usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
+homepage_enabled: true   # start page with a link to every service
 
 # Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers)
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,

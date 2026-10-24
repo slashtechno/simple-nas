@@ -2,8 +2,8 @@
 # pics builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
 # (copyparty_service_accounts). The container publishes <pics_port> on the host, so the whole app (owner pages
 # included) is on your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
-# cloudflared_ingress entry, which points at pics_public_port.
-pics_port: 8100   # published on the Pi: LAN + tailnet reach the owner app here
+# cloudflared_ingress entry, which points at pics_public_port. The owner pages' host port is pics_port, in
+# group_vars/all/defaults.yml.
 
 # GitHub repository (owner/name) that pics builds from.
 pics_repo: "{{ undef(hint='Set pics_repo (owner/name of the private GitHub repo pics builds from) in group_vars/all/vars.yml') }}"

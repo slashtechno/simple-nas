@@ -1,0 +1,53 @@
+# Ansible-managed — do not edit directly. One tile per enabled service that publishes a host port; edit
+# roles/homepage/templates/services.yaml.j2 to add a tile.
+{% set host = homepage_host %}
+{% if immich_enabled | bool or copyparty_enabled | bool or gitea_enabled | bool or pics_enabled | bool or homebridge_enabled | bool or crafty_enabled | bool or dockge_enabled | bool or ntfy_enabled | bool or backup_status_enabled | bool %}
+- Services:
+{% if immich_enabled | bool %}
+    - Immich:
+        href: http://{{ host }}:2283
+        description: Photos
+{% endif %}
+{% if copyparty_enabled | bool %}
+    - Copyparty:
+        href: http://{{ host }}:{{ copyparty_port }}
+        description: Files
+{% endif %}
+{% if gitea_enabled | bool %}
+    - Gitea:
+        href: http://{{ host }}:{{ gitea_port }}
+        description: Git
+{% endif %}
+{% if pics_enabled | bool %}
+    - pics:
+        href: http://{{ host }}:{{ pics_port }}
+        description: Photo culling and sharing
+{% endif %}
+{% if homebridge_enabled | bool %}
+    - Homebridge:
+        href: http://{{ host }}:8581
+        description: HomeKit
+{% endif %}
+{% if crafty_enabled | bool %}
+    - Crafty:
+        href: https://{{ host }}:{{ crafty_panel_port }}
+        description: Minecraft servers
+{% endif %}
+{% if dockge_enabled | bool %}
+    - Dockge:
+        href: http://{{ host }}:{{ dockge_port }}
+        description: Compose stacks
+{% endif %}
+{% if ntfy_enabled | bool %}
+    - ntfy:
+        href: http://{{ host }}:{{ ntfy_port }}
+        description: Alerts
+{% endif %}
+{% if backup_status_enabled | bool %}
+    - Backups:
+        href: http://{{ host }}:{{ backup_status_port }}
+        description: Backup status
+{% endif %}
+{% else %}
+[]
+{% endif %}

@@ -46,4 +46,9 @@ vault_garage_webui_user: "admin"
 # Password of the Garage web UI. The deploy hashes it.
 vault_garage_webui_pass: "change-me-generate-with-openssl-rand-base64-24"
 
+# Homepage login, needed only with homepage_auth_enabled: true.
+vault_homepage_password: "change-me-generate-with-openssl-rand-base64-24"
+# Signs the login cookies; at least 32 characters.
+vault_homepage_auth_secret: "change-me-generate-with-openssl-rand-base64-32"
+
 # Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.

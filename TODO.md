@@ -13,7 +13,6 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 ## Clean-up after a deploy
 
 - After `just deploy cloudflared --limit pinas` creates `pinas-tunnel`: delete the old `pi-nas-tunnel` in Cloudflare (Zero Trust, Networks, Tunnels).
-- Before the next `just deploy` of ntfy on pinas: in the pinas vault, replace `vault_ntfy_password_hash` with `vault_ntfy_password`, the plain password you type into the ntfy app ([services.md](./docs/services.md#ntfy-failure-alerts)).
 - Delete the stale `pi-nas-runner` entry in Gitea.
 - After the next Sunday offsite backup: `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
 

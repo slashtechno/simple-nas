@@ -23,6 +23,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflared_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
+| Homepage | Start page with a link to every enabled service | `roles/homepage` | none; `vault_homepage_password` and `vault_homepage_auth_secret` only with `homepage_auth_enabled` | [Homepage](#homepage) |
 | Dockge, Caddy | Web UI for your own compose stacks; names for apps, routed by container label | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Backups | Daily local and weekly cloud backups, a weekly integrity check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) | [backups.md](./backups.md) |
 | Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | `roles/network` | none | [networking.md](./networking.md#direct-ethernet-link) |
@@ -147,6 +148,15 @@ Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `se
 - The admin UI is reachable over Tailscale at `http://<pi-tailscale-ip>:8581` (plain HTTP).
 
 The role only deploys the container; the image creates `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. The HomeKit PIN and plugins are set in the UI and persist across deploys.
+
+## Homepage
+
+A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) at `http://<host>:<homepage_port>` (3001) with one tile per enabled service that publishes a host port. Tile links are built from the same port settings the services use, so an overridden port is followed.
+
+- `homepage_host` (default: the inventory name, which is the host's tailnet name) is the address in the tile links and the only address Homepage accepts. A LAN IP or a full domain name gets a host validation error; set `homepage_host` to the one you use.
+- The tiles are `roles/homepage/templates/services.yaml.j2`, one `{% if <name>_enabled %}` block per service. Garage, Caddy and Cloudflare Tunnel have no tile because they publish no host port. To add a tile for a service, copy a block.
+- Homepage has no login by default. `homepage_auth_enabled: true` adds a password login ([Homepage security](https://gethomepage.dev/installation/#security-authentication)); it needs `vault_homepage_password` and `vault_homepage_auth_secret` (at least 32 characters). It has no rate limit on password attempts, so keep it off the internet.
+- Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app; add one under the tile in `services.yaml.j2` with the key in the vault ([widgets](https://gethomepage.dev/widgets/)).
 
 ## Ad-hoc app platform
 

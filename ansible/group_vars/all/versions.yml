@@ -35,6 +35,9 @@ backup_status_python_image: python:3.14.9-slim
 # Cloudflare Tunnel: https://github.com/cloudflare/cloudflared/releases (needs 2025.4.0+ for --token-file)
 cloudflared_image: cloudflare/cloudflared:2026.10.3
 
+# Homepage (start page): https://github.com/gethomepage/homepage/releases
+homepage_image: ghcr.io/gethomepage/homepage:v2.6.0
+
 # Dockge (ad-hoc app manager): https://github.com/louislam/dockge/releases. Only `nightly` moves.
 dockge_image: louislam/dockge:1.5.0
 # caddy-docker-proxy (opt-in reverse proxy): https://github.com/lucaslorentz/caddy-docker-proxy/releases

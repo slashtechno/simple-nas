@@ -1,3 +1,0 @@
----
-# Read-only web UI for restic backup status and snapshots. Reachable from the LAN and tailnet, no auth.
-backup_status_port: 8091

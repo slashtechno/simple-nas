@@ -1,7 +1,4 @@
 ---
-# Host port of Gitea's web UI.
-gitea_port: 3000
-
 # Public URL Gitea puts in links.
 gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
 # Host name Gitea serves its web pages for.

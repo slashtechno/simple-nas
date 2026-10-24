@@ -107,6 +107,12 @@
       tags: [dockge]
       when: dockge_enabled | bool
 
+    - name: Deploy homepage
+      ansible.builtin.import_role:
+        name: homepage
+      tags: [homepage]
+      when: homepage_enabled | bool
+
     - name: Deploy caddy
       ansible.builtin.import_role:
         name: caddy

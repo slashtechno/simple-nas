@@ -36,6 +36,8 @@ ntfy_enabled: false
 cloudflared_enabled: false
 # Dockge, a web UI for your own compose stacks.
 dockge_enabled: false
+# Homepage, a start page with a link to every enabled service (docs/services.md#homepage).
+homepage_enabled: false
 # Caddy reverse proxy that routes by container label.
 caddy_enabled: false
 # Daily backup to the drive with the `backup` role, plus a weekly integrity check.
@@ -177,8 +179,23 @@ direct_link_prefix: 30
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
 # any device on your tailnet. That needs nothing extra: no `tailscale serve`. pics' guest
 # pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
-# Host port of Copyparty's web UI and WebDAV.
+
+# --- Host ports of the web UIs ---
+# Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet).
+# Copyparty's web UI and WebDAV.
 copyparty_port: 3923
+# Gitea's web UI.
+gitea_port: 3000
+# pics' owner pages (the guest pages never use a host port).
+pics_port: 8100
+# Dockge; it asks you to create an account on first visit.
+dockge_port: 5001
+# ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
+ntfy_port: 8090
+# The read-only backup dashboard. It has no login.
+backup_status_port: 8091
+# Crafty's panel (HTTPS); the container always listens on 8443.
+crafty_panel_port: 28443
 
 # Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
 # (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
