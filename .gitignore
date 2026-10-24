@@ -63,10 +63,11 @@ venv.bak/
 # Cloudflared tunnel files
 cloudflared/*.json
 
-# Ansible secrets and local inventory (never commit these)
-ansible/group_vars/all/vault.yml
-ansible/group_vars/nas/vault.yml
+# Ansible secrets and local inventory (never commit these). vault.yml.example is tracked.
+ansible/group_vars/*/vault.yml
+ansible/host_vars/*/vault.yml
 ansible/inventory/hosts.yml
+.vault-pass*
 
 # Agent session artifacts
 .pi-subagents/

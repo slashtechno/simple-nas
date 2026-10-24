@@ -1,4 +1,6 @@
-# Copy to vars.yml and fill in your values.
+# THESE ARE THE REPO OWNER'S OWN SETTINGS (domains, SSH key, drive UUIDs). If you copied this repo, replace every
+# value with yours, starting from vars.yml.example; see "Using this repo for your own hosts" in ansible/README.md.
+# Settings for the NAS group.
 # Secrets (passwords, tokens) go in vault.yml, never in this file.
 # Settings private to one service default in roles/<name>/defaults/main.yml; set one here only to override it.
 

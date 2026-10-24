@@ -4,24 +4,37 @@ Each service is a role with its own Docker Compose project at `/opt/nas/<service
 
 Files Ansible manages (`/opt/nas/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
+## Which files hold what
+
+| File | In git | Holds | Create it |
+|---|---|---|---|
+| `inventory/hosts.yml` | no (addresses) | Hosts, groups (`nas`, `servers_general`), SSH user and key | Copy `hosts.yml.example` |
+| `group_vars/all/vars.yml` | yes | Settings every server reads (timezone, SSH keys, backups, Cloudflare account) | Copy `vars.yml.example` |
+| `group_vars/nas/vars.yml` | yes | NAS services on or off, their data paths, hostnames | Copy `vars.yml.example` |
+| `host_vars/<host>/vars.yml` | yes | One host: its `drives`, direct link, `docker_data_root`, Dockge, Caddy and Cloudflared settings | Copy `host_vars/vars.yml.example`, keep only what the host needs |
+| `group_vars/all/vault.yml` | no (secrets) | Secrets every host uses: Cloudflare token, restic password, rclone token | Copy `vault.yml.example`, fill in, encrypt |
+| `group_vars/nas/vault.yml` | no (secrets) | NAS-only secrets (database passwords, Copyparty logins) | Same |
+| `group_vars/all/versions.yml` | yes | Every image version | Already there |
+
+Encrypt both vaults with the same password: `ansible-vault encrypt group_vars/all/vault.yml group_vars/nas/vault.yml`. Anything secret goes in a vault, never in `vars.yml`; `.gitignore` keeps `vault.yml` and `hosts.yml` out of git. A `servers_general` host that runs backups or a tunnel needs `group_vars/all/vault.yml`; one that uses no secret works without it.
+
 ## First-time setup
 
 ```bash
 brew install ansible just uv   # uv runs the linters; Docker is only needed for `just tags`
 cd ansible/
 just deps
-cp inventory/hosts.yml.example inventory/hosts.yml    # one entry per host, under the group `nas` or `servers_general`
-cp group_vars/all/vars.yml.example group_vars/all/vars.yml
-cp group_vars/nas/vars.yml.example group_vars/nas/vars.yml
-mkdir host_vars/<host>                                # named after the host in the inventory
-cp host_vars/vars.yml.example host_vars/<host>/vars.yml   # keep only the options that host needs
-cp group_vars/all/vault.yml.example group_vars/all/vault.yml   # secrets every host uses
-cp group_vars/nas/vault.yml.example group_vars/nas/vault.yml   # NAS-only secrets
-# fill in both with real secrets, then encrypt them (same password):
-ansible-vault encrypt group_vars/all/vault.yml group_vars/nas/vault.yml
 ```
 
-`group_vars/all/vault.yml` is read by every host, so a `servers_general` host that runs backups or a tunnel needs it; a host that uses no secret is fine without it. The first deploy to a new host needs the sudo password once: `just deploy '' --limit <host> -K`. After that, the sudoers file the `common` role installs makes it unnecessary.
+Then create the files in the table above, set up each new host ([docs/plans/multi-host.md](../docs/plans/multi-host.md) walks through pi4 and pi5), and run `just deploy '' --limit <host> -K`. The first deploy to a host needs its sudo password once; after that, the sudoers file the `common` role installs makes `-K` unnecessary.
+
+## Using this repo for your own hosts
+
+The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs), kept in git so the owner's setup is reproducible. Anyone else who copies the repo replaces them:
+
+1. Overwrite each tracked `vars.yml` with its `vars.yml.example` (`group_vars/all`, `group_vars/nas`) and delete `host_vars/pi4/`.
+2. Replace at least `ssh_authorized_keys` (the owner's key would otherwise be added to your hosts), `timezone`, the Gitea and Cloudflare hostnames, and `restic_cloud_repository`.
+3. Create `inventory/hosts.yml`, the vaults and your own `host_vars/<host>/vars.yml` as in the table.
 
 ## Commands
 
