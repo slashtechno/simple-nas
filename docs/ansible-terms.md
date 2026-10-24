@@ -76,6 +76,8 @@ Files:
 - `git`: clone a repo (pics, through `github_clone`)
 - `lineinfile`: set one line in a file (containerd's `config.toml`)
 - `ansible.posix.authorized_key`: add SSH public keys
+- `get_url`: download a file and check its checksum (zellij)
+- `unarchive`: unpack a downloaded archive (zellij)
 - `stat`: check whether a path exists
 
 System:
@@ -89,12 +91,13 @@ System:
 Docker:
 - `docker_network`: create the shared Docker network (`docker_network`, named `services`)
 - `docker_compose_v2`: `docker compose up`/`down` for a `project_src:` directory
-- `docker_container`: remove or run one container outside compose (cloudflared removes a leftover init container)
 
 Flow and escape hatches:
 - `uri`: call an HTTP API (the cloudflared role calls Cloudflare's)
 - `assert`: fail early with a message (the storage role's drive checks)
 - `set_fact`: set a variable mid-play
+- `debug`: print a message during the run (the cloudflared role lists leftover DNS records)
+- `meta: flush_handlers`: run pending handlers now instead of at the end of the play (site.yml, before the Funnel)
 - `import_role`, `import_tasks`: pull in a role or task file when the playbook is parsed, so `--tags` still select tasks inside it. This repo uses these.
 - `include_role`: the same at run time, where tags don't reach inside. Used only where a role is called mid-task: tailscale calls `artis3n.tailscale.machine`, and pics calls `github_clone`.
 - `command`: run one binary, no shell features
@@ -152,10 +155,10 @@ Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a f
 | `names \| map('extract', hostvars)` | Looks each host name up in `hostvars`, the variables of every host in the inventory. | `roles/cloudflared/tasks/main.yml` |
 | `a if cond else b` | Picks `a` or `b`. | many templates |
 | `x \| list`, `x \| string` | Turn a filter result into a list; turn a value into text. | `roles/backup/templates/backup-restic-local.sh.j2` |
-| `list \| map('upper')`, `map('quote')` | Applies a filter to every item. | `roles/storage/templates/98-usb-automount.rules.j2`, `roles/garage/templates/Caddyfile.j2` |
+| `list \| map('upper')`, `map('quote')`, `map('tojson')` | Applies a filter to every item. | `roles/storage/templates/98-usb-automount.rules.j2`, `roles/backup/templates/backup-restic-local.sh.j2`, `roles/garage/templates/Caddyfile.j2` |
 | `x \| default(y, true)` | Uses `y` when `x` is undefined **or empty**; plain `default(y)` only covers undefined. | `roles/github_clone/tasks/main.yml` |
 | `x in list`, `selectattr('k', 'equalto', v)` | Membership; keep items whose `k` equals `v`. | `roles/storage/tasks/main.yml` |
-| `x \| quote` | Shell-quotes `x` so a space or `$` in it cannot break a command. | `roles/backup/templates/`, `roles/pics/templates/pics.env.j2` |
+| `x \| quote` | Shell-quotes `x` so a space or `$` in it cannot break a command. | `roles/backup/templates/` |
 | `x \| replace('a', 'b')` | Replaces text. | `roles/ntfy/templates/docker-compose.yml.j2` (a `$` in a compose file is written `$$`) |
 | `list \| unique`, `\| sort`, `\| first`, `\| join(', ')` | Drop duplicates; sort; the first item; glue items into one string. | `roles/backup/templates/backup-restic-local.sh.j2`, `roles/storage/templates/98-usb-automount.rules.j2` |
 | `list \| select`, `\| reject('match', 're')` | Keeps the truthy items; drops the ones matching a regular expression. | `roles/backup/templates/backup-paths.txt.j2`, `restic-excludes-local.txt.j2` |

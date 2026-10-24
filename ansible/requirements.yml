@@ -10,3 +10,4 @@ collections:
 
 roles:
   - src: geerlingguy.docker
+    version: ">=8.0.0,<9.0.0"   # a new major can change how docker_daemon_options is rendered

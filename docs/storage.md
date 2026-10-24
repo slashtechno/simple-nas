@@ -27,19 +27,27 @@ drives:
   - { mount: /srv/apps, roles: [fast] }
 ```
 
-A host with one USB drive for apps and backups. The backup drive must have a `uuid`, and because it also holds the data the host needs `backup_cloud_enabled: true`: the deploy fails otherwise, since a backup on the same drive is lost with it.
+A host with one USB drive for apps and backups. The backup drive must have a `uuid`. A backup on the drive that holds the data is lost with it; that is fine for data you can replace, and `backup_cloud_enabled: true` ([backups.md](./backups.md)) adds an offsite copy.
 
 ```yaml
 drives:
   - { uuid: "1111-AAAA", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, backup] }
 ```
 
-A one-drive NAS (also needs `backup_cloud_enabled: true`, for the same reason):
+A one-drive NAS (the same trade-off applies):
 
 ```yaml
 drives:
   - { uuid: "...", mount: /mnt/t7, fstype: ext4, options: "defaults,nofail",
       roles: [fast, primary, backup] }
+```
+
+An SSD for apps and files plus a separate backup drive. The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed:
+
+```yaml
+drives:
+  - { uuid: "...", mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
+  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
 ```
 
 A three-drive NAS (fast SSD, slow bulk drive, backup target):
