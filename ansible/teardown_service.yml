@@ -23,5 +23,5 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
-  loop: "{{ data_paths | default([]) }}"
-  when: remove_data | bool
+  # The ternary is evaluated lazily: with remove_data false, data_paths (which needs the drive roles) is never read.
+  loop: "{{ data_paths | default([]) if remove_data | bool else [] }}"

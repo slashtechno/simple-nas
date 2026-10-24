@@ -6,6 +6,26 @@ timezone: America/New_York
 # Where compose projects and helper scripts are deployed on the host.
 nas_base_dir: /opt/nas
 nas_scripts_dir: "{{ nas_base_dir }}/scripts"
+# --- Which services run on a host ---
+# Every service is off until a group or host switches it on: set `<name>_enabled: true` in
+# group_vars/<group>/vars.yml or host_vars/<host>/vars.yml, and false again to stop deploying it.
+# A service that is already deployed keeps running; remove it with teardown.yml --tags <name>.
+# What each service needs (drive roles, vault entries) is in docs/services.md.
+immich_enabled: false
+copyparty_enabled: false
+gitea_enabled: false
+homebridge_enabled: false
+pics_enabled: false
+garage_enabled: false
+crafty_enabled: false
+ntfy_enabled: false
+cloudflared_enabled: false
+dockge_enabled: false
+caddy_enabled: false
+backup_enabled: false
+backup_cloud_enabled: false
+backup_status_enabled: false
+
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
 storage_enabled: true
 # This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
@@ -94,9 +114,13 @@ restic_command_timeout: "2h"
 # A host without a fast drive keeps it in the user's ~/.cache.
 restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 
-# --- Data directories of the general-server services (teardown.yml also reads them) ---
-# They sit on the host's `fast` drive, which a general server must claim (docs/storage.md), so the
-# default backup covers them.
+# --- Data directories (teardown.yml also reads them) ---
+# One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
+# (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
+# default backup (restic_local_paths) does not cover it. A variable that uses a drive role fails with a
+# message naming the role if no entry in `drives` claims it, but only on a host that enables the service.
+# Random-IO data (databases, configs) is on the fast drive; bulk data (photos, files) is on the primary.
+# When both roles are the same drive, the split changes nothing on disk.
 # The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 # Dockge's own database (users, settings).
@@ -123,3 +147,64 @@ cf_zones:
 # One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
 # The hostname must contain one domain from cf_zones. A hostname may appear on only one host; the deploy fails otherwise.
 cloudflared_ingress: []
+
+# --- Tailscale ---
+# Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
+# any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
+# (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
+# pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
+
+# Service data split across drive roles: random-IO data (Docker, DBs,
+# configs) on the fast drive; bulk data (photos, files) on the primary.
+# When both roles resolve to the same drive, this changes nothing on disk.
+immich_upload_location: "{{ primary_drive }}/photos"
+immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
+copyparty_files_dir: "{{ primary_drive }}/files"
+copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
+copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
+gitea_data_dir: "{{ fast_drive }}/docker/gitea"
+gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"   # runner registration (.runner); on the fast drive so it is backed up
+ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"   # message history and the user database; rebuilt from the compose file, so little is lost without it
+pics_data_dir: "{{ fast_drive }}/docker/pics"
+homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
+garage_data_dir: "{{ fast_drive }}/docker/garage"
+crafty_data_dir: "{{ fast_drive }}/docker/crafty"
+
+# --- Copyparty ---
+copyparty_user: "{{ vault_copyparty_user }}"
+copyparty_pass: "{{ vault_copyparty_pass }}"
+copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
+copyparty_port: 3923
+
+# Accounts for apps that talk to Copyparty. Each gets its own volume at
+# /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
+# too. Two entries can't share a folder. Passwords go in vault.yml.
+copyparty_service_accounts:
+  # Example: a photo app. No d on photos: without delete, Copyparty also refuses
+  # overwrites (it renames instead), so the app can't destroy a photo. It may
+  # delete only in its own photos-trash volume.
+  - user: photos
+    pass: "{{ vault_copyparty_photos_pass }}"
+    volumes:
+      - { folder: photos, perms: rwm }
+      - { folder: photos-trash, perms: rwmd }
+
+# --- Gitea ---
+gitea_root_url: "https://gitea.example.com/"
+gitea_domain: "gitea.example.com"
+gitea_ssh_domain: "gitea.example.com"
+gitea_ssh_port: "2222"
+
+# --- pics ---
+# Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
+# above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
+# your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
+# cloudflared_ingress entry below, which points at pics_public_port.
+pics_repo: owner/lab
+pics_public_url: "https://photos.example.com"
+pics_public_port: 8001   # container-internal (never published): the tunnel points here.
+                         # Container ports can't collide with other services — separate namespaces.
+                         # Only pics_port is published on the Pi (LAN + tailnet).
+pics_artist: ""           # written into the EXIF of public downloads
+pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
+pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page

@@ -2,14 +2,14 @@
 # Full deployment playbook.
 # Run with: ansible-playbook site.yml --ask-vault-pass
 #
-# Three plays: every server gets the base roles (drives, packages, Docker, Tailscale, network);
-# the NAS group gets services and backups; the general-server group gets Dockge (and optionally Caddy,
-# and backups when its host_vars set backup_enabled: true).
+# One play over every server. The base roles (drives, packages, Docker, Tailscale, network) run
+# everywhere; each service role runs where `<name>_enabled` is true, which group_vars or host_vars set
+# (default: false, in group_vars/all/vars.yml).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
-# To disable services permanently, set <name>_enabled: false in group_vars/nas/vars.yml
+# To stop deploying a service: set <name>_enabled: false for the host or group.
 
-- name: Base setup for every server
+- name: Deploy every server
   hosts: servers
   become: true
 
@@ -38,100 +38,114 @@
         quiet: true
       tags: [always]
 
-  roles:
+  tasks:
     # Drives first: docker_data_root (common) may sit on one, and Docker waits for its mount.
-    - role: storage
+    - name: Mount the drives
+      ansible.builtin.import_role:
+        name: storage
       tags: [storage]
-      when: storage_enabled | default(true)
+      when: storage_enabled | bool
 
-    - role: common
+    - name: Install the base packages and Docker
+      ansible.builtin.import_role:
+        name: common
       tags: [common]
 
-    - role: tailscale
+    - name: Install Tailscale
+      ansible.builtin.import_role:
+        name: tailscale
       tags: [tailscale]
 
-    - role: network
+    - name: Set up the Docker network and the direct link
+      ansible.builtin.import_role:
+        name: network
       tags: [network]
 
-- name: Deploy NAS
-  hosts: nas
-  become: true
+    # Docker restarts here, before any service container exists.
+    - name: Apply the base roles' handlers
+      ansible.builtin.meta: flush_handlers
 
-  pre_tasks:
-    # Catches a missing or incomplete vault.yml. (An encrypted vault with no password given
-    # fails earlier, when Ansible loads the variables: use --ask-vault-pass or `just deploy`.)
-    - name: Check the vault is loaded
-      ansible.builtin.assert:
-        that: vault_immich_db_password is defined
-        fail_msg: "vault_immich_db_password is not defined: group_vars/nas/vault.yml is missing or incomplete. Copy vault.yml.example and fill it in."
-        quiet: true
-      tags: [always]
-
-  roles:
-    - role: tailscale_funnel
+    # The funnel publishes Copyparty, and needs Tailscale joined (by hand, docs/networking.md).
+    - name: Tailscale Funnel for Copyparty
+      ansible.builtin.import_role:
+        name: tailscale_funnel
       tags: [tailscale]
+      when: copyparty_enabled | bool
 
-    - role: immich
+    - name: Deploy immich
+      ansible.builtin.import_role:
+        name: immich
       tags: [immich]
-      when: immich_enabled | default(true)
+      when: immich_enabled | bool
 
-    - role: copyparty
+    - name: Deploy copyparty
+      ansible.builtin.import_role:
+        name: copyparty
       tags: [copyparty]
-      when: copyparty_enabled | default(true)
+      when: copyparty_enabled | bool
 
-    - role: gitea
+    - name: Deploy gitea
+      ansible.builtin.import_role:
+        name: gitea
       tags: [gitea]
-      when: gitea_enabled | default(true)
+      when: gitea_enabled | bool
 
-    - role: homebridge
+    - name: Deploy homebridge
+      ansible.builtin.import_role:
+        name: homebridge
       tags: [homebridge]
-      when: homebridge_enabled | default(true)
+      when: homebridge_enabled | bool
 
-    - role: pics
+    - name: Deploy pics
+      ansible.builtin.import_role:
+        name: pics
       tags: [pics]
-      when: pics_enabled | default(false)
+      when: pics_enabled | bool
 
-    - role: crafty
+    - name: Deploy crafty
+      ansible.builtin.import_role:
+        name: crafty
       tags: [crafty]
-      when: crafty_enabled | default(false)
+      when: crafty_enabled | bool
 
-    - role: cloudflared
-      tags: [cloudflared]
-      when: cloudflared_enabled | default(true)
-
-    - role: garage
-      tags: [garage]
-      when: garage_enabled | default(false)
-
-    - role: backup
-      tags: [backup]
-      when: backup_enabled | default(true)
-
-    - role: ntfy
-      tags: [ntfy]
-      when: ntfy_enabled | default(false)
-
-    - role: backup-status
-      tags: [backup-status]
-      when: backup_status_enabled | default(true)
-
-- name: Ad-hoc app platform for general servers
-  hosts: servers_general
-  become: true
-
-  roles:
-    - role: backup
-      tags: [backup]
-      when: backup_enabled | default(false)
-
-    - role: dockge
+    - name: Deploy dockge
+      ansible.builtin.import_role:
+        name: dockge
       tags: [dockge]
-      when: dockge_enabled | default(true)
+      when: dockge_enabled | bool
 
-    - role: cloudflared
-      tags: [cloudflared]
-      when: cloudflared_enabled | default(false)
-
-    - role: caddy
+    - name: Deploy caddy
+      ansible.builtin.import_role:
+        name: caddy
       tags: [caddy]
-      when: caddy_enabled | default(false)
+      when: caddy_enabled | bool
+
+    - name: Deploy cloudflared
+      ansible.builtin.import_role:
+        name: cloudflared
+      tags: [cloudflared]
+      when: cloudflared_enabled | bool
+
+    - name: Deploy garage
+      ansible.builtin.import_role:
+        name: garage
+      tags: [garage]
+      when: garage_enabled | bool
+
+    - name: Deploy backup
+      ansible.builtin.import_role:
+        name: backup
+      tags: [backup]
+      when: backup_enabled | bool
+
+    - name: Deploy ntfy
+      ansible.builtin.import_role:
+        name: ntfy
+      tags: [ntfy]
+      when: ntfy_enabled | bool
+
+    - name: Deploy backup-status
+      ansible.builtin.import_role:
+        name: backup-status
+      tags: [backup-status]
+      when: backup_status_enabled | bool

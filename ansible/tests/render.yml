@@ -51,6 +51,24 @@
             repo + '/group_vars/nas/vault.yml.example',
             repo + '/group_vars/all/vault.yml.example'] + defaults_files }}
 
+    # Every service on, so every template and every branch of a template renders.
+    - name: Enable every service
+      ansible.builtin.set_fact:
+        "{{ item }}_enabled": true
+      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup, backup_cloud, backup_status]
+
+    - name: Read site.yml
+      ansible.builtin.slurp:
+        src: "{{ repo }}/site.yml"
+      register: site_yml
+
+    # An undeclared flag would make the role silently skip (or fail) instead of being off by default.
+    - name: Every flag site.yml tests is declared in group_vars/all/vars.yml.example
+      ansible.builtin.assert:
+        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/vars.yml.example') | from_yaml"
+        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/vars.yml.example does not declare."
+      loop: "{{ site_yml.content | b64decode | regex_findall('when: (\\w+)_enabled') }}"
+
     # After include_vars, which would reset drives to the example's empty list.
     - name: Claim every drive role on its own drive
       ansible.builtin.set_fact:

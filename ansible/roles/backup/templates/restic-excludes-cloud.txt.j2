@@ -7,7 +7,7 @@
 
 # Defaults: caches that can be rebuilt.
 {{ restic_cache_dir }}
-{% if 'nas' in group_names %}
+{% if copyparty_enabled | bool %}
 {{ copyparty_hist_dir }}
 {% endif %}
 **/.cache
