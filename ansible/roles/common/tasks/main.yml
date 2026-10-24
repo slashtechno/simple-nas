@@ -36,6 +36,15 @@
     state: present
     update_cache: true
 
+# A NAS must not sleep. Ubuntu Desktop suspends after idle time by default (GNOME's
+# sleep-inactive-ac-type is 'suspend'), which would take every service offline. Masking the targets stops
+# any suspend or hibernate, from the desktop or from a command; servers never use them.
+- name: Never suspend or hibernate
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    masked: true
+  loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
+
 - name: Set timezone
   community.general.timezone:
     name: "{{ timezone }}"

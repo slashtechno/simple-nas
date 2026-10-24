@@ -28,6 +28,19 @@
 - name: Set up direct Ethernet link
   when: direct_link_enabled | bool
   block:
+    # Raspberry Pi OS and Ubuntu Desktop run NetworkManager. Ubuntu Server runs systemd-networkd, which has no
+    # nmcli profiles. Switching a host's network stack over SSH can cut the connection, so this stops instead.
+    - name: Check whether NetworkManager is running
+      ansible.builtin.service_facts:
+
+    - name: Refuse the direct link where NetworkManager is not running
+      ansible.builtin.assert:
+        that: ansible_facts['services']['NetworkManager.service']['state'] | default('') == 'running'
+        fail_msg: >-
+          NetworkManager is not running on {{ inventory_hostname }} (Ubuntu Server uses systemd-networkd), and the
+          direct link is built with nmcli. Set direct_link_enabled to false for this host, or move it to NetworkManager
+          by hand first (docs/networking.md#direct-ethernet-link).
+
     - name: Refuse to touch the interface this host is managed over
       ansible.builtin.assert:
         that: ansible_facts['default_ipv4']['interface'] | default('') != direct_link_iface

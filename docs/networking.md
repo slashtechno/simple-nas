@@ -36,7 +36,8 @@ nmcli device wifi list         # networks the Pi can see right now
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings and their defaults are in `ansible/group_vars/all/defaults.yml`; override them in the host's `vars.yml`.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The direct link uses `nmcli`, not netplan. It expects the default Ethernet profile to be named `Wired connection 1`, as on Raspberry Pi OS; on a host where it has another name, the link's disable and revert steps fail.
+- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager, and the direct link is built with `nmcli`. With the link on, the deploy stops with a message if NetworkManager is not running; leave the link off on Ubuntu Server. Ubuntu Desktop uses NetworkManager and works. The link expects the default Ethernet profile to be named `Wired connection 1`, as on Raspberry Pi OS and Ubuntu Desktop; on a host where it has another name, the link's disable and revert steps fail.
+- The Ubuntu Server installer writes its own netplan file and a cloud-init file that already disables cloud-init's network config; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init at first boot. Either way the file `roles/network` writes makes cloud-init leave the network alone afterwards.
 
 ## Direct Ethernet link
 
