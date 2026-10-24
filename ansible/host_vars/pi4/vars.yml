@@ -5,6 +5,7 @@
 # --- Services ---
 immich_enabled: true
 copyparty_enabled: true
+copyparty_collab_enabled: true   # /collab for the friends in vault_copyparty_collab_users
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true

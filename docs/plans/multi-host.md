@@ -11,6 +11,7 @@ Hosts sit directly under `servers` in `ansible/inventory/hosts.yml`. There are n
 A host needs two files:
 
 - `ansible/host_vars/<host>/vars.yml`: `drives`, the `<name>_enabled` flags, `backup_local_enabled` / `backup_cloud_enabled`, `restic_cloud_repository`, and the cloudflared settings (`cloudflared_enabled`, `cloudflared_tunnel_name`, `cloudflared_ingress`). Start from `host_vars/vars.yml.example`; `host_vars/pi4/vars.yml` is a working example.
+  A host that serves Copyparty's `/collab` folder also sets `copyparty_collab_enabled: true` and has `vault_copyparty_collab_users` in its vault.
 - `ansible/host_vars/<host>/vault.yml`: copy `host_vars/vault.yml.example`, keep the keys the host's services use, then `ansible-vault encrypt host_vars/<host>/vault.yml` with the same password as the other vault files.
 
 A host with no flags set deploys only the base roles. Secrets every host shares are in `group_vars/all/vault.yml`, under these names: `vault_cloudflared_api_token`, `vault_cloudflared_account_id`, `vault_restic_password`, `vault_rclone_gdrive_token`, `vault_ntfy_token`. A key in a host vault wins over the same key in `group_vars/all/vault.yml`.
