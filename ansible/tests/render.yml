@@ -69,6 +69,7 @@
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
         homepage_auth_enabled: true
+        homepage_links: [{name: Example, href: "https://example.test", description: "a: b"}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
@@ -167,6 +168,8 @@
           - "'HOMEPAGE_AUTH_ENABLED' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0].Services | length == 9
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1].Links[0].Example.description == 'a: b'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"

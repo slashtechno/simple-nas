@@ -1,7 +1,8 @@
-# Ansible-managed — do not edit directly. One tile per enabled service that publishes a host port; edit
-# roles/homepage/templates/services.yaml.j2 to add a tile.
+# Ansible-managed — do not edit directly. One tile per enabled service that publishes a host port, then the tiles
+# in homepage_links. To add a tile for a service, copy a block in roles/homepage/templates/services.yaml.j2.
 {% set host = homepage_host %}
-{% if immich_enabled | bool or copyparty_enabled | bool or gitea_enabled | bool or pics_enabled | bool or homebridge_enabled | bool or crafty_enabled | bool or dockge_enabled | bool or ntfy_enabled | bool or backup_status_enabled | bool %}
+{% set has_services = immich_enabled | bool or copyparty_enabled | bool or gitea_enabled | bool or pics_enabled | bool or homebridge_enabled | bool or crafty_enabled | bool or dockge_enabled | bool or ntfy_enabled | bool or backup_status_enabled | bool %}
+{% if has_services %}
 - Services:
 {% if immich_enabled | bool %}
     - Immich:
@@ -48,6 +49,15 @@
         href: http://{{ host }}:{{ backup_status_port }}
         description: Backup status
 {% endif %}
-{% else %}
+{% endif %}
+{% if homepage_links | length > 0 %}
+- Links:
+{% for link in homepage_links %}
+    - {{ link.name | to_json }}:
+        href: {{ link.href | to_json }}
+        description: {{ link.description | default('') | to_json }}
+{% endfor %}
+{% endif %}
+{% if not has_services and homepage_links | length == 0 %}
 []
 {% endif %}

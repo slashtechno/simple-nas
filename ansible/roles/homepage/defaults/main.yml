@@ -4,6 +4,10 @@ homepage_port: 3001
 # The address you open the page at and the tiles link to. The default is the inventory name, which is the host's
 # tailnet name. Homepage refuses any other address (a LAN IP, a full domain name) with a host validation error.
 homepage_host: "{{ inventory_hostname }}"
+# Extra tiles, shown in a "Links" group after the service tiles: a public hostname, a service on another host,
+# any web page. Each is {name, href}, with an optional description. For example:
+#   - {name: Photos, href: "https://photos.example.com", description: "Immich, public"}
+homepage_links: []
 # true puts a password login in front of the page. Needs vault_homepage_password and vault_homepage_auth_secret
 # (vault.yml.example). Homepage has no rate limit on password attempts, so keep the page off the internet.
 homepage_auth_enabled: false
