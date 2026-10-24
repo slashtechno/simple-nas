@@ -27,6 +27,15 @@
     quiet: true
   when: backup_cloud_enabled | bool
 
+- name: Check an rclone repository uses the gdrive remote
+  ansible.builtin.assert:
+    that: not restic_cloud_repository.startswith('rclone:') or restic_cloud_repository.startswith('rclone:gdrive:')
+    fail_msg: >-
+      restic_cloud_repository uses an rclone remote other than gdrive. The rendered rclone.conf defines only
+      [gdrive], so the offsite backup would fail. Use "rclone:gdrive:/path".
+    quiet: true
+  when: backup_cloud_enabled | bool
+
 - name: Check every backup rule is a path or starts with "- "
   ansible.builtin.assert:
     that: >-
