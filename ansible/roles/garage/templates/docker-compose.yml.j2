@@ -53,6 +53,8 @@ services:
       # Basic auth: format is "username:bcrypt_hash" — set via vault.
       # $$ escapes the $ in bcrypt hashes so Compose doesn't try to interpolate them as variables.
       # See https://docs.docker.com/compose/compose-file/compose-file-v3/#interpolation
-      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt") | replace("$", "$$") }}'
+      # The salt is derived from the password so the hash, and so this file, is the same on every run; a random salt
+      # would rewrite the file and restart Garage on each deploy. The 22nd salt character is limited to . O e u, hence the fixed O
+      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt", (vault_garage_webui_pass | hash("sha256"))[:21] ~ "O") | replace("$", "$$") }}'
     networks:
       - {{ nas_network }}
