@@ -236,30 +236,17 @@
 
     # ── Drives and network ─────────────────────────────────────────────────
 
-    # Only the udev rules, service and tmpfiles entry the storage role installs (remount and USB automount).
+    # Only the USB automount rule and tmpfiles entry the storage role installs.
     # Does NOT touch fstab entries, mount points, or drive ownership — those
     # stay untouched so your data drives are never at risk here.
-    - name: Remove drive auto-remount udev rule and systemd service
+    - name: Remove the USB automount udev rule
       tags: [storage]
       block:
-        - name: Stop and disable remount service
-          ansible.builtin.systemd:
-            name: drive-remount.service
-            state: stopped
-            enabled: false
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
-
-        - name: Remove remount systemd unit
-          ansible.builtin.file:
-            path: /etc/systemd/system/drive-remount.service
-            state: absent
-
         - name: Remove the udev rules and the tmpfiles entry
           ansible.builtin.file:
             path: "{{ item }}"
             state: absent
           loop:
-            - /etc/udev/rules.d/99-drive-remount.rules
             - /etc/udev/rules.d/98-usb-automount.rules
             - /etc/tmpfiles.d/usb-automount.conf
 

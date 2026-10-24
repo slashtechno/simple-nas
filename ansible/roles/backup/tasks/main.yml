@@ -58,8 +58,10 @@
     update_cache: true
 
 # Read-only, so it also runs under --check. Without this the directories below would be created on the root drive.
+# The trailing /. opens the path, which mounts the drive (automount); `mountpoint -q` on the bare path also succeeds
+# on the automount placeholder of a missing drive.
 - name: Look up whether the backup drive is mounted
-  ansible.builtin.command: mountpoint -q {{ backup_drive | quote }}
+  ansible.builtin.command: mountpoint -q {{ (backup_drive ~ '/.') | quote }}
   register: backup_drive_mountpoint
   changed_when: false
   failed_when: false

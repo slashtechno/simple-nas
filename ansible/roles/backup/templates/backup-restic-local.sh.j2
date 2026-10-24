@@ -3,7 +3,9 @@ set -o pipefail
 
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: restic would write the
 # repository onto the root filesystem, under the empty mount point, until it fills.
-if ! mountpoint -q {{ backup_drive | quote }}; then
+# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
+# bare path also succeeds on the automount placeholder of a missing drive.
+if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (check the USB connection; the drive mounts itself when it is back)." >&2
   exit 1
 fi
@@ -11,7 +13,7 @@ fi
 {% for mount in data_drive_mounts %}
 # Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
 # snapshot counts toward retention and pushes out good ones.
-if ! mountpoint -q {{ mount | quote }}; then
+if ! mountpoint -q {{ (mount ~ '/.') | quote }}; then
   echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (check the USB connection; the drive mounts itself when it is back)." >&2
   exit 1
 fi

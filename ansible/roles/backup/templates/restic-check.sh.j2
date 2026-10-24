@@ -1,7 +1,9 @@
 #!/bin/bash
 set -o pipefail
 
-if ! mountpoint -q {{ backup_drive | quote }}; then
+# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
+# bare path also succeeds on the automount placeholder of a missing drive.
+if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — skipping integrity check." >&2
   exit 1
 fi

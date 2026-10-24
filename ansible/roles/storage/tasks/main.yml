@@ -63,8 +63,8 @@
     state: directory
   loop: "{{ drives }}"
 
-# A `mount -a` run from a udev rule would mount a drive over its own tripwire, so the remount rule and
-# service of earlier deploys are removed.
+# A `mount -a` run from a udev rule would mount a drive over its own automount placeholder, so a remount rule
+# and service are removed if present.
 - name: Remove the remount udev rule and systemd service
   ansible.builtin.file:
     path: "{{ item }}"

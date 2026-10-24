@@ -13,7 +13,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
 - Backups: [docs/backups.md](./docs/backups.md).
-- Docs state how things are, as plain reference: no narratives, test logs, step-by-step scenarios or history. Temporary notes, test checklists and scratch output go in a file named `*.ignored.*` (for example `notes.ignored.md`); git ignores it. Move anything lasting into the docs, written as reference.
+- Docs state how things are, as plain reference: no narratives, test logs, scenario walk-throughs or history. Temporary notes, test checklists and scratch output go in a file named `*.ignored.*` (for example `notes.ignored.md`); git ignores it. Move anything lasting into the docs, written as reference.
 
 ## Common mistakes
 
