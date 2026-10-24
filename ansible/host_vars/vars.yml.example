@@ -30,7 +30,8 @@ direct_link_prefix: 30            # /30 = just these two addresses, nothing else
 drives: []
 
 # --- Offsite backup ---
-# backup_cloud_enabled turns on the weekly offsite copy for this host. Every host needs its own
+# backup_cloud_enabled turns on the weekly offsite copy for this host. It uploads only the base directory and
+# Copyparty's config; add data paths to restic_cloud_rules (docs/backups.md). Every host needs its own
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
 backup_cloud_enabled: false
 restic_cloud_repository: ""   # e.g. "rclone:gdrive:/<host>-backups"

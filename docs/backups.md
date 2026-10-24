@@ -44,7 +44,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
-| Files on the `primary` and `fast` drives (photos, Copyparty files, service data) | Yes | Only with `backup_local_enabled` off, because then the cloud rules include the local ones |
+| Files on the `primary` and `fast` drives (photos, Copyparty files, service data) | Yes | Only the paths you add to `restic_cloud_rules` |
 | Copyparty config (`copyparty_config_dir`) | Yes | Yes |
 | Compose files, scripts and the credentials written into them (`services_dir`) | No | Yes |
 | Immich database | Dump only (the raw Postgres directory is excluded) | Dump only |

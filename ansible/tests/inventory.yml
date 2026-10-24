@@ -20,9 +20,8 @@ all:
                 cache_dir: /home/pi/.cache/restic
                 copyparty_fast: false
                 unclaimed: [fast, primary, backup]
-            # Cloud only: a folder on the root drive and no backup drive. The offsite backup holds the data,
-            # so its exclude list must skip Immich's live database directory like the local one does,
-            # and carry the host's own "- " rule and "- !" re-include.
+            # Cloud only: a folder on the root drive and no backup drive. Its exclude list must skip Immich's
+            # live database directory like the local one does, and carry the host's own "- " rule and "- !" re-include.
             root-folder-cloud:
               fixture_drives:
                 - {mount: /srv/apps, roles: [fast, primary]}

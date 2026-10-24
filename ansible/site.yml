@@ -7,7 +7,7 @@
 # (default: false, in group_vars/all/defaults.yml).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
-# To stop deploying a service: set <name>_enabled: false for the host or group.
+# To stop deploying a service: set <name>_enabled: false for the host.
 
 - name: Deploy every server
   hosts: servers

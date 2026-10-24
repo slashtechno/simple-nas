@@ -2,6 +2,3 @@
 # Expose Copyparty publicly through Tailscale Funnel (https://<host>.<tailnet>.ts.net).
 # Allowed: true, false. Default: false.
 tailscale_funnel_enabled: false
-# Local port Copyparty listens on, which the funnel forwards to.
-# Default: 3923, the port Copyparty publishes.
-tailscale_funnel_port: 3923

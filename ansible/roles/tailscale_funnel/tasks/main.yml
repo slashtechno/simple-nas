@@ -20,13 +20,13 @@
     tailscale_funnel_is_on: >-
       {{ (tailscale_funnel_cfg.AllowFunnel | default({}) | dict2items
           | selectattr('key', 'match', '.*:443$') | selectattr('value') | list | length) > 0 }}
-    tailscale_funnel_points_here: "{{ ('127.0.0.1:' ~ tailscale_funnel_port) in (tailscale_funnel_cfg.Web | default({}) | to_json) }}"
+    tailscale_funnel_points_here: "{{ ('127.0.0.1:' ~ copyparty_port) in (tailscale_funnel_cfg.Web | default({}) | to_json) }}"
 
 # Funnel lets anyone on the internet reach Copyparty at your ts.net hostname.
 # Disabled by default; set tailscale_funnel_enabled: true in vars.yml to turn it on.
 - name: Enable Tailscale Funnel for Copyparty
   ansible.builtin.command:
-    cmd: tailscale funnel --bg --https=443 http://127.0.0.1:{{ tailscale_funnel_port }}
+    cmd: tailscale funnel --bg --https=443 http://127.0.0.1:{{ copyparty_port }}
   when:
     - tailscale_funnel_enabled | bool
     - not (tailscale_funnel_is_on and tailscale_funnel_points_here)
