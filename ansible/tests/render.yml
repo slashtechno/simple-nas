@@ -244,6 +244,26 @@
             that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
           when: backup_local_enabled | bool
 
+        - name: Every service's data is inside a locally backed-up path
+          ansible.builtin.import_tasks: ../roles/backup/tasks/check_coverage.yml
+          when: backup_local_enabled | bool
+
+        - name: A data directory outside every backed-up path is refused
+          when: backup_local_enabled | bool
+          block:
+            - name: Move Immich's photos to an uncovered path
+              ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
+              vars:
+                immich_enabled: true
+                immich_upload_location: /not-backed-up/photos
+            - name: The coverage check must have failed
+              ansible.builtin.fail:
+                msg: check_coverage.yml accepted a directory outside restic_local_rules
+          rescue:
+            - name: Only the coverage check may fail here
+              ansible.builtin.assert:
+                that: "'/not-backed-up/photos' in ansible_failed_result.msg"
+
         - name: The local exclude list skips the restic password and the rclone token
           ansible.builtin.assert:
             that:

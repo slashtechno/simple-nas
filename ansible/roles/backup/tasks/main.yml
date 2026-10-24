@@ -47,6 +47,10 @@
       {{ (restic_local_rules + restic_cloud_rules) | reject('match', '^(- .+|/.+)$') | list }}
     quiet: true
 
+- name: Check the local backup covers every enabled service's data
+  ansible.builtin.import_tasks: check_coverage.yml
+  when: backup_local_enabled | bool
+
 - name: Install restic, and rclone for an rclone repository
   ansible.builtin.apt:
     name: "{{ ['restic'] + (['rclone'] if backup_cloud_enabled | bool and restic_cloud_repository.startswith('rclone:') else []) }}"

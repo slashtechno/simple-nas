@@ -1,0 +1,25 @@
+---
+# A service whose data directory is outside every path the local backup copies would be missing from it, silently.
+# One line per service data directory; add a line when a service gets a new one.
+- name: Check every enabled service's data is inside a locally backed-up path
+  vars:
+    backup_service_dirs: >-
+      {{ ([immich_upload_location, immich_db_data_location] if immich_enabled | bool else [])
+         + ([copyparty_files_dir, copyparty_config_dir] if copyparty_enabled | bool else [])
+         + ([gitea_data_dir, gitea_runner_data_dir] if gitea_enabled | bool else [])
+         + ([pics_data_dir] if pics_enabled | bool else [])
+         + ([homebridge_config_dir] if homebridge_enabled | bool else [])
+         + ([garage_data_dir] if garage_enabled | bool else [])
+         + ([crafty_data_dir] if crafty_enabled | bool else [])
+         + ([ntfy_data_dir] if ntfy_enabled | bool else [])
+         + ([dockge_stacks_dir, dockge_data_dir] if dockge_enabled | bool else [])
+         + ([caddy_data_dir] if caddy_enabled | bool else []) }}
+    backup_local_paths: "{{ restic_local_rules | reject('match', '^- ') | list }}"
+    backup_uncovered: >-
+      {{ backup_service_dirs | reject('match', '^(' ~ (backup_local_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
+  ansible.builtin.assert:
+    that: backup_uncovered | length == 0
+    fail_msg: >-
+      These data directories are outside every path in restic_local_rules, so the local backup would skip them:
+      {{ backup_uncovered }}. Add each one (or its drive) to restic_local_rules (docs/backups.md), or move the data.
+    quiet: true
