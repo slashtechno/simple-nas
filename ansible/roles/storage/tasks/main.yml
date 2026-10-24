@@ -34,13 +34,6 @@
       or a drive that fails to mount can stop the host booting.
     quiet: true
 
-- name: Create mount points
-  ansible.builtin.file:
-    path: "{{ item.mount }}"
-    state: directory
-    mode: "0755"
-  loop: "{{ drives }}"
-
 # Each drive is mounted lazily by systemd (x-systemd.automount): a tripwire filesystem sits on the mount point
 # from boot and mounts the drive on first access. With the drive missing, an access fails with "No such device"
 # after 30 seconds instead of writing to a plain folder on the root drive, and the next access after the drive
@@ -71,19 +64,6 @@
     group: "{{ ansible_user }}"
     state: directory
   loop: "{{ drives }}"
-
-# A `mount -a` run from a udev rule would mount a drive over its own automount placeholder, so a remount rule
-# and service are removed if present.
-- name: Remove the remount udev rule and systemd service
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - /etc/udev/rules.d/99-drive-remount.rules
-    - /etc/systemd/system/drive-remount.service
-  notify:
-    - Reload udev rules
-    - Reload systemd daemon
 
 # USB drives plugged in are mounted at /run/media/system/<label>. The rule calls systemd-mount, not mount,
 # because udev runs in its own mount namespace. systemd-mount creates the mount point.

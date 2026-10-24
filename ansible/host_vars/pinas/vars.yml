@@ -20,10 +20,6 @@ backup_status_enabled: true   # read-only web dashboard for backup status/snapsh
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
 # so it can't route internet traffic. See docs/networking.md#direct-ethernet-link.
 direct_link_enabled: true
-direct_link_iface: eth0
-direct_link_ip: 10.10.20.1        # Pi's address on the link
-direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
-direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
 
 # --- Drives ---
 # What each drive is for is explained in ../vars.yml.example. The T7 fills fast and primary.
