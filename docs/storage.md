@@ -8,7 +8,7 @@ Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists no
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. Using a role that no entry claims fails the deploy with a message naming the role. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
+Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/defaults.yml`. Using a role that no entry claims fails the deploy with a message naming the role. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
 
 ## Examples
 

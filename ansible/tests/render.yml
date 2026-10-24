@@ -39,14 +39,13 @@
           - defaults_files | length > 0
           - template_files | length > 0
 
-    - name: Load the example vars, the vault example, the versions, the derived values and every role's defaults
+    - name: Load the example vars, the vault example, the versions and every role's defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
         {{ [repo + '/group_vars/all/defaults.yml',
             repo + '/group_vars/all/vars.yml.example',
             repo + '/group_vars/all/versions.yml',
-            repo + '/group_vars/all/derived.yml',
             repo + '/host_vars/vars.yml.example',
             repo + '/host_vars/vault.yml.example',
             repo + '/group_vars/all/vault.yml.example'] + defaults_files }}
@@ -127,7 +126,6 @@
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"
         - "{{ repo }}/group_vars/all/versions.yml"
-        - "{{ repo }}/group_vars/all/derived.yml"
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
 
     # After include_vars, which would reset drives to the example's empty list.

@@ -46,7 +46,7 @@
     key: "{{ item }}"
   loop: "{{ ssh_authorized_keys }}"
 
-# Docker data root (docker_data_root in vars.yml). daemon.json gets data-root from derived.yml.
+# Docker data root (docker_data_root in vars.yml). daemon.json gets data-root from defaults.yml.
 # Docker 29's containerd image store keeps layers under containerd's own root, which data-root does
 # not move, so containerd's config.toml is set too. Both services also wait for the drive to be
 # mounted: without that, either could start first and create its directory on the root drive under the

@@ -38,7 +38,6 @@ All commands below run from `ansible/`.
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
-| `group_vars/all/derived.yml` | yes | Values computed from the others (`fast_drive`, `drive_mounts`, ...) | Already there; not edited |
 
 Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files.
 
@@ -120,7 +119,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | One host (its flags, drives, direct link, Docker data root, tunnel hostnames) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` ([vault](#vault-secrets)) |
 | Image versions | `group_vars/all/versions.yml` |
-| Computed from the above | `group_vars/all/derived.yml`; not edited |
+| Computed from the above (`fast_drive`, `drive_mounts`, ...) | the last section of `group_vars/all/defaults.yml`; not edited |
 
 Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. Options private to a role start with the role name.
 

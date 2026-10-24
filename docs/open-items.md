@@ -1,6 +1,6 @@
 # Open items
 
-Work that is not done and needs the owner's time, hardware or a decision. Each item says what it is waiting for.
+Work that is not done and needs the owner's time or hardware, or that lives outside this repo. Each item says what it is waiting for.
 
 ## Not verified on real hardware
 
@@ -9,16 +9,16 @@ Work that is not done and needs the owner's time, hardware or a decision. Each i
 - `pipelining = True` in `ansible.cfg` on a Pi. Waiting for: the first `just preview` on one.
 - Garage, Caddy and Garage web UI image bumps on real data. Waiting for: a deploy and a look at each service.
 
-## Waiting for a decision
+## Outside this repo
 
-- Alerts for a cron job that never runs (host off, cron stopped). Failure alerts fire only when a job runs and fails; an external heartbeat would cover the rest.
-- Pinning the image versions that float in `ansible/group_vars/all/versions.yml` (Garage web UI, Caddy, restic, Python, cloudflared, Alpine, pics `main`). Pin one when it breaks or when a stable build matters.
-- A pics `archive_dir` option. pics is a separate app; the path would sit under a drive with a role so the backup covers it.
+- Alerts for a cron job that never runs (host off, cron stopped). Failure alerts fire only when a job runs and fails. Covering the rest needs an external heartbeat service, which this repo does not run.
+- A pics `archive_dir` option. pics is a separate app with its own repository; the setting belongs there, and its path would then sit under a drive with a role so the backup covers it.
 
 ## Decided, not planned
 
 - The offsite `restic check` stays manual: a full check reads the whole repository over the network ([backups.md](./backups.md)).
 - `--ask-vault-pass` stays. A `vault_password_file` script (`bw get password <entry>`) is possible but needs the `bw` CLI unlocked on the laptop.
+- Image versions that float in `ansible/group_vars/all/versions.yml` (Garage web UI, Caddy, restic, Python, cloudflared, Alpine, pics `main`) are not pinned. Pin one when it breaks or when a stable build matters.
 
 ## Waiting for hardware
 
