@@ -44,7 +44,8 @@ all:
                 cache_dir: /srv/apps/restic-cache
                 copyparty_fast: false
                 unclaimed: []
-            # Two drives: one for services and data, one for backups.
+            # Two drives: one for services and data, one for backups. The host's own "- " rule and "- !"
+            # re-include must reach the local exclude list.
             two-drives:
               fixture_drives:
                 - {uuid: "2222-BBBB", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, primary]}
@@ -54,6 +55,7 @@ all:
                 cache_dir: /mnt/data/restic-cache
                 copyparty_fast: false
                 unclaimed: []
+                rules: ["- /mnt/data/tmp", "- !/mnt/data/tmp/keep"]
             # Three drives, one per role.
             three-drives:
               fixture_drives:

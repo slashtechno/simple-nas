@@ -218,7 +218,9 @@
             offsite_script: "{{ cloud_files.results[0].content | b64decode }}"
             offsite_paths: "{{ cloud_files.results[1].content | b64decode }}"
             offsite_excludes: "{{ cloud_files.results[2].content | b64decode }}"
-            fixture_excludes: "{{ expect.rules | default([]) | select('match', '^- ') | map('regex_replace', '^- ', '') | list }}"
+            # The host's rules reach the offsite list only on a cloud-only host (restic_cloud_rules then holds the local rules).
+            cloud_rules: "{{ expect.rules | default([]) if expect.cloud | default(false) else [] }}"
+            fixture_excludes: "{{ cloud_rules | select('match', '^- ') | map('regex_replace', '^- ', '') | list }}"
           ansible.builtin.assert:
             that:
               - "('mountpoint -q' in offsite_script) == (backup_local_enabled | bool)"
@@ -226,6 +228,20 @@
               - "fixture_excludes | select('in', offsite_excludes) | list | length == fixture_excludes | length"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
               - "backup_local_enabled | bool or expect.local_paths | select('in', offsite_paths) | list | length == expect.local_paths | length"
+
+        - name: Read the local exclude list
+          ansible.builtin.slurp:
+            src: "{{ out_dir }}/layouts/{{ inventory_hostname }}/restic-excludes-local.txt"
+          register: local_excludes_file
+          when: backup_local_enabled | bool
+
+        - name: The local exclude list carries the host's own rules
+          vars:
+            fixture_excludes: "{{ expect.rules | default([]) | select('match', '^- ') | map('regex_replace', '^- ', '') | list }}"
+            local_excludes: "{{ local_excludes_file.content | b64decode }}"
+          ansible.builtin.assert:
+            that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
+          when: backup_local_enabled | bool
 
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.

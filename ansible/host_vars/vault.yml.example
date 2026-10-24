@@ -8,8 +8,11 @@
 # bcrypt hash of the ntfy login password (the one you type into the ntfy app):
 # `docker run --rm -it binwiederhier/ntfy user hash`, then paste the line it prints.
 vault_ntfy_password_hash: "$2a$10$changeMechangeMechangeMechangeMechangeMechangeMechang"
+# Immich's Postgres password.
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
+# Copyparty admin user name.
 vault_copyparty_user: "yourusername"
+# Copyparty admin password.
 vault_copyparty_pass: "yourpassword"
 # Friends who can access /collab via WebDAV:
 vault_copyparty_collab_users:
@@ -20,6 +23,7 @@ vault_copyparty_collab_users:
 # Only used if copyparty_sftp_enabled is true (vars.yml) -- the scoped
 # SFTP account for pocketpi's NAS sync, read/write on /files only:
 vault_pocketpi_nas_user: "pocketpi"
+# Password of the SFTP account above.
 vault_pocketpi_nas_pass: "change-me-generate-with-openssl-rand-base64-32"
 # One per entry in copyparty_service_accounts (vars.yml):
 vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
@@ -30,12 +34,17 @@ vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
 vault_github_read_token: "github_pat_..."
 # pics: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
 vault_pics_password: "change-me-12-characters-minimum"
+# Signs pics' share links.
 vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
 vault_pics_alert_urls: ""   # optional Apprise URLs, space-separated
 vault_gitea_runner_token: ""   # optional; leave empty to skip runner
+# Shared secret for Garage's node-to-node RPC.
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
+# Token for Garage's admin API.
 vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
+# Login of the Garage web UI.
 vault_garage_webui_user: "admin"
+# Password of the Garage web UI.
 vault_garage_webui_pass: "change-me"
 
 # Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.
