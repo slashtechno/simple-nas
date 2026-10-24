@@ -31,7 +31,7 @@
   ansible.builtin.assert:
     that: >-
       cloudflared_ingress | map(attribute='hostname')
-      | intersect(groups['servers'] | difference([inventory_hostname])
+      | intersect(hostvars.keys() | difference([inventory_hostname])
                   | map('extract', hostvars, 'cloudflared_ingress') | flatten | map(attribute='hostname') | list)
       | length == 0
     fail_msg: A hostname in cloudflared_ingress is also in another host's cloudflared_ingress. Each hostname belongs to one host.
