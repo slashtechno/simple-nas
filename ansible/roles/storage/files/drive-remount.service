@@ -1,16 +1,9 @@
 # Ansible-managed. Triggered by 99-drive-remount.rules whenever a block
 # device reappears — re-mounts any fstab entry that isn't currently mounted
-# (e.g. a backup drive that dropped offline and came back), then starts Docker if it is not running.
-# No-op otherwise.
+# (e.g. a backup drive that dropped offline and came back). No-op otherwise.
 [Unit]
 Description=Remount data drives if they reappear after dropping offline
 
 [Service]
 Type=oneshot
-# The leading "-" accepts a non-zero exit: mount -a exits 64 when any one fstab entry fails (a backup drive
-# that is still missing, a retired drive's old line), and the start below must still run.
-ExecStart=-/bin/mount -a
-# Docker refuses to start while a drive it uses is unmounted (roles/common), so it is started here once the
-# mount is back. This also starts a Docker you stopped by hand, the next time any drive appears.
-# The leading "-" ignores a failure to start.
-ExecStartPost=-/bin/systemctl --no-block start docker.service
+ExecStart=/bin/mount -a
