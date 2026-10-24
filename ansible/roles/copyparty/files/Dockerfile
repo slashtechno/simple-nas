@@ -1,4 +1,4 @@
-# iv = ffmpeg + vips + libraw (RAW thumbnails, including NEF). The tag is copyparty_base_image in group_vars/nas/versions.yml.
+# iv = ffmpeg + vips + libraw (RAW thumbnails, including NEF). The tag is copyparty_base_image in group_vars/all/versions.yml.
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 
