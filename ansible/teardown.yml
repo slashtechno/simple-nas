@@ -148,14 +148,30 @@
           failed_when: false
           changed_when: false
 
-        # A failure here, on a joined host, stops the play: the Funnel must not be left on unnoticed.
+        - name: Work out whether Tailscale is joined
+          ansible.builtin.set_fact:
+            teardown_tailscale_joined: >-
+              {{ teardown_tailscale_status.stdout | trim | length > 0
+                 and (teardown_tailscale_status.stdout | from_json).BackendState | default('') == 'Running' }}
+
+        # On a joined host a failed read stops the play: the Funnel must not be left on unnoticed.
+        - name: Read the Funnel status
+          ansible.builtin.command:
+            cmd: tailscale funnel status --json
+          register: teardown_funnel_status
+          changed_when: false
+          when: teardown_tailscale_joined
+
+        # `funnel off` fails when no Funnel is set up, so it only runs while :443 is on.
         - name: Turn off the Funnel on :443
           ansible.builtin.command:
             cmd: tailscale funnel --https=443 off
           changed_when: true
-          when: >-
-            teardown_tailscale_status.stdout | trim | length > 0
-            and (teardown_tailscale_status.stdout | from_json).BackendState | default('') == 'Running'
+          when:
+            - teardown_tailscale_joined
+            - >-
+              ((teardown_funnel_status.stdout | trim | from_json if teardown_funnel_status.stdout | trim else {}).AllowFunnel | default({})
+              | dict2items | selectattr('key', 'match', '.*:443$') | selectattr('value') | list | length) > 0
 
         - name: Remove copyparty-funnel.sh
           ansible.builtin.file:

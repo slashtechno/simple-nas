@@ -8,7 +8,7 @@ copyparty_enabled: true
 copyparty_collab_enabled: true   # /collab for the friends in vault_copyparty_collab_users
 gitea_enabled: true
 homebridge_enabled: true
-cloudflared_enabled: true
+cloudflared_enabled: false   # pi5 runs the tunnel; a tunnel belongs to one host
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
@@ -40,7 +40,7 @@ drives:
     roles: [backup]
 
 # Weekly offsite copy to Google Drive (docs/backups.md).
-backup_cloud_enabled: true
+backup_cloud_enabled: false   # pi5 owns the offsite repository; two hosts must never back up into one
 restic_cloud_repository: "rclone:gdrive:/pi-nas-backups"
 
 # --- Cloudflare Tunnel ---
