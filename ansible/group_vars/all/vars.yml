@@ -150,7 +150,7 @@ cloudflared_account_id: "{{ vault_cloudflared_account_id }}"
 cloudflared_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
   angad.me: f0cf329b896c61d1f5bc2a4c53c03647
-# Public hostnames this host's tunnel serves. Empty here; the NAS group lists its own (group_vars/nas/vars.yml).
+# Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
 # One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
 # The hostname must contain one domain from cloudflared_zones. A hostname may appear on only one host; the deploy fails otherwise.
 cloudflared_ingress: []

@@ -1,6 +1,19 @@
 # THESE ARE THE REPO OWNER'S OWN SETTINGS (domains, SSH key, drive UUIDs). If you copied this repo, replace every
 # value with yours, starting from ../vars.yml.example; see "Using this repo for your own hosts" in ansible/README.md.
-# Settings for this one host. Options are explained in ../vars.yml.example.
+# Settings for this one host. Options are explained in ../vars.yml.example and group_vars/all/vars.yml.example.
+
+# --- Services ---
+immich_enabled: true
+copyparty_enabled: true
+gitea_enabled: true
+homebridge_enabled: true
+cloudflared_enabled: true
+pics_enabled: true
+garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
+crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
+backup_local_enabled: true   # daily backup to the `backup` drive
+usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
+backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 
 # Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers)
 # Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
@@ -28,3 +41,29 @@ drives:
 # Weekly offsite copy to Google Drive (docs/backups.md).
 backup_cloud_enabled: true
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
+
+# --- Cloudflare Tunnel ---
+# The existing tunnel's name; without this the tunnel is named <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
+cloudflared_tunnel_name: pi-nas-tunnel
+# cloudflared_api_token, cloudflared_account_id and cloudflared_zones are in group_vars/all/vars.yml: every host that runs a tunnel uses them.
+
+# One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
+# address). No `path:`. The hostname must contain one domain from cloudflared_zones (group_vars/all/vars.yml). Where a service
+# has a private surface, it publishes two ports and the tunnel points at the guest one.
+cloudflared_ingress:
+  # pics' guest surface: share pages and the portfolio, with no owner routes in it. The owner app
+  # stays on the Pi's LAN/tailnet port (pics_port); this file never forwards it.
+  - hostname: pics.angad.me
+    service: "http://pics:{{ pics_public_port }}"
+  - hostname: immich.slashtechno.com
+    service: "http://immich_server:2283"
+  - hostname: git.slashtechno.com
+    service: "http://gitea:3000"
+  - hostname: copyparty.slashtechno.com
+    service: "http://copyparty:3923"
+  - hostname: s3.slashtechno.com
+    # Caddy CORS proxy sits on 3900; it handles OPTIONS preflights and injects
+    # Access-Control-Allow-Origin before forwarding to Garage internally.
+    service: "http://garage-cors-proxy:3900"
+  - hostname: garage.slashtechno.com
+    service: "http://garage-webui:3909"

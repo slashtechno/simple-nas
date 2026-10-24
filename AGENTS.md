@@ -7,7 +7,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Everything is deployed by Ansible from `ansible/`; one role per service under `ansible/roles/`. See [ansible/README.md](./ansible/README.md); service notes are in [docs/services.md](./docs/services.md) and drives in [docs/storage.md](./docs/storage.md).
 - Services are switched on or off with `<name>_enabled` (the default for each is in `site.yml`; override in `vars.yml`). Compose-only services reuse `roles/compose_service`; teardown reuses `teardown_service.yml`.
 - Every deployed image version lives in `ansible/group_vars/all/versions.yml`; templates and Dockerfiles take it from there.
-- Settings used by one role go in that role's `defaults/main.yml`. Settings shared across roles or `teardown.yml` go in `group_vars/<all|nas>/vars.yml` (per-host ones in `host_vars/<host>/vars.yml`) and the matching `vars.yml.example`, kept in sync.
+- Settings used by one role go in that role's `defaults/main.yml`. Settings shared across roles or `teardown.yml` go in `group_vars/all/vars.yml` (per-host ones in `host_vars/<host>/vars.yml`) and the matching `vars.yml.example`, kept in sync. No group carries behaviour.
 - Use `import_role`/`import_tasks`, not `include_*`, so `--tags` work. Two `include_role` calls (pics, tailscale) are kept on purpose and marked in the code.
 - `just check` (in `ansible/`) must pass: lint, syntax-check and the template render test. Add lint skips only with a written reason.
 - Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.

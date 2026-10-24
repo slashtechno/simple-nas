@@ -1,8 +1,9 @@
-# Copy to vault.yml, fill in values, then encrypt:
-#   ansible-vault encrypt group_vars/nas/vault.yml
+# Secrets of one host's services. Copy to host_vars/<host>/vault.yml, keep the keys its services use,
+# then encrypt with the same password as group_vars/all/vault.yml:
+#   ansible-vault encrypt host_vars/<host>/vault.yml
 #
 # To edit later (opens in $EDITOR — set to VS Code with the line below):
-#   EDITOR="code --wait" ansible-vault edit group_vars/nas/vault.yml
+#   EDITOR="code --wait" ansible-vault edit host_vars/<host>/vault.yml
 
 # bcrypt hash of the ntfy login password (the one you type into the ntfy app):
 # `docker run --rm -it binwiederhier/ntfy user hash`, then paste the line it prints.
@@ -37,4 +38,4 @@ vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
 vault_garage_webui_user: "admin"
 vault_garage_webui_pass: "change-me"
 
-# Cloudflare and backup secrets shared by all hosts are in group_vars/all/vault.yml.
+# Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.

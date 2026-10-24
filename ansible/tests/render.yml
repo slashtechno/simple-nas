@@ -4,8 +4,8 @@
 # shellchecks the rendered scripts. It catches:
 #   - a template using a variable that isn't defined in vars.yml.example,
 #     vault.yml.example, versions.yml or the role's defaults/
-#   - a key in a vars.yml (group_vars/all, group_vars/nas, host_vars/<host>) that is missing from
-#     its example file
+#   - a key in a vars.yml (group_vars/all, host_vars/<host>) that no example or role defaults
+#     file declares
 #   - template syntax errors
 #   - a drive layout (tests/inventory.yml) that resolves to the wrong paths, or a role nobody
 #     claimed that does not fail with a message naming it
@@ -46,9 +46,8 @@
         {{ [repo + '/group_vars/all/vars.yml.example',
             repo + '/group_vars/all/versions.yml',
             repo + '/group_vars/all/derived.yml',
-            repo + '/group_vars/nas/vars.yml.example',
             repo + '/host_vars/vars.yml.example',
-            repo + '/group_vars/nas/vault.yml.example',
+            repo + '/host_vars/vault.yml.example',
             repo + '/group_vars/all/vault.yml.example'] + defaults_files }}
 
     # Every service on, so every template and every branch of a template renders.
@@ -90,7 +89,7 @@
 
     - name: Every key in each vars.yml must also be in its example
       ansible.builtin.include_tasks: check_keys.yml
-      loop: "{{ [repo + '/group_vars/all/vars.yml', repo + '/group_vars/nas/vars.yml'] + (host_vars_found.files | map(attribute='path') | list) }}"
+      loop: "{{ [repo + '/group_vars/all/vars.yml'] + (host_vars_found.files | map(attribute='path') | list) }}"
       loop_control:
         loop_var: real_file
 
@@ -110,7 +109,7 @@
       loop_control:
         label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"
 
-# One host per drive layout. Only the all/ examples are loaded, as on a host outside the `nas` group.
+# One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.
 - name: Check each drive layout
   hosts: layouts
   become: false

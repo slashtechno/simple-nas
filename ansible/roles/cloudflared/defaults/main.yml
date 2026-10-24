@@ -1,6 +1,6 @@
 ---
 # Cloudflare's API. Change only to point the tasks at a test server.
 cloudflared_api_url: https://api.cloudflare.com/client/v4
-# One tunnel per host, found by name on each deploy. The NAS group sets its own name explicitly
-# (group_vars/nas/vars.yml) so its existing tunnel is kept.
+# One tunnel per host, found by name on each deploy. A host that already has a tunnel under another name
+# sets cloudflared_tunnel_name in host_vars/<host>/vars.yml so that tunnel is kept.
 cloudflared_tunnel_name: "{{ inventory_hostname }}-tunnel"

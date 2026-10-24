@@ -14,7 +14,7 @@
 - name: Require the GitHub token
   ansible.builtin.assert:
     that: (vault_github_read_token | default('', true) | string | length) > 0
-    fail_msg: "Set vault_github_read_token in group_vars/nas/vault.yml (see vault.yml.example)."
+    fail_msg: "Set vault_github_read_token in host_vars/<host>/vault.yml (see vault.yml.example)."
 
 - name: "Clone {{ repo }}"
   ansible.builtin.git:
