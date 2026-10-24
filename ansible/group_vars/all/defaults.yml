@@ -127,7 +127,8 @@ immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
 copyparty_files_dir: "{{ primary_drive }}/files"
 # Copyparty's configuration (fast drive).
 copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
-copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
+# Copyparty's thumbnails, databases and transcode cache (fast drive).
+copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"
 # Add a /fast volume to Copyparty (SSD scratch and working space). Useful only when the fast and primary
 # roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
 copyparty_fast_enabled: false
@@ -135,8 +136,10 @@ copyparty_fast_enabled: false
 copyparty_fast_dir: "{{ fast_drive }}/fast"
 # Gitea's repositories and database (fast drive).
 gitea_data_dir: "{{ fast_drive }}/docker/gitea"
-gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"   # runner registration (.runner); on the fast drive so it is backed up
-ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"   # message history and the user database; rebuilt from the compose file, so little is lost without it
+# The Gitea runner's registration (.runner); on the fast drive so it is backed up.
+gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"
+# ntfy's message history and user database; little is lost without it.
+ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"
 # pics' data directory (fast drive).
 pics_data_dir: "{{ fast_drive }}/docker/pics"
 # Homebridge's configuration and pairings (fast drive).
@@ -174,10 +177,11 @@ direct_link_prefix: 30
 # any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
 # (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
 # pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
-
-copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
 # Host port of Copyparty's web UI and WebDAV.
 copyparty_port: 3923
+
+# Shared directory for friends (primary drive).
+copyparty_collab_dir: "{{ primary_drive }}/collab"
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at
 # /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
