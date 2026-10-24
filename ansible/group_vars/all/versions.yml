@@ -30,7 +30,7 @@ homebridge_image: homebridge/homebridge:2026-08-28
 
 # backup-status dashboard (built on the Pi)
 restic_image: restic/restic:0.19.1
-backup_status_python_image: python:3.14-slim
+backup_status_python_image: python:3.14.9-slim
 
 # Cloudflare Tunnel: https://github.com/cloudflare/cloudflared/releases (needs 2025.4.0+ for --token-file)
 cloudflared_image: cloudflare/cloudflared:2026.10.3
