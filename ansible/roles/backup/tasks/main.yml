@@ -9,6 +9,12 @@
       restic_cloud_repository, and vault_restic_password (group_vars/all/vault.yml), to run backups.
     quiet: true
 
+- name: Install restic, and rclone for an rclone repository
+  ansible.builtin.apt:
+    name: "{{ ['restic'] + (['rclone'] if restic_cloud_repository.startswith('rclone:') else []) }}"
+    state: present
+    update_cache: true
+
 # Read-only, so it also runs under --check. Without this the directories below would be created on the root drive.
 - name: Check the backup drive is mounted
   ansible.builtin.command: mountpoint -q {{ backup_drive | quote }}

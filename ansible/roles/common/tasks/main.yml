@@ -22,8 +22,6 @@
       - git
       - vim
       - jq
-      - restic
-      - rclone
       - python3
       - python3-docker   # Docker SDK — required by community.docker Ansible modules
     state: present
