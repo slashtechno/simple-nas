@@ -1,4 +1,15 @@
 ---
+# pics reaches Copyparty by container name on the Docker network, as the "photos" service account.
+- name: Check Copyparty runs on this host with a photos account
+  ansible.builtin.assert:
+    that:
+      - copyparty_enabled | bool
+      - "'photos' in (copyparty_service_accounts | default([]) | map(attribute='user'))"
+    fail_msg: >-
+      pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add a
+      copyparty_service_accounts entry with user: photos (see group_vars/all/vars.yml.example).
+    quiet: true
+
 - name: Create pics directories
   ansible.builtin.file:
     path: "{{ item.path }}"
