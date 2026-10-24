@@ -45,7 +45,7 @@ Git hosting with an optional Actions runner.
 - Config: rendered from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
 - Admin account: `copyparty_user` / `copyparty_pass`. Collaborators: `vault_copyparty_collab_users` in the vault.
 
-Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_service_accounts` in `group_vars/all/vars.yml` or the host's `vars.yml` (user, password variable, volumes as folder plus permissions) and put the password in the vault. The example is in `ansible/roles/copyparty/defaults/main.yml`.
+Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_service_accounts` in `group_vars/all/vars.yml` or the host's `vars.yml` (user, password variable, volumes as folder plus permissions) and put the password in the vault. The example is in the comment above `copyparty_service_accounts` in `ansible/group_vars/all/defaults.yml`.
 
 - Each volume is mounted at `/<folder>` and stored in `copyparty_files_dir/<folder>`, owned by the admin. Those folders then vanish for other accounts that have `/`, such as pocketpi's.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.

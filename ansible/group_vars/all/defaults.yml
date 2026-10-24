@@ -76,9 +76,6 @@ docker_log_opts:
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.
 docker_data_root: ""
 
-# SSH public keys allowed to log in as the Ansible user, one per device (a list of lines like `ssh-ed25519 AAAA... you@laptop`). Added, never removed:
-# a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
-ssh_authorized_keys: []
 
 # --- Backups (docs/backups.md) ---
 # The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enabled` set to true. Local needs a
@@ -131,6 +128,11 @@ copyparty_files_dir: "{{ primary_drive }}/files"
 # Copyparty's configuration (fast drive).
 copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
 copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
+# A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on
+# different drives; with one drive it would just be a folder of /. See docs/storage.md.
+copyparty_fast_enabled: "{{ 'fast' in drive_mounts and 'primary' in drive_mounts and drive_mounts.fast != drive_mounts.primary }}"
+# Where the /fast volume lives.
+copyparty_fast_dir: "{{ fast_drive }}/fast"
 # Gitea's repositories and database (fast drive).
 gitea_data_dir: "{{ fast_drive }}/docker/gitea"
 gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"   # runner registration (.runner); on the fast drive so it is backed up

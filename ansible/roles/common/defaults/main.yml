@@ -1,0 +1,4 @@
+---
+# SSH public keys allowed to log in as the Ansible user, one per device (a list of lines like `ssh-ed25519 AAAA... you@laptop`). Added, never removed:
+# a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
+ssh_authorized_keys: []

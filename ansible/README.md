@@ -55,7 +55,7 @@ ansible-vault encrypt host_vars/<host>/vault.yml            # first time
 ansible-vault edit host_vars/<host>/vault.yml               # later changes
 ```
 
-`.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value. What each service needs is listed in [docs/services.md](../docs/services.md); the names and meanings are in the vault section of [group_vars/all/defaults.yml](../group_vars/all/defaults.yml). Keep a copy of the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
+`.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value. What each service needs is listed in [docs/services.md](../docs/services.md); the names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`. Keep a copy of the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
 
 ## First-time setup
 
