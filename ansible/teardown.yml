@@ -135,6 +135,32 @@
       vars:
         service: cloudflared
 
+    # The Funnel publishes Copyparty to the internet, so it goes off with --tags copyparty as well as --tags tailscale.
+    # A host not joined to Tailscale serves no Funnel.
+    - name: Turn off the Tailscale Funnel and remove its helper script
+      tags: [copyparty, tailscale]
+      block:
+        - name: Read whether Tailscale is joined
+          ansible.builtin.command:
+            cmd: tailscale status --json
+          register: teardown_tailscale_status
+          failed_when: false
+          changed_when: false
+
+        # A failure here, on a joined host, stops the play: the Funnel must not be left on unnoticed.
+        - name: Turn off the Funnel on :443
+          ansible.builtin.command:
+            cmd: tailscale funnel --https=443 off
+          changed_when: true
+          when: >-
+            teardown_tailscale_status.stdout | trim | length > 0
+            and (teardown_tailscale_status.stdout | from_json).BackendState | default('') == 'Running'
+
+        - name: Remove copyparty-funnel.sh
+          ansible.builtin.file:
+            path: "{{ scripts_dir }}/copyparty-funnel.sh"
+            state: absent
+
     - name: Stop and remove backup-status
       tags: [backup_status]
       ansible.builtin.import_tasks: teardown_service.yml
@@ -160,7 +186,6 @@
         # belong to the immich and gitea roles and go with their services; wiping
         # the whole directory would leave --tags backup redeploys without them,
         # so backups would "succeed" with no database dump.
-        # copyparty-funnel.sh is installed by the tailscale_funnel role.
         - name: Remove backup scripts
           ansible.builtin.file:
             path: "{{ scripts_dir }}/{{ item }}"
@@ -174,7 +199,6 @@
             - backup-paths.txt
             - restic-excludes-local.txt
             - restic-excludes-cloud.txt
-            - copyparty-funnel.sh
             - alert.sh
 
         - name: Remove the ntfy token file
