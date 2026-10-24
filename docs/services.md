@@ -2,6 +2,10 @@
 
 Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each service needs and the setup steps beyond the flag. Run `just deploy <tag>` from `ansible/` (tag = role name). Settings and their defaults are in `ansible/group_vars/all/defaults.yml` and each role's `defaults/main.yml`; file locations are in [ansible/README.md](../ansible/README.md). Backups are in [backups.md](./backups.md).
 
+## Every host
+
+The `common` role runs on every host. It installs base packages (curl, git, vim, jq, python3), sets the timezone, adds `ssh_authorized_keys`, installs Docker, adds the passwordless sudoers file, the Ghostty terminfo entry (so `TERM=xterm-ghostty` works over SSH) and zellij (a terminal multiplexer; the version and checksums are in `group_vars/all/versions.yml`).
+
 ## What each service needs
 
 - **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)). A service that needs a role the host has not claimed fails the deploy with a message naming the role.
