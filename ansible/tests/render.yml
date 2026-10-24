@@ -144,6 +144,12 @@
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "(garage_data_dir ~ '/meta') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - >-
+            drives | map(attribute='uuid') | map('lower') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
+            | length == 0
+          - >-
+            drives | map(attribute='uuid') | map('upper') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
+            | length == 0
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
