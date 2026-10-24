@@ -58,8 +58,8 @@
       ansible.builtin.set_fact:
         cloudflared_existing: "{{ cloudflared_lookup.json.result | first | default({}) }}"
 
-    # A tunnel made by the old setup keeps its rules in a file on the host, which this role no longer
-    # writes. Cloudflare can convert it (Zero Trust, Networks, Tunnels, the tunnel's migrate option).
+    # A locally managed tunnel keeps its rules in a file on the host, which this role does not write.
+    # Cloudflare can convert it (Zero Trust, Networks, Tunnels, the tunnel's migrate option).
     # Deleting it instead takes the public hostnames offline until the next deploy creates a new one.
     - name: Stop if the existing tunnel is locally managed
       ansible.builtin.assert:
@@ -264,9 +264,9 @@
   when: cloudflared_tunnel_id | length > 0
   notify: Restart cloudflared
 
-# Left by the previous setup: a build step, an init script and the rules it generated. The old
-# tunnel credentials (*.json) are not touched; delete them yourself when you like.
-- name: Remove files the previous setup left behind
+# Files of the earlier init-container setup: a build step, an init script and its generated rules.
+# Tunnel credentials (*.json) in the directory are not touched.
+- name: Remove files of the init-container setup
   ansible.builtin.file:
     path: "{{ nas_base_dir }}/cloudflared/{{ item }}"
     state: absent
@@ -277,7 +277,7 @@
     - ingress.yml
     - config.yml
 
-- name: Remove the previous setup's init container
+- name: Remove the init container
   community.docker.docker_container:
     name: cloudflared-init
     state: absent
