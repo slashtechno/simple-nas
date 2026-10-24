@@ -23,11 +23,11 @@ ntfy_alert_url: ""   # e.g. "http://localhost:8090/alerts"
 
 # --- Cloudflare Tunnel ---
 # Tunnel name: other hosts default to <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
-cf_tunnel_name: pi-nas-tunnel
-# cf_api_token, cf_account_id and cf_zones are in group_vars/all/vars.yml: every server that runs a tunnel uses them.
+cloudflared_tunnel_name: pi-nas-tunnel
+# cloudflared_api_token, cloudflared_account_id and cloudflared_zones are in group_vars/all/vars.yml: every server that runs a tunnel uses them.
 
 # One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
-# address). No `path:`. The hostname must contain one domain from cf_zones (group_vars/all/vars.yml). Where a service
+# address). No `path:`. The hostname must contain one domain from cloudflared_zones (group_vars/all/vars.yml). Where a service
 # has a private surface, it publishes two ports and the tunnel points at the guest one.
 cloudflared_ingress:
   - hostname: immich.example.com
