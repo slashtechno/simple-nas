@@ -26,8 +26,8 @@ Does not travel with the drives:
 
 | State | What to do |
 |---|---|
-| Tailscale identity | pi5 is a new node. Give it the Pi 4's name (cutover steps 4 and 9, [Hostnames](#hostnames)) so WebDAV mounts and bookmarks keep working. Its IP differs, so update `ansible_host` in the inventory |
-| Tailscale Funnel | Reset on the Pi 4 (step 5); the deploy turns it on for pi5 when `tailscale_funnel_enabled` is true |
+| Tailscale identity | pi5 is a new node. Give it the Pi 4's name (cutover steps 5 and 9, [Hostnames](#hostnames)) so WebDAV mounts and bookmarks keep working. Its IP differs, so update `ansible_host` in the inventory |
+| Tailscale Funnel | Reset on the Pi 4 (step 4); the deploy turns it on for pi5 when `tailscale_funnel_enabled` is true |
 | `autoback`, `obtain-ampere` containers | Outside this repo; they stay on the Pi 4 |
 
 ### Before: nothing on the hosts changes
@@ -98,8 +98,8 @@ Does not travel with the drives:
    ```
 
 3. **pi5 drops its old services.** If pi5 ran Dockge, Caddy or cloudflared: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit pi5 --vault-password-file .vault-pass`.
-4. **Free the Pi 4's name.** On the Pi 4: `sudo tailscale set --hostname=pi4`, and set the OS hostname ([Hostnames](#hostnames)).
-5. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
+4. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
+5. **Free the Pi 4's name** (after step 4, because the inventory reaches the Pi 4 by its `pinas` Tailscale name and the rename ends that). On the Pi 4: `sudo tailscale set --hostname=pi4`, and set the OS hostname ([Hostnames](#hostnames)). Later steps reach it as `pi4`: update `ansible_host` in the inventory if you need it again.
 6. Shut the Pi 4 down and leave its root drive untouched.
 7. Move both drives to pi5's blue USB 3 ports. Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has its own brick; the T7 and the later P10 are bus-powered, so check their combined draw or use a powered hub ([drive-migration.md](./drive-migration.md)).
 8. **Create pi5's files.** In `host_vars/pi4/vars.yml`, set `cloudflared_enabled: false` and `backup_cloud_enabled: false` (a hostname belongs to one host, and two hosts must not back up into one repository). In `ansible/inventory/hosts.yml`, set pi5's `ansible_host`. Create `host_vars/pi5/vars.yml`, with the `drives:` block from `host_vars/pi4/vars.yml` (same UUIDs and mounts), the service flags the NAS runs, `backup_local_enabled: true`, `backup_cloud_enabled: true`, `restic_cloud_repository` (the NAS's existing path: pi5 takes over the NAS's offsite repository, which is safe only because the Pi 4 was shut down in step 6; two hosts must never run a cloud backup into one repository), `cloudflared_enabled: true`, `cloudflared_tunnel_name: pi-nas-tunnel`, `cloudflared_ingress`, and the direct-link settings if pi5 should have the link. Create `host_vars/pi5/vault.yml` from `host_vars/vault.yml.example` (the same secrets the Pi 4 uses), then encrypt it. Give pi5 the Google Drive login before the deploy, which fails at the offsite repository without it: copy the Pi 4's `~/.config/rclone/rclone.conf` (already renamed to `[gdrive]` by the script) to the same path on pi5, owner the ansible user, mode `0600`, e.g. `scp pi4:.config/rclone/rclone.conf /tmp/ && scp /tmp/rclone.conf pi5:.config/rclone/` then `rm /tmp/rclone.conf` (create `~/.config/rclone` with mode `0700` first). Or put a fresh token in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` ([backups.md](../backups.md#google-drive)).
