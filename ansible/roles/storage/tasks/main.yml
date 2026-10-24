@@ -118,11 +118,3 @@
     group: "{{ ansible_user }}"
     mode: "0755"
   when: "'fast' in drive_mounts"
-
-- name: Create /opt/nas base directory
-  ansible.builtin.file:
-    path: "{{ nas_base_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
