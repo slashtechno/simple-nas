@@ -28,18 +28,26 @@
 - name: Set up direct Ethernet link
   when: direct_link_enabled | bool
   block:
-    # Raspberry Pi OS and Ubuntu Desktop run NetworkManager. Ubuntu Server runs systemd-networkd, which has no
-    # nmcli profiles. Switching a host's network stack over SSH can cut the connection, so this stops instead.
-    - name: Check whether NetworkManager is running
+    # Raspberry Pi OS and Ubuntu Desktop run NetworkManager (the link is an nmcli profile). Ubuntu Server runs
+    # systemd-networkd, configured through netplan (the link is a netplan file). dnsmasq is the same for both.
+    - name: Check which network manager is running
       ansible.builtin.service_facts:
 
-    - name: Refuse the direct link where NetworkManager is not running
+    - name: Note whether NetworkManager is the one running
+      ansible.builtin.set_fact:
+        network_uses_nm: "{{ ansible_facts['services']['NetworkManager.service']['state'] | default('') == 'running' }}"
+
+    - name: Check for netplan
+      ansible.builtin.stat:
+        path: /usr/sbin/netplan
+      register: network_netplan
+
+    - name: Refuse the direct link where there is neither NetworkManager nor netplan
       ansible.builtin.assert:
-        that: ansible_facts['services']['NetworkManager.service']['state'] | default('') == 'running'
+        that: network_uses_nm or network_netplan.stat.exists
         fail_msg: >-
-          NetworkManager is not running on {{ inventory_hostname }} (Ubuntu Server uses systemd-networkd), and the
-          direct link is built with nmcli. Set direct_link_enabled to false for this host, or move it to NetworkManager
-          by hand first (docs/networking.md#direct-ethernet-link).
+          {{ inventory_hostname }} runs neither NetworkManager nor netplan, so the direct link cannot be set up
+          here. Set direct_link_enabled to false for this host (docs/networking.md#direct-ethernet-link).
 
     - name: Refuse to touch the interface this host is managed over
       ansible.builtin.assert:
@@ -49,25 +57,41 @@
           Ansible uses. Setting up the direct link on it would cut that connection.
           Manage the host over another interface (wifi), or use another port for the link.
 
-    - name: Configure static direct-link IP (no gateway — can't route internet traffic)
-      community.general.nmcli:
-        type: ethernet
-        conn_name: direct-link
-        ifname: "{{ direct_link_iface }}"
-        ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
-        method4: manual
-        autoconnect: true
-        state: present
+    - name: Configure static direct-link IP with NetworkManager (no gateway, so it cannot route internet traffic)
+      when: network_uses_nm
+      block:
+        - name: Add the direct-link profile
+          community.general.nmcli:
+            type: ethernet
+            conn_name: direct-link
+            ifname: "{{ direct_link_iface }}"
+            ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
+            method4: manual
+            autoconnect: true
+            state: present
 
-    # The Pi ships with a default DHCP profile on eth0 ("Wired connection 1");
-    # it's turned off so it can never race our static one for the port.
-    - name: Disable auto-connect on the default eth0 DHCP profile
-      community.general.nmcli:
-        type: ethernet
-        conn_name: "Wired connection 1"
-        ifname: "{{ direct_link_iface }}"
-        autoconnect: false
-        state: present
+        # The Pi ships with a default DHCP profile on eth0 ("Wired connection 1");
+        # it's turned off so it can never race our static one for the port.
+        - name: Disable auto-connect on the default eth0 DHCP profile
+          community.general.nmcli:
+            type: ethernet
+            conn_name: "Wired connection 1"
+            ifname: "{{ direct_link_iface }}"
+            autoconnect: false
+            state: present
+
+    # netplan merges files in name order and a later file overrides the same keys, so this file turns off the
+    # port's DHCP from the installer's or cloud-init's file without editing it. "optional" keeps boot from
+    # waiting for a cable.
+    - name: Configure static direct-link IP with netplan (no gateway, so it cannot route internet traffic)
+      when: not network_uses_nm
+      ansible.builtin.template:
+        src: direct-link-netplan.yaml.j2
+        dest: /etc/netplan/60-direct-link.yaml
+        owner: root
+        group: root
+        mode: "0600"
+      notify: Apply netplan
 
     # Auto-assigns the laptop's IP so it doesn't need manual TCP/IP config.
     # DHCP only (port=0 disables dnsmasq's DNS proxy) and scoped to the link port only

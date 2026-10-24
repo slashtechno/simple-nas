@@ -1,17 +1,37 @@
 ---
 # Undoes the direct Ethernet link. Used by the network role (flag off) and by teardown.yml.
-- name: Remove static direct-link profile
-  community.general.nmcli:
-    conn_name: direct-link
+# The link is a netplan file on Ubuntu Server and an nmcli profile where NetworkManager runs.
+- name: Check for the direct-link netplan file
+  ansible.builtin.stat:
+    path: /etc/netplan/60-direct-link.yaml
+  register: network_direct_link_netplan
+
+- name: Remove the direct-link netplan file
+  when: network_direct_link_netplan.stat.exists
+  ansible.builtin.file:
+    path: /etc/netplan/60-direct-link.yaml
     state: absent
 
-- name: Re-enable auto-connect on the default eth0 DHCP profile
-  community.general.nmcli:
-    type: ethernet
-    conn_name: "Wired connection 1"
-    ifname: "{{ direct_link_iface }}"
-    autoconnect: true
-    state: present
+- name: Give the port back its DHCP setting
+  when: network_direct_link_netplan.stat.exists
+  ansible.builtin.command: netplan apply
+  changed_when: true
+
+- name: Remove the NetworkManager direct-link profile
+  when: not network_direct_link_netplan.stat.exists
+  block:
+    - name: Remove static direct-link profile
+      community.general.nmcli:
+        conn_name: direct-link
+        state: absent
+
+    - name: Re-enable auto-connect on the default eth0 DHCP profile
+      community.general.nmcli:
+        type: ethernet
+        conn_name: "Wired connection 1"
+        ifname: "{{ direct_link_iface }}"
+        autoconnect: true
+        state: present
 
 - name: Remove direct-link dnsmasq config
   ansible.builtin.file:

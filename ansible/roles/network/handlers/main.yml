@@ -5,3 +5,8 @@
     state: restarted
     enabled: true
   when: not ansible_check_mode   # dnsmasq install is only simulated under --check
+
+- name: Apply netplan
+  ansible.builtin.command: netplan apply
+  changed_when: true
+  when: not ansible_check_mode

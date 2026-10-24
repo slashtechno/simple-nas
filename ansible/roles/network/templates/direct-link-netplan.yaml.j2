@@ -1,0 +1,10 @@
+# Managed by Ansible (network role). Gives the direct Ethernet link port a static address and no gateway.
+# netplan merges files in name order, so this overrides the port's DHCP setting from the installer's file.
+network:
+  version: 2
+  ethernets:
+    {{ direct_link_iface }}:
+      dhcp4: false
+      dhcp6: false
+      addresses: ["{{ direct_link_ip }}/{{ direct_link_prefix }}"]
+      optional: true

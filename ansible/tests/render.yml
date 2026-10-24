@@ -150,6 +150,7 @@
           - >-
             drives | map(attribute='uuid') | map('upper') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
             | length == 0
+          - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
