@@ -22,9 +22,9 @@ vault_copyparty_collab_users:
     pass: "change-me-generate-with-openssl-rand-base64-32"
 # Only used if copyparty_sftp_enabled is true (vars.yml) -- the scoped
 # SFTP account for pocketpi's sync, read/write on /files only:
-vault_pocketpi_nas_user: "pocketpi"
+vault_pocketpi_sftp_user: "pocketpi"
 # Password of the SFTP account above.
-vault_pocketpi_nas_pass: "change-me-generate-with-openssl-rand-base64-32"
+vault_pocketpi_sftp_pass: "change-me-generate-with-openssl-rand-base64-32"
 # One per entry in copyparty_service_accounts (vars.yml):
 vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
 # Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).

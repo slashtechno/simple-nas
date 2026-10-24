@@ -17,7 +17,7 @@ services:
       - {{ backup_logs_dir }}:/data/logs:ro
       - {{ restic_password_file }}:/data/restic-password:ro
     environment:
-      NAS_SSH_USER: "{{ ansible_user }}"
+      SSH_USER: "{{ ansible_user }}"
       RESTIC_REPO_PATH: /data/restic-repo
       BACKUP_LOGS_DIR: /data/logs
       RESTIC_PASSWORD_FILE: /data/restic-password

@@ -115,11 +115,11 @@ Google Drive goes through rclone, which the deploy installs for `rclone:` reposi
 
 1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`. Sign in; it prints a JSON token.
 2. Put that JSON in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
-3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive-nas` remote only if the file does not exist, because rclone writes refreshed tokens back into it.
+3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive` remote only if the file does not exist, because rclone writes refreshed tokens back into it.
 
-To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive-nas:` there.
+To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
 
-- The remote uses rclone's default Google OAuth client, shared by all rclone users, which can return `403 RATE_LIMIT_EXCEEDED` on a large first backup. `restic_cloud_rclone_args` throttles requests. To use your own client instead: `rclone config`, edit `gdrive-nas`, set client ID and secret.
+- The remote uses rclone's default Google OAuth client, shared by all rclone users, which can return `403 RATE_LIMIT_EXCEEDED` on a large first backup. `restic_cloud_rclone_args` throttles requests. To use your own client instead: `rclone config`, edit `gdrive`, set client ID and secret.
 - Google expires the refresh token after 7 days for an app in "Testing" status, and after 6 months unused. If cloud backups stop with an auth error, redo step 1 and replace `rclone.conf`.
 
 ### SFTP
@@ -154,7 +154,7 @@ export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (restic_repo_path)
 ```
 
-For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"` (your `restic_cloud_repository`), and add `-o rclone.args="serve restic --stdio --tpslimit=10"` to each restic command.
+For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive:/pi-nas-backups"` (your `restic_cloud_repository`), and add `-o rclone.args="serve restic --stdio --tpslimit=10"` to each restic command.
 
 ---
 
@@ -247,7 +247,7 @@ Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl statu
 2. Pull from the cloud repository. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password
-   export RESTIC_REPOSITORY="rclone:gdrive-nas:/pi-nas-backups"   # restic_cloud_repository
+   export RESTIC_REPOSITORY="rclone:gdrive:/pi-nas-backups"   # restic_cloud_repository
    restic -o rclone.args="serve restic --stdio --tpslimit=10" snapshots --group-by path
    restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
    ```

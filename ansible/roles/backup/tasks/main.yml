@@ -23,7 +23,7 @@
     that: restic_cloud_repository | length > 0
     fail_msg: >-
       backup_cloud_enabled is true but restic_cloud_repository is empty. Set it in
-      host_vars/{{ inventory_hostname }}/vars.yml, e.g. "rclone:gdrive-nas:/{{ inventory_hostname }}-backups".
+      host_vars/{{ inventory_hostname }}/vars.yml, e.g. "rclone:gdrive:/{{ inventory_hostname }}-backups".
     quiet: true
   when: backup_cloud_enabled | bool
 

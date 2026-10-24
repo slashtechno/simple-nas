@@ -59,7 +59,7 @@
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
-        restic_cloud_repository: "rclone:gdrive-nas:/render-full-backups"
+        restic_cloud_repository: "rclone:gdrive:/render-full-backups"
 
     - name: Read site.yml
       ansible.builtin.slurp:
@@ -140,7 +140,7 @@
       ansible.builtin.set_fact:
         backup_local_enabled: "{{ 'backup' not in expect.unclaimed }}"
         backup_cloud_enabled: "{{ expect.cloud | default(false) }}"
-        restic_cloud_repository: "{{ 'rclone:gdrive-nas:/test' if expect.cloud | default(false) else '' }}"
+        restic_cloud_repository: "{{ 'rclone:gdrive:/test' if expect.cloud | default(false) else '' }}"
 
     - name: Add the fixture's own backup rules
       ansible.builtin.set_fact:

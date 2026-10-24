@@ -40,7 +40,7 @@ drives:
 
 # Weekly offsite copy to Google Drive (docs/backups.md).
 backup_cloud_enabled: true
-restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
+restic_cloud_repository: "rclone:gdrive:/pi-nas-backups"
 
 # --- Cloudflare Tunnel ---
 # The existing tunnel's name; without this the tunnel is named <hostname>-tunnel (roles/cloudflared/defaults/main.yml).

@@ -35,7 +35,7 @@
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
 {% if copyparty_sftp_enabled | bool %}
-  {{ vault_pocketpi_nas_user }}: {{ vault_pocketpi_nas_pass }}
+  {{ vault_pocketpi_sftp_user }}: {{ vault_pocketpi_sftp_pass }}
 {% endif %}
 {% for s in copyparty_service_accounts | default([]) %}
   {{ s.user }}: {{ s.pass }}
@@ -46,7 +46,7 @@
   accs:
     A: {{ copyparty_user }}
 {% if copyparty_sftp_enabled | bool %}
-    rwmd: {{ vault_pocketpi_nas_user }}  # m+d required -- rclone uploads/overwrites via rename
+    rwmd: {{ vault_pocketpi_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
 
 {# One volume per service-account folder, a subfolder of /files. #}

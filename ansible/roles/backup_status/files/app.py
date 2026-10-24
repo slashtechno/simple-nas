@@ -30,7 +30,7 @@ BACKUP_LOGS_DIR = os.environ["BACKUP_LOGS_DIR"]
 
 # Host-side values from group_vars, used only to build the SSH commands shown
 # in the UI (they run on the Pi, not in this container).
-NAS_SSH_USER = os.environ["NAS_SSH_USER"]
+SSH_USER = os.environ["SSH_USER"]
 HOST_BACKUP_DRIVE = os.environ["HOST_BACKUP_DRIVE"]
 HOST_RESTIC_REPO_PATH = os.environ["HOST_RESTIC_REPO_PATH"]
 HOST_RESTIC_PASSWORD_FILE = os.environ["HOST_RESTIC_PASSWORD_FILE"]
@@ -309,7 +309,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with open(os.path.join(BASE_DIR, "index.html"), "r") as f:
             html = f.read()
         html = (
-            html.replace("__NAS_SSH_USER__", NAS_SSH_USER)
+            html.replace("__SSH_USER__", SSH_USER)
             .replace("__HOST_RESTIC_REPO_PATH__", HOST_RESTIC_REPO_PATH)
             .replace("__HOST_RESTIC_PASSWORD_FILE__", HOST_RESTIC_PASSWORD_FILE)
             .replace("__HOST_RESTIC_CLOUD_REPOSITORY__", HOST_RESTIC_CLOUD_REPOSITORY)
