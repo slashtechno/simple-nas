@@ -25,3 +25,5 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Repeating the same YAML example in several docs. Spell it out once and link to it.
 - Treating `--list-tasks` as proof that a `when:` works. It ignores `when:`; the render test is the check.
 - Adding an option the user should not need, or deriving something the user is better off setting and seeing.
+- Adding a mechanism the system or tool already provides (a tmpfiles entry, udev rule, handler, guard, workaround, task or setting). Before adding one, name what breaks without it and show it (read the tool's docs, or test on a host). If nothing breaks, leave it out. A mechanism kept for tidiness, not function, is also out.
+- Piling on guards and special cases for rare failures. One plain check that fails loudly beats several layers; delete a layer when another already covers it.
