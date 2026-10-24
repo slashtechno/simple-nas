@@ -1,6 +1,6 @@
 # Networking
 
-Per-host network settings in `host_vars` and a self-reverting apply are not built yet; they are marked **Planned** (design in [plans/multi-host.md](./plans/multi-host.md)). Everything else here is current.
+Wifi profiles are managed on the host with `nmcli`, not by Ansible. Ansible sets up the shared Docker network and the direct Ethernet link.
 
 ## If a Pi drops off the network
 
@@ -29,7 +29,6 @@ nmcli device wifi list         # networks the Pi can see right now
 
 - Do not change the connection Ansible is using without a way back in (Tailscale or Ethernet).
 - Run `just preview network --limit <host>` first.
-- **Planned:** apply with a built-in revert (`netplan try`, or a timed `nmcli` revert).
 
 ## What `roles/network` does
 
@@ -37,7 +36,7 @@ nmcli device wifi list         # networks the Pi can see right now
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true (`direct_link_*` in `host_vars`).
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The roles manage connections with `nmcli`, not netplan.
+- Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The direct link uses `nmcli`, not netplan. It expects the default Ethernet profile to be named `Wired connection 1`, as on Raspberry Pi OS; on a host where it has another name, the link's disable and revert steps fail.
 
 ## Direct Ethernet link
 

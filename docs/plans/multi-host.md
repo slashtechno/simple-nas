@@ -1,93 +1,91 @@
-# Multi-host plan (NAS + general servers)
+# Multi-host: NAS on pi5, pi4 as a general server
 
-Goal: manage the NAS and other always-on machines from this repo with plain Ansible. The NAS moves from pi4 to pi5; pi4 then becomes a general server. Work is on the branch `multi-host-refactor`; only docs go straight to main.
+Goal: manage the NAS and other always-on machines from this repo with plain Ansible. The NAS moves from pi4 to pi5; pi4 then becomes a general server.
 
-How it works now is in [ansible/README.md](../../ansible/README.md), [networking.md](../networking.md), [storage.md](../storage.md) and [services.md](../services.md). This file lists what is left.
+How things work now is in [ansible/README.md](../../ansible/README.md), [storage.md](../storage.md), [networking.md](../networking.md) and [services.md](../services.md). This file is the runbook for the move and the list of what is left.
 
-## Done
+## What is built
 
-- Groups `servers` > `nas`, `servers_general`; settings split into `group_vars/all`, `group_vars/nas`, `host_vars/<host>`; `derived.yml`; render test covers all of them.
-- Base roles on every server: sudoers drop-in, Tailscale install (`state: present`, join by hand), zellij, Ghostty terminfo, SSH keys, log rotation, cloud-init network switch, Docker snap check.
-- `docker_data_root` with containerd `root` and mount guards; Gitea runner bind mount.
-- Copyparty option renames, `tailscale_funnel` as its own NAS-only role, all versions in `versions.yml`.
-- Cloudflared with a remotely managed tunnel (token and ingress through the API). Runs on general servers too (own tunnel and `cloudflared_ingress` per host; the deploy fails if two hosts list one hostname).
-- rclone Google Drive remote from the vault; a configured cloud repo that fails to initialise fails the deploy.
-- Dockge and caddy-docker-proxy roles for `servers_general`.
-- `just deploy` and `just preview` take `--limit` and extra flags (`-K`).
-- Decided: Debian-family hosts only (`site.yml` asserts it); no Cloudflare Access or wildcard tunnel; offsite backends are Google Drive and SFTP; options are documented in comments, not `meta/argument_specs.yml`; orphan DNS records are reported, never deleted.
+- Groups `servers` > `nas`, `servers_general`; settings in `group_vars/all`, `group_vars/nas` and `host_vars/<host>`; the render test covers all of them.
+- Every server: sudoers drop-in, Tailscale install (joined by hand), Docker with `docker_data_root` and mount guards, drive mounts, direct Ethernet link, log rotation.
+- NAS: Immich, Copyparty, Gitea, Homebridge, pics, Garage, Crafty, Cloudflare Tunnel, Tailscale Funnel, backups, backup-status, ntfy.
+- General servers: Dockge, Caddy, Cloudflare Tunnel, backups.
+- Restic backups per host, local daily and Google Drive or SFTP weekly; failures go to the system log and optionally ntfy.
+- Decisions: Debian-family hosts only (`site.yml` asserts it); no Cloudflare Access or wildcard tunnel; options are documented in comments, not `meta/argument_specs.yml`; orphan DNS records are reported, never deleted; Tailscale is joined by hand, so no auth key is stored.
 
-## Open work
+Not built: x64 support (see [Later](#later)).
 
-### Before the cutover
+## Cutover from the Pi 4 to pi5
 
-1. In the Cloudflare Zero Trust dashboard, check whether the existing tunnel (`pi-nas-tunnel`) has a migrate-to-remotely-managed option. If it does not, the deploy stops until the tunnel is deleted, and public hostnames are offline until the next deploy repoints the CNAMEs.
-2. Test cloudflared against real Cloudflare, and `cloudflared tunnel run --token-file` on the pinned image (`--help`).
-3. Run the netplan spike on pi5 (steps under [Networking decisions still open](#networking-decisions-still-open)). If it passes, the network role renders one netplan file per host. If not, the role stays on `nmcli` and the `"Wired connection 1"` profile name becomes a per-host variable.
-4. Join pi5 to Tailscale by hand (`sudo tailscale up`) and disable key expiry for each server in the Tailscale admin console.
-5. Run the first deploy on each new host with `-K`.
-6. Publish the Google OAuth app to Production, or the Drive refresh token expires after 7 days ([backups.md](../backups.md)).
-
-### Cutover from the Pi 4 to pi5
-
-Drives hold the data: everything under `/mnt/t7` (app data, Immich, Copyparty, Homebridge, Gitea, Crafty) and `/mnt/backup`. Docker's own storage is disposable and images re-pull.
+Drives hold the data: everything under `/mnt/t7` (app data, Immich, Copyparty, Homebridge, Gitea, Crafty) and `/mnt/backup`. Docker's own storage is disposable and images re-pull. Rollback: move the drives back to the Pi 4 and run `just deploy '' --limit pi4`.
 
 Does not travel with the drives:
 
 | State | What to do |
 |---|---|
-| Tailscale identity | pi5 is a new node with a new IP and MagicDNS name. Update WebDAV mounts, bookmarks, the inventory and Funnel |
+| Tailscale identity | pi5 is a new node. Give it the Pi 4's name (cutover steps 3 and 8, [Hostnames](#hostnames)) so WebDAV mounts and bookmarks keep working; its IP still changes, so update the inventory |
+| Tailscale Funnel | Reset on the Pi 4 (step 4); the deploy turns it on for pi5 when `tailscale_funnel_enabled` is true |
 | `autoback`, `obtain-ampere` containers | Outside this repo; they stay on the Pi 4 |
 
-Order:
+### Before: nothing on the hosts changes
 
-1. Take fresh service dumps and a local snapshot, and verify them (`restic snapshots`, `restic check`). Avoid the 2 AM and 4 AM cron windows.
-2. Stop the stacks cleanly so Postgres shuts down properly.
-3. Shut the Pi 4 down and leave its microSD untouched; moving the drives back is the rollback.
-4. Move both drives to pi5's blue USB 3 ports.
-5. In the inventory move pi5 from `servers_general` to `nas` and pi4 out of `nas`; add `host_vars/pi5/vars.yml` with its `drives` (UUIDs).
-6. Run `just preview '' --limit pi5 -K`, then deploy.
-7. Verify Immich, Copyparty, Gitea, a backup run and the `/mnt/backup` mount.
-8. Keep the Pi 4 off for a week before repurposing it.
+1. **Cloudflare tunnel.** In the Cloudflare Zero Trust dashboard, check whether `pi-nas-tunnel` has a migrate-to-remotely-managed option. If it does not, the deploy stops until the tunnel is deleted, and public hostnames are offline until the next deploy repoints the CNAMEs. This is the only step that can take public sites down; do it first.
+2. **Vault.** Move (do not copy: a key left in `nas/vault.yml` wins) `vault_cf_api_token`, `vault_cf_account_id`, `vault_restic_password` and `vault_rclone_gdrive_token` from `group_vars/nas/vault.yml` to a new `group_vars/all/vault.yml` (copy `vault.yml.example`), then `ansible-vault encrypt` it with the same password.
+3. **Google OAuth.** Publish the OAuth app to Production, or the Drive refresh token expires after 7 days ([backups.md](../backups.md)).
+4. **Preview the Pi 4.** `just preview '' --limit pi4`. Expected changes: `/drives` loses the backup, fast and primary drives; `direct-link.conf` loses the netmask and dnsmasq restarts; the Homebridge compose file changes; Garage, Caddy and the web UI move to new versions; USB automount turns on; the three cron jobs now end in `alert.sh`, which is a new file; the backup role creates its directories.
+5. **ntfy (optional).** Failure alerts to your phone: [services.md](../services.md#ntfy-failure-alerts).
 
-Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has its own brick. The T7 and the later P10 are both bus-powered, so check their combined draw or use a powered hub ([drive-migration.md](./drive-migration.md)).
+### Cutover
 
-### After the cutover
+1. Take fresh service dumps and a local snapshot, and check them (`restic snapshots`; `restic check` stays manual). Avoid the 2 AM and 4 AM cron windows.
+2. **pi5 leaves the general-server role.** `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit pi5 --ask-vault-pass`. Joining `nas` does not remove them.
+3. **Free the Pi 4's name.** On the Pi 4: `sudo tailscale set --hostname=pi4`, and set the OS hostname ([Hostnames](#hostnames)).
+4. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --ask-vault-pass` (stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
+5. Shut the Pi 4 down and leave its microSD untouched.
+6. Move both drives to pi5's blue USB 3 ports. Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has its own brick; the T7 and the later P10 are bus-powered, so check their combined draw or use a powered hub ([drive-migration.md](./drive-migration.md)).
+7. **Inventory** (`ansible/inventory/hosts.yml`): move `pi5` under `nas` and `pi4` under `servers_general`. Then `mkdir ansible/host_vars/pi5` and move the `drives:` block from `host_vars/pi4/vars.yml` to `host_vars/pi5/vars.yml` (same UUIDs); move the direct-link settings too if pi5 should have the link. Do not create pi5's file earlier: its next deploy would try to mount drives that are not attached.
+8. **Name pi5 like the old NAS.** If it is not logged in to Tailscale, run `sudo tailscale up`. Then `sudo tailscale set --hostname=pinas` and set the OS hostname ([Hostnames](#hostnames)). Disable key expiry for it in the Tailscale admin console.
+9. `just preview '' --limit pi5 -K`, then `just deploy '' --limit pi5 -K`.
+10. **Check:** Immich, Copyparty, Gitea, the public hostnames and Funnel; a backup run (`bash /opt/nas/scripts/backup-restic-local.sh`, then `restic snapshots`); `/mnt/backup` is mounted. Optionally reboot with a drive unplugged to test the Docker mount guard ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
+11. **Clean up:** delete the stale offline Gitea runner ([storage.md](../storage.md#gitea-runner-registration)), the old tunnel `*.json` credentials in `/opt/nas/cloudflared/`, and the old `pinas` node if it still shows in the Tailscale admin console.
+12. Keep the Pi 4 off for a week.
 
-- Docker data-root test on pi5 with the real drive: reboot with the drive unplugged; `systemctl is-active docker containerd` must say `inactive` ([storage.md](../storage.md#check-after-a-reboot-with-the-drive-unplugged)).
-- Remove leftover Docker volumes on the Pi 4 or pi5 by hand ([storage.md](../storage.md#leftover-volumes)).
+### The Pi 4 as a general server
 
-### Later
+1. Boot it. It is already in `servers_general`; set the hostname and Tailscale name if not done ([Hostnames](#hostnames)).
+2. Write `ansible/host_vars/pi4/vars.yml` with a `drives:` block that claims `fast` ([storage.md](../storage.md#examples)). To back it up, add `backup_enabled: true` and a drive with the `backup` role ([backups.md](../backups.md)).
+3. `just preview '' --limit pi4 -K`, then `just deploy '' --limit pi4 -K`. Dockge is at `http://<host>:5001`.
+4. Remove leftover Docker volumes by hand ([storage.md](../storage.md#leftover-volumes)).
+5. Optional: Caddy, a public hostname ([below](#public-hostnames-for-ad-hoc-apps)), `docker_data_root` on a drive ([storage.md](../storage.md#dockers-own-storage)).
 
-- Repurpose the Pi 4 as a general server, then add the x64 box.
-- Check the ARM-only builds (rawpy, Dockerfile ARGs) when the x64 box is added.
-- On Ubuntu Server: do not install Docker from the installer's snap; the first run uses `-K`.
+### Hostnames
+
+The inventory name (`pi4`) is only a label in Ansible's output; the host's own hostname is separate and changes nothing in Ansible. It matters in three places: the Tailscale name (MagicDNS, WebDAV mounts, the Funnel URL), the shell prompt, and restic, which groups snapshots by hostname and paths. A repo that moves to pi5 keeps its snapshot groups only if pi5's hostname equals the old one (`pinas`); otherwise the old snapshots stay as a separate group until `restic forget --host pinas ...`.
+
+To rename a host:
+
+```bash
+sudo hostnamectl set-hostname <name>
+sudo sed -i 's/^127.0.1.1.*/127.0.1.1 <name>/' /etc/hosts
+sudo tailscale set --hostname=<name>
+```
+
+If Tailscale shows the name with a `-1` suffix, the old node still holds it: rename or delete the old node in the admin console first. On Ubuntu, cloud-init can set the hostname back at boot; if it does, put `preserve_hostname: true` in `/etc/cloud/cloud.cfg.d/99-hostname.cfg`.
 
 ## Per-host backups
 
-Built: the `backup` role also runs on `servers_general` hosts. Set `backup_enabled: true` in the host's `host_vars` and give one drive in `drives` the `backup` role. It backs up the host's `fast` drive, where Dockge's stacks and data live (files only root or a container can read are skipped). The offsite copy is off unless `backup_cloud_enabled: true` and `restic_cloud_repository` (its own path per host) are set. `backup-status` runs on the NAS only.
+The `backup` role also runs on `servers_general` hosts. Set `backup_enabled: true` in the host's `host_vars` and give a drive in `drives` the `backup` role. It backs up the host's `fast` drive, where Dockge's stacks and data live. The offsite copy is off unless `backup_cloud_enabled: true` and `restic_cloud_repository` (its own path per host) are set. `backup-status` runs on the NAS only.
 
-Open:
-- Move `vault_cf_api_token`, `vault_cf_account_id`, `vault_restic_password` and `vault_rclone_gdrive_token` from `group_vars/nas/vault.yml` to a new `group_vars/all/vault.yml` (copy `vault.yml.example`). Move them, do not copy: a key left in `nas/vault.yml` wins.
-- Test a general host's backup on pi5 with a real drive: `just preview backup --limit pi5`, then deploy.
-- Pi microSD to a USB drive: restic backs up files, not a bootable image. A bootable clone needs another tool (`rpi-clone`).
+Limits:
+- Files only root or a container can read are skipped, because the backup runs as the ansible user ([backups.md](../backups.md)).
+- restic backs up files, not a bootable image. A bootable microSD clone needs another tool (`rpi-clone`).
 - A second drive in the same machine covers drive failure, not theft or fire. Only hosts with a cloud repository have an offsite copy.
-- Stacks whose containers write as root are skipped by the backup (it runs as the ansible user); see [backups.md](../backups.md).
 
 ## Public hostnames for ad-hoc apps
 
 Apps on general servers are tailnet-only by default, at `http://<host>:<port>` or through Caddy. To publish one app, set `cloudflared_enabled: true` on the host, add a `hostname` and `service` entry to its `cloudflared_ingress` and deploy (its tunnel is `<hostname>-tunnel`). There is no wildcard to Caddy, because every labeled container would become public the moment it starts.
 
-## Networking decisions still open
+## Later
 
-- Netplan or `nmcli` for per-host profiles (the spike below settles it). Netplan would apply with `netplan try`, which reverts if the connection is not confirmed. Risks: Imager's `90-NM-*.yaml` files may produce duplicate profiles, and `netplan try` may not roll back under the NetworkManager renderer.
-- Netplan spike, by hand on pi5 with a monitor or Ethernet as a way back in. Passes when `netplan try` rolls back an unconfirmed change and `nmcli con show` lists one profile per interface or SSID:
-  1. `mkdir -p ~/netplan-backup && sudo cp /etc/netplan/90-NM-*.yaml ~/netplan-backup/`
-  2. Write `/etc/netplan/60-test.yaml` for `wlan0` with your SSID, then `sudo netplan try` and do not press Enter. The change must roll back after the timeout.
-  3. Run `sudo netplan try` again and confirm. There must be no duplicates next to the `netplan-*` profiles.
-  4. Remove the test file and run `sudo netplan apply`.
-- No multi-backend abstraction either way.
-
-## Docs still to update
-
-- `AGENTS.md`: "the Pi" becomes "any host".
-- `docs/services.md`: the direct link section moves to `networking.md`.
+- Add the x64 box as a general server. Check the ARM-only builds (rawpy, Dockerfile ARGs) first.
+- On Ubuntu Server: do not install Docker from the installer's snap; the first run uses `-K`.
