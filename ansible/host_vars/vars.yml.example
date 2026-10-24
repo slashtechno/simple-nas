@@ -6,7 +6,7 @@
 # so it can't route internet traffic. Laptop's IP is auto-assigned via a
 # scoped dnsmasq (DHCP only, no DNS/gateway) — no manual laptop config needed.
 # See docs/networking.md#direct-ethernet-link.
-direct_link_enabled: false   # the address and port settings, with defaults, are in group_vars/all/defaults.yml
+# direct_link_enabled: true   # the address and port settings, with defaults, are in group_vars/all/defaults.yml
 
 # Services: turn one on for this host with `<name>_enabled: true` (the flags are listed in
 # group_vars/all/defaults.yml, what each needs in docs/services.md). Flags are set per host, here.
@@ -23,11 +23,12 @@ direct_link_enabled: false   # the address and port settings, with defaults, are
 # A drive with no `roles:` is only mounted.
 # Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
 # Examples for one, two and three drives, and the `nofail` option: docs/storage.md#examples
-drives: []
+# drives:
+#   - { uuid: "...", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
 
 # --- Offsite backup ---
 # backup_cloud_enabled turns on the weekly offsite copy for this host. It uploads only the base directory and
 # Copyparty's config; add data paths to restic_cloud_rules (docs/backups.md). Every host needs its own
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
-backup_cloud_enabled: false
-restic_cloud_repository: ""   # e.g. "rclone:gdrive:/<host>-backups"
+# backup_cloud_enabled: true
+# restic_cloud_repository: "rclone:gdrive:/<host>-backups"

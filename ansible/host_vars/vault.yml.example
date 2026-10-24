@@ -14,7 +14,7 @@ vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
 # Copyparty admin password.
 vault_copyparty_pass: "yourpassword"
-# Friends who can access /collab via WebDAV:
+# Friends who can access /collab via WebDAV. Used only when copyparty_collab_enabled is true (vars.yml):
 vault_copyparty_collab_users:
   - user: "friend1"
     pass: "change-me-generate-with-openssl-rand-base64-32"

@@ -1,4 +1,23 @@
 ---
+- name: Check the copyparty secrets are in the vault
+  ansible.builtin.assert:
+    that:
+      - vault_copyparty_user is defined
+      - vault_copyparty_pass is defined
+    fail_msg: >-
+      copyparty needs vault_copyparty_user, vault_copyparty_pass in the vault that applies to {{ inventory_hostname }}
+      (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
+    quiet: true
+
+- name: Check the collab accounts are in the vault
+  ansible.builtin.assert:
+    that: vault_copyparty_collab_users | default([]) | length > 0
+    fail_msg: >-
+      copyparty_collab_enabled needs vault_copyparty_collab_users, a list of user and pass entries
+      (see vault.yml.example).
+    quiet: true
+  when: copyparty_collab_enabled | bool
+
 - name: Create Copyparty compose directory
   ansible.builtin.file:
     path: "{{ services_dir }}/copyparty"
@@ -16,9 +35,17 @@
     mode: "0755"
   loop:
     - "{{ copyparty_files_dir }}"
-    - "{{ copyparty_collab_dir }}"
     - "{{ copyparty_config_dir }}"
     - "{{ copyparty_hist_dir }}"
+
+- name: Create the /collab volume directory
+  ansible.builtin.file:
+    path: "{{ copyparty_collab_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: copyparty_collab_enabled | bool
 
 - name: Create the /fast volume directory
   ansible.builtin.file:

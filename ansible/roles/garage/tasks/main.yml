@@ -1,4 +1,17 @@
 ---
+- name: Check the garage secrets are in the vault
+  ansible.builtin.assert:
+    that:
+      - vault_garage_rpc_secret is defined
+      - vault_garage_admin_token is defined
+      - vault_garage_webui_user is defined
+      - vault_garage_webui_pass is defined
+    fail_msg: >-
+      garage needs vault_garage_rpc_secret, vault_garage_admin_token, vault_garage_webui_user and
+      vault_garage_webui_pass in the vault that applies to {{ inventory_hostname }}
+      (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
+    quiet: true
+
 - name: Create Garage compose directory
   ansible.builtin.file:
     path: "{{ services_dir }}/garage"

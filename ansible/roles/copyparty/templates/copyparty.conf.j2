@@ -31,9 +31,11 @@
 
 [accounts]
   {{ copyparty_user }}: {{ copyparty_pass }}
-{% for u in vault_copyparty_collab_users | default([]) %}
+{% if copyparty_collab_enabled | bool %}
+{% for u in vault_copyparty_collab_users %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
+{% endif %}
 {% if copyparty_sftp_enabled | bool %}
   {{ vault_pocketpi_sftp_user }}: {{ vault_pocketpi_sftp_pass }}
 {% endif %}
@@ -60,7 +62,7 @@
 
 {% endfor %}
 {% endfor %}
-{% if vault_copyparty_collab_users is defined and vault_copyparty_collab_users %}
+{% if copyparty_collab_enabled | bool %}
 [/collab]
   /collab
   accs:

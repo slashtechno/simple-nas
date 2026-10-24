@@ -7,7 +7,8 @@
   vars:
     backup_service_dirs: >-
       {{ ([immich_upload_location] if immich_enabled | bool else [])
-         + ([copyparty_files_dir, copyparty_config_dir, copyparty_collab_dir] if copyparty_enabled | bool else [])
+         + ([copyparty_files_dir, copyparty_config_dir] if copyparty_enabled | bool else [])
+         + ([copyparty_collab_dir] if copyparty_enabled | bool and copyparty_collab_enabled | bool else [])
          + ([gitea_data_dir, gitea_runner_data_dir] if gitea_enabled | bool else [])
          + ([pics_data_dir] if pics_enabled | bool else [])
          + ([homebridge_config_dir] if homebridge_enabled | bool else [])

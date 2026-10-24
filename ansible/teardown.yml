@@ -58,7 +58,8 @@
       vars:
         service: copyparty
         data_paths: >-
-          {{ [copyparty_files_dir, copyparty_config_dir, copyparty_hist_dir, copyparty_collab_dir]
+          {{ [copyparty_files_dir, copyparty_config_dir, copyparty_hist_dir]
+             + ([copyparty_collab_dir] if copyparty_collab_enabled | bool else [])
              + ([copyparty_fast_dir] if copyparty_fast_enabled | bool else []) }}
 
     - name: Stop and remove Gitea

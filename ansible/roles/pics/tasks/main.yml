@@ -1,4 +1,15 @@
 ---
+- name: Check the pics secrets are in the vault
+  ansible.builtin.assert:
+    that:
+      - vault_pics_password is defined
+      - vault_pics_secret_key is defined
+      - vault_github_read_token is defined
+    fail_msg: >-
+      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token in the vault that applies to {{ inventory_hostname }}
+      (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
+    quiet: true
+
 # pics reaches Copyparty by container name on the Docker network, as the "photos" service account.
 - name: Check Copyparty runs on this host with a photos account
   ansible.builtin.assert:

@@ -21,7 +21,7 @@ services:
 {% if copyparty_fast_enabled | bool %}
       - {{ copyparty_fast_dir }}:/fast:rw
 {% endif %}
-{% if copyparty_collab_dir is defined and copyparty_collab_dir %}
+{% if copyparty_collab_enabled | bool %}
       - {{ copyparty_collab_dir }}:/collab:rw
 {% endif %}
     environment:

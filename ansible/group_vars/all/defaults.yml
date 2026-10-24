@@ -180,7 +180,11 @@ direct_link_prefix: 30
 # Host port of Copyparty's web UI and WebDAV.
 copyparty_port: 3923
 
-# Shared directory for friends (primary drive).
+# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
+# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
+copyparty_collab_enabled: false
+
+# Directory behind /collab (primary drive).
 copyparty_collab_dir: "{{ primary_drive }}/collab"
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at

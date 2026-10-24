@@ -14,7 +14,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Service | Role | Needs | Section |
 |---|---|---|---|
 | Immich | `roles/immich` | `primary` and `fast` drive roles; `vault_immich_db_password` | [Immich](#immich) |
-| Copyparty | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_pass`, `vault_copyparty_collab_users` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
+| Copyparty | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_pass`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
 | Gitea | `roles/gitea` | `fast` drive role; `gitea_root_url`, `gitea_domain`, `gitea_ssh_domain`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
 | pics | `roles/pics`, `roles/github_clone` | `fast` drive role; Copyparty with a `photos` service account; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
@@ -47,7 +47,7 @@ Git hosting with an optional Actions runner.
 ## Copyparty accounts and volumes
 
 - Config: rendered from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
-- Admin account: `copyparty_user` / `copyparty_pass`. Collaborators: `vault_copyparty_collab_users` in the vault.
+- Admin account: `copyparty_user` / `copyparty_pass`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends listed in `vault_copyparty_collab_users`; the admin has access too. With it off there is no folder and no friend accounts.
 
 Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_service_accounts` in `group_vars/all/vars.yml` or the host's `vars.yml` (user, password variable, volumes as folder plus permissions) and put the password in the vault. The example is in the comment above `copyparty_service_accounts` in `ansible/group_vars/all/defaults.yml`.
 

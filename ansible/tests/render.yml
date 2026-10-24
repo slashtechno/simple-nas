@@ -60,6 +60,7 @@
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
+        copyparty_collab_enabled: true
         copyparty_sftp_enabled: true
         copyparty_fast_enabled: true
         usb_automount_enabled: true
