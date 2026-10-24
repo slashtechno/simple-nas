@@ -11,7 +11,7 @@ services_dir: /opt/services
 # Where the helper and backup scripts are deployed.
 scripts_dir: "{{ services_dir }}/scripts"
 # --- Which services run on a host ---
-# Every service is off until a group or host switches it on: set `<name>_enabled: true` in
+# Every service is off until a host switches it on: set `<name>_enabled: true` in
 # host_vars/<host>/vars.yml, and false again to stop deploying it.
 # A service that is already deployed keeps running; remove it with `ansible-playbook teardown.yml --limit <host> --tags <name>`.
 # What each service needs (drive roles, vault entries) is in docs/services.md.
