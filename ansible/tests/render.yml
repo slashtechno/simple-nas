@@ -251,6 +251,7 @@
         - name: A data directory outside every backed-up path is refused
           when: backup_local_enabled | bool
           block:
+            # include_tasks, not import_tasks: the vars below must override the host's values at run time, which a static import does not do.
             - name: Move Immich's photos to an uncovered path
               ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
               vars:
@@ -263,6 +264,20 @@
             - name: Only the coverage check may fail here
               ansible.builtin.assert:
                 that: "'/not-backed-up/photos' in ansible_failed_result.msg"
+
+        - name: Add a "- <directory>" rule for a directory left out on purpose
+          ansible.builtin.set_fact:
+            rules_with_opt_out: "{{ restic_local_rules + ['- /not-backed-up/photos'] }}"
+          when: backup_local_enabled | bool
+
+        # include_tasks for the same reason as above.
+        - name: That rule makes the coverage check accept the directory
+          ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
+          vars:
+            immich_enabled: true
+            immich_upload_location: /not-backed-up/photos
+            restic_local_rules: "{{ rules_with_opt_out }}"
+          when: backup_local_enabled | bool
 
         - name: The local exclude list skips the restic password and the rclone token
           ansible.builtin.assert:
