@@ -44,7 +44,8 @@ services:
       CONFIG_PATH: /etc/garage.toml
       # Admin token for the v2 API — must match admin_token in garage.toml
       API_ADMIN_KEY: '{{ vault_garage_admin_token | replace("$", "$$") }}'
-      # Basic auth: "username:bcrypt_hash", both from the vault. $$ stops Compose reading the $ in the hash as a variable.
-      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_hash | replace("$", "$$") }}'
+      # Basic auth: "username:bcrypt_hash". The web UI wants a hash, so the vault password is hashed here (the fixed salt keeps
+      # the output the same on every run). $$ stops Compose reading the $ in the hash as a variable.
+      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash('bcrypt', 'garagegaragegaragegara', ident='2b') | replace("$", "$$") }}'
     networks:
       - {{ docker_network }}

@@ -5,9 +5,8 @@
 # To edit later (opens in $EDITOR — set to VS Code with the line below):
 #   EDITOR="code --wait" ansible-vault edit host_vars/<host>/vault.yml
 
-# bcrypt hash of the ntfy login password (the one you type into the ntfy app):
-# `docker run --rm -it binwiederhier/ntfy user hash`, then paste the line it prints.
-vault_ntfy_password_hash: "$2a$10$changeMechangeMechangeMechangeMechangeMechangeMechang"
+# The ntfy login password (the one you type into the ntfy app). The deploy hashes it.
+vault_ntfy_password: "change-me-generate-with-openssl-rand-base64-24"
 # Immich's Postgres password.
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 # Copyparty admin user name.
@@ -44,8 +43,7 @@ vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
 # Login of the Garage web UI.
 vault_garage_webui_user: "admin"
-# bcrypt hash of the Garage web UI password. Generate it (it asks for the password) with
-# `htpasswd -nBC 10 "" | tr -d ':\n'`, then paste the line it prints; htpasswd is in apache2-utils.
-vault_garage_webui_hash: "$2y$10$changeMechangeMechangeMechangeMechangeMechangeMechang"
+# Password of the Garage web UI. The deploy hashes it.
+vault_garage_webui_pass: "change-me-generate-with-openssl-rand-base64-24"
 
 # Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.

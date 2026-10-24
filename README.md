@@ -4,25 +4,7 @@ Ansible playbooks that set up Raspberry Pis (any Debian-family host) as home ser
 
 Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in: a service is deployed on a host only when that host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Every flag defaults to false. Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
-| Service | What it is | Doc |
-|---|---|---|
-| Immich | Photo library (Google Photos alternative) | [services.md](./docs/services.md#immich) |
-| Copyparty | File sharing | [services.md](./docs/services.md#copyparty-accounts-and-volumes) |
-| Gitea | Git server | [services.md](./docs/services.md#gitea) |
-| Homebridge | HomeKit bridge | [services.md](./docs/services.md#homebridge) |
-| pics | Photo culling and sharing | [services.md](./docs/services.md#pics-photo-culling-and-sharing) |
-| Garage | S3-compatible object storage | [services.md](./docs/services.md#garage-s3) |
-| Crafty Controller | Minecraft servers | [services.md](./docs/services.md#crafty-minecraft-servers) |
-| ntfy | Push alerts for failed backups | [services.md](./docs/services.md#ntfy-failure-alerts) |
-| Cloudflare Tunnel (`cloudflared`) | Public hostnames without port forwarding | [services.md](./docs/services.md#cloudflare-add-a-public-hostname) |
-| Dockge | Web UI for your own compose stacks | [services.md](./docs/services.md#ad-hoc-app-platform) |
-| Caddy | Names for apps, routed by container label | [caddy-reference.md](./docs/caddy-reference.md) |
-| Backups (`backup`) | Daily local, weekly cloud, weekly integrity check | [backups.md](./docs/backups.md) |
-| Backup status | Read-only backup dashboard | [backups.md](./docs/backups.md) |
-| Tailscale | Private remote access, installed on every server | [networking.md](./docs/networking.md) |
-| Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | [networking.md](./docs/networking.md#direct-ethernet-link) |
-
-What each service needs (drive roles, vault entries) is in [docs/services.md](./docs/services.md#what-each-service-needs). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
+The services are listed, with what each one is and needs, in [docs/services.md](./docs/services.md#services). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
 
 ```
 A host

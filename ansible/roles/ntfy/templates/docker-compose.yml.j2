@@ -22,7 +22,7 @@ services:
       NTFY_CACHE_FILE: /var/lib/ntfy/cache.db
       NTFY_AUTH_FILE: /var/lib/ntfy/user.db
       NTFY_AUTH_DEFAULT_ACCESS: deny-all
-      NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ vault_ntfy_password_hash | replace("$", "$$") }}:user'
+      NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ vault_ntfy_password | password_hash('bcrypt', 'ntfyntfyntfyntfyntfynt', ident='2b') | replace("$", "$$") }}:user'
       NTFY_AUTH_ACCESS: "{{ ntfy_user }}:*:rw"
       NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:alerts'
 {% if ntfy_ios_push | bool %}
