@@ -236,19 +236,18 @@
 
     # ── Drives and network ─────────────────────────────────────────────────
 
-    # Only the USB automount rule and tmpfiles entry the storage role installs.
+    # Only the USB automount rule the storage role installs.
     # Does NOT touch fstab entries, mount points, or drive ownership — those
     # stay untouched so your data drives are never at risk here.
     - name: Remove the USB automount udev rule
       tags: [storage]
       block:
-        - name: Remove the udev rules and the tmpfiles entry
+        - name: Remove the udev rule
           ansible.builtin.file:
             path: "{{ item }}"
             state: absent
           loop:
             - /etc/udev/rules.d/98-usb-automount.rules
-            - /etc/tmpfiles.d/usb-automount.conf
 
         - name: Reload systemd daemon
           ansible.builtin.systemd:

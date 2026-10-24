@@ -17,7 +17,7 @@ A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 - Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.
 
-The backups run as the ansible user. Files only root can read (`/etc`, data owned by a container's user) are skipped, and the log says "unreadable source files". The run still counts as done. A stack whose containers write as root needs its data dumped or its owner changed.
+The backups run as the ansible user. Files only root can read (`/etc`, data owned by a container's user) are skipped, and restic reports them as `error:` lines. The snapshot is saved without them, the old snapshots are still pruned, and then the run fails so the alert fires. A stack whose containers write as root needs its data dumped or its owner changed.
 
 Each backup and check run starts with `restic unlock`, which removes only stale locks. Without it a restic killed by a reboot leaves a lock that makes every later prune fail with "repository is already locked", and old snapshots then pile up.
 

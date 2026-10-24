@@ -90,7 +90,7 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 - It is read-only. To change or delete files on it, set `usb_automount_writable: true`.
 - Programs on it cannot be run (mounted `nosuid,nodev,noexec`).
 - Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
-- After unplugging, its empty folder stays until the next reboot or up to a day. Unplugging a writable drive without unmounting can corrupt it.
+- After unplugging, its empty folder stays until the next reboot. Unplugging a writable drive without unmounting can corrupt it.
 - On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts plugged-in drives.
 - Re-deploy to apply: `just deploy storage,copyparty`.
 

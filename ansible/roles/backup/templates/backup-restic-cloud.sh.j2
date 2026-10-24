@@ -61,7 +61,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
   # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read:
-  # it sets any_partial (a log note). Any other non-zero exit sets cloud_backup_failed.
+  # it sets any_partial, which fails the run after pruning so the alert fires. Any other non-zero exit
+  # sets cloud_backup_failed.
   cloud_backup_failed=false
   any_partial=false
 
@@ -88,11 +89,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
   done
 
   if ! $cloud_backup_failed; then
-    if $any_partial; then
-      echo "Cloud backup completed with some unreadable source files — snapshots saved, pruning anyway."
-    else
-      echo "Cloud backup successful. Removing old snapshots..."
-    fi
+    echo "Cloud backup saved. Removing old snapshots..."
     restic "${RESTIC_RCLONE_OPT[@]}" forget {{ restic_cloud_retention }} --prune \
       || { echo "ERROR: restic forget --prune failed!"; exit 1; }
 
@@ -110,5 +107,10 @@ mkdir -p "$(dirname "$LOG_FILE")"
     exit 1
   fi
   
+  if $any_partial; then
+    echo "ERROR: restic could not read some source files (the \"error:\" lines above). The snapshots are saved without them: fix their permissions or exclude them (docs/backups.md#choosing-what-is-backed-up)."
+    exit 1
+  fi
+
   echo "=== Complete: $(date) ==="
 } 2>&1 | tee -a "$LOG_FILE"

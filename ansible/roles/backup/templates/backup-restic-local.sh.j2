@@ -59,14 +59,10 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
     --verbose
   backup_rc=$?
 
-  # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read
-  # (a socket, a file that changed mid-scan); it still prunes, so unreadable files cannot stop pruning.
+  # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read. The run
+  # still prunes, then fails below so the alert fires: a file that stops being backed up must not go unnoticed.
   if [ "$backup_rc" -eq 0 ] || [ "$backup_rc" -eq 3 ]; then
-    if [ "$backup_rc" -eq 3 ]; then
-      echo "Backup completed with some unreadable source files (exit 3) — snapshot saved, pruning anyway."
-    else
-      echo "Backup successful. Removing old snapshots..."
-    fi
+    echo "Backup saved (restic exit $backup_rc). Removing old snapshots..."
     restic forget {{ restic_local_retention }} --prune || { echo "ERROR: restic forget --prune failed!"; exit 1; }
 
     echo "Repository stats:"
@@ -78,5 +74,10 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
     exit 1
   fi
   
+  if [ "$backup_rc" -eq 3 ]; then
+    echo "ERROR: restic could not read some source files (the \"error:\" lines above). The snapshot is saved without them: fix their permissions or exclude them (docs/backups.md#choosing-what-is-backed-up)."
+    exit 1
+  fi
+
   echo "=== Complete: $(date) ==="
 } 2>&1 | tee -a "$LOG_FILE"

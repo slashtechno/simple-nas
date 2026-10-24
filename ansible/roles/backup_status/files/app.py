@@ -138,8 +138,8 @@ def last_run_completed(log_text):
 def parse_dated_job_log(glob_pattern, stale_after):
     """Status of the newest dated log matching the pattern.
 
-    Success means the log contains COMPLETE_MARKER. A partial success (restic
-    exit 3) still reaches it; a real failure exits before. Don't grep for
+    Success means the log contains COMPLETE_MARKER. A run that fails, including
+    one with unreadable source files (restic exit 3), exits before it. Don't grep for
     "error": restic's own success line says "no errors were found".
     """
     path = newest_matching(glob_pattern)
