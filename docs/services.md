@@ -2,7 +2,7 @@
 
 Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each service needs and the setup steps beyond the flag. Run `just deploy <tag>` from `ansible/` (tag = role name). Settings, defaults and vault entries are in [variables.md](./variables.md); file locations are in [ansible/README.md](../ansible/README.md). Backups are in [backups.md](./backups.md).
 
-Needs, per service:
+## What each service needs
 
 - **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)). A service that needs a role the host has not claimed fails the deploy with a message naming the role.
 - **Vault entries** go in `host_vars/<host>/vault.yml` (service secrets) or `group_vars/all/vault.yml` (shared secrets): [ansible/README.md](../ansible/README.md#vault-secrets).
@@ -145,7 +145,7 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 ## Ad-hoc app platform
 
-**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockges-storage-rule)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#examples)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 

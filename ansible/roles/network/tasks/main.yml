@@ -6,7 +6,7 @@
 
 # cloud-init (Raspberry Pi Imager, Ubuntu) sets up networking at first boot. From then on Ansible and
 # NetworkManager own it, so cloud-init is told to leave the network config alone. This is cloud-init's
-# documented switch; it changes nothing now, it only stops a later cloud-init run from rewriting it.
+# documented switch; it changes nothing at the time, it only stops a later cloud-init run from rewriting it.
 - name: Check for cloud-init
   ansible.builtin.stat:
     path: /etc/cloud/cloud.cfg.d

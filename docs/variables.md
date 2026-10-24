@@ -16,7 +16,7 @@ Examples to start from: `group_vars/all/vars.yml.example` (the settings with no 
 
 ### Which services run on a host
 
-Every service is off until a group or host switches it on: set `<name>_enabled: true` in host_vars/<host>/vars.yml (or group_vars/<group>/vars.yml for several hosts), and false again to stop deploying it. A service that is already deployed keeps running; remove it with teardown.yml --tags <name>. What each service needs (drive roles, vault entries) is in docs/services.md.
+Every service is off until a group or host switches it on: set `<name>_enabled: true` in host_vars/<host>/vars.yml, and false again to stop deploying it. A service that is already deployed keeps running; remove it with `ansible-playbook teardown.yml --limit <host> --tags <name>`. What each service needs (drive roles, vault entries) is in docs/services.md.
 
 - `immich_enabled`: default `false`. Immich photo library with machine learning.
 - `copyparty_enabled`: default `false`. Copyparty file server (web UI, WebDAV, optional SFTP).
@@ -92,7 +92,7 @@ One variable per service. To move a service to another drive, set its variable i
 
 ### Failure alerts (roles/backup/templates/alert.sh.j2)
 
-- `ntfy_alert_url`: default `""`. A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the NAS (roles/ntfy). The login token is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
+- `ntfy_alert_url`: default `""`. A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the host that runs ntfy (roles/ntfy). The login token is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
 - `ntfy_token_file`: default `"{{ services_dir }}/ntfy-token"`. File on the host holding vault_ntfy_token, read by alert.sh.
 
 ### Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress)
@@ -157,7 +157,7 @@ Builds from a private repo with vault_github_read_token. It reaches Copyparty as
 
 - `copyparty_th_ram_max`: default `"1"`. Cap in GiB on the thumbnailer's RAM. The upstream default is 60% of system RAM.
 - `copyparty_version_checker_enabled`: default `true`. vc-url points at the upstream advisory feed (disabled upstream by default)
-- `copyparty_sftp_enabled`: default `false`. Copyparty's SFTP listener, used by the pocketpi project's NAS sync through a scoped account in copyparty_service_accounts. WebDAV lacks the modtimes rclone needs; SFTP has them.
+- `copyparty_sftp_enabled`: default `false`. Copyparty's SFTP listener, used by the pocketpi project's sync through a scoped account in copyparty_service_accounts. WebDAV lacks the modtimes rclone needs; SFTP has them.
 - `copyparty_sftp_port`: default `3922`. Host port of the SFTP listener.
 - `copyparty_fast_enabled`: default `"{{ 'fast' in drive_mounts and 'primary' in drive_mounts and drive_mounts.fast != drive_mounts.primary }}"`. A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
 - `copyparty_fast_dir`: default `"{{ fast_drive }}/fast"`. Where the /fast volume lives.
@@ -191,7 +191,7 @@ Builds from a private repo with vault_github_read_token. It reaches Copyparty as
 ### ntfy
 
 - `ntfy_port`: default `8090`. Port the web UI and API are published on. It listens on every interface (LAN and tailnet); nothing is readable or writable without the login, because ntfy_* auth below defaults to deny-all.
-- `ntfy_base_url`: default `"http://{{ ansible_host | default(inventory_hostname) }}:{{ ntfy_port }}"`. The address clients use to reach the server (it appears in attachment links and is needed for iOS push). The default is the host's Ansible address, its tailnet name on the NAS.
+- `ntfy_base_url`: default `"http://{{ ansible_host | default(inventory_hostname) }}:{{ ntfy_port }}"`. The address clients use to reach the server (it appears in attachment links and is needed for iOS push). The default is the host's Ansible address, its tailnet name on a host that is on the tailnet.
 - `ntfy_user`: default `alerts`. The one account that may read and write every topic. The password's bcrypt hash and the access token are in the vault (vault.yml.example says how to make them).
 - `ntfy_ios_push`: default `false`. iOS only delivers push for a self-hosted server through ntfy.sh. true sends ntfy.sh the message ID and a hash of the topic URL, never the message. Android and the web UI do not need it.
 
@@ -223,10 +223,10 @@ Copy the example to `vault.yml` next to it, fill it in and encrypt it (`ansible-
 - `vault_copyparty_user`: Copyparty admin user name.
 - `vault_copyparty_pass`: Copyparty admin password.
 - `vault_copyparty_collab_users`: Friends who can access /collab via WebDAV:
-- `vault_pocketpi_nas_user`: Only used if copyparty_sftp_enabled is true (vars.yml) -- the scoped SFTP account for pocketpi's NAS sync, read/write on /files only:
+- `vault_pocketpi_nas_user`: Only used if copyparty_sftp_enabled is true (vars.yml) -- the scoped SFTP account for pocketpi's sync, read/write on /files only:
 - `vault_pocketpi_nas_pass`: Password of the SFTP account above.
 - `vault_copyparty_photos_pass`: One per entry in copyparty_service_accounts (vars.yml):
-- `vault_github_read_token`: Read-only token for cloning private GitHub repos onto the NAS (roles/common/tasks/clone_private_repo.yml). Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else. It expires after at most a year; set a reminder to renew it.
+- `vault_github_read_token`: Read-only token for cloning private GitHub repos onto the host (roles/common/tasks/clone_private_repo.yml). Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else. It expires after at most a year; set a reminder to renew it.
 - `vault_pics_password`: pics: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
 - `vault_pics_secret_key`: Signs pics' share links.
 - `vault_pics_alert_urls`: optional Apprise URLs, space-separated

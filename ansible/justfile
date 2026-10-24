@@ -36,8 +36,12 @@ docs:
 variables:
     python3 tools/variables.py
 
+# Fail if a `file.md#anchor` reference names a heading that does not exist
+links:
+    python3 tools/check_links.py
+
 # Everything CI runs. Run this before committing.
-check: lint syntax variables test
+check: lint syntax variables links test
 
 # List tags of one image to pick a version, e.g. `just tags copyparty/iv '^1\.'` (newest `count` shown)
 tags image filter='.' count='30':

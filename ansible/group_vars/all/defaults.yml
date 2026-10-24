@@ -12,8 +12,8 @@ services_dir: /opt/services
 scripts_dir: "{{ services_dir }}/scripts"
 # --- Which services run on a host ---
 # Every service is off until a group or host switches it on: set `<name>_enabled: true` in
-# host_vars/<host>/vars.yml (or group_vars/<group>/vars.yml for several hosts), and false again to stop deploying it.
-# A service that is already deployed keeps running; remove it with teardown.yml --tags <name>.
+# host_vars/<host>/vars.yml, and false again to stop deploying it.
+# A service that is already deployed keeps running; remove it with `ansible-playbook teardown.yml --limit <host> --tags <name>`.
 # What each service needs (drive roles, vault entries) is in docs/services.md.
 
 # Immich photo library with machine learning.
@@ -180,7 +180,7 @@ crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 
 # --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
 # A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it
-# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the NAS (roles/ntfy). The login token
+# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the host that runs ntfy (roles/ntfy). The login token
 # is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
 ntfy_alert_url: ""
 # File on the host holding vault_ntfy_token, read by alert.sh.

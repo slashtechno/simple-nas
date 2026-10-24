@@ -1,6 +1,6 @@
 # Drive migration plan (2 drives to 3 drives)
 
-Waiting on the drive purchases. The NAS moves to pi5 first with the current two drives ([multi-host.md](./multi-host.md#cutover-from-the-pi-4-to-pi5)); the steps below then run on pi5.
+Waiting on the drive purchases. The services move to pi5 first with the current two drives ([multi-host.md](./multi-host.md#cutover-from-the-pi-4-to-pi5)); the steps below then run on pi5.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../storage.md)):
 

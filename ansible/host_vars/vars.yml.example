@@ -27,7 +27,7 @@ direct_link_prefix: 30            # /30 = just these two addresses, nothing else
 # use: an unclaimed role fails the deploy with a message naming it. No `backup` drive means no local backup.
 # A drive with no `roles:` is only mounted.
 # Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
-# Examples for a NAS and for a general server, and the `nofail` option: docs/storage.md#examples
+# Examples for one, two and three drives, and the `nofail` option: docs/storage.md#examples
 drives: []
 
 # --- Offsite backup ---

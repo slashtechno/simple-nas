@@ -12,10 +12,13 @@ Work that is not done and needs the owner's time, hardware or a decision. Each i
 ## Waiting for a decision
 
 - Alerts for a cron job that never runs (host off, cron stopped). Failure alerts fire only when a job runs and fails; an external heartbeat would cover the rest.
-- An automatic `restic check` of the cloud repository. It is a manual command today because it reads the whole repository over the network.
 - Pinning the image versions that float in `ansible/group_vars/all/versions.yml` (Garage web UI, Caddy, restic, Python, cloudflared, Alpine, pics `main`). Pin one when it breaks or when a stable build matters.
-- A vault-password script (`bw get password <entry>` as `vault_password_file`) so `--ask-vault-pass` is not typed on every run. Needs the `bw` CLI unlocked on the laptop.
 - A pics `archive_dir` option. pics is a separate app; the path would sit under a drive with a role so the backup covers it.
+
+## Decided, not planned
+
+- The offsite `restic check` stays manual: a full check reads the whole repository over the network ([backups.md](./backups.md)).
+- `--ask-vault-pass` stays. A `vault_password_file` script (`bw get password <entry>`) is possible but needs the `bw` CLI unlocked on the laptop.
 
 ## Waiting for hardware
 

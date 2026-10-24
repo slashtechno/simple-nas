@@ -1,8 +1,8 @@
 # Secrets every host uses. Copy to vault.yml, fill in, then encrypt:
 #   ansible-vault encrypt group_vars/all/vault.yml
 # To edit later: ansible-vault edit group_vars/all/vault.yml
-# Secrets for one group go in group_vars/<group>/vault.yml (the NAS has one). Same password for all.
-# A key defined in both files takes the group's value, so move a key here, do not copy it.
+# Secrets for one host go in host_vars/<host>/vault.yml (host_vars/vault.yml.example). Same password for all.
+# A key defined in both files takes the host's value, so move a key here, do not copy it.
 
 # Cloudflare API token with Zone:DNS:Edit on every zone in cloudflared_zones and Account:Cloudflare Tunnel:Edit.
 vault_cloudflared_api_token: "your_cloudflare_api_token"

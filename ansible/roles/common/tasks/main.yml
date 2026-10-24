@@ -49,7 +49,7 @@
 # Docker data root (docker_data_root in vars.yml). daemon.json gets data-root from derived.yml.
 # Docker 29's containerd image store keeps layers under containerd's own root, which data-root does
 # not move, so containerd's config.toml is set too. Both services also wait for the drive to be
-# mounted: without that, either could start first and create its directory on the microSD under the
+# mounted: without that, either could start first and create its directory on the root drive under the
 # empty mount point. With docker_data_root empty these tasks remove what they added.
 - name: Set containerd's storage location
   ansible.builtin.lineinfile:

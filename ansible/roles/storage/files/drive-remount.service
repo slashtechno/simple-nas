@@ -2,7 +2,7 @@
 # device reappears — re-mounts any fstab entry that isn't currently mounted
 # (e.g. a backup drive that dropped offline and came back). No-op otherwise.
 [Unit]
-Description=Remount NAS data drives if they reappear after dropping offline
+Description=Remount data drives if they reappear after dropping offline
 
 [Service]
 Type=oneshot

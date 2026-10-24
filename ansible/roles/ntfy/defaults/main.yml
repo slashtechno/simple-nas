@@ -3,7 +3,7 @@
 # is readable or writable without the login, because ntfy_* auth below defaults to deny-all.
 ntfy_port: 8090
 # The address clients use to reach the server (it appears in attachment links and is needed for
-# iOS push). The default is the host's Ansible address, its tailnet name on the NAS.
+# iOS push). The default is the host's Ansible address, its tailnet name on a host that is on the tailnet.
 ntfy_base_url: "http://{{ ansible_host | default(inventory_hostname) }}:{{ ntfy_port }}"
 # The one account that may read and write every topic. The password's bcrypt hash and the access
 # token are in the vault (vault.yml.example says how to make them).

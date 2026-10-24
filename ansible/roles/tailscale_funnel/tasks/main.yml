@@ -1,5 +1,5 @@
 ---
-# Tailscale Funnel for Copyparty: only the NAS runs Copyparty, so this role is in the NAS play.
+# Tailscale Funnel for Copyparty: this role runs on a host with copyparty_enabled.
 
 # Funnel has no Ansible module, so read current state and only act on a difference.
 # `tailscale funnel status --json` prints the serve config: AllowFunnel maps "host:port" -> bool,
