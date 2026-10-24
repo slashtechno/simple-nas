@@ -24,6 +24,15 @@
     quiet: true
   when: "'backup' in drive_mounts"
 
+# Without `nofail`, a missing drive drops a headless host into emergency mode, unreachable over SSH.
+- name: Validate that every drive is mounted with nofail
+  ansible.builtin.assert:
+    that: drives | selectattr('uuid', 'defined') | rejectattr('options', 'search', 'nofail') | list | length == 0
+    fail_msg: >-
+      Every `drives` entry with a `uuid` needs `nofail` in its `options` (for example `defaults,nofail`),
+      or a missing drive stops the host booting.
+    quiet: true
+
 - name: Create mount points
   ansible.builtin.file:
     path: "{{ item.mount }}"
@@ -31,14 +40,20 @@
     mode: "0755"
   loop: "{{ drives }}"
 
+# Each drive is mounted lazily by systemd (x-systemd.automount): a tripwire filesystem sits on the mount point
+# from boot and mounts the drive on first access. With the drive missing, an access fails with "No such device"
+# after 10 seconds instead of writing to a plain folder on the root drive, and the next access after the drive
+# returns mounts it again. `nofail` keeps a missing drive from stopping the host booting. See docs/storage.md.
+# systemd reads fstab at boot and on daemon-reload; the tripwire is armed at the next boot.
 - name: Add drives to fstab
   ansible.posix.mount:
     path: "{{ item.mount }}"
     src: "UUID={{ item.uuid }}"
     fstype: "{{ item.fstype }}"
-    opts: "{{ item.options }}"
+    opts: "{{ item.options }},x-systemd.automount,x-systemd.device-timeout=10s"
     state: mounted
   loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
+  notify: Reload systemd daemon
 
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:
@@ -48,40 +63,18 @@
     state: directory
   loop: "{{ drives }}"
 
-- name: Install udev rule to trigger a remount when a drive reappears
-  ansible.builtin.copy:
-    src: 99-drive-remount.rules
-    dest: /etc/udev/rules.d/99-drive-remount.rules
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Reload udev rules
-  when: drives | selectattr('uuid', 'defined') | list | length > 0
-
-- name: Install remount systemd service (self-heals a drive that drops offline and reconnects)
-  ansible.builtin.copy:
-    src: drive-remount.service
-    dest: /etc/systemd/system/drive-remount.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify: Reload systemd daemon
-  when: drives | selectattr('uuid', 'defined') | list | length > 0
-
-# Without a drive that has a `uuid`, nothing needs the remount rule; remove it if an earlier config installed it.
-- name: Remove the remount udev rule when no drive is mounted by uuid
+# A `mount -a` run from a udev rule would mount a drive over its own tripwire, so the remount rule and
+# service of earlier deploys are removed.
+- name: Remove the remount udev rule and systemd service
   ansible.builtin.file:
-    path: /etc/udev/rules.d/99-drive-remount.rules
+    path: "{{ item }}"
     state: absent
-  notify: Reload udev rules
-  when: drives | selectattr('uuid', 'defined') | list | length == 0
-
-- name: Remove the remount systemd service when no drive is mounted by uuid
-  ansible.builtin.file:
-    path: /etc/systemd/system/drive-remount.service
-    state: absent
-  notify: Reload systemd daemon
-  when: drives | selectattr('uuid', 'defined') | list | length == 0
+  loop:
+    - /etc/udev/rules.d/99-drive-remount.rules
+    - /etc/systemd/system/drive-remount.service
+  notify:
+    - Reload udev rules
+    - Reload systemd daemon
 
 # USB drives plugged in are mounted at /run/media/system/<label>. The rule calls systemd-mount, not mount,
 # because udev runs in its own mount namespace. /run is wiped at boot, so tmpfiles.d recreates the directory.

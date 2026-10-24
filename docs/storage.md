@@ -59,7 +59,19 @@ drives:
   - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
 ```
 
-Keep `nofail` on every drive. Without it a missing drive drops a headless host into emergency mode and it stays unreachable. `nofail` alone lets Docker start anyway, and a container then writes into the empty mount point on the root drive. So the deploy also makes Docker wait for every drive that holds service data (role `fast` or `primary`) with `RequiresMountsFor=` (`roles/common`), and the backup scripts refuse to run when one is unmounted. The backup drive is left out: a missing backup drive must not stop the services. Recovery is in [the reboot check](#check-after-a-reboot-with-the-drive-unplugged).
+### How a drive is mounted
+
+The role adds `x-systemd.automount,x-systemd.device-timeout=10s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`, which the deploy requires on every drive.
+
+- **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits 10 seconds and then fails with `No such device`. A container cannot write into a plain folder on the root drive, because the mount point is never a plain folder. After the drive returns, the next access mounts it again, with no script or udev rule.
+- **`nofail`:** without it a missing drive drops a headless host into emergency mode, and it stays unreachable.
+- **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
+- **Armed at boot:** a deploy that adds the options takes effect at the next reboot, because the drive is already mounted.
+- **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
+- **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mounts within 10 seconds, for example a drive with a broken filesystem; the mount point is then a plain folder until you restart it.
+- **Backups:** the backup scripts check `mountpoint -q` before they write anything. The check opens the path, so it mounts the drive, or fails after 10 seconds and the script refuses to run.
+
+Containers are not restarted when a drive comes back: one that failed to start, or lost its mount, stays down. Restart the stacks with `just deploy '' --limit <host>` or `docker compose up -d`. Recovery is in [the reboot check](#check-after-a-reboot-with-the-drive-unplugged).
 
 ## Using the root drive for fast or primary
 
@@ -117,7 +129,7 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service
    ```
-4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`, and a `RequiresMountsFor=` drop-in for both services, so neither starts before the drive is mounted.
+4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`. With the drive missing, Docker and containerd fail to start instead of creating their directories on the root drive.
 5. `sudo systemctl start containerd.service docker.service`.
 6. `just deploy '' --limit <host>`, so compose pulls the images and recreates the containers.
 7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the root drive.
@@ -128,7 +140,13 @@ Stop the services by hand: Ansible restarts a service only when a task reports a
 
 ### Check after a reboot with the drive unplugged
 
-With a service-data drive unplugged, Docker does not start, and a drive that goes away while the host runs stops Docker. No container writes into the empty mount point on the root drive. Nothing restarts Docker by itself, so the services stay down until you plug the drive back in and run `sudo mount -a && sudo systemctl start docker`. With only the backup drive unplugged the services keep running, and the backup scripts refuse to run until it is back.
+With a drive unplugged and the host rebooted:
+
+1. `systemctl status mnt-t7.automount` says `active (waiting)`, and `time ls /mnt/t7` fails with `No such device` after about 10 seconds.
+2. Containers whose data is on that drive fail to start (`docker ps -a`). Nothing is written under `/mnt/t7` on the root drive: `ls -la /mnt/t7` stays empty.
+3. Plug the drive in. `ls /mnt/t7` mounts it. Then restart the stacks: `just deploy '' --limit <host>`.
+
+Unplug a drive while the host runs and the same follows once systemd has unmounted it. If a process still holds the mount, systemd cannot unmount it and every access returns an I/O error until `sudo umount -l /mnt/t7` or a reboot. The automount does not help there. With only the backup drive unplugged the services keep running, and the backup scripts refuse to run until it is back.
 
 ### Gitea runner registration
 

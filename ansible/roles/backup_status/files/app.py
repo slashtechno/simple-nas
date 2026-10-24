@@ -224,7 +224,7 @@ def build_status():
         drive["detail_human"] = f"of {human_bytes(usage.total)} · {percent_used}% used"
     else:
         drive["free_human"] = None
-        drive["detail_human"] = "check the USB connection, then: sudo mount -a"
+        drive["detail_human"] = "check the USB connection; the drive mounts itself when it is back"
 
     # A stale lock (e.g. from a run cut off by a drive dropout) blocks
     # forget/prune while backups still succeed.

@@ -1,9 +1,5 @@
 ---
 # Docker's own restart handler comes from geerlingguy.docker.
-- name: Reload systemd
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-
 - name: Restart containerd
   ansible.builtin.systemd_service:
     name: containerd

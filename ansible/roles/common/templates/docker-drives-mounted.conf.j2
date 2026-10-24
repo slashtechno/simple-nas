@@ -1,8 +1,0 @@
-# Ansible-managed (roles/common). Docker starts only with its drives mounted and stops if one goes away.
-# BindsTo= is what follows a drive that vanishes while Docker runs; Requires= does not.
-# A mount unit is named after its path: "/" becomes "-" and a literal "-" becomes \x2d (systemd-escape --path --suffix=mount).
-[Unit]
-RequiresMountsFor={{ ([docker_data_root] if docker_data_root | length > 0 else []) | union(data_drive_mounts) | join(' ') }}
-{% for mount in data_drive_mounts %}
-BindsTo={{ mount | trim('/') | replace('-', '\\x2d') | replace('/', '-') }}.mount
-{% endfor %}

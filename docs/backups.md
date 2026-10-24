@@ -256,12 +256,12 @@ This restore has not been rehearsed on a real host. Try it once into a scratch G
 
 ## If the backup drive disconnects
 
-`nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted by it, and its mount point then becomes a plain folder on the root drive. Two guards cover this:
+A drive mounted by automount ([docs/storage.md](./storage.md#how-a-drive-is-mounted)) mounts itself the next time something opens its path, and an access while it is missing fails instead of writing to a folder on the root drive. Two things cover the backups:
 
-1. The backup scripts and the `restic-check` job run `mountpoint -q` on the backup drive first, and the backup scripts also refuse to run when a data drive (role `fast` or `primary`) is unmounted, so they never save a snapshot of an empty folder. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t backup`.
-2. `roles/storage/files/99-drive-remount.rules` runs `mount -a` (through `drive-remount.service`) whenever a filesystem appears, so a reconnected drive remounts within seconds.
+1. The backup scripts and the `restic-check` job run `mountpoint -q` on the backup drive first, and the backup scripts also refuse to run when a data drive (role `fast` or `primary`) is unmounted, so they never save a snapshot of an empty folder. The check waits up to 10 seconds for a missing drive, then the script exits without writing anything. The cron line logs the failure to `journalctl -t backup`.
+2. When the drive is back, the next run mounts it by itself.
 
-Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl status drive-remount.service`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault (Raspberry Pi).
+Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault (Raspberry Pi).
 
 ## Disaster recovery (all drives fail)
 

@@ -71,8 +71,8 @@ docker_log_opts:
 # Where Docker and containerd keep images, layers and anonymous volumes. Empty keeps their default
 # (/var/lib/docker and /var/lib/containerd, on the root drive). Set it per host in
 # host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/t7/docker-root".
-# Docker is held back until that drive is mounted (systemd RequiresMountsFor), so it cannot
-# fill the root drive under an empty mount point. The procedure and tests: docs/storage.md.
+# With the drive missing, Docker fails to start (the mount point is an automount, docs/storage.md), so it
+# cannot fill the root drive. The procedure and tests: docs/storage.md.
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.
 docker_data_root: ""
 
@@ -224,10 +224,8 @@ drive_mounts: >-
   {%- endfor -%}{%- endfor -%}
   {{ _m }}
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
-# Docker waits for these mounts and the backup scripts refuse to run without them, so nothing writes
-# service data, or backs up an empty folder, under a mount point whose drive is missing.
-# A drive with only the backup role is not listed: its absence must not stop the services. A drive that holds
-# the backup role next to fast or primary is listed, because it holds service data too.
+# The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
+# A drive with only the backup role is not listed: the scripts check it on their own.
 data_drive_mounts: >-
   {%- set _m = [] -%}
   {%- for _d in drives if _d.uuid is defined -%}

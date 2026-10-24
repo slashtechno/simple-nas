@@ -5,7 +5,7 @@ set -o pipefail
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: the service dumps and logs
 # are written there, and they would fill the root drive instead.
 if ! mountpoint -q {{ backup_drive | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
+  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (check the USB connection; the drive mounts itself when it is back)." >&2
   exit 1
 fi
 
@@ -14,7 +14,7 @@ fi
 # Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
 # snapshot counts toward retention and pushes out good ones.
 if ! mountpoint -q {{ mount | quote }}; then
-  echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (USB connection, then: sudo mount -a)." >&2
+  echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (check the USB connection; the drive mounts itself when it is back)." >&2
   exit 1
 fi
 {% endfor %}
