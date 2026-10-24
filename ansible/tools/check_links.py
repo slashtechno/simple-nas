@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent.parent
-SKIP = {".git", ".ansible"}
+SKIP = {".git", ".ansible", "scratch"}
 SUFFIXES = {".md", ".yml", ".j2", ".py", ".example", ".html", ".sh"}
 
 
@@ -20,7 +20,7 @@ def slug(heading):
 
 
 def files():
-    return [p for p in REPO.rglob("*") if p.is_file() and p.suffix in SUFFIXES and not SKIP & set(p.parts) and ".ignored." not in p.name]
+    return [p for p in REPO.rglob("*") if p.is_file() and p.suffix in SUFFIXES and not SKIP & set(p.parts)]
 
 
 def main():

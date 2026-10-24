@@ -13,7 +13,8 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
 - Backups: [docs/backups.md](./docs/backups.md).
-- Docs state how things are, as plain reference: no narratives, test logs, scenario walk-throughs or history. Temporary notes, test checklists and scratch output go in a file named `*.ignored.*` (for example `notes.ignored.md`); git ignores it. Move anything lasting into the docs, written as reference. Research notes for work that is not built go in `docs/research/`, each with a status line at the top saying it is not kept current. Plans for finished work are deleted (git history keeps them) or kept in a `*.ignored.*` file.
+- Docs state how things are, as plain reference: no narratives, test logs, scenario walk-throughs or history. Temporary notes, test checklists and scratch output go in `scratch/` (git ignores it; wipe it freely). Move anything lasting into the docs, written as reference.
+- Three kinds of non-reference documents, each with a status line at the top: research notes for work not built (`docs/research/`, not kept current), and the one active plan for work waiting on something (`plans/`, deleted when done). A finished plan is deleted; git history keeps it (`git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`). Plans and research notes record decisions, not conventions: take rules from this file and the code, never copy a pattern from them.
 
 ## Common mistakes
 

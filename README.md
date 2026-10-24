@@ -75,4 +75,4 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-Research notes are in `docs/research/`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works now.
+The active plan is in `plans/` and research notes are in `docs/research/`. Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works now.

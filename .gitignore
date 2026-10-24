@@ -72,5 +72,5 @@ ansible/inventory/hosts.yml
 # Agent session artifacts
 .pi-subagents/
 
-# Scratch notes and test logs (AGENTS.md: scratch files)
-*.ignored.*
+# Scratch notes and test logs (AGENTS.md)
+scratch/
