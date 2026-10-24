@@ -12,6 +12,9 @@ pics_public_url: "{{ undef(hint='Set pics_public_url (e.g. https://photos.exampl
 # Container-internal port of the guest pages (never published): the tunnel points here. Only pics_port is
 # published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
 pics_public_port: 8001
-pics_artist: ""           # written into the EXIF of public downloads
-pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
-pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
+# Written into the EXIF of public downloads.
+pics_artist: ""
+# For example "example.com"; watermarked and linked from the home page.
+pics_website: ""
+# For example "@you"; watermarked and linked from the home page.
+pics_instagram: ""

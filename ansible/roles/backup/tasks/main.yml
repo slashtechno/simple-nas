@@ -166,7 +166,7 @@
           /bin/bash {{ (scripts_dir ~ '/backup-restic-local.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
-          "backup-restic-local failed or {{ backup_drive }} not mounted"
+          "backup-restic-local failed (see backup-cron.log; is {{ backup_drive }} mounted and not full?)"
 
     - name: Schedule weekly restic integrity check (Wednesday 3 AM)
       ansible.builtin.cron:
@@ -179,7 +179,7 @@
           /bin/bash {{ (scripts_dir ~ '/restic-check.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
-          "restic-check failed or {{ backup_drive }} not mounted"
+          "restic-check failed (see backup-cron.log; is {{ backup_drive }} mounted?)"
 
 - name: Remove the local backup jobs and scripts when the local backup is off
   when: not backup_local_enabled | bool

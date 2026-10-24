@@ -7,7 +7,8 @@ garage_rpc_port: 3901
 garage_web_port: 3902
 # Port of the admin API.
 garage_admin_port: 3903
-garage_replication_factor: 1   # 1 = single node, no replication
+# 1 = single node, no replication.
+garage_replication_factor: 1
 # Origins the CORS proxy allows. A list; use "*" for any, or full origins for requests with credentials.
 garage_cors_allowed_origins:
   - "*"           # wildcard: static header, works for non-credentialed requests

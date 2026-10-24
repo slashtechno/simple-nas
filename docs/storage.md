@@ -97,7 +97,7 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 ## Adding, replacing or retiring a drive
 
 To add or replace a drive:
-1. Format it and add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, unmount the old drive first (`sudo umount <mount>`) so the new one can take its place.
+1. Format it and add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
 2. `just deploy storage`.
 3. Copy the data over, for example `rsync -aHAX`.
 

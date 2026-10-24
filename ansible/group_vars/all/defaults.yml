@@ -233,12 +233,15 @@ data_drive_mounts: >-
   {%- set _ = _m.append(_d.mount) -%}
   {%- endif -%}{%- endfor -%}
   {{ _m }}
+# Mount point of the drive with the fast role (read-only; derived from `drives`).
 fast_drive: >-
   {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its
   `drives` has roles: [fast]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
+# Mount point of the drive with the primary role (derived from `drives`).
 primary_drive: >-
   {{ drive_mounts.primary | mandatory('Host ' ~ inventory_hostname ~ ' uses the primary drive role, but no entry in its
   `drives` has roles: [primary]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
+# Mount point of the drive with the backup role (derived from `drives`).
 backup_drive: >-
   {{ drive_mounts.backup | mandatory('Host ' ~ inventory_hostname ~ ' uses the backup drive role, but no entry in its
   `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}

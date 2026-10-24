@@ -1,6 +1,5 @@
 ---
-# Host ports Caddy listens on. Skip publishing them (and let cloudflared reach caddy:80 over the
-# Docker network) on a host that is only reached through the tunnel.
+# Host port Caddy listens on for HTTP.
 caddy_http_port: 80
 # Host port Caddy listens on for HTTPS.
 caddy_https_port: 443

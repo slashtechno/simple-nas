@@ -4,7 +4,7 @@ Every service is off until a host sets `<name>_enabled: true` in `ansible/host_v
 
 ## Every host
 
-The `common` role runs on every host. It installs base packages (curl, git, vim, jq, python3), sets the timezone, adds `ssh_authorized_keys`, adds the passwordless sudoers file, sets where Docker stores its data (`docker_data_root`), the Ghostty terminfo entry (so `TERM=xterm-ghostty` works over SSH) and zellij (a terminal multiplexer; the version and checksums are in `group_vars/all/versions.yml`).
+The `common` role runs on every host. It installs base packages (curl, git, vim, jq, python3), sets the timezone, masks sleep and hibernate so a host never suspends, adds `ssh_authorized_keys`, adds the passwordless sudoers file, sets where Docker stores its data (`docker_data_root`), the Ghostty terminfo entry (so `TERM=xterm-ghostty` works over SSH) and zellij (a terminal multiplexer; the version and checksums are in `group_vars/all/versions.yml`).
 
 ## What each service needs
 

@@ -29,7 +29,7 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 ## 1. Backup drive swap (low risk, first)
 
 - [ ] Format the ST4000NM0033 as ext4 on the host and note its UUID.
-- [ ] Unmount the old backup drive (`sudo umount /mnt/backup`) and plug in the new one.
+- [ ] Stop the old backup drive's units (`sudo systemctl stop mnt-backup.automount mnt-backup.mount`, see docs/storage.md "Detach a drive") and plug in the new one.
 - [ ] Set the `uuid:` of the `backup` entry in `drives` to the new drive (mount stays `/mnt/backup`).
 - [ ] `just deploy storage,backup --limit <host>`. The storage role updates the fstab line for `/mnt/backup` and mounts the new drive; the backup role runs `restic init` on it.
 - [ ] After the 02:00 `backup-local` cron job (or `/opt/services/scripts/backup-restic-local.sh` by hand), check `restic snapshots` and `restic check` on the new repo.

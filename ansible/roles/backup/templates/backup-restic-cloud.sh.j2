@@ -21,7 +21,7 @@ if ! mountpoint -q {{ (mount ~ '/.') | quote }}; then
 fi
 {% endfor %}
 
-export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
 # restic's cache avoids re-reading packs over the network. The environment variable overrides it for a manual run.
 export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"

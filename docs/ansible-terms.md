@@ -85,7 +85,7 @@ Files:
 System:
 - `apt`: install packages
 - `community.general.timezone`: set the timezone
-- `community.general.nmcli`: NetworkManager settings (the direct Ethernet link)
+- `community.general.nmcli`: NetworkManager settings (the direct Ethernet link where NetworkManager runs; Ubuntu Server uses a netplan file instead)
 - `ansible.posix.mount`: manage an `fstab` entry and mount it
 - `cron`: manage one crontab entry, identified by its `name:`. Re-running updates it instead of duplicating it, and `teardown.yml` removes it by name.
 - `systemd`, `systemd_service`: control or query a unit

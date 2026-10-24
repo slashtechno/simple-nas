@@ -275,6 +275,8 @@ This restore has not been rehearsed on a real host. Try it once into a scratch G
 
 ---
 
+The local backup refuses to start when the backup drive is 95% full or more: `restic forget --prune` needs free room to rewrite packs, so a full drive cannot clean itself up. The failure reaches the alert, and the log says how full the drive is.
+
 ## If the backup drive disconnects
 
 The drives mount on access ([docs/storage.md](./storage.md#how-a-drive-is-mounted)); what happens with one missing is under [With a drive missing](./storage.md#with-a-drive-missing). The backup scripts and the `restic-check` job run `mountpoint -q <mount>/.` on the backup drive first, and the backup scripts also on every data drive (role `fast` or `primary`), so they never save a snapshot of an empty folder. A missing drive makes the script exit without writing anything, and the cron line logs the failure to `journalctl -t backup`. The next run mounts a returned drive.

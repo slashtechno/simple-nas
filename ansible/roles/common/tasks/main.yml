@@ -43,7 +43,6 @@
   ansible.builtin.systemd:
     name: "{{ item }}"
     masked: true
-    daemon_reload: true
   loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
 
 - name: Set timezone

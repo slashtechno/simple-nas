@@ -1,5 +1,9 @@
 ---
-crafty_panel_port: 28443   # host port only; the container always listens on 8443
-crafty_mc_ports: "25565-25575"   # Java servers; a range is one docker-proxy per port, so keep it small
-crafty_bedrock_enabled: false    # also publish 19132/udp for Bedrock servers
-crafty_memory_limit: 3g          # whole container, all servers combined; leave room for Immich on a 4 GB Pi
+# Host port of the panel; the container always listens on 8443.
+crafty_panel_port: 28443
+# Java server ports; a range is one docker-proxy per port, so keep it small.
+crafty_mc_ports: "25565-25575"
+# Also publish 19132/udp for Bedrock servers.
+crafty_bedrock_enabled: false
+# Memory limit for the whole container, all servers combined; leave room for Immich on a 4 GB Pi.
+crafty_memory_limit: 3g
