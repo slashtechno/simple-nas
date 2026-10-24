@@ -134,3 +134,23 @@ Every shared setting and its default is in `ansible/group_vars/all/defaults.yml`
 Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `defaults.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
 
 Edit a vault with `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.
+
+## 7. Jinja: the less common expressions
+
+Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a filter, like a shell pipe. Most of the repo uses only `{{ name }}`, `| bool`, `| length` and `| default(x)`. These are the others, with where to find an example:
+
+| Expression | Means | Used in |
+|---|---|---|
+| `{{ undef(hint='...') }}` | "No default: the owner must set this." Reading the variable before it is set stops the run and prints the hint. The setting is listed in `vars.yml.example`. | `pics_repo`, `gitea_*` in `group_vars/all/defaults.yml` |
+| `x \| mandatory('message')` | Stops the run with that message if `x` is missing. Used so an unclaimed drive role names what to add. | `fast_drive`, `primary_drive`, `backup_drive` in `group_vars/all/defaults.yml` |
+| `a \| combine(b)` | Merges two dictionaries; `b` wins. | `docker_daemon_options` in `group_vars/all/defaults.yml` |
+| `list \| map(attribute='x')` | The `x` of every item in a list of dictionaries. | `roles/storage/tasks/main.yml` |
+| `list \| selectattr('x')` | Keeps the items whose `x` is true. | `roles/storage/tasks/main.yml` |
+| `a \| difference(b)`, `a \| intersect(b)` | Items of `a` not in `b`; items in both. | `roles/cloudflared/tasks/main.yml` |
+| `dict \| dict2items` | A dictionary as a list of `key` / `value` pairs, so it can be looped over. | `roles/cloudflared/tasks/main.yml` |
+| `list \| flatten` | A list of lists as one list. | `roles/cloudflared/tasks/main.yml` |
+| `names \| map('extract', hostvars)` | Looks each host name up in `hostvars`, the variables of every host in the inventory. | `roles/cloudflared/tasks/main.yml` |
+| `a if cond else b` | Picks `a` or `b`. | many templates |
+| `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. | `roles/*/templates/` |
+
+To try an expression without deploying: `ansible localhost -m debug -a "msg={{ ['a','b'] | difference(['a']) }}"`.

@@ -3,7 +3,7 @@
 # edit the line, `just preview <service>`, `just deploy <service>`.
 # `just tags <image>` lists the tags that exist.
 # A floating tag (latest, release, nightly, main) only moves when you deploy with
-# `-e docker_pull_policy=always`. Prefer a version; those below are what ran on the Pi on 2026-10-22.
+# `-e docker_pull_policy=always`. Prefer a version.
 
 # Immich: release notes https://github.com/immich-app/immich/releases
 immich_version: v3.1.0

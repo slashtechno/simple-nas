@@ -89,7 +89,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 | Command | Does |
 |---|---|
-| `just check` | `lint`, `syntax`, `variables` and `test`; run before committing (CI runs it too) |
+| `just check` | `lint`, `syntax`, `vars`, `links` and `test`; run before committing (CI runs it too) |
 | `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
 | `just syntax` | Both playbooks parse |
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
@@ -114,7 +114,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | Setting | File |
 |---|---|
 | Used by one role | that role's `defaults/main.yml` |
-| Shared by several roles, with a default | `group_vars/all/defaults.yml` (to change the default for everyone) |
+| Shared by several roles, with a default | `group_vars/all/defaults.yml` (change it for your hosts in `vars.yml`, not here) |
 | Your value for every host (timezone, SSH keys, Cloudflare zones) | `group_vars/all/vars.yml`, mirrored in `vars.yml.example` |
 | One host (its flags, drives, direct link, Docker data root, tunnel hostnames) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` ([vault](#vault-secrets)) |
@@ -160,7 +160,7 @@ Drive mounts, the restic password and Tailscale state are never touched.
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
 2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`.
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
-4. `defaults/main.yml`: settings only this role reads. Shared values (the data dir, the `myservice_enabled` flag, the ports used in `cloudflared_ingress`) go in `group_vars/all/defaults.yml` with a comment; values with no sensible default go in `vars.yml.example`. Run `just docs`.
+4. `defaults/main.yml`: settings only this role reads. Shared values (the data dir, the `myservice_enabled` flag, the ports used in `cloudflared_ingress`) go in `group_vars/all/defaults.yml` with a comment; values with no sensible default go in `vars.yml.example`.
 5. `site.yml`: add an `import_role` task with a tag and `when: myservice_enabled | bool`.
 6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
 7. A public hostname needs a `cloudflared_ingress` rule.

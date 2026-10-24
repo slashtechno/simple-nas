@@ -51,7 +51,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 | Gitea database and repositories | Dump, plus the raw data (SSH host keys excluded) | Dump only |
 | Restic password | No | No |
 
-- The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden (see Disaster recovery).
+- The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden.
 - Both repositories always include `service_dumps_dir` as well.
 - Always excluded: `restic_cache_dir`, `**/.cache` folders, `lost+found` on the primary drive, Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, and Crafty's own `backups/` archives. The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.

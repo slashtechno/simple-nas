@@ -41,6 +41,9 @@ def main():
             if targets and not any(anchor in h for h in targets):
                 problems.append(f"{path.relative_to(REPO)}: {name}#{anchor} is not a heading")
         if path.suffix == ".md":
+            for match in re.finditer(r"\]\(([^)#\s:]+\.md)[)#]", text):
+                if not (path.parent / match.group(1)).exists():
+                    problems.append(f"{path.relative_to(REPO)}: {match.group(1)} does not exist")
             for match in re.finditer(r"\]\(#([\w-]+)\)", text):
                 if match.group(1) not in headings[path]:
                     problems.append(f"{path.relative_to(REPO)}: #{match.group(1)} is not a heading")

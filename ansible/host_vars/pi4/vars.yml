@@ -45,7 +45,8 @@ restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"
 # --- Cloudflare Tunnel ---
 # The existing tunnel's name; without this the tunnel is named <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
 cloudflared_tunnel_name: pi-nas-tunnel
-# cloudflared_api_token, cloudflared_account_id and cloudflared_zones are in group_vars/all/vars.yml: every host that runs a tunnel uses them.
+# vault_cloudflared_api_token and vault_cloudflared_account_id are in group_vars/all/vault.yml,
+# cloudflared_zones in group_vars/all/vars.yml: every host that runs a tunnel uses them.
 
 # One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
 # address). No `path:`. The hostname must contain one domain from cloudflared_zones (group_vars/all/vars.yml). Where a service

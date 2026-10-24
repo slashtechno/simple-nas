@@ -18,7 +18,7 @@ Work that is not done and needs the owner's time or hardware, or that lives outs
 
 - The offsite `restic check` stays manual: a full check reads the whole repository over the network ([backups.md](./backups.md)).
 - `--ask-vault-pass` stays. A `vault_password_file` script (`bw get password <entry>`) is possible but needs the `bw` CLI unlocked on the laptop.
-- Image versions that float in `ansible/group_vars/all/versions.yml` (Garage web UI, Caddy, restic, Python, cloudflared, Alpine, pics `main`) are not pinned. Pin one when it breaks or when a stable build matters.
+- Two image versions float in `ansible/group_vars/all/versions.yml`: `pics_version: main` and `backup_status_python_image` (a minor-version tag). Pin one when it breaks or when a stable build matters.
 
 ## Waiting for hardware
 

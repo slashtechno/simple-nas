@@ -13,13 +13,12 @@ direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsma
 direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
 
 # Services: turn one on for this host with `<name>_enabled: true` (the list and what each needs is in
-# group_vars/all/vars.yml.example). To switch a service on for several hosts, set the flag in a group's
-# group_vars file instead.
+# group_vars/all/vars.yml.example). Flags are set per host, here.
 
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
 # `roles:` (a list: one drive can fill several roles, or none). A host with no drives leaves the
-# list out; its default is [] (group_vars/all/vars.yml).
+# list out; its default is [] (group_vars/all/defaults.yml).
 #   fast    SSD; random-IO data (Docker, Immich database, configs) and caches
 #   primary bulk data (photos, files)
 #   backup  restic local repo, service dumps, logs
