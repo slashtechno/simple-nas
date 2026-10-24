@@ -8,7 +8,7 @@ copyparty_enabled: true
 copyparty_collab_enabled: true   # /collab for the friends in vault_copyparty_collab_users
 gitea_enabled: true
 homebridge_enabled: true
-cloudflared_enabled: false   # pi5 runs the tunnel for these hostnames; a hostname can be in only one host's cloudflared_ingress
+cloudflared_enabled: false   # pinas runs the tunnel for these hostnames; a hostname can be in only one host's cloudflared_ingress
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
@@ -40,12 +40,10 @@ drives:
     roles: [backup]
 
 # Weekly offsite copy to Google Drive (docs/backups.md).
-backup_cloud_enabled: false   # pi5 owns the offsite repository; two hosts must never back up into one
+backup_cloud_enabled: false   # pinas owns the offsite repository; two hosts must never back up into one
 restic_cloud_repository: "rclone:gdrive:/pi-nas-backups"
 
 # --- Cloudflare Tunnel ---
-# The existing tunnel's name; without this the tunnel is named <hostname>-tunnel (roles/cloudflared/defaults/main.yml).
-cloudflared_tunnel_name: pi-nas-tunnel
 # vault_cloudflared_api_token and vault_cloudflared_account_id are in group_vars/all/vault.yml,
 # cloudflared_zones in group_vars/all/vars.yml: every host that runs a tunnel uses them.
 

@@ -22,5 +22,5 @@ Work that is not done and needs the owner's time or hardware, or that lives outs
 ## Waiting for hardware
 
 - Drive migration: a 4 TB backup drive, a WD P10 as `primary`, the T7 stays `fast`. Steps: [plans/drive-migration.md](../plans/drive-migration.md).
-- Before deploying the Pi 4 again: replace the services and drive UUIDs in `host_vars/pi4/vars.yml`, which list the NAS, keep `backup_cloud_enabled` false there (one host owns the offsite repository), and give a tunnel only hostnames pi5 does not serve ([Cloudflare](services.md#cloudflare-add-a-public-hostname)).
+- Before deploying the Pi 4 again: replace the services and drive UUIDs in `host_vars/pi4/vars.yml`, which list the NAS, keep `backup_cloud_enabled` false there (one host owns the offsite repository), and give a tunnel only hostnames pinas does not serve ([Cloudflare](services.md#cloudflare-add-a-public-hostname)).
 - Encryption at rest: [research/encryption.md](./research/encryption.md).

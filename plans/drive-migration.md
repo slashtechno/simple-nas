@@ -2,7 +2,7 @@
 
 > **Status: active plan. Delete this file when the migration is done; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Waiting on the drive purchases. The steps run on pi5.
+Waiting on the drive purchases. The steps run on pinas.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../docs/storage.md)):
 
@@ -24,7 +24,7 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 ```
 
 - [ ] ST4000NM0033 (3.5") needs a powered USB-SATA dock (12V).
-- [ ] P10 (2.5") is bus-powered. On pi5 the T7 and P10 share a 1.6A USB budget (the 500GB HDD has its own brick); check their combined draw or use a powered hub.
+- [ ] P10 (2.5") is bus-powered. On pinas the T7 and P10 share a 1.6A USB budget (the 500GB HDD has its own brick); check their combined draw or use a powered hub.
 
 ## 1. Backup drive swap (low risk, first)
 

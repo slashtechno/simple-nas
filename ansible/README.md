@@ -70,7 +70,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 ## Add a host
 
 1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian, Ubuntu) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link needs NetworkManager ([docs/networking.md](../docs/networking.md)).
-2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file`. The key you give it (for example `pi5`) is its nickname and names its `host_vars` directory.
+2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. Create `host_vars/<host>/vault.yml` from `host_vars/vault.yml.example`, keep the keys the enabled services use, and encrypt it. Shared secrets (Cloudflare, restic) go in `group_vars/all/vault.yml`.
 5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)).
@@ -96,7 +96,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
 | `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
-| `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pi5 -K` |
+| `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |

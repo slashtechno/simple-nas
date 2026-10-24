@@ -44,7 +44,7 @@ tags image filter='.' count='30':
     docker run --rm gcr.io/go-containerregistry/crane:v0.22.1 ls {{ image }} | grep -E -- '{{ filter }}' | sort -V | tail -n {{ count }}
 
 # Deploy: `just deploy` for everything, `just deploy crafty` for one service.
-# Extra ansible-playbook flags go after the tags: `just deploy '' --limit pi5 -K` (all roles, one host, ask for the sudo password).
+# Extra ansible-playbook flags go after the tags: `just deploy '' --limit pinas -K` (all roles, one host, ask for the sudo password).
 deploy tags='' *flags:
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
