@@ -1,7 +1,7 @@
 ---
 # THESE ARE THE REPO OWNER'S OWN SETTINGS (domains, SSH key). If you copied this repo, replace every
 # value with yours, starting from vars.yml.example; see "Using this repo for your own hosts" in ansible/README.md.
-# Only what differs from defaults.yml is set here; docs/variables.md lists every setting.
+# Only what differs from defaults.yml is set here; defaults.yml lists every shared setting.
 
 timezone: America/Chicago
 ssh_authorized_keys:

@@ -88,7 +88,7 @@ The step-by-step plan for the next drive upgrade is in [plans/drive-migration.md
 
 ## Move one service's data
 
-Each service's data directory is one variable (the list is in [variables.md](./variables.md), under Data directories). To move a service to another drive:
+Each service's data directory is one variable (the list is in `ansible/group_vars/all/defaults.yml`, under "Data directories"). To move a service to another drive:
 
 1. Set its variable in `host_vars/<host>/vars.yml` to a path under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.
@@ -106,7 +106,7 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 ### Put it on a drive
 
 1. Add the drive to `drives` in the host's `host_vars` and deploy it (`just deploy storage`).
-2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (see [variables.md](./variables.md)).
+2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
 3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change):
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service

@@ -10,7 +10,7 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. The image is pinned in `versions.yml` (`caddy_image`); the README's `ci-alpine` tag is an unstable CI build, so use a version tag.
 
-Settings (`caddy_http_port`, `caddy_https_port`, `caddy_data_dir`) and their defaults are in [variables.md](./variables.md). Losing `caddy_data_dir` means certificates are issued again.
+Settings (`caddy_http_port`, `caddy_https_port`, `caddy_data_dir`) and their defaults are in `ansible/roles/caddy/defaults/main.yml`. Losing `caddy_data_dir` means certificates are issued again.
 
 The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 

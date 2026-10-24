@@ -1,6 +1,6 @@
 # Backups
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in [variables.md](./variables.md).
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in `ansible/group_vars/all/defaults.yml` (the `restic_*` ones) or `ansible/roles/backup/defaults/main.yml`.
 
 ## Switching backups on
 
@@ -40,7 +40,7 @@ Paths below use `/mnt/backup` for the backup drive and `/mnt/t7` for the fast an
 
 ## What is backed up where
 
-What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in [variables.md](./variables.md). With the defaults on a NAS:
+What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/group_vars/all/defaults.yml`. With the defaults on a NAS:
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
@@ -77,7 +77,7 @@ restic_local_rules:
 ```
 
 - Quote the `- ` lines in YAML, as above.
-- Setting a list replaces its default. Start from the default paths in [variables.md](./variables.md) and add to them, or the default drives drop out.
+- Setting a list replaces its default. Start from the default paths in `ansible/group_vars/all/defaults.yml` and add to them, or the default drives drop out.
 - A `- !` line cannot bring back a file inside a folder that a `- ` line left out as a whole. To keep one file out of an excluded folder, exclude the folder's other contents by pattern instead.
 - `- !` needs restic 0.13.0 or newer (Debian bookworm ships 0.14).
 - After editing, run `just deploy backup`.

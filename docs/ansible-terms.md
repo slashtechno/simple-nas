@@ -127,7 +127,7 @@ Config comes from these sources, lowest precedence first:
 3. `group_vars/all/vars.yml`: your values that apply to every host (timezone, SSH keys, Cloudflare zones). `versions.yml` holds every image and tool version, `derived.yml` values computed from the others (`fast_drive`, `primary_drive`, `backup_drive`, `docker_daemon_options`), `vault.yml` the secrets hosts share (Cloudflare token and account, restic password, rclone token, ntfy token).
 4. `host_vars/<host>/vars.yml`: one host's settings, such as its flags, `drives` and the direct link. Beats everything above. `host_vars/<host>/vault.yml` holds that host's service secrets.
 
-Every setting, its default and every vault name is listed in [variables.md](./variables.md), which is generated from the comments in these files.
+Every shared setting and its default is in `ansible/group_vars/all/defaults.yml`; a setting only one role uses is in that role's `defaults/main.yml`. Vault names are in the two `vault.yml.example` files.
 
 `vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
 

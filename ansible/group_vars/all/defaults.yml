@@ -2,7 +2,7 @@
 # Defaults for every host. Tracked, and the same for everyone who copies this repo.
 # Change a value for your hosts in vars.yml next to this file, or per host in host_vars/<host>/vars.yml; never edit it here.
 # A value of `{{ undef(hint=...) }}` has no sensible default: set it in vars.yml, or the deploy stops and prints the hint.
-# Secrets go in a vault.yml next to this file, never here. docs/variables.md lists every setting and vault entry.
+# Secrets go in a vault.yml next to this file, never here. Vault names are in vault.yml.example.
 
 # Timezone for the host and its containers. List names with `timedatectl list-timezones`.
 timezone: UTC

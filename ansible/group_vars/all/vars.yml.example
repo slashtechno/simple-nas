@@ -1,6 +1,6 @@
 ---
 # Your values for the settings that have no default or that nearly every owner changes. Copy to vars.yml.
-# Everything else, with its default, is in defaults.yml and docs/variables.md; override a setting by writing it here.
+# Everything else, with its default, is in defaults.yml (or a role's defaults/main.yml); override a setting by writing it here.
 
 timezone: America/New_York
 # One public key per device that may log in as the Ansible user.
