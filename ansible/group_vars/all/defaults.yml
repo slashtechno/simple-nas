@@ -103,6 +103,7 @@ restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 # rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
 # fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
+# Leave it alone unless you see that error.
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 
 # --- Data directories (teardown.yml also reads them) ---

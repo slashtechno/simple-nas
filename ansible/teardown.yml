@@ -210,16 +210,8 @@
           ansible.builtin.command: udevadm control --reload-rules
           changed_when: true
 
-    # Same guard as the network role's revert: only where the link was set up (its dnsmasq file exists).
-    - name: Check whether the direct link is set up
-      tags: [network]
-      ansible.builtin.stat:
-        path: /etc/dnsmasq.d/direct-link.conf
-      register: teardown_direct_link_conf
-
     - name: Remove direct Ethernet link config
       tags: [network]
-      when: teardown_direct_link_conf.stat.exists
       ansible.builtin.import_tasks: roles/network/tasks/remove_direct_link.yml
 
     # ── Shared infrastructure, last: the scripts directory above must be gone first ──

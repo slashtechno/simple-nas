@@ -13,6 +13,7 @@ Each host chooses its backups with two flags in `host_vars/<host>/vars.yml`:
 
 A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 
+- It cannot report a job that never runs (host off, cron stopped): alerts fire only when a job runs and fails. Covering that needs an external heartbeat service, which this repo does not run.
 - It has no automatic integrity check. The weekly `restic check` job exists only for the local repository, and the cloud check is manual ([Checking the cloud repo](#checking-the-cloud-repo-manual)).
 - Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.

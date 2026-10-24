@@ -212,26 +212,6 @@
         - cloudflared_tunnel_id | length > 0
         - (item.json.result | length == 0) or (item.json.result[0].content != cloudflared_tunnel_id + '.cfargotunnel.com')
 
-    # Records for hostnames you removed from cloudflared_ingress are only reported. One might be in
-    # use by something this repo does not know about, so deleting it is left to you.
-    - name: Find the records that point at this tunnel
-      ansible.builtin.uri:
-        url: "{{ cloudflared_api_url }}/zones/{{ item }}/dns_records?type=CNAME&content={{ cloudflared_tunnel_id }}.cfargotunnel.com&per_page=100"
-      check_mode: false
-      changed_when: false
-      loop: "{{ cloudflared_zones.values() | unique | list }}"
-      register: cloudflared_dns_pointing_here
-      when: cloudflared_tunnel_id | length > 0
-
-    - name: Report records for hostnames that are not in cloudflared_ingress
-      ansible.builtin.debug:
-        msg: "{{ item }} still points at this tunnel but is not in cloudflared_ingress. Delete the record in Cloudflare if it is unused."
-      # Take every record's name, then drop the hostnames we still list.
-      loop: >-
-        {{ cloudflared_dns_pointing_here.results | default([]) | selectattr('json', 'defined')
-           | map(attribute='json.result') | flatten | map(attribute='name')
-           | difference(cloudflared_ingress | map(attribute='hostname')) }}
-
 # --- On the server ---
 - name: Create the cloudflared directory
   ansible.builtin.file:

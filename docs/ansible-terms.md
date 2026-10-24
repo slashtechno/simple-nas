@@ -144,30 +144,30 @@ Edit a vault with `ansible-vault edit host_vars/<host>/vault.yml` (or `group_var
 
 Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a filter, like a shell pipe. Most of the repo uses only `{{ name }}`, `| bool`, `| length` and `| default(x)`. These are the others, with where to find an example:
 
-| Expression | Means | Used in |
-|---|---|---|
-| `{{ undef(hint='...') }}` | "No default: the owner must set this." Reading the variable before it is set stops the run and prints the hint. The setting is listed in `vars.yml.example`. | `pics_repo` in `roles/pics/defaults/main.yml`, `gitea_domain` in `roles/gitea/defaults/main.yml` |
-| `x \| mandatory('message')` | Stops the run with that message if `x` is missing. Used so an unclaimed drive role names what to add. | `fast_drive`, `primary_drive`, `backup_drive` in `group_vars/all/defaults.yml` |
-| `a \| combine(b)` | Merges two dictionaries; `b` wins. | `docker_daemon_options` in `group_vars/all/defaults.yml` |
-| `list \| map(attribute='x')` | The `x` of every item in a list of dictionaries. | `roles/storage/tasks/main.yml` |
-| `list \| selectattr('x')` | Keeps the items whose `x` is true. | `roles/storage/tasks/main.yml` |
-| `a \| difference(b)`, `a \| intersect(b)` | Items of `a` not in `b`; items in both. | `roles/cloudflared/tasks/main.yml` |
-| `dict \| dict2items` | A dictionary as a list of `key` / `value` pairs, so it can be looped over. | `roles/cloudflared/tasks/main.yml` |
-| `list \| flatten` | A list of lists as one list. | `roles/cloudflared/tasks/main.yml` |
-| `names \| map('extract', hostvars)` | Looks each host name up in `hostvars`, the variables of every host in the inventory. | `roles/cloudflared/tasks/main.yml` |
-| `a if cond else b` | Picks `a` or `b`. | many templates |
-| `x \| list`, `x \| string` | Turn a filter result into a list; turn a value into text. | `roles/backup/templates/backup-restic-local.sh.j2` |
-| `list \| map('upper')`, `map('quote')`, `map('tojson')` | Applies a filter to every item. | `roles/storage/templates/98-usb-automount.rules.j2`, `roles/backup/templates/backup-restic-local.sh.j2`, `roles/garage/templates/Caddyfile.j2` |
-| `x \| default(y, true)` | Uses `y` when `x` is undefined **or empty**; plain `default(y)` only covers undefined. | `roles/github_clone/tasks/main.yml` |
-| `x in list`, `selectattr('k', 'equalto', v)` | Membership; keep items whose `k` equals `v`. | `roles/storage/tasks/main.yml` |
-| `x \| quote` | Shell-quotes `x` so a space or `$` in it cannot break a command. | `roles/backup/templates/` |
-| `x \| replace('a', 'b')` | Replaces text. | `roles/ntfy/templates/docker-compose.yml.j2` (a `$` in a compose file is written `$$`) |
-| `list \| unique`, `\| sort`, `\| first`, `\| join(', ')` | Drop duplicates; sort; the first item; glue items into one string. | `roles/backup/templates/backup-restic-local.sh.j2`, `roles/storage/templates/98-usb-automount.rules.j2` |
-| `list \| select`, `\| reject('match', 're')` | Keeps the truthy items; drops the ones matching a regular expression. | `roles/backup/templates/backup-paths.txt.j2`, `restic-excludes-local.txt.j2` |
-| `list \| subelements('volumes')` | One pair per item and per entry of its sub-list, so a loop sees both. | `roles/copyparty/tasks/main.yml` |
-| `x is defined`, `x is match('re')` | Tests: is the variable set; does the text match a regular expression. | `roles/ntfy/tasks/main.yml` |
-| `x \| password_hash(...)`, `\| hash('sha256')`, `\| b64encode` | Hash a password; hash a string; base64-encode it. | `roles/garage/templates/docker-compose.yml.j2`, `roles/github_clone/tasks/main.yml` |
-| `{%- set _ = d.update({...}) -%}` | Calls a method inside a template. `{%-` and `-%}` trim the blank lines around the tag. | `drive_mounts` in `group_vars/all/defaults.yml` |
-| `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. | `roles/*/templates/` |
+| Expression | Means |
+|---|---|
+| `{{ undef(hint='...') }}` | "No default: the owner must set this." Reading the variable before it is set stops the run and prints the hint. The setting is listed in `vars.yml.example`. |
+| `x \| mandatory('message')` | Stops the run with that message if `x` is missing. Used so an unclaimed drive role names what to add. |
+| `a \| combine(b)` | Merges two dictionaries; `b` wins. |
+| `list \| map(attribute='x')` | The `x` of every item in a list of dictionaries. |
+| `list \| selectattr('x')` | Keeps the items whose `x` is true. |
+| `a \| difference(b)`, `a \| intersect(b)` | Items of `a` not in `b`; items in both. |
+| `dict \| dict2items` | A dictionary as a list of `key` / `value` pairs, so it can be looped over. |
+| `list \| flatten` | A list of lists as one list. |
+| `names \| map('extract', hostvars)` | Looks each host name up in `hostvars`, the variables of every host in the inventory. |
+| `a if cond else b` | Picks `a` or `b`. |
+| `x \| list`, `x \| string` | Turn a filter result into a list; turn a value into text. |
+| `list \| map('upper')`, `map('quote')`, `map('tojson')` | Applies a filter to every item. |
+| `x \| default(y, true)` | Uses `y` when `x` is undefined **or empty**; plain `default(y)` only covers undefined. |
+| `x in list`, `selectattr('k', 'equalto', v)` | Membership; keep items whose `k` equals `v`. |
+| `x \| quote` | Shell-quotes `x` so a space or `$` in it cannot break a command. |
+| `x \| replace('a', 'b')` | Replaces text. |
+| `list \| unique`, `\| sort`, `\| first`, `\| join(', ')` | Drop duplicates; sort; the first item; glue items into one string. |
+| `list \| select`, `\| reject('match', 're')` | Keeps the truthy items; drops the ones matching a regular expression. |
+| `list \| subelements('volumes')` | One pair per item and per entry of its sub-list, so a loop sees both. |
+| `x is defined`, `x is match('re')` | Tests: is the variable set; does the text match a regular expression. |
+| `x \| password_hash(...)`, `\| hash('sha256')`, `\| b64encode` | Hash a password; hash a string; base64-encode it. |
+| `{%- set _ = d.update({...}) -%}` | Calls a method inside a template. `{%-` and `-%}` trim the blank lines around the tag. |
+| `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. |
 
 To try an expression without deploying: `ansible localhost -m debug -a "msg={{ ['a','b'] | difference(['a']) }}"`.

@@ -43,7 +43,7 @@ caddy_image: lucaslorentz/caddy-docker-proxy:2.13.1-alpine
 # ntfy (failure alerts): https://github.com/binwiederhier/ntfy/releases
 ntfy_image: binwiederhier/ntfy:v2.33.1
 
-# pics: git branch, tag or commit of the private repo
+# pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
 pics_version: main
 
 # Zellij terminal multiplexer: https://github.com/zellij-org/zellij/releases

@@ -62,7 +62,7 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | Doc | Covers |
 |---|---|
 | [ansible/README.md](./ansible/README.md) | Task index, which files hold what, setup, adding a host, `just` commands, vault, updating images, adding a service |
-| [docs/open-items.md](./docs/open-items.md) | Work not done yet and what each item waits for |
+| [TODO.md](./TODO.md) | The owner's list: work that waits for time or hardware |
 | `ansible/roles/` | One role per service |
 | `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml`), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
@@ -74,4 +74,4 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-The active plan is in `plans/` and research notes are in `docs/research/`. Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works now.
+The owner's to-do list is `TODO.md`. The active plan is in `plans/` and research notes are in `docs/research/`. Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works now.

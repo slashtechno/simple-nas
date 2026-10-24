@@ -115,13 +115,6 @@
 
 # Symmetric revert: flipping direct_link_enabled back to false and redeploying
 # undoes the block above, without needing the full destructive teardown.yml.
-# Runs only where the link was set up before (its dnsmasq file exists). A host that never had the
-# link, including one that copied the example's "false", keeps its own port profile untouched.
-- name: Check whether the direct link is set up
-  ansible.builtin.stat:
-    path: /etc/dnsmasq.d/direct-link.conf
-  register: network_direct_link_conf
-
 - name: Tear down direct Ethernet link
   ansible.builtin.import_tasks: remove_direct_link.yml
-  when: not (direct_link_enabled | bool) and network_direct_link_conf.stat.exists
+  when: not (direct_link_enabled | bool)

@@ -16,7 +16,6 @@ services:
       DB_USERNAME: immich
       DB_PASSWORD: '{{ vault_immich_db_password | replace("$", "$$") }}'
       DB_DATABASE_NAME: immich
-      TZ: {{ timezone }}
     ports:
       - "2283:2283"
     networks:
@@ -34,7 +33,6 @@ services:
       - model-cache:/cache
       - /etc/localtime:/etc/localtime:ro
     environment:
-      TZ: {{ timezone }}
     networks:
       {{ docker_network }}:
         aliases:

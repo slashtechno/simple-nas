@@ -98,7 +98,7 @@ Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudfla
 - The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain or more than one in `cloudflared_zones`.
 - Hostnames not listed get a 404.
 - An existing DNS record is replaced only if it points at a Cloudflare tunnel. A record of any other kind stops the deploy with a message naming it; delete it in the Cloudflare dashboard if unused.
-- A record pointing at this tunnel for a hostname you removed from the list is reported and left for you to delete.
+- A DNS record for a hostname you removed from the list is left in place and returns 404 (the tunnel's rules end with a catch-all 404); delete it in the Cloudflare dashboard.
 - The tunnel is found by name. If the name changes (the host's key in the inventory, or `cloudflared_tunnel_name`), the next deploy creates a tunnel under the new name, repoints the DNS records at it and gives the host the new token; the public hostnames are down for the moment that takes. The old tunnel stays in Cloudflare with nothing connected; delete it in the dashboard (Zero Trust, Networks, Tunnels).
 - The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the host holds only a tunnel token (`/opt/services/cloudflared/token`). If no tunnel named `cloudflared_tunnel_name` exists, the deploy creates it.
 - If a tunnel with that name exists but is "locally managed", the deploy stops. Use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel (public hostnames are offline until the next deploy).
