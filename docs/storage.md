@@ -91,6 +91,7 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 - Programs on it cannot be run (mounted `nosuid,nodev,noexec`).
 - Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
 - After unplugging, its empty folder stays until the next reboot or up to a day. Unplugging a writable drive without unmounting can corrupt it.
+- On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts plugged-in drives.
 - Re-deploy to apply: `just deploy storage,copyparty`.
 
 ## Adding, replacing or retiring a drive
@@ -102,7 +103,7 @@ To add or replace a drive:
 
 To retire a drive, delete its entry. The role adds or updates fstab lines and never removes one, so remove the old line from `/etc/fstab` by hand (and `sudo umount` it); nothing is unmounted or deleted for you.
 
-The step-by-step plan for the next drive upgrade is in [plans/drive-migration.md](./plans/drive-migration.md). A backup drive that drops out and comes back is covered in [backups.md](./backups.md#if-the-backup-drive-disconnects).
+A backup drive that drops out and comes back is covered in [backups.md](./backups.md#if-the-backup-drive-disconnects).
 
 ## Move one service's data
 

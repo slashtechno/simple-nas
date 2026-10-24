@@ -161,6 +161,27 @@ For the Google Drive repo instead: `export RESTIC_REPOSITORY="<your restic_cloud
 
 ---
 
+## Offline copy on a second drive
+
+`restic copy` copies snapshots into a second repository, for example on a drive that is unplugged and stored elsewhere. The destination is the repository (`-r`) and the source is `--from-repo`; each repository needs its own password option.
+
+Create the second repository once, with the source's chunker settings so the copy deduplicates:
+
+```bash
+restic -r /mnt/offline/restic-repo init \
+  --password-file ~/.restic-password \
+  --from-repo /mnt/backup/restic-repo --from-password-file ~/.restic-password \
+  --copy-chunker-params
+```
+
+To copy new snapshots (already-copied ones are skipped):
+
+```bash
+restic -r /mnt/offline/restic-repo copy \
+  --password-file ~/.restic-password \
+  --from-repo /mnt/backup/restic-repo --from-password-file ~/.restic-password
+```
+
 ## Checking backup status
 
 A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).

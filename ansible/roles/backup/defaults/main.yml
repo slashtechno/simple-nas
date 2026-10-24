@@ -20,7 +20,7 @@ ntfy_alert_url: ""
 # "unreadable source files" in the log and the run still counts as done.
 # CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
 # group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
-# (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
+# (docs/backups.md#choosing-what-is-backed-up). Changing "- " lines never splits a group.
 restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
 # The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
 # every path. Default: this host's base directory (compose files, credentials) and Copyparty's config. Add more

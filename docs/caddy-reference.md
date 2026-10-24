@@ -63,4 +63,4 @@ labels:
   caddy.reverse_proxy: "{{upstreams 3000}}"
 ```
 
-An `http://` site address gets a plain `200` with no redirect, so no global `auto_https` label is needed (checked on pi5 with `caddy: http://whoami.test`).
+An `http://` site address gets a plain `200` with no redirect, so no global `auto_https` label is needed.

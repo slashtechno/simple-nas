@@ -73,7 +73,5 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | Cheat sheet for the optional caddy-docker-proxy reverse proxy |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
-| [docs/plans/drive-migration.md](./docs/plans/drive-migration.md) | Checklist for the planned drive upgrade and the backup steps that follow it |
-| [docs/plans/encryption.md](./docs/plans/encryption.md) | Planned encryption at rest (not started) |
-| [docs/plans/multi-host.md](./docs/plans/multi-host.md) | Step-by-step cutover to a second host |
+| [docs/encryption.md](./docs/encryption.md) | Design for encryption at rest (not implemented) |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |

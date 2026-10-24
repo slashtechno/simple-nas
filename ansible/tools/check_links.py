@@ -20,7 +20,7 @@ def slug(heading):
 
 
 def files():
-    return [p for p in REPO.rglob("*") if p.is_file() and p.suffix in SUFFIXES and not SKIP & set(p.parts)]
+    return [p for p in REPO.rglob("*") if p.is_file() and p.suffix in SUFFIXES and not SKIP & set(p.parts) and ".ignored." not in p.name]
 
 
 def main():

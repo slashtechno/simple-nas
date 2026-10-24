@@ -32,7 +32,7 @@ drives:
     mount: /mnt/t7
     fstype: ext4
     options: defaults,nofail
-    roles: [fast, primary]   # one SSD fills both roles (docs/plans/drive-migration.md)
+    roles: [fast, primary]   # one SSD fills both roles (docs/storage.md#adding-replacing-or-retiring-a-drive)
   - uuid: "7fdfb249-0d0e-46c9-af00-813ff465c77d"   # ST3500418AS → /mnt/backup
     mount: /mnt/backup
     fstype: ext4
