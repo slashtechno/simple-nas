@@ -55,7 +55,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0644"
-  notify: Reload Caddy CORS proxy
+  notify: Restart the Garage CORS proxy
 
 - name: Start Garage
   community.docker.docker_compose_v2:
