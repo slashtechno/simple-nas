@@ -8,13 +8,11 @@
   # Thumbnails, databases and the transcode cache live in this one directory (the fast drive) instead of a
   # `.hist` folder inside each volume.
   hist: /hist
-  # Cap thumbnailer RAM (copyparty_th_ram_max).
-  th-ram-max: {{ copyparty_th_ram_max }}
-{% if copyparty_version_checker_enabled | bool %}
+  # Cap the thumbnailer's RAM at 1 GiB (upstream's default is 60% of system RAM).
+  th-ram-max: 1
   # Version checker: reports in the log and UI when the running version has a security advisory.
   # It fetches the advisory feed from the URL below.
   vc-url: https://api.copyparty.eu/advisories
-{% endif %}
   xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
   # Sort file2.txt before file10.txt, and show times in the viewer's local timezone (a browser-side default).

@@ -1,8 +1,4 @@
 ---
-# Cap in GiB on the thumbnailer's RAM. The upstream default is 60% of system RAM.
-copyparty_th_ram_max: "1"
-copyparty_version_checker_enabled: true   # vc-url points at the upstream advisory feed (disabled upstream by default)
-
 # Copyparty's SFTP listener, used by the pocketpi project's sync through a scoped
 # account in copyparty_service_accounts. WebDAV lacks the modtimes rclone needs; SFTP has them.
 copyparty_sftp_enabled: false
