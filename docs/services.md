@@ -153,7 +153,7 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 
-Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit <host> --ask-vault-pass`.
+Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit <host> --vault-password-file .vault-pass`.
 
 Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
 

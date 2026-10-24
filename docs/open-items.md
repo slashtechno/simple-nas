@@ -17,7 +17,6 @@ Work that is not done and needs the owner's time or hardware, or that lives outs
 ## Decided, not planned
 
 - The offsite `restic check` stays manual: a full check reads the whole repository over the network ([backups.md](./backups.md)).
-- `--ask-vault-pass` stays. A `vault_password_file` script (`bw get password <entry>`) is possible but needs the `bw` CLI unlocked on the laptop.
 - `pics_version: main` in `ansible/group_vars/all/versions.yml` follows the head of the owner's own private pics repository, so each deploy builds its latest commit. Set it to a tag or commit there when a stable build matters.
 
 ## Waiting for hardware

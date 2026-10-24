@@ -1,6 +1,6 @@
 ---
 # Full deployment playbook.
-# Run with: ansible-playbook site.yml --ask-vault-pass
+# Run with: ansible-playbook site.yml --vault-password-file .vault-pass
 #
 # One play over every server. The base roles (drives, packages, Docker, Tailscale, network) run
 # everywhere; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets

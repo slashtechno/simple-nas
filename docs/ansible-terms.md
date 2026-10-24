@@ -129,7 +129,7 @@ Config comes from these sources, lowest precedence first:
 
 Every shared setting and its default is in `ansible/group_vars/all/defaults.yml`; a setting only one role uses is in that role's `defaults/main.yml`. Vault names are in the two `vault.yml.example` files.
 
-`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory when `--ask-vault-pass` is given. A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
+`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory with the password read from the file named by `--vault-password-file` (`ansible/.vault-pass`, gitignored). A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
 
 Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `roles/copyparty/defaults/main.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
 

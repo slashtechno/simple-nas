@@ -19,7 +19,7 @@ A host with no flags set deploys only the base roles. Secrets every host shares 
 
 Drives hold the data: everything under `/mnt/t7` (app data, Immich, Copyparty, Homebridge, Gitea, Crafty) and `/mnt/backup`. Docker's own storage is disposable and images re-pull.
 
-Rollback, in this order: `ansible-playbook teardown.yml --limit pi5 --ask-vault-pass`; set `cloudflared_enabled: false` and `backup_cloud_enabled: false` in `host_vars/pi5/vars.yml` and the Pi 4's values back in `host_vars/pi4/vars.yml`; run `sudo tailscale set --hostname=pinas` on the Pi 4 and give pi5 another name; move the drives back; `just deploy '' --limit pi4`. The storage role writes the fstab lines again.
+Rollback, in this order: `ansible-playbook teardown.yml --limit pi5 --vault-password-file .vault-pass`; set `cloudflared_enabled: false` and `backup_cloud_enabled: false` in `host_vars/pi5/vars.yml` and the Pi 4's values back in `host_vars/pi4/vars.yml`; run `sudo tailscale set --hostname=pinas` on the Pi 4 and give pi5 another name; move the drives back; `just deploy '' --limit pi4`. The storage role writes the fstab lines again.
 
 Does not travel with the drives:
 
@@ -51,9 +51,9 @@ Does not travel with the drives:
    - the unit `nas-drive-remount` to `drive-remount`
 
    Run it on the Pi 4 now (`scp ansible/migrate-old-names.sh pi4:/tmp/ && ssh -t pi4 sudo bash /tmp/migrate-old-names.sh <ansible-user>`). Run it on pi5 too if it was ever deployed.
-3. **pi5 drops its old services.** If pi5 ran Dockge, Caddy or cloudflared: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit pi5 --ask-vault-pass`.
+3. **pi5 drops its old services.** If pi5 ran Dockge, Caddy or cloudflared: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit pi5 --vault-password-file .vault-pass`.
 4. **Free the Pi 4's name.** On the Pi 4: `sudo tailscale set --hostname=pi4`, and set the OS hostname ([Hostnames](#hostnames)).
-5. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --ask-vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
+5. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
 6. Shut the Pi 4 down and leave its microSD untouched.
 7. Move both drives to pi5's blue USB 3 ports. Power: pi5's supply gives 1.6A across all USB ports in total. The 500GB HDD has its own brick; the T7 and the later P10 are bus-powered, so check their combined draw or use a powered hub ([drive-migration.md](./drive-migration.md)).
 8. **Create pi5's files.** In `host_vars/pi4/vars.yml`, set `cloudflared_enabled: false` and `backup_cloud_enabled: false` (a hostname belongs to one host, and two hosts must not back up into one repository). In `ansible/inventory/hosts.yml`, set pi5's `ansible_host`. Create `host_vars/pi5/vars.yml`, with the `drives:` block from `host_vars/pi4/vars.yml` (same UUIDs and mounts), the service flags the NAS runs, `backup_local_enabled: true`, `backup_cloud_enabled: true`, `restic_cloud_repository` (the NAS's existing path: pi5 takes over the NAS's offsite repository, which is safe only because the Pi 4 was shut down in step 6; two hosts must never run a cloud backup into one repository), `cloudflared_enabled: true`, `cloudflared_tunnel_name: pi-nas-tunnel`, `cloudflared_ingress`, and the direct-link settings if pi5 should have the link. Create `host_vars/pi5/vault.yml` from `host_vars/vault.yml.example` (the same secrets the Pi 4 uses), then encrypt it.

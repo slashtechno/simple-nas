@@ -54,10 +54,19 @@
     update_cache: true
 
 # Read-only, so it also runs under --check. Without this the directories below would be created on the root drive.
-- name: Check the backup drive is mounted
+- name: Look up whether the backup drive is mounted
   ansible.builtin.command: mountpoint -q {{ backup_drive | quote }}
+  register: backup_drive_mountpoint
   changed_when: false
+  failed_when: false
   check_mode: false
+  when: backup_local_enabled | bool
+
+- name: Check the backup drive is mounted
+  ansible.builtin.assert:
+    that: backup_drive_mountpoint.rc == 0
+    fail_msg: "{{ backup_drive }} is not mounted. Mount the backup drive (docs/storage.md) and deploy again."
+    quiet: true
   when: backup_local_enabled | bool
 
 - name: Check the ntfy token is in the vault

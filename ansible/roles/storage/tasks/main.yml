@@ -24,6 +24,17 @@
     quiet: true
   when: "'backup' in drive_mounts"
 
+# Without an offsite copy, a backup on the drive that holds the data is lost with that drive.
+- name: Validate that the backup role is on its own drive or an offsite copy exists
+  ansible.builtin.assert:
+    that: drive_mounts.backup not in [drive_mounts.fast | default(''), drive_mounts.primary | default('')]
+    fail_msg: >-
+      The `backup` role shares {{ drive_mounts.backup }} with a drive that holds the data, so one drive failure
+      loses both. Give `backup` its own drive, or set backup_cloud_enabled: true (and restic_cloud_repository)
+      so an offsite copy exists.
+    quiet: true
+  when: "'backup' in drive_mounts and not backup_cloud_enabled | bool"
+
 - name: Create mount points
   ansible.builtin.file:
     path: "{{ item.mount }}"

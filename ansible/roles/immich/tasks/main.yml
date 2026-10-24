@@ -1,6 +1,6 @@
 ---
 # Catches a missing or incomplete vault. (An encrypted vault with no password given fails earlier, when
-# Ansible loads the variables: use --ask-vault-pass or `just deploy`.)
+# Ansible loads the variables: use --vault-password-file .vault-pass or `just deploy`.)
 - name: Check the Immich database password is in the vault
   ansible.builtin.assert:
     that: vault_immich_db_password is defined

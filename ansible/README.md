@@ -14,7 +14,7 @@ All commands below run from `ansible/`.
 |---|---|---|
 | Deploy everything to one host | nothing | `just deploy '' --limit <host> -K` |
 | Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>` |
-| Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml --tags <name> --limit <host> --ask-vault-pass` ([remove a service](#disable-or-remove-a-service)) |
+| Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml --tags <name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
 | Look up a setting, its default and every override | nothing | `grep -rn "^<name>:" ansible/group_vars ansible/host_vars ansible/roles/*/defaults` |
 | Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
@@ -45,7 +45,7 @@ A value is taken from the last of these that sets it: a role's `defaults/main.ym
 
 ## Vault (secrets)
 
-A vault file is a YAML file encrypted with `ansible-vault`. Ansible decrypts it in memory when you pass `--ask-vault-pass` (`just deploy` and `just preview` do), and asks for the password once per run. Use the same password for every vault file.
+A vault file is a YAML file encrypted with `ansible-vault`. Ansible decrypts it in memory with the password in `ansible/.vault-pass` (one line, nothing else; the file is gitignored, so `chmod 600` it and keep the password in your password manager too). `just deploy` and `just preview` pass `--vault-password-file .vault-pass`; type the same flag when you run `ansible-playbook` yourself. Use the same password for every vault file.
 
 Secrets live in `vault_*` variables inside a vault file. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
 
@@ -95,7 +95,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
 | `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
-| `just deploy [tags] [flags]` | `site.yml` with `--ask-vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pi5 -K` |
+| `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pi5 -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |
@@ -137,7 +137,7 @@ Every image and version is a line in `group_vars/all/versions.yml`, with its rel
 A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, because deploys use `pull: missing`:
 
 ```bash
-ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --ask-vault-pass
+ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-password-file .vault-pass
 ```
 
 Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Copyparty and backup-status build on the host and always rebuild, so `docker_pull_policy` doesn't apply to them.
@@ -149,9 +149,9 @@ Set `<name>_enabled: false` in `host_vars/<host>/vars.yml` (or delete the line) 
 `teardown.yml` runs every block on every host it reaches, so it refuses to run without `--limit <host>`.
 
 ```bash
-ansible-playbook teardown.yml --limit pi4 --tags garage --ask-vault-pass       # one service, data kept
-ansible-playbook teardown.yml --limit pi4 --ask-vault-pass                     # everything, data kept
-ansible-playbook teardown.yml --limit pi4 -e remove_data=true --ask-vault-pass # also wipes data: no undo without a backup
+ansible-playbook teardown.yml --limit pi4 --tags garage --vault-password-file .vault-pass       # one service, data kept
+ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass                     # everything, data kept
+ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
 
 Drive mounts, the restic password and Tailscale state are never touched.

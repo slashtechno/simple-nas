@@ -46,8 +46,8 @@ tags image filter='.' count='30':
 # Deploy: `just deploy` for everything, `just deploy crafty` for one service.
 # Extra ansible-playbook flags go after the tags: `just deploy '' --limit pi5 -K` (all roles, one host, ask for the sudo password).
 deploy tags='' *flags:
-    ansible-playbook site.yml --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
+    ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags:
-    ansible-playbook site.yml --check --diff --ask-vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
+    ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}

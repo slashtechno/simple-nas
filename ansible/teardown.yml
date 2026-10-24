@@ -17,13 +17,13 @@
 # Usage:
 #
 #   # Remove everything from one host
-#   ansible-playbook teardown.yml --limit pi4 --ask-vault-pass
+#   ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass
 #
 #   # Remove specific services only
-#   ansible-playbook teardown.yml --limit pi4 --tags copyparty,garage --ask-vault-pass
+#   ansible-playbook teardown.yml --limit pi4 --tags copyparty,garage --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
-#   ansible-playbook teardown.yml --limit pi4 -e remove_data=true --ask-vault-pass
+#   ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass
 
 - name: Tear down services
   hosts: servers
@@ -240,30 +240,7 @@
     - name: Remove direct Ethernet link config
       tags: [network]
       when: teardown_direct_link_conf.stat.exists
-      block:
-        - name: Remove static direct-link profile
-          community.general.nmcli:
-            conn_name: direct-link
-            state: absent
-
-        - name: Re-enable auto-connect on the default eth0 DHCP profile
-          community.general.nmcli:
-            type: ethernet
-            conn_name: "Wired connection 1"
-            ifname: "{{ direct_link_iface }}"
-            autoconnect: true
-            state: present
-
-        - name: Remove direct-link dnsmasq config
-          ansible.builtin.file:
-            path: /etc/dnsmasq.d/direct-link.conf
-            state: absent
-
-        - name: Stop and disable dnsmasq
-          ansible.builtin.systemd:
-            name: dnsmasq
-            state: stopped
-            enabled: false
+      ansible.builtin.import_tasks: roles/network/tasks/remove_direct_link.yml
 
     # ── Shared infrastructure, last: the scripts directory above must be gone first ──
 
