@@ -2,12 +2,19 @@
 - name: Check the backup role can run on this host
   ansible.builtin.assert:
     that:
-      - backup_drive | length > 0
+      - backup_local_enabled | bool or backup_cloud_enabled | bool
       - vault_restic_password is defined
     fail_msg: >-
-      {{ inventory_hostname }} needs a drive with the `backup` role (`drives` in its host_vars) and
-      vault_restic_password (group_vars/all/vault.yml) to run backups.
+      {{ inventory_hostname }} needs a drive with the `backup` role (`drives` in its host_vars) or
+      backup_cloud_enabled: true, and vault_restic_password (group_vars/all/vault.yml), to run backups.
     quiet: true
+
+# Read-only, so it also runs under --check. Without this the directories below would be created on the root drive.
+- name: Check the backup drive is mounted
+  ansible.builtin.command: mountpoint -q {{ backup_drive | quote }}
+  changed_when: false
+  check_mode: false
+  when: backup_local_enabled | bool
 
 - name: Check the ntfy token is in the vault
   ansible.builtin.assert:
@@ -21,7 +28,7 @@
     that: restic_cloud_repository | length > 0
     fail_msg: "backup_cloud_enabled is true but restic_cloud_repository is empty. Set it for {{ inventory_hostname }} (see docs/backups.md)."
     quiet: true
-  when: backup_cloud_enabled | default(false) | bool
+  when: backup_cloud_enabled | bool
 
 - name: Create the backup directories
   ansible.builtin.file:
@@ -30,11 +37,9 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-  loop:
-    - "{{ restic_cache_dir }}"
-    - "{{ restic_repo_path }}"
-    - "{{ backup_logs_dir }}"
-    - "{{ service_dumps_dir }}"
+  loop: >-
+    {{ [backup_work_dir, restic_cache_dir, backup_logs_dir, service_dumps_dir]
+       + ([restic_repo_path] if backup_local_enabled | bool else []) }}
 
 - name: Create scripts directory
   ansible.builtin.file:
@@ -60,9 +65,7 @@
     group: "{{ ansible_user }}"
     mode: "0755"
   loop:
-    - backup-restic-local.sh
     - backup-services.sh
-    - restic-check.sh
     - alert.sh
 
 - name: Deploy backup scripts with no deployment-specific paths
@@ -75,13 +78,74 @@
   loop:
     - restore-services.sh
 
-- name: Render the local backup exclude list
-  ansible.builtin.template:
-    src: restic-excludes-local.txt.j2
-    dest: "{{ nas_scripts_dir }}/restic-excludes-local.txt"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0644"
+# The daily local backup and the weekly integrity check: scripts, exclude list and cron jobs.
+- name: Set up the local backup
+  when: backup_local_enabled | bool
+  block:
+    - name: Render the local backup and check scripts
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ nas_scripts_dir }}/{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+      loop:
+        - backup-restic-local.sh
+        - restic-check.sh
+
+    - name: Render the local backup exclude list
+      ansible.builtin.template:
+        src: restic-excludes-local.txt.j2
+        dest: "{{ nas_scripts_dir }}/restic-excludes-local.txt"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+
+    - name: Schedule daily local backup (2 AM)
+      ansible.builtin.cron:
+        name: nas-backup-local
+        user: "{{ ansible_user }}"
+        minute: "0"
+        hour: "2"
+        job: >-
+          /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
+          >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
+          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          "backup-restic-local failed or {{ backup_drive }} not mounted"
+
+    - name: Schedule weekly restic integrity check (Wednesday 3 AM)
+      ansible.builtin.cron:
+        name: nas-restic-check
+        user: "{{ ansible_user }}"
+        minute: "0"
+        hour: "3"
+        weekday: "3"
+        job: >-
+          /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
+          >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
+          /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
+          "restic-check failed or {{ backup_drive }} not mounted"
+
+- name: Remove the local backup jobs and scripts when there is no backup drive
+  when: not (backup_local_enabled | bool)
+  block:
+    - name: Remove the local backup cron jobs
+      ansible.builtin.cron:
+        name: "{{ item }}"
+        user: "{{ ansible_user }}"
+        state: absent
+      loop:
+        - nas-backup-local
+        - nas-restic-check
+
+    - name: Remove the local backup scripts and exclude list
+      ansible.builtin.file:
+        path: "{{ nas_scripts_dir }}/{{ item }}"
+        state: absent
+      loop:
+        - backup-restic-local.sh
+        - restic-check.sh
+        - restic-excludes-local.txt
 
 - name: Write restic password file
   ansible.builtin.copy:
@@ -111,7 +175,7 @@
 
 # The weekly offsite backup: its script, path and exclude lists, rclone remote, repository and cron job.
 - name: Set up the offsite backup
-  when: backup_cloud_enabled | default(false) | bool
+  when: backup_cloud_enabled | bool
   block:
     - name: Render the offsite backup script
       ansible.builtin.template:
@@ -184,7 +248,7 @@
           /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
-          "backup-restic-cloud failed or {{ backup_drive }} not mounted"
+          "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
 
 - name: Initialize local restic repository (idempotent)
   ansible.builtin.command:
@@ -199,38 +263,14 @@
     - "'already exists' not in restic_init.stderr"
   become: true
   become_user: "{{ ansible_user }}"
-
-- name: Schedule daily local backup (2 AM)
-  ansible.builtin.cron:
-    name: nas-backup-local
-    user: "{{ ansible_user }}"
-    minute: "0"
-    hour: "2"
-    job: >-
-      /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-local.sh') | quote }}
-      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-      /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
-      "backup-restic-local failed or {{ backup_drive }} not mounted"
-
-- name: Schedule weekly restic integrity check (Wednesday 3 AM)
-  ansible.builtin.cron:
-    name: nas-restic-check
-    user: "{{ ansible_user }}"
-    minute: "0"
-    hour: "3"
-    weekday: "3"
-    job: >-
-      /bin/bash {{ (nas_scripts_dir ~ '/restic-check.sh') | quote }}
-      >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-      /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
-      "restic-check failed or {{ backup_drive }} not mounted"
+  when: backup_local_enabled | bool
 
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:
     name: nas-backup-cloud
     user: "{{ ansible_user }}"
     state: absent
-  when: not (backup_cloud_enabled | default(false) | bool)
+  when: not (backup_cloud_enabled | bool)
 
 - name: Remove the offsite backup script and lists when the offsite backup is off
   ansible.builtin.file:
@@ -240,4 +280,4 @@
     - backup-restic-cloud.sh
     - backup-paths.txt
     - restic-excludes-cloud.txt
-  when: not (backup_cloud_enabled | default(false) | bool)
+  when: not (backup_cloud_enabled | bool)

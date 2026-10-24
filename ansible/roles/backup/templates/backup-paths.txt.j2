@@ -5,6 +5,12 @@
 {% if copyparty_enabled | bool %}
 {{ copyparty_config_dir }}
 {% endif %}
+{% if not backup_local_enabled | bool %}
+# No local backup on this host, so the offsite copy also holds its data (restic_local_paths):
+{% for path in restic_local_paths %}
+{{ path }}
+{% endfor %}
+{% endif %}
 /home/{{ ansible_user }}/.config/rclone
 {{ restic_password_file }}
 {{ nas_base_dir }}

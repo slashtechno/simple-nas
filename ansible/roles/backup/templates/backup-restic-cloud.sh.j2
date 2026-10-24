@@ -1,15 +1,15 @@
 #!/bin/bash
 set -o pipefail
 
-# Refuse to run if the backup drive isn't actually mounted at {{ backup_drive }} —
-# otherwise this silently writes onto the root filesystem until it fills up
-# (this has happened: a USB dropout unmounted the drive mid-write, and cron
-# kept "succeeding" against the bare mountpoint directory).
+{% if backup_local_enabled | bool %}
+# Refuse to run if the backup drive isn't actually mounted at {{ backup_drive }}: the service dumps
+# and logs are written there, and an unmounted drive would fill the root drive instead.
 if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
 fi
 
+{% endif %}
 export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
 # Cache on the fast drive: for the rclone/gdrive repo this matters most —

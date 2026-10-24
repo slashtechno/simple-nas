@@ -1,4 +1,12 @@
 ---
+- name: Check the host has a local backup to show
+  ansible.builtin.assert:
+    that: backup_local_enabled | bool
+    fail_msg: >-
+      backup_status_enabled needs a local backup: give a drive in `drives` the `backup` role
+      ({{ inventory_hostname }} has none). The dashboard reads the local repository.
+    quiet: true
+
 - name: Create backup-status compose directory
   ansible.builtin.file:
     path: "{{ nas_base_dir }}/backup-status"

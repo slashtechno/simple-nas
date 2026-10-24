@@ -63,18 +63,21 @@ ssh_authorized_keys:
   - ssh-ed25519 AAAA... you@laptop
 
 # --- Backups (docs/backups.md) ---
-# The backup role runs on a host with `backup_enabled: true` (set per group or host) and a drive with
-# the `backup` role. The weekly offsite copy needs `backup_cloud_enabled: true` and a repository below.
+# The backup role runs on a host with `backup_enabled: true` (set per group or host). A drive with the
+# `backup` role adds the daily local backup and the weekly integrity check. The weekly offsite copy needs
+# `backup_cloud_enabled: true` and a repository below. A host needs at least one of the two.
+# Without a backup drive, logs and service dumps live in /var/lib/nas-backup on the root drive.
 # One dump script per service with a live database.
 service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"
+# Local repository; used only when a backup drive is claimed.
 restic_repo_path: "{{ backup_drive }}/restic-repo"
 # Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
 # "rclone:gdrive-nas:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
 # initialised. Give each host its own path: hosts sharing a repository would prune each other's snapshots.
 restic_cloud_repository: ""
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
-backup_logs_dir: "{{ backup_drive }}/logs"
-service_dumps_dir: "{{ backup_drive }}/service-dumps"
+backup_logs_dir: "{{ backup_work_dir }}/logs"
+service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
 # What the local (daily) backup copies. The dumps dir above is always added by
 # the backup script, so editing this list can't drop the database dumps.
 # Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
