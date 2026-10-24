@@ -9,7 +9,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Every deployed image version lives in `ansible/group_vars/all/versions.yml`; templates and Dockerfiles take it from there.
 - A default is written in exactly one place: a role's `defaults/main.yml` for a setting only that role uses, `group_vars/all/defaults.yml` for one shared across roles or read by `teardown.yml`. `group_vars/all/vars.yml` and `host_vars/<host>/vars.yml` hold only the owner's values (`vars.yml.example` files show the shape). Every setting has a comment above it; a setting with no sensible default uses `undef(hint=...)`. To see every setting and its default, read those two files; nothing is generated. No group carries behaviour.
 - Use `import_role`/`import_tasks`, not `include_*`, so `--tags` work. Two `include_role` calls (pics, tailscale) are kept on purpose and marked in the code.
-- `just check` (in `ansible/`) must pass: lint, syntax-check, the vars check (vault name or `undef` setting missing from its example) and the template render test. Add lint skips only with a written reason.
+- `just check` (in `ansible/`) must pass: lint, syntax-check, the vars check (vault name or `undef` setting missing from its example), the doc link check and the template render test. Add lint skips only with a written reason.
 - Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
 - Backups: [docs/backups.md](./docs/backups.md).

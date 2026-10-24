@@ -7,6 +7,10 @@
 
 # Defaults: caches and files that can't be copied cleanly or can be rebuilt.
 {{ restic_cache_dir }}
+# Credentials: restic's own password and the Drive token must never be in a backup. They sit in the user's
+# home, which is backed up on a host with no fast or primary drive.
+{{ restic_password_file }}
+/home/{{ ansible_user }}/.config/rclone
 {% if 'primary' in drive_mounts %}
 {{ drive_mounts.primary }}/lost+found
 {{ drive_mounts.primary }}/**/.cache

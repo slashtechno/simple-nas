@@ -44,7 +44,7 @@ Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about
 
 1. Copy the `direct_link_*` block from `ansible/host_vars/vars.yml.example` into `host_vars/<host>/vars.yml` and set `direct_link_enabled: true`, then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
-3. Open `https://10.10.20.1:3923` for Copyparty. Expect a certificate warning: Copyparty serves its own self-signed certificate on the same port as HTTP.
+3. Open `http://10.10.20.1:3923` for Copyparty.
 
 The link can't reach the internet or collide with a VPN:
 - `dnsmasq` hands out DHCP only (no DNS, no gateway), and neither end has a gateway, so there is no route off the cable.

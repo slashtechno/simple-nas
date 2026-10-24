@@ -9,6 +9,7 @@
     cmd: tailscale funnel status --json
   register: tailscale_funnel_status
   changed_when: false
+  failed_when: false   # a host not yet joined to Tailscale prints nothing; its state is then "off"
   check_mode: false
 
 - name: Work out current Funnel state on :443

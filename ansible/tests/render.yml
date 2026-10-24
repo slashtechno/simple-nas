@@ -237,6 +237,13 @@
             that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
           when: backup_local_enabled | bool
 
+        - name: The local exclude list skips the restic password and the rclone token
+          ansible.builtin.assert:
+            that:
+              - restic_password_file in (local_excludes_file.content | b64decode)
+              - "'/.config/rclone' in (local_excludes_file.content | b64decode)"
+          when: backup_local_enabled | bool
+
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
         # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.

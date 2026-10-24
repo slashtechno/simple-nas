@@ -154,7 +154,7 @@ export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (restic_repo_path)
 ```
 
-For the Google Drive repo instead: `export RESTIC_REPOSITORY="rclone:gdrive:/pi-nas-backups"` (your `restic_cloud_repository`), and add `-o rclone.args="serve restic --stdio --tpslimit=10"` to each restic command.
+For the Google Drive repo instead: `export RESTIC_REPOSITORY="<your restic_cloud_repository>"`, and add `-o rclone.args="serve restic --stdio --tpslimit=10"` to each restic command.
 
 ---
 
@@ -247,7 +247,7 @@ Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl statu
 2. Pull from the cloud repository. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password
-   export RESTIC_REPOSITORY="rclone:gdrive:/pi-nas-backups"   # restic_cloud_repository
+   export RESTIC_REPOSITORY="<your restic_cloud_repository>"
    restic -o rclone.args="serve restic --stdio --tpslimit=10" snapshots --group-by path
    restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
    ```
