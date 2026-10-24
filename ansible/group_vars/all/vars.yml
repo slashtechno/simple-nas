@@ -24,7 +24,8 @@ ntfy_enabled: false
 cloudflared_enabled: false
 dockge_enabled: false
 caddy_enabled: false
-backup_enabled: false
+backup_local_enabled: false   # daily backup to the drive with the `backup` role, plus a weekly integrity check
+backup_cloud_enabled: false   # weekly backup to restic_cloud_repository
 backup_status_enabled: false
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
@@ -64,10 +65,9 @@ ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAEAQC4RuOq5NV5hHWRcLuugygSa/v83NjeEVUlolAY1+pMWkegkF7gONDIlQoPC3mJkGnI/mHhvoRZE3AYcvrfLeR7KgsqT+lRera0AVwvFXI6qdW8a1RxEgkhlr98llm8xx7g+6V+tpfGl5Qg8OF+Bc+Ciem8F5dLMajUvOQS2ad//OTNPSkFsvbr2+vShCsBoa99pWSHpHJ8/hX8y3alLro0V02ISFp/qZstD9d79nDbGKb2UzT+1PiIsbCN58yZOrkrLwixGOSmyYd785jUHUEQV32dkujd5G3O1QdIRqHeGXNLLI8ui9ziJiIq4O92MWWsa2GOI6TKLIOA95t9yngsJ6tv9FVZebFzMy5EhsLIoBkKWjBb5p79m1Hvlv1fn21BNqUzuHrOhqGQ9ggdSkMpl0K1nwvjfjJ+tbSRewNqkrNC4kiaeyNXjsIBOSdiGRvZ+ZydDnVOV+Kq0zA316IH1FQmKDAqp4Jn0GGgS1KrUnW/DopnzX7b0I8SPWJg4h9u5iSfIAyNdYGerRmHNCBhpIKS9nb8unU/u3slU0A2ZemCjadg5hb+N19sIttXETkt2zwXGJMRJT64VsiZso7YhG6Sl/4+TUtlArEgOf8siZHwIQ8XFKVJP6G8i9HzwD1B1lWqRa2QN2/TO4KgKMFRKah9I4tt3XLGnZe0jN3+599vvCUOYyJNOyFUcxFwjarJsJMdjtBtVqxSDfHIYI3JpWEh14Ksy3lcN2uMtp1kcqLPXV2k592vJZK3NhdMRVe7fEZtuC6ZtddANTwMOi/Ybws0PjzWIBawxT+U1X7d8LwiHsGa1Y4nWbi6Ac1UfMtcokrdGnuE4xj7VBwNKHLFYvOd3QoZnPwrMXvV60svEQ9XBDStWUSqGITTKoZ9GKKSKKLhEO0wphPV/2xIG0zsRnyhIroyUE7ASLyS7sdYuXmLuObDnKZiBAnTjQ342PkJ0Ga+iKGi+61kZxS1QW2ZufQe1o8/UNVQ8I0q+3JHOZIVJUUzzrA8GS20OsOE7RMaKt7dNt1PCG2wEtNjXbfumWmje2PNjWoFbBhBP1n9yM7cE+qlHyCteqIUn6dYiWsFLqviCF3fEHBXvlkQzssWS2cMBab99byhr+M6n0wP65+odoR5Zismwc+Zkg8R8LgjDM6ccOeJy2wjZRf59HgiWrFA4pXwZ3PHf0JjDRFAlURwYwLiqTGQcvO17KSWsvdnAmb4CmZnHd8LVYpxqbUW5TyjRVg1IXho/eIAoicdheQEL9fhb+BzhtbCFq6kQaBKgz9XwezhnZWOXmi4tmX280NVdsA3hrEaLKhpOBGJGgXw3pSVodD4F/2SHCg3SbobnBaoo6Y/UK/sd7//e0ML
 
 # --- Backups (docs/backups.md) ---
-# The backup role runs on a host with `backup_enabled: true` (set per group or host). A drive with the
-# `backup` role adds the daily local backup and the weekly integrity check. Setting `restic_cloud_repository`
-# below adds the weekly offsite copy. A host needs at least one of the two.
-# Without a backup drive, logs and service dumps live in /var/lib/nas-backup on the root drive.
+# The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enabled` set to true. Local needs a
+# drive with the `backup` role; cloud needs `restic_cloud_repository`. Without local backup, logs and service
+# dumps live in /var/lib/nas-backup on the root drive.
 # One dump script per service with a live database.
 service_dump_scripts_dir: "{{ nas_scripts_dir }}/dump.d"
 # Local repository; used only when a backup drive is claimed.
@@ -75,37 +75,39 @@ restic_repo_path: "{{ backup_drive }}/restic-repo"
 # Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
 # "rclone:gdrive-nas:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
 # initialised. Set it per host in host_vars (each host needs its own path: hosts sharing a repository would
-# prune each other's snapshots). Empty means no offsite copy.
+# prune each other's snapshots).
 restic_cloud_repository: ""
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
 backup_logs_dir: "{{ backup_work_dir }}/logs"
 service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
-# What the local (daily) backup copies. The dumps dir above is always added by
-# the backup script, so editing this list can't drop the database dumps.
+# What the local (daily) backup copies and skips, one rule per line:
+#   /path        back this path up (an absolute path)
+#   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
+#   - !pattern   put back something an earlier "- " line left out
+# Example:
+#   restic_local_rules:
+#     - /mnt/data                                  # back up this drive
+#     - /home/pi/notes                             # and this folder
+#     - "- /mnt/data/downloads"                    # but not this folder inside it
+#     - "- **/*.iso"                               # nor any .iso file
+#     - "- !/mnt/data/downloads/keep.iso"          # except this one
+# The service dumps dir is always added, and caches and live database directories are always skipped
+# (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
 # Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
 # the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic reports
 # "unreadable source files" in the log and the run still counts as done.
-# CAUTION: restic groups snapshots by host + paths, so changing this list
-# starts a new snapshot group; the old group's last snapshots stay until you
-# run `restic forget --path <old path> ...` by hand (see docs/plans/drive-migration.md).
-# To skip something, add it to restic_local_excludes instead: excludes never split a group.
-restic_local_paths: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
-# Extra patterns for the local backup to skip, added AFTER the defaults in
-# roles/backup/templates/restic-excludes-local.txt.j2 (caches, lost+found, ...).
-# restic syntax, not gitignore: `**` matches any depth, and a leading `!` re-includes
-# something an earlier line excluded, e.g. ["/mnt/t7/docker/crafty/logs", "!/mnt/t7/docker/crafty/logs/keep.log"].
-restic_local_excludes: []
-# Extra paths for the cloud (weekly) backup, on top of the fixed ones in
-# roles/backup/templates/backup-paths.txt.j2 (the scripts dir, rclone config and restic password file;
-# on the NAS also Copyparty's config). Each path is its own restic snapshot group.
-# Adding a path is safe. Removing one leaves its old snapshots until you run
-# `restic forget --path <path> ...` by hand. Examples (NAS):
-#   - "{{ immich_upload_location }}"            # all photos
-#   - "{{ crafty_data_dir }}"                   # Minecraft worlds (live copy; see docs/backups.md)
-#   - "{{ copyparty_files_dir }}/documents"     # a single Copyparty folder
-restic_cloud_extra_paths: []
-# Same syntax; added after the defaults in restic-excludes-cloud.txt.j2.
-restic_cloud_excludes: []
+# CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
+# group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
+# (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
+restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
+# The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
+# every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the
+# host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to
+# upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".
+restic_cloud_rules: >-
+  {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
+     + ([] if backup_local_enabled | bool else restic_local_rules)
+     + [nas_base_dir] }}
 restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 # rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
@@ -122,7 +124,7 @@ restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mou
 # --- Data directories (teardown.yml also reads them) ---
 # One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
 # (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
-# default backup (restic_local_paths) does not cover it. A variable that uses a drive role fails with a
+# default backup (restic_local_rules) does not cover it. A variable that uses a drive role fails with a
 # message naming the role if no entry in `drives` claims it, but only on a host that enables the service.
 # Random-IO data (databases, configs) is on the fast drive; bulk data (photos, files) is on the primary.
 # When both roles are the same drive, the split changes nothing on disk.

@@ -26,4 +26,5 @@ drives:
     roles: [backup]
 
 # Weekly offsite copy to Google Drive (docs/backups.md).
+backup_cloud_enabled: true
 restic_cloud_repository: "rclone:gdrive-nas:/pi-nas-backups"

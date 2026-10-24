@@ -1,5 +1,5 @@
 # Patterns the local (daily) backup skips, one per line; lines starting with # are ignored.
-# Rendered by Ansible: edit restic_local_excludes in group_vars, not this file.
+# Rendered by Ansible: edit the "- " lines of restic_local_rules in group_vars, not this file.
 # Syntax is restic's, not gitignore's: https://restic.readthedocs.io/en/stable/040_backup.html
 # `**` matches any number of directories; a leading `!` re-includes something an
 # EARLIER line excluded (so your extras below can undo a default). You cannot
@@ -13,7 +13,7 @@
 {% endif %}
 {% include 'restic-excludes-services.txt.j2' %}
 
-# Yours: restic_local_excludes
-{% for pattern in restic_local_excludes %}
-{{ pattern }}
+# Yours: the "- " lines of restic_local_rules, with the "- " removed ("- !" becomes "!")
+{% for rule in restic_local_rules | select('match', '^- ') %}
+{{ rule[2:] }}
 {% endfor %}

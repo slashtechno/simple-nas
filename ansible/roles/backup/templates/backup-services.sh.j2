@@ -17,7 +17,7 @@ set -euo pipefail
 DUMP_DIR="${DUMP_DIR:-{{ service_dumps_dir }}}"
 SCRIPTS_DIR="{{ service_dump_scripts_dir }}"
 
-{% if 'backup' in drive_mounts %}
+{% if backup_local_enabled | bool %}
 # Refuse to run if the backup drive is not mounted: $DUMP_DIR would be created on the root filesystem.
 if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to write dumps onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2

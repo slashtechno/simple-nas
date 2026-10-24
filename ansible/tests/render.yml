@@ -55,7 +55,7 @@
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
-      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup, backup_status]
+      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, caddy, backup_local, backup_cloud, backup_status]
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
@@ -134,15 +134,29 @@
       ansible.builtin.set_fact:
         drives: "{{ fixture_drives }}"
 
+    # The flags follow the fixture: local when it claims a backup drive, cloud when it says so.
+    - name: Turn the backups on as the fixture says
+      ansible.builtin.set_fact:
+        backup_local_enabled: "{{ 'backup' not in expect.unclaimed }}"
+        backup_cloud_enabled: "{{ expect.cloud | default(false) }}"
+        restic_cloud_repository: "{{ 'rclone:gdrive-nas:/test' if expect.cloud | default(false) else '' }}"
+
+    - name: Add the fixture's own backup rules
+      ansible.builtin.set_fact:
+        restic_local_rules: "{{ restic_local_rules + expect.rules }}"
+      when: expect.rules is defined
+
     - name: Enable the fixture's services
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
       loop: "{{ expect.services | default([]) }}"
 
     - name: The paths follow the claimed roles
+      vars:
+        fixture_paths: "{{ expect.rules | default([]) | reject('match', '^- ') | list }}"
       ansible.builtin.assert:
         that:
-          - restic_local_paths == expect.local_paths
+          - restic_local_rules | reject('match', '^- ') | list == expect.local_paths + fixture_paths
           - restic_cache_dir == expect.cache_dir
           - copyparty_fast_enabled | bool == expect.copyparty_fast
 
@@ -161,10 +175,6 @@
       loop: "{{ role_probes.results }}"
       loop_control:
         label: "{{ item.item }}"
-
-    - name: Only a claimed backup drive turns the local backup on
-      ansible.builtin.assert:
-        that: ('backup' in drive_mounts) == ('backup' not in expect.unclaimed)
 
     # Every layout renders the backup templates. A host without a backup drive skips the local-only ones,
     # which need the drive's path, and backs up its own data to the cloud instead.
@@ -190,7 +200,7 @@
           vars:
             local_only: '/(backup-restic-local\.sh|restic-check\.sh|restic-excludes-local\.txt)\.j2$'
           loop: >-
-            {{ backup_templates.files if 'backup' in drive_mounts
+            {{ backup_templates.files if backup_local_enabled | bool
                else backup_templates.files | rejectattr('path', 'search', local_only) | list }}
           loop_control:
             label: "{{ item.path | basename }}"
@@ -207,11 +217,14 @@
             offsite_script: "{{ cloud_files.results[0].content | b64decode }}"
             offsite_paths: "{{ cloud_files.results[1].content | b64decode }}"
             offsite_excludes: "{{ cloud_files.results[2].content | b64decode }}"
+            fixture_excludes: "{{ expect.rules | default([]) | select('match', '^- ') | map('regex_replace', '^- ', '') | list }}"
           ansible.builtin.assert:
             that:
-              - "('mountpoint -q' in offsite_script) == ('backup' in drive_mounts)"
+              - "('mountpoint -q' in offsite_script) == (backup_local_enabled | bool)"
+              - "not offsite_paths is search('(?m)^- ')"
+              - "fixture_excludes | select('in', offsite_excludes) | list | length == fixture_excludes | length"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
-              - "'backup' in drive_mounts or expect.local_paths | select('in', offsite_paths) | list | length == expect.local_paths | length"
+              - "backup_local_enabled | bool or expect.local_paths | select('in', offsite_paths) | list | length == expect.local_paths | length"
 
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.

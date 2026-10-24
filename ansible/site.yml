@@ -136,7 +136,7 @@
       ansible.builtin.import_role:
         name: backup
       tags: [backup]
-      when: backup_enabled | bool
+      when: backup_local_enabled | bool or backup_cloud_enabled | bool
 
     - name: Deploy ntfy
       ansible.builtin.import_role:

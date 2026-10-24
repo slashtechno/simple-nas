@@ -29,11 +29,11 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
-  # Back up restic_local_paths (group_vars) plus the dumps dir. Keep the path
+  # Back up the paths in restic_local_rules plus the dumps dir. Keep the path
   # list stable: restic forget groups snapshots by host and paths, so changing
   # it starts a new group and the old group's last snapshots stay until you
-  # forget them by hand. Use restic_local_excludes to skip things instead.
-  restic backup {{ (restic_local_paths + [service_dumps_dir]) | unique | map('quote') | join(' ') }} \
+  # forget them by hand. Add "- " lines to restic_local_rules to skip things instead.
+  restic backup {{ (restic_local_rules | reject('match', '^- ') | list + [service_dumps_dir]) | unique | map('quote') | join(' ') }} \
     --exclude-file "$EXCLUDE_FILE" \
     --tag daily \
     --verbose

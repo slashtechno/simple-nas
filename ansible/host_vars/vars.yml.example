@@ -31,6 +31,7 @@ direct_link_prefix: 30            # /30 = just these two addresses, nothing else
 drives: []
 
 # --- Offsite backup ---
-# Setting this turns on the weekly offsite copy for this host; leave it out for none. Every host needs its own
+# backup_cloud_enabled turns on the weekly offsite copy for this host. Every host needs its own
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
+backup_cloud_enabled: false
 restic_cloud_repository: ""   # e.g. "rclone:gdrive-nas:/<host>-backups"

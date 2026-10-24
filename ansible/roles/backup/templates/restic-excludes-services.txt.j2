@@ -11,6 +11,6 @@
 {% endif %}
 {% if crafty_enabled | bool %}
 # Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
-# still backed up. Add "!{{ crafty_data_dir }}/backups" to restic_local_excludes or restic_cloud_excludes to back them up too.
+# still backed up. Add "!{{ crafty_data_dir }}/backups" as a "- !" line of restic_local_rules or restic_cloud_rules to back them up too.
 {{ crafty_data_dir }}/backups
 {% endif %}

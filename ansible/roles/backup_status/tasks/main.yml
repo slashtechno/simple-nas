@@ -1,7 +1,7 @@
 ---
 - name: Check the host has a local backup to show
   ansible.builtin.assert:
-    that: "'backup' in drive_mounts"
+    that: backup_local_enabled | bool
     fail_msg: >-
       backup_status_enabled needs a local backup: give a drive in `drives` the `backup` role
       ({{ inventory_hostname }} has none). The dashboard reads the local repository.

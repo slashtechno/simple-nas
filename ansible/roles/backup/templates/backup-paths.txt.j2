@@ -1,21 +1,8 @@
 # Paths backed up to the cloud (Google Drive) by backup-restic-cloud.sh, one per line,
 # each as its own restic snapshot group. Lines starting with # are ignored.
-# Gitea and Immich are not listed: they reach the cloud through their dumps
+# Rendered from the paths in restic_cloud_rules (group_vars); its "- " lines are in restic-excludes-cloud.txt.
+# Gitea and Immich's databases reach the cloud through their dumps
 # (dump.d scripts run by backup-services.sh), because a raw copy of a live database can be inconsistent.
-{% if copyparty_enabled | bool %}
-{{ copyparty_config_dir }}
-{% endif %}
-{% if 'backup' not in drive_mounts %}
-# No local backup on this host, so the offsite copy also holds its data (restic_local_paths):
-{% for path in restic_local_paths %}
-{{ path }}
-{% endfor %}
-{% endif %}
-/home/{{ ansible_user }}/.config/rclone
-{{ restic_password_file }}
-{{ nas_base_dir }}
-
-# Extra paths from restic_cloud_extra_paths (group_vars):
-{% for path in restic_cloud_extra_paths %}
+{% for path in restic_cloud_rules | reject('match', '^- ') %}
 {{ path }}
 {% endfor %}

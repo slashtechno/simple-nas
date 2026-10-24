@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-{% if 'backup' in drive_mounts %}
+{% if backup_local_enabled | bool %}
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: the service dumps and logs
 # are written there, and they would fill the root drive instead.
 if ! mountpoint -q {{ backup_drive | quote }}; then

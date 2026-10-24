@@ -2,16 +2,45 @@
 - name: Check the backup role can run on this host
   ansible.builtin.assert:
     that:
-      - "'backup' in drive_mounts or restic_cloud_repository | length > 0"
+      - backup_local_enabled | bool or backup_cloud_enabled | bool
       - vault_restic_password is defined
     fail_msg: >-
-      {{ inventory_hostname }} needs a drive with the `backup` role (`drives` in its host_vars) or a
-      restic_cloud_repository, and vault_restic_password (group_vars/all/vault.yml), to run backups.
+      The backup role is on for {{ inventory_hostname }} but neither backup_local_enabled nor
+      backup_cloud_enabled is true, or vault_restic_password is missing from group_vars/all/vault.yml.
+    quiet: true
+
+- name: Check the local backup has a drive
+  ansible.builtin.assert:
+    that: "'backup' in drive_mounts"
+    fail_msg: >-
+      backup_local_enabled is true but {{ inventory_hostname }} has no drive with the `backup` role.
+      Claim one in `drives` (host_vars/{{ inventory_hostname }}/vars.yml) or set backup_local_enabled: false.
+    quiet: true
+  when: backup_local_enabled | bool
+
+- name: Check the offsite backup has a repository
+  ansible.builtin.assert:
+    that: restic_cloud_repository | length > 0
+    fail_msg: >-
+      backup_cloud_enabled is true but restic_cloud_repository is empty. Set it in
+      host_vars/{{ inventory_hostname }}/vars.yml, e.g. "rclone:gdrive-nas:/{{ inventory_hostname }}-backups".
+    quiet: true
+  when: backup_cloud_enabled | bool
+
+- name: Check every backup rule is a path or starts with "- "
+  ansible.builtin.assert:
+    that: >-
+      (restic_local_rules + restic_cloud_rules)
+      | reject('match', '^(- .+|/.+)$') | list | length == 0
+    fail_msg: >-
+      Every line of restic_local_rules and restic_cloud_rules is an absolute path, "- pattern" or
+      "- !pattern" (a dash and a space). Offending lines:
+      {{ (restic_local_rules + restic_cloud_rules) | reject('match', '^(- .+|/.+)$') | list }}
     quiet: true
 
 - name: Install restic, and rclone for an rclone repository
   ansible.builtin.apt:
-    name: "{{ ['restic'] + (['rclone'] if restic_cloud_repository.startswith('rclone:') else []) }}"
+    name: "{{ ['restic'] + (['rclone'] if backup_cloud_enabled | bool and restic_cloud_repository.startswith('rclone:') else []) }}"
     state: present
     update_cache: true
 
@@ -20,7 +49,7 @@
   ansible.builtin.command: mountpoint -q {{ backup_drive | quote }}
   changed_when: false
   check_mode: false
-  when: "'backup' in drive_mounts"
+  when: backup_local_enabled | bool
 
 - name: Check the ntfy token is in the vault
   ansible.builtin.assert:
@@ -37,9 +66,9 @@
     group: "{{ ansible_user }}"
     mode: "0755"
   loop: >-
-    {{ ([] if 'backup' in drive_mounts else [backup_work_dir])
+    {{ ([] if backup_local_enabled | bool else [backup_work_dir])
        + [restic_cache_dir, backup_logs_dir, service_dumps_dir]
-       + ([restic_repo_path] if 'backup' in drive_mounts else []) }}
+       + ([restic_repo_path] if backup_local_enabled | bool else []) }}
 
 - name: Create scripts directory
   ansible.builtin.file:
@@ -80,7 +109,7 @@
 
 # The daily local backup and the weekly integrity check: scripts, exclude list and cron jobs.
 - name: Set up the local backup
-  when: "'backup' in drive_mounts"
+  when: backup_local_enabled | bool
   block:
     - name: Render the local backup and check scripts
       ansible.builtin.template:
@@ -126,8 +155,8 @@
           /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
           "restic-check failed or {{ backup_drive }} not mounted"
 
-- name: Remove the local backup jobs and scripts when there is no backup drive
-  when: "'backup' not in drive_mounts"
+- name: Remove the local backup jobs and scripts when the local backup is off
+  when: not backup_local_enabled | bool
   block:
     - name: Remove the local backup cron jobs
       ansible.builtin.cron:
@@ -175,7 +204,7 @@
 
 # The weekly offsite backup: its script, path and exclude lists, rclone remote, repository and cron job.
 - name: Set up the offsite backup
-  when: restic_cloud_repository | length > 0
+  when: backup_cloud_enabled | bool
   block:
     - name: Render the offsite backup script
       ansible.builtin.template:
@@ -248,7 +277,7 @@
           /bin/bash {{ (nas_scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (nas_scripts_dir ~ '/alert.sh') | quote }}
-          "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if 'backup' in drive_mounts else '' }}"
+          "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
 
 - name: Initialize local restic repository (idempotent)
   ansible.builtin.command:
@@ -263,14 +292,14 @@
     - "'already exists' not in restic_init.stderr"
   become: true
   become_user: "{{ ansible_user }}"
-  when: "'backup' in drive_mounts"
+  when: backup_local_enabled | bool
 
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:
     name: nas-backup-cloud
     user: "{{ ansible_user }}"
     state: absent
-  when: restic_cloud_repository | length == 0
+  when: not backup_cloud_enabled | bool
 
 - name: Remove the offsite backup script and lists when the offsite backup is off
   ansible.builtin.file:
@@ -280,4 +309,4 @@
     - backup-restic-cloud.sh
     - backup-paths.txt
     - restic-excludes-cloud.txt
-  when: restic_cloud_repository | length == 0
+  when: not backup_cloud_enabled | bool

@@ -12,7 +12,7 @@ cloudflared_enabled: true
 pics_enabled: false   # photo culling and sharing; needs vault_github_read_token (see docs/services.md#pics-photo-culling-and-sharing)
 garage_enabled: false   # needs manual init after first deploy (see docs/services.md#garage-s3)
 crafty_enabled: false   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
-backup_enabled: true
+backup_local_enabled: true   # daily backup to the `backup` drive; each host sets backup_cloud_enabled and its repository in host_vars
 usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty
 ntfy_enabled: false   # private notification server for backup failure alerts; see docs/services.md#ntfy-failure-alerts
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots

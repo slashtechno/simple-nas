@@ -106,5 +106,5 @@ ansible-playbook teardown.yml -e remove_data=true --ask-vault-pass # also wipes 
 5. `site.yml`: add `- role: myservice` with a tag and `when: myservice_enabled | default(false)` (opt-in; `true` only for core services), in the play for the group it runs on (`nas` or `servers_general`).
 6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`, in the play for the group the service runs on.
 7. A public hostname needs a `cloudflared_ingress` rule.
-8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_paths` to send it offsite.
+8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_rules` to send it offsite.
 9. `just deploy myservice`
