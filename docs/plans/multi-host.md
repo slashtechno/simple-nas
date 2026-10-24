@@ -35,7 +35,7 @@ Does not travel with the drives:
 2. **Vault keys.** In `group_vars/all/vault.yml`, the Cloudflare keys are `vault_cloudflared_api_token` and `vault_cloudflared_account_id`. Rename them if they still have the old names `vault_cf_api_token` and `vault_cf_account_id`. Check that no encrypted vault file still holds the old names.
    Rename the SFTP keys `vault_pocketpi_nas_user` and `vault_pocketpi_nas_pass` to `vault_pocketpi_sftp_user` and `vault_pocketpi_sftp_pass` the same way (`ansible-vault edit` on the host's `vault.yml`, or on `group_vars/all/vault.yml` if shared).
    Rename the Gitea runner: it registers as `<host>-runner`, but act_runner registers only when `.runner` is missing from its data directory (checked in the image's `run.sh`). To rename a runner that is registered under `pi-nas-runner`, delete `<gitea_runner_data_dir>/.runner` on the host, redeploy, then delete the old entry under Gitea's Site Administration, Actions, Runners.
-   The rclone remote is named `gdrive`. `migrate-old-names.sh` renames the `[gdrive-nas]` section of the ansible user's `rclone.conf` to `[gdrive]`. `host_vars/pi4/vars.yml` already uses `rclone:gdrive:/...`; change `restic_cloud_repository` the same way (same path) for any other host that uses the old remote.
+   The rclone remote is named `gdrive`. the script in cutover step 2 renames the `[gdrive-nas]` section of the ansible user's `rclone.conf` to `[gdrive]`. `host_vars/pi4/vars.yml` already uses `rclone:gdrive:/...`; change `restic_cloud_repository` the same way (same path) for any other host that uses the old remote.
 3. **Google OAuth.** Publish the OAuth app to Production, or the Drive refresh token expires after 7 days ([backups.md](../backups.md)).
 4. **Do not create `host_vars/pi5/` yet.** With a `drives:` block in place, any deploy to pi5 tries to mount drives that are not attached. Cutover step 8 creates it.
 5. **ntfy (optional).** Failure alerts to your phone: [services.md](../services.md#ntfy-failure-alerts).
@@ -43,14 +43,53 @@ Does not travel with the drives:
 ### Cutover
 
 1. Take fresh service dumps and a local snapshot, and check them (`restic snapshots`; `restic check` stays manual). Avoid the 2 AM and 4 AM cron windows.
-2. **Rename the on-host names.** Every host that was deployed before the `nas` prefix was dropped runs `ansible/migrate-old-names.sh` once, as root on the host, with the ansible user as argument. The script is gitignored; if it is missing, restore it from your copy. It stops the compose projects, removes the old cron jobs, and renames:
+2. **Rename the on-host names.** Every host that was deployed before the `nas` prefix was dropped runs the script below once, as root on the host, with the ansible user as argument. It stops the compose projects, removes the old cron jobs, and renames:
    - `/opt/nas` to `/opt/services`
    - the Docker network `nas-services` to `services`
    - the cron jobs `nas-backup-*` to `backup-local`, `backup-cloud` and `restic-check`
    - `/var/lib/nas-backup` to `/var/lib/backup-work`
    - the unit `nas-drive-remount` to `drive-remount`
 
-   Run it on the Pi 4 now (`scp ansible/migrate-old-names.sh pi4:/tmp/ && ssh -t pi4 sudo bash /tmp/migrate-old-names.sh <ansible-user>`). Run it on pi5 too if it was ever deployed.
+   Save the script as `migrate.sh`, then run it on the Pi 4 now (`scp migrate.sh pi4:/tmp/ && ssh -t pi4 sudo bash /tmp/migrate.sh <ansible-user>`). Run it on pi5 too if it was ever deployed. Then deploy (`just deploy '' --limit <host>`); the deploy recreates the containers on the new network.
+
+   ```bash
+   #!/bin/bash
+   # Run ON the host as root, once, BEFORE the first deploy: sudo bash migrate.sh <ansible-user>
+   set -euo pipefail
+   user="${1:?usage: migrate.sh <ansible-user>}"
+
+   # 1. Stop every compose project under the old directory (data is kept).
+   if [ -d /opt/nas ]; then
+     for compose in /opt/nas/*/docker-compose.yml /opt/nas/*/compose.yaml; do
+       [ -f "$compose" ] && docker compose -f "$compose" down
+     done
+   fi
+
+   # 2. Remove the old cron jobs (Ansible marks each job with a "#Ansible: <name>" line above it).
+   crontab -u "$user" -l 2>/dev/null \
+     | awk '/^#Ansible: nas-(backup-local|backup-cloud|restic-check)$/ {skip=1; next} skip {skip=0; next} {print}' \
+     | crontab -u "$user" - || true
+
+   # 3. Move the directories.
+   [ -d /opt/nas ] && mv /opt/nas /opt/services
+   [ -d /var/lib/nas-backup ] && mv /var/lib/nas-backup /var/lib/backup-work
+
+   # 3b. Rename the rclone remote in the ansible user's config (tokens stay).
+   rclone_conf="$(getent passwd "$user" | cut -d: -f6)/.config/rclone/rclone.conf"
+   [ -f "$rclone_conf" ] && sed -i 's/^\[gdrive-nas\]$/[gdrive]/' "$rclone_conf"
+
+   # 4. Remove the old remount unit and udev rule, and the old Docker network.
+   systemctl disable --now nas-drive-remount.service 2>/dev/null || true
+   rm -f /etc/systemd/system/nas-drive-remount.service /etc/udev/rules.d/99-nas-drive-remount.rules
+   systemctl daemon-reload
+   udevadm control --reload-rules
+   docker network rm nas-services 2>/dev/null || true
+
+   echo "Done. Deploy now. Afterwards the offsite backup uploads /opt/services as a new snapshot group;"
+   echo "when that has run, drop the old one: restic -r <repo> forget --path /opt/nas --keep-last 1 --prune"
+   echo "(only after checking 'restic snapshots' shows the new group)."
+   ```
+
 3. **pi5 drops its old services.** If pi5 ran Dockge, Caddy or cloudflared: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit pi5 --vault-password-file .vault-pass`.
 4. **Free the Pi 4's name.** On the Pi 4: `sudo tailscale set --hostname=pi4`, and set the OS hostname ([Hostnames](#hostnames)).
 5. **Stop the Pi 4's services** so nothing restarts when it boots without drives: `ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass` (`--limit` is required; teardown stops every service, removes the cron jobs, keeps all data). Then on the Pi 4 run `sudo tailscale funnel reset` and remove the T7 and backup lines from `/etc/fstab`.
@@ -68,7 +107,7 @@ Does not travel with the drives:
 
 1. Boot it. Set the hostname and Tailscale name if not done ([Hostnames](#hostnames)).
 2. Rewrite `ansible/host_vars/pi4/vars.yml`: a `drives:` block that claims `fast` ([storage.md](../storage.md#examples)), and the services it runs (`dockge_enabled: true`, optionally `caddy_enabled: true`). To back it up, add a drive with the `backup` role and `backup_local_enabled: true`; for an offsite copy also `backup_cloud_enabled: true` and its own `restic_cloud_repository` ([backups.md](../backups.md)). Check the `host_vars/pi4/vault.yml` keys against the services it runs.
-3. If the Pi 4 was not migrated in cutover step 2, run `ansible/migrate-old-names.sh` on it now.
+3. If the Pi 4 was not migrated in cutover step 2, run the script from cutover step 2 on it now.
 4. `just preview '' --limit pi4 -K`, then `just deploy '' --limit pi4 -K`. Dockge is at `http://<host>:5001`.
 5. Remove leftover Docker volumes by hand ([storage.md](../storage.md#leftover-volumes)).
 6. Optional: Caddy, a public hostname ([below](#public-hostnames-for-ad-hoc-apps)), `docker_data_root` on a drive ([storage.md](../storage.md#dockers-own-storage)).
