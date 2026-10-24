@@ -7,7 +7,10 @@ Description=Remount data drives if they reappear after dropping offline
 
 [Service]
 Type=oneshot
-ExecStart=/bin/mount -a
+# The leading "-" accepts a non-zero exit: mount -a exits 64 when any one fstab entry fails (a backup drive
+# that is still missing, a retired drive's old line), and the start below must still run.
+ExecStart=-/bin/mount -a
 # Docker refuses to start while a drive it uses is unmounted (roles/common), so it is started here once the
-# mount is back. The leading "-" ignores a failure, for example while another drive is still missing.
+# mount is back. This also starts a Docker you stopped by hand, the next time any drive appears.
+# The leading "-" ignores a failure to start.
 ExecStartPost=-/bin/systemctl --no-block start docker.service

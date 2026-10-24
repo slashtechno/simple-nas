@@ -100,6 +100,12 @@
           - {uuid: "5555-EEEE", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}
           - {uuid: "6666-FFFF", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
 
+    # Written out, not derived: the drives above claim fast and primary on their own drives.
+    - name: The data drives are the fast and primary drives, not the backup drive
+      ansible.builtin.assert:
+        that: data_drive_mounts == ['/mnt/fast', '/mnt/primary']
+        quiet: true
+
     - name: Find every host's vars.yml
       ansible.builtin.find:
         paths: "{{ repo }}/host_vars"

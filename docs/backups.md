@@ -258,7 +258,7 @@ This restore has not been rehearsed on a real host. Try it once into a scratch G
 
 `nofail` in `fstab` only covers mounting at boot. A drive that drops out later is not remounted by it, and its mount point then becomes a plain folder on the root drive. Two guards cover this:
 
-1. The backup scripts and the `restic-check` job run `mountpoint -q` on the backup drive first. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t backup`.
+1. The backup scripts and the `restic-check` job run `mountpoint -q` on the backup drive first, and the backup scripts also refuse to run when a data drive (role `fast` or `primary`) is unmounted, so they never save a snapshot of an empty folder. If it is not mounted they exit without writing anything. The cron line logs the failure to `journalctl -t backup`.
 2. `roles/storage/files/99-drive-remount.rules` runs `mount -a` (through `drive-remount.service`) whenever a filesystem appears, so a reconnected drive remounts within seconds.
 
 Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl status drive-remount.service`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault (Raspberry Pi).

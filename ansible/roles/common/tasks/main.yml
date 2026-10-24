@@ -43,6 +43,7 @@
   ansible.builtin.systemd:
     name: "{{ item }}"
     masked: true
+    daemon_reload: true
   loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
 
 - name: Set timezone
@@ -121,7 +122,7 @@
 # Docker and containerd wait for the drives they use to be mounted. The drives are in fstab with `nofail`
 # so a missing one cannot stop the host booting, but that also lets Docker start without it, and a container
 # then writes its data into the empty mount point on the root drive. RequiresMountsFor= makes Docker fail
-# to start instead (and stop if the drive unmounts); `drive-remount.service` starts it again when the drive returns.
+# to start instead (and stop if the drive goes away while it runs); `drive-remount.service` starts it again when the drive returns.
 # Docker waits for the data-root drive and every drive holding service data (data_drive_mounts); containerd
 # only for the data-root drive, the only place it writes.
 - name: Create the systemd drop-in directories
@@ -134,10 +135,8 @@
   loop: [docker, containerd]
 
 - name: Hold Docker until its drives are mounted
-  ansible.builtin.copy:
-    content: |
-      [Unit]
-      RequiresMountsFor={{ ([docker_data_root] if docker_data_root | length > 0 else []) | union(data_drive_mounts) | join(' ') }}
+  ansible.builtin.template:
+    src: docker-drives-mounted.conf.j2
     dest: /etc/systemd/system/docker.service.d/10-drives-mounted.conf
     owner: root
     group: root

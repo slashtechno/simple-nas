@@ -1,0 +1,9 @@
+# Ansible-managed (roles/common). Docker waits for the drives it uses and stops when one goes away.
+[Unit]
+# Start only after the drives are mounted (and fail to start, instead of writing to the empty mount point).
+RequiresMountsFor={{ ([docker_data_root] if docker_data_root | length > 0 else []) | union(data_drive_mounts) | join(' ') }}
+{% for mount in data_drive_mounts %}
+# Stop when {{ mount }} unmounts. Requires= alone does not follow a drive that vanishes while Docker runs; BindsTo= does.
+# The unit name is the path with "/" as "-" and a literal "-" as \x2d (systemd-escape --path --suffix=mount).
+BindsTo={{ mount | trim('/') | replace('-', '\\x2d') | replace('/', '-') }}.mount
+{% endfor %}

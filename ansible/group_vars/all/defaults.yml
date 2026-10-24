@@ -226,7 +226,8 @@ drive_mounts: >-
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
 # Docker waits for these mounts and the backup scripts refuse to run without them, so nothing writes
 # service data, or backs up an empty folder, under a mount point whose drive is missing.
-# The backup drive is not listed: a missing backup drive must not stop the services.
+# A drive with only the backup role is not listed: its absence must not stop the services. A drive that holds
+# the backup role next to fast or primary is listed, because it holds service data too.
 data_drive_mounts: >-
   {%- set _m = [] -%}
   {%- for _d in drives if _d.uuid is defined -%}
