@@ -1,11 +1,16 @@
 all:
   children:
-    servers:       # every machine Ansible manages: gets the base roles (site.yml, first play)
+    servers:       # every machine Ansible manages; site.yml and teardown.yml run on this group
       children:
-        nas:               # the NAS: storage, services, backups (site.yml, second play)
+        nas:               # sets the NAS service flags in group_vars/nas/vars.yml; a group only shares settings
           hosts:
             pi:            # nickname shown in Ansible output (not a hostname or DNS name); also names host_vars/<nickname>/
-              ansible_host: 123.456.789.109   # a Tailscale (MagicDNS) name works from any network
+              ansible_host: 192.0.2.10   # a Tailscale (MagicDNS) name works from any network
               ansible_user: user
               ansible_ssh_private_key_file: ~/.ssh/id_rsa  # run ssh-add ~/.ssh/id_rsa
-        servers_general:   # ad-hoc app servers; leave empty if you have none
+      # Hosts that need no group's settings go here, directly under `servers`; delete this if you have none.
+      # hosts:
+      #   pi5:
+      #     ansible_host: pi5.local
+      #     ansible_user: user
+      #     ansible_ssh_private_key_file: ~/.ssh/id_rsa

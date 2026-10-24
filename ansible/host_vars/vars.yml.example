@@ -12,16 +12,9 @@ direct_link_ip: 10.10.20.1        # Pi's address on the link
 direct_link_peer_ip: 10.10.20.2   # handed to the laptop automatically via dnsmasq
 direct_link_prefix: 30            # /30 = just these two addresses, nothing else fits
 
-# Ad-hoc app platform (general servers only; see docs/services.md#ad-hoc-app-platform).
-# Dockge: web UI for compose stacks in dockge_stacks_dir. Default: true.
-# Caddy: reverse proxy that names apps from container labels. Default: false.
-# Cloudflared: a Cloudflare tunnel from this host to the hostnames in cloudflared_ingress. Default: false.
-#   Each hostname may be on one host only. A stack is reachable from the tunnel when it joins the
-#   `nas-services` network; the service is then `http://<container_name>:<port>`.
-dockge_enabled: true
-caddy_enabled: false
-cloudflared_enabled: false
-cloudflared_ingress: []
+# Services: turn one on for this host with `<name>_enabled: true` (the list and what each needs is in
+# group_vars/all/vars.yml.example). To switch a service on for several hosts, set the flag in a group's
+# group_vars file instead.
 
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
