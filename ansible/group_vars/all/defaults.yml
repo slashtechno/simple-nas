@@ -156,6 +156,19 @@ ntfy_token_file: "{{ services_dir }}/ntfy-token"
 # The hostname must contain one domain from cloudflared_zones. A hostname may appear on only one host; the deploy fails otherwise.
 cloudflared_ingress: []
 
+# --- Direct Ethernet link (roles/network; teardown.yml also reads it; docs/networking.md#direct-ethernet-link) ---
+# A cable straight from the Pi to a laptop: a static address on the Pi, no gateway, and a dnsmasq that hands the
+# laptop its address on that port only. The port must be idle, not the one the Pi is managed over.
+direct_link_enabled: false
+# The Pi's network port for the cable.
+direct_link_iface: eth0
+# The Pi's address on the link.
+direct_link_ip: 10.10.20.1
+# The address handed to the laptop.
+direct_link_peer_ip: 10.10.20.2
+# Prefix length; 30 leaves room for just these two addresses.
+direct_link_prefix: 30
+
 # --- Copyparty ---
 # Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
 # any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel

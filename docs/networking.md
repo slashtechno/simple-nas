@@ -34,7 +34,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 - Creates the shared Docker network `docker_network` (`services`) on every host.
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
-- Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings have no defaults: copy them from `ansible/host_vars/vars.yml.example` into the host's `vars.yml`.
+- Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings and their defaults are in `ansible/group_vars/all/defaults.yml`; override them in the host's `vars.yml`.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
 - Ubuntu Server renders netplan with systemd-networkd, not NetworkManager. The direct link uses `nmcli`, not netplan. It expects the default Ethernet profile to be named `Wired connection 1`, as on Raspberry Pi OS; on a host where it has another name, the link's disable and revert steps fail.
 

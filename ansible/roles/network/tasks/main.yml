@@ -26,7 +26,7 @@
 # Direct Ethernet link to a laptop (see docs/networking.md#direct-ethernet-link).
 # The port must be idle (Pi runs on wifi): setting it up on the connection Ansible uses would drop it.
 - name: Set up direct Ethernet link
-  when: direct_link_enabled | default(false)
+  when: direct_link_enabled | bool
   block:
     - name: Refuse to touch the interface this host is managed over
       ansible.builtin.assert:
@@ -87,4 +87,4 @@
 
 - name: Tear down direct Ethernet link
   ansible.builtin.import_tasks: remove_direct_link.yml
-  when: direct_link_enabled is defined and not direct_link_enabled and network_direct_link_conf.stat.exists
+  when: not (direct_link_enabled | bool) and network_direct_link_conf.stat.exists

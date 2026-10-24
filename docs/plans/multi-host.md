@@ -50,6 +50,8 @@ Does not travel with the drives:
    - `/var/lib/nas-backup` to `/var/lib/backup-work`
    - the unit `nas-drive-remount` to `drive-remount`
 
+   It also removes the old cloudflared init container and its build files.
+
    Save the script as `migrate.sh`, then run it on the Pi 4 now (`scp migrate.sh pi4:/tmp/ && ssh -t pi4 sudo bash /tmp/migrate.sh <ansible-user>`). Run it on pi5 too if it was ever deployed. Then deploy (`just deploy '' --limit <host>`); the deploy recreates the containers on the new network.
 
    ```bash
@@ -77,6 +79,10 @@ Does not travel with the drives:
    # 3b. Rename the rclone remote in the ansible user's config (tokens stay).
    rclone_conf="$(getent passwd "$user" | cut -d: -f6)/.config/rclone/rclone.conf"
    [ -f "$rclone_conf" ] && sed -i 's/^\[gdrive-nas\]$/[gdrive]/' "$rclone_conf"
+
+   # 3c. Remove the cloudflared init container and its build files; the deploy brings up the tunnel directly.
+   docker rm -f cloudflared-init 2>/dev/null || true
+   rm -f /opt/services/cloudflared/{Dockerfile.init,Dockerfile.runtime,create_tunnel.sh,ingress.yml,config.yml}
 
    # 4. Remove the old remount unit and udev rule, and the old Docker network.
    systemctl disable --now nas-drive-remount.service 2>/dev/null || true

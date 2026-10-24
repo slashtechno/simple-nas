@@ -221,7 +221,7 @@
       register: cloudflared_dns_pointing_here
       when: cloudflared_tunnel_id | length > 0
 
-    - name: Report records for hostnames that are no longer in cloudflared_ingress
+    - name: Report records for hostnames that are not in cloudflared_ingress
       ansible.builtin.debug:
         msg: "{{ item }} still points at this tunnel but is not in cloudflared_ingress. Delete the record in Cloudflare if it is unused."
       # Take every record's name, then drop the hostnames we still list.
@@ -265,24 +265,6 @@
   no_log: true
   when: cloudflared_tunnel_id | length > 0
   notify: Restart cloudflared
-
-# Files of the earlier init-container setup: a build step, an init script and its generated rules.
-# Tunnel credentials (*.json) in the directory are not touched.
-- name: Remove files of the init-container setup
-  ansible.builtin.file:
-    path: "{{ services_dir }}/cloudflared/{{ item }}"
-    state: absent
-  loop:
-    - Dockerfile.init
-    - Dockerfile.runtime
-    - create_tunnel.sh
-    - ingress.yml
-    - config.yml
-
-- name: Remove the init container
-  community.docker.docker_container:
-    name: cloudflared-init
-    state: absent
 
 - name: Deploy cloudflared
   ansible.builtin.import_role:
