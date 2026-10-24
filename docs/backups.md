@@ -14,7 +14,7 @@ Each host chooses its backups with two flags in `host_vars/<host>/vars.yml`:
 A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 
 - It has no automatic integrity check. The weekly `restic check` job exists only for the local repository, and the cloud check is manual ([Checking the cloud repo](#checking-the-cloud-repo-manual)).
-- It uploads its whole data set every week. With no local backup, the default `restic_cloud_rules` include everything the local rules would cover. restic sends only data that changed, but it reads all of it each run.
+- Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.
 
 The backups run as the ansible user. Files only root can read (`/etc`, data owned by a container's user) are skipped, and the log says "unreadable source files". The run still counts as done. A stack whose containers write as root needs its data dumped or its owner changed.
