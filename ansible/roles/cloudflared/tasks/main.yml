@@ -180,8 +180,10 @@
 
     - name: Delete records that point at a different tunnel (such as a deleted one)
       ansible.builtin.uri:
-        url: "{{ cloudflared_api_url }}/zones/{{ item.json.result[0].zone_id }}/dns_records/{{ item.json.result[0].id }}"
+        url: "{{ cloudflared_api_url }}/zones/{{ zone_id }}/dns_records/{{ item.json.result[0].id }}"
         method: DELETE
+      vars:
+        zone_id: "{{ (cloudflared_zones | dict2items | selectattr('key', 'in', item.item.hostname) | first).value }}"
       loop: "{{ cloudflared_dns_now.results | default([]) }}"
       loop_control:
         label: "{{ item.item.hostname | default('') }}"
