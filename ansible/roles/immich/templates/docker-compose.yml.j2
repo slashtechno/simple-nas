@@ -32,7 +32,6 @@ services:
     volumes:
       - model-cache:/cache
       - /etc/localtime:/etc/localtime:ro
-    environment:
     networks:
       {{ docker_network }}:
         aliases:
