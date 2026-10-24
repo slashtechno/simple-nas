@@ -6,9 +6,11 @@ copyparty_version_checker_enabled: true   # vc-url points at the upstream adviso
 # Copyparty's SFTP listener, used by the pocketpi project's NAS sync through a scoped
 # account in copyparty_service_accounts. WebDAV lacks the modtimes rclone needs; SFTP has them.
 copyparty_sftp_enabled: false
+# Host port of the SFTP listener.
 copyparty_sftp_port: 3922
 
 # A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on
 # different drives; with one drive it would just be a folder of /. See docs/storage.md.
 copyparty_fast_enabled: "{{ 'fast' in drive_mounts and 'primary' in drive_mounts and drive_mounts.fast != drive_mounts.primary }}"
+# Where the /fast volume lives.
 copyparty_fast_dir: "{{ fast_drive }}/fast"

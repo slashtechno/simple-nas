@@ -28,8 +28,16 @@ test:
     find "$out" -name '*.sh' -print0 | xargs -0 uvx --from shellcheck-py shellcheck --severity=warning
     echo "Rendered templates are in $out"
 
+# Rewrite docs/variables.md from the comments in the defaults and vault example files
+docs:
+    python3 tools/variables.py --write
+
+# Fail if docs/variables.md is stale, a setting has no comment, or a vault name or required setting is missing from its example
+variables:
+    python3 tools/variables.py
+
 # Everything CI runs. Run this before committing.
-check: lint syntax test
+check: lint syntax variables test
 
 # List tags of one image to pick a version, e.g. `just tags copyparty/iv '^1\.'` (newest `count` shown)
 tags image filter='.' count='30':

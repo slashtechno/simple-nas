@@ -2,7 +2,7 @@
 # Renders every role template against the example vars and checks the result.
 # Runs on your machine only (no Pi, no vault): `just test` runs this, then
 # shellchecks the rendered scripts. It catches:
-#   - a template using a variable that isn't defined in vars.yml.example,
+#   - a template using a variable that isn't defined in defaults.yml, vars.yml.example,
 #     vault.yml.example, versions.yml or the role's defaults/
 #   - a key in a vars.yml (group_vars/all, host_vars/<host>) that no example or role defaults
 #     file declares
@@ -43,7 +43,8 @@
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
-        {{ [repo + '/group_vars/all/vars.yml.example',
+        {{ [repo + '/group_vars/all/defaults.yml',
+            repo + '/group_vars/all/vars.yml.example',
             repo + '/group_vars/all/versions.yml',
             repo + '/group_vars/all/derived.yml',
             repo + '/host_vars/vars.yml.example',
@@ -66,10 +67,10 @@
       register: site_yml
 
     # An undeclared flag would make the role silently skip (or fail) instead of being off by default.
-    - name: Every flag site.yml tests is declared in group_vars/all/vars.yml.example
+    - name: Every flag site.yml tests is declared in group_vars/all/defaults.yml
       ansible.builtin.assert:
-        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/vars.yml.example') | from_yaml"
-        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/vars.yml.example does not declare."
+        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml"
+        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/defaults.yml does not declare."
       loop: "{{ site_yml.content | b64decode | regex_findall('when: (\\w+)_enabled') }}"
 
     # After include_vars, which would reset drives to the example's empty list.
@@ -122,6 +123,7 @@
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop:
+        - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"
         - "{{ repo }}/group_vars/all/versions.yml"

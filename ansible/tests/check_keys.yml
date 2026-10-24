@@ -13,7 +13,7 @@
 - name: Add the keys of each example and role defaults file
   ansible.builtin.set_fact:
     known_keys: "{{ known_keys + (lookup('ansible.builtin.file', item) | from_yaml).keys() | list }}"
-  loop: "{{ [repo + '/group_vars/all/vars.yml.example', repo + '/host_vars/vars.yml.example'] + defaults_files }}"
+  loop: "{{ [repo + '/group_vars/all/defaults.yml', repo + '/host_vars/vars.yml.example'] + defaults_files }}"
 
 - name: Every key in {{ real_file | basename }} must be declared somewhere
   ansible.builtin.assert:

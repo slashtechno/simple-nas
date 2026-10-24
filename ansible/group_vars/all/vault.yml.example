@@ -4,7 +4,9 @@
 # Secrets for one group go in group_vars/<group>/vault.yml (the NAS has one). Same password for all.
 # A key defined in both files takes the group's value, so move a key here, do not copy it.
 
+# Cloudflare API token with Zone:DNS:Edit on every zone in cloudflared_zones and Account:Cloudflare Tunnel:Edit.
 vault_cloudflared_api_token: "your_cloudflare_api_token"
+# ID of the Cloudflare account that owns the tunnel.
 vault_cloudflared_account_id: "your_cloudflare_account_id"
 # Login token for the ntfy server (roles/ntfy), used by the server and by every host that sends alerts.
 # "tk_" and 29 letters or digits: `docker run --rm binwiederhier/ntfy token generate`.

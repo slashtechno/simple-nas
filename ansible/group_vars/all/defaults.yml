@@ -1,0 +1,254 @@
+---
+# Defaults for every host. Tracked, and the same for everyone who copies this repo.
+# Change a value for your hosts in vars.yml next to this file, or per host in host_vars/<host>/vars.yml; never edit it here.
+# A value of `{{ undef(hint=...) }}` has no sensible default: set it in vars.yml, or the deploy stops and prints the hint.
+# Secrets go in a vault.yml next to this file, never here. docs/variables.md lists every setting and vault entry.
+
+# Timezone for the host and its containers. List names with `timedatectl list-timezones`.
+timezone: UTC
+# Where compose projects and helper scripts are deployed on the host.
+services_dir: /opt/services
+# Where the helper and backup scripts are deployed.
+scripts_dir: "{{ services_dir }}/scripts"
+# --- Which services run on a host ---
+# Every service is off until a group or host switches it on: set `<name>_enabled: true` in
+# host_vars/<host>/vars.yml (or group_vars/<group>/vars.yml for several hosts), and false again to stop deploying it.
+# A service that is already deployed keeps running; remove it with teardown.yml --tags <name>.
+# What each service needs (drive roles, vault entries) is in docs/services.md.
+
+# Immich photo library with machine learning.
+immich_enabled: false
+# Copyparty file server (web UI, WebDAV, optional SFTP).
+copyparty_enabled: false
+# Gitea git hosting and its Actions runner.
+gitea_enabled: false
+# Homebridge, a HomeKit bridge.
+homebridge_enabled: false
+# pics, the photo sharing app.
+pics_enabled: false
+# Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
+garage_enabled: false
+# Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).
+crafty_enabled: false
+# ntfy push-notification server (docs/services.md#ntfy-failure-alerts).
+ntfy_enabled: false
+# Cloudflare Tunnel that publishes the hostnames in cloudflared_ingress.
+cloudflared_enabled: false
+# Dockge, a web UI for your own compose stacks.
+dockge_enabled: false
+# Caddy reverse proxy that routes by container label.
+caddy_enabled: false
+# Daily backup to the drive with the `backup` role, plus a weekly integrity check.
+backup_local_enabled: false
+# Weekly backup to restic_cloud_repository.
+backup_cloud_enabled: false
+# Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
+backup_status_enabled: false
+
+# Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
+storage_enabled: true
+# This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
+# (explained in host_vars/vars.yml.example).
+drives: []
+# Mount USB drives and card readers when they are plugged in (not drives listed in `drives`).
+# Mounted at /run/media/system/<label>; Copyparty shows them under /drives (docs/storage.md).
+usb_automount_enabled: false
+# false: plugged-in drives are read-only. true: Copyparty can change and delete files on them.
+usb_automount_writable: false
+# Name of the shared Docker network the services join.
+docker_network: services
+# Docker image pull policy. Allowed: missing, always. Default: missing.
+# "always" pulls newer images on every run, see ansible/README.md#update-service-images.
+docker_pull_policy: missing
+# Log rotation for every container: json-file keeps 3 files of 10m per container. Docker's default
+# never rotates, and logs fill the root drive. Allowed: json-file options (strings).
+# CAUTION: applies only to containers created after the change; recreate the rest with
+# `docker compose up -d --force-recreate` in each project.
+docker_log_opts:
+  max-size: "10m"
+  max-file: "3"
+
+# Where Docker and containerd keep images, layers and anonymous volumes. Empty keeps their default
+# (/var/lib/docker and /var/lib/containerd, on the root drive). Set it per host in
+# host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/t7/docker-root".
+# Docker is held back until that drive is mounted (systemd RequiresMountsFor), so it cannot
+# fill the root drive under an empty mount point. The procedure and tests: docs/storage.md.
+# CAUTION: changing it hides existing images and containers until they are pulled/created again.
+docker_data_root: ""
+
+# SSH public keys allowed to log in as the Ansible user, one per device (a list of lines like `ssh-ed25519 AAAA... you@laptop`). Added, never removed:
+# a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
+ssh_authorized_keys: []
+
+# --- Backups (docs/backups.md) ---
+# The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enabled` set to true. Local needs a
+# drive with the `backup` role; cloud needs `restic_cloud_repository`. Without local backup, logs and service
+# dumps live in /var/lib/backup-work on the root drive.
+
+# One dump script per service with a live database.
+service_dump_scripts_dir: "{{ scripts_dir }}/dump.d"
+# Local repository; used only when a backup drive is claimed.
+restic_repo_path: "{{ backup_drive }}/restic-repo"
+# Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
+# "rclone:gdrive-nas:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
+# initialised. Set it per host in host_vars (each host needs its own path: hosts sharing a repository would
+# prune each other's snapshots).
+restic_cloud_repository: ""
+# File holding the restic repository password, written from vault_restic_password.
+restic_password_file: "/home/{{ ansible_user }}/.restic-password"
+# Where the backup logs are written.
+backup_logs_dir: "{{ backup_work_dir }}/logs"
+# Where the dump.d scripts write database dumps before each backup; the local backup includes this directory.
+service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
+# What the local (daily) backup copies and skips, one rule per line:
+#   /path        back this path up (an absolute path)
+#   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
+#   - !pattern   put back something an earlier "- " line left out
+# Example:
+#   restic_local_rules:
+#     - /mnt/data                                  # back up this drive
+#     - /home/pi/notes                             # and this folder
+#     - "- /mnt/data/downloads"                    # but not this folder inside it
+#     - "- **/*.iso"                               # nor any .iso file
+#     - "- !/mnt/data/downloads/keep.iso"          # except this one
+# The service dumps dir is always added, and caches and live database directories are always skipped
+# (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
+# Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
+# the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic reports
+# "unreadable source files" in the log and the run still counts as done.
+# CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
+# group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
+# (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
+restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
+# The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
+# every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the
+# host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to
+# upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".
+restic_cloud_rules: >-
+  {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
+     + ([] if backup_local_enabled | bool else restic_local_rules)
+     + [services_dir] }}
+# restic forget options for the local repository: snapshots kept per day, week and month.
+restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
+# restic forget options for the offsite repository: snapshots kept per week and month.
+restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
+# rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
+# fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
+restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
+# Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
+# rclone or network pipe cannot hold the repo lock indefinitely.
+restic_command_timeout: "2h"
+# restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
+# off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
+# A host without a fast drive keeps it in the user's ~/.cache.
+restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
+
+# --- Data directories (teardown.yml also reads them) ---
+# One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
+# (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
+# default backup (restic_local_rules) does not cover it. A variable that uses a drive role fails with a
+# message naming the role if no entry in `drives` claims it, but only on a host that enables the service.
+# Random-IO data (databases, configs) is on the fast drive; bulk data (photos, files) is on the primary.
+# When both roles are the same drive, the split changes nothing on disk.
+
+# The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
+dockge_stacks_dir: "{{ fast_drive }}/stacks"
+# Dockge's own database (users, settings).
+dockge_data_dir: "{{ fast_drive }}/docker/dockge"
+# Caddy's certificates and state. Losing it means certificates are issued again.
+caddy_data_dir: "{{ fast_drive }}/docker/caddy"
+# Immich's photos (primary drive).
+immich_upload_location: "{{ primary_drive }}/photos"
+# Immich's Postgres data directory (fast drive).
+immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
+# The files Copyparty serves (primary drive).
+copyparty_files_dir: "{{ primary_drive }}/files"
+# Copyparty's configuration (fast drive).
+copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
+copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
+# Gitea's repositories and database (fast drive).
+gitea_data_dir: "{{ fast_drive }}/docker/gitea"
+gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"   # runner registration (.runner); on the fast drive so it is backed up
+ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"   # message history and the user database; rebuilt from the compose file, so little is lost without it
+# pics' data directory (fast drive).
+pics_data_dir: "{{ fast_drive }}/docker/pics"
+# Homebridge's configuration and pairings (fast drive).
+homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
+# Garage's metadata and data (fast drive).
+garage_data_dir: "{{ fast_drive }}/docker/garage"
+# Crafty's servers and configuration (fast drive).
+crafty_data_dir: "{{ fast_drive }}/docker/crafty"
+
+# --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
+# A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it
+# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the NAS (roles/ntfy). The login token
+# is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
+ntfy_alert_url: ""
+# File on the host holding vault_ntfy_token, read by alert.sh.
+ntfy_token_file: "{{ services_dir }}/ntfy-token"
+
+# --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
+# Cloudflare API token, from the vault.
+cloudflared_api_token: "{{ vault_cloudflared_api_token }}"
+# Cloudflare account ID, from the vault.
+cloudflared_account_id: "{{ vault_cloudflared_account_id }}"
+# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
+# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones. Example: `example.com: <zone id>`.
+cloudflared_zones: {}
+# Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
+# One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
+# The hostname must contain one domain from cloudflared_zones. A hostname may appear on only one host; the deploy fails otherwise.
+cloudflared_ingress: []
+
+# --- Copyparty ---
+# Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
+# any device on your tailnet. That needs nothing extra: no `tailscale serve`, no funnel. The funnel
+# (roles/tailscale_funnel/defaults/main.yml) only gives Copyparty a public ts.net name; pics' guest
+# pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
+
+# The Copyparty admin login, from the vault.
+copyparty_user: "{{ vault_copyparty_user }}"
+# The Copyparty admin password, from the vault.
+copyparty_pass: "{{ vault_copyparty_pass }}"
+copyparty_collab_dir: "{{ primary_drive }}/collab"   # shared directory for friends
+# Host port of Copyparty's web UI and WebDAV.
+copyparty_port: 3923
+
+# Accounts for apps that talk to Copyparty. Each gets its own volume at
+# /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
+# too. Two entries can't share a folder. Passwords go in the vault.
+# Example, a photo app: no d on photos, so without delete Copyparty also refuses overwrites (it renames
+# instead) and the app can't destroy a photo; it may delete only in its own photos-trash volume.
+#   - user: photos
+#     pass: "{{ vault_copyparty_photos_pass }}"
+#     volumes:
+#       - { folder: photos, perms: rwm }
+#       - { folder: photos-trash, perms: rwmd }
+copyparty_service_accounts: []
+
+# --- pics ---
+# Builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
+# above. The container publishes <pics_port> on the Pi, so the whole app (owner pages included) is on
+# your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
+# cloudflared_ingress entry, which points at pics_public_port.
+
+# GitHub repository (owner/name) that pics builds from.
+pics_repo: "{{ undef(hint='Set pics_repo (owner/name of the private GitHub repo pics builds from) in group_vars/all/vars.yml') }}"
+# Public URL of pics' guest pages: the Cloudflare hostname that points at pics_public_port.
+pics_public_url: "{{ undef(hint='Set pics_public_url (e.g. https://photos.example.com) in group_vars/all/vars.yml') }}"
+# Container-internal port of the guest pages (never published): the tunnel points here. Only pics_port is
+# published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
+pics_public_port: 8001
+pics_artist: ""           # written into the EXIF of public downloads
+pics_website: ""          # e.g. "example.com" — watermarked + linked from the home page
+pics_instagram: ""        # e.g. "@you" — watermarked + linked from the home page
+
+# --- Gitea ---
+# Public URL Gitea puts in links.
+gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
+# Host name Gitea serves its web pages for.
+gitea_domain: "{{ undef(hint='Set gitea_domain (the public host name, e.g. git.example.com) in group_vars/all/vars.yml') }}"
+# Host name shown in SSH clone URLs.
+gitea_ssh_domain: "{{ undef(hint='Set gitea_ssh_domain (the host name for SSH clones, e.g. git.example.com) in group_vars/all/vars.yml') }}"
+# SSH port for git clones, published on the host.
+gitea_ssh_port: "2222"
