@@ -46,3 +46,9 @@ ntfy_image: binwiederhier/ntfy:v2.33.1
 # pics: git branch, tag or commit of the private repo
 pics_version: main
 
+# Zellij terminal multiplexer: https://github.com/zellij-org/zellij/releases
+# Static (musl) builds. The sha256 is of the .tar.gz, as GitHub shows it on the release page.
+zellij_version: v0.45.1
+zellij_sha256:
+  aarch64: 05f0802afadd53f8db9514e7cae53c9ae8432fed1b35b8294aa816ee3044a16b
+  x86_64: 40bcc2e03f5d5ae8e054e39f676081fe12ab70871506996ba595834c3718eefc

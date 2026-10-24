@@ -23,12 +23,11 @@ ntfy_alert_url: ""
 # (docs/plans/drive-migration.md). Changing "- " lines never splits a group.
 restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
 # The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
-# every path. Default: this host's base directory (compose files, credentials), Copyparty's config, and, when the
-# host has no local backup, the local rules above, so the offsite copy holds its data. Add more paths to
-# upload more; Immich's photos are not included (they are large): add "{{ immich_upload_location }}".
+# every path. Default: this host's base directory (compose files, credentials) and Copyparty's config. Add more
+# paths to upload more, e.g. a drive's data on a host with no local backup; Immich's photos are not included
+# (they are large): add "{{ immich_upload_location }}".
 restic_cloud_rules: >-
   {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
-     + ([] if backup_local_enabled | bool else restic_local_rules)
      + [services_dir] }}
 # Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
 # rclone or network pipe cannot hold the repo lock indefinitely.
