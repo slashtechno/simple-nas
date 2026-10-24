@@ -24,13 +24,14 @@
     quiet: true
   when: "'backup' in drive_mounts"
 
-# Without `nofail`, a missing drive drops a headless host into emergency mode, unreachable over SSH.
+# `nofail` makes the drive's mount wanted, not required, by local-fs.target, so a drive that fails to mount cannot
+# drop a headless host into emergency mode, unreachable over SSH.
 - name: Validate that every drive is mounted with nofail
   ansible.builtin.assert:
-    that: drives | selectattr('uuid', 'defined') | rejectattr('options', 'search', 'nofail') | list | length == 0
+    that: drives | selectattr('uuid', 'defined') | map(attribute='options', default='') | reject('search', 'nofail') | list | length == 0
     fail_msg: >-
       Every `drives` entry with a `uuid` needs `nofail` in its `options` (for example `defaults,nofail`),
-      or a missing drive stops the host booting.
+      or a drive that fails to mount can stop the host booting.
     quiet: true
 
 - name: Create mount points
@@ -42,7 +43,7 @@
 
 # Each drive is mounted lazily by systemd (x-systemd.automount): a tripwire filesystem sits on the mount point
 # from boot and mounts the drive on first access. With the drive missing, an access fails with "No such device"
-# after 10 seconds instead of writing to a plain folder on the root drive, and the next access after the drive
+# after 30 seconds instead of writing to a plain folder on the root drive, and the next access after the drive
 # returns mounts it again. `nofail` keeps a missing drive from stopping the host booting. See docs/storage.md.
 # systemd reads fstab at boot and on daemon-reload; the tripwire is armed at the next boot.
 - name: Add drives to fstab
@@ -50,10 +51,18 @@
     path: "{{ item.mount }}"
     src: "UUID={{ item.uuid }}"
     fstype: "{{ item.fstype }}"
-    opts: "{{ item.options }},x-systemd.automount,x-systemd.device-timeout=10s"
+    opts: "{{ item.options }},x-systemd.automount,x-systemd.device-timeout=30s"
     state: mounted
   loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
   notify: Reload systemd daemon
+
+# Once the automount is armed, `state: mounted` sees the placeholder and mounts nothing, and a plain stat of the
+# path does not trigger the mount. Opening it with /. does, and fails after the timeout if the drive is missing.
+- name: Check every drive is mounted
+  ansible.builtin.command: mountpoint -q {{ (item.mount ~ '/.') | quote }}
+  loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
+  changed_when: false
+  when: not ansible_check_mode
 
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:

@@ -39,7 +39,7 @@
       tags: [always]
 
   tasks:
-    # Drives first: docker_data_root (common) may sit on one, and Docker waits for its mount.
+    # Drives first: docker_data_root (common) may sit on one.
     - name: Mount the drives
       ansible.builtin.import_role:
         name: storage

@@ -256,10 +256,7 @@ This restore has not been rehearsed on a real host. Try it once into a scratch G
 
 ## If the backup drive disconnects
 
-A drive mounted by automount ([docs/storage.md](./storage.md#how-a-drive-is-mounted)) mounts itself the next time something opens its path, and an access while it is missing fails instead of writing to a folder on the root drive. Two things cover the backups:
-
-1. The backup scripts and the `restic-check` job run `mountpoint -q` on the backup drive first, and the backup scripts also refuse to run when a data drive (role `fast` or `primary`) is unmounted, so they never save a snapshot of an empty folder. The check waits up to 10 seconds for a missing drive, then the script exits without writing anything. The cron line logs the failure to `journalctl -t backup`.
-2. When the drive is back, the next run mounts it by itself.
+The drives mount on access ([docs/storage.md](./storage.md#how-a-drive-is-mounted)); what happens with one missing is under [With a drive missing](./storage.md#with-a-drive-missing). The backup scripts and the `restic-check` job run `mountpoint -q <mount>/.` on the backup drive first, and the backup scripts also on every data drive (role `fast` or `primary`), so they never save a snapshot of an empty folder. A missing drive makes the script exit without writing anything, and the cron line logs the failure to `journalctl -t backup`. The next run mounts a returned drive.
 
 Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault (Raspberry Pi).
 

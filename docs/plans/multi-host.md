@@ -49,7 +49,6 @@ Does not travel with the drives:
    - the Docker network `nas-services` to `services`
    - the cron jobs `nas-backup-*` to `backup-local`, `backup-cloud` and `restic-check`
    - `/var/lib/nas-backup` to `/var/lib/backup-work`
-   - the unit `nas-drive-remount` to `drive-remount`
 
    It also removes the old cloudflared init container and its build files.
 

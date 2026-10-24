@@ -61,15 +61,15 @@ drives:
 
 ### How a drive is mounted
 
-The role adds `x-systemd.automount,x-systemd.device-timeout=10s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`, which the deploy requires on every drive.
+The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`.
 
-- **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits 10 seconds and then fails with `No such device`. A container cannot write into a plain folder on the root drive, because the mount point is never a plain folder. After the drive returns, the next access mounts it again, with no script or udev rule.
-- **`nofail`:** without it a missing drive drops a headless host into emergency mode, and it stays unreachable.
+- **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits up to 30 seconds and then fails with `No such device`. The mount point is a placeholder, not a plain folder, so a container cannot write to the root drive. After the drive returns, the next access mounts it again, with no script or udev rule.
+- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting. The deploy requires it on every drive.
 - **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
-- **Armed at boot:** a deploy that adds the options takes effect at the next reboot, because the drive is already mounted.
+- **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
 - **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
-- **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mounts within 10 seconds, for example a drive with a broken filesystem; the mount point is then a plain folder until you restart it.
-- **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after 10 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
+- **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
+- **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after up to 30 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
 
 ## Using the root drive for fast or primary
 
@@ -138,7 +138,7 @@ Stop the services by hand: Ansible restarts a service only when a task reports a
 
 ### With a drive missing
 
-- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 10 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
+- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 30 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
 - **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
 - **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
 - **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
