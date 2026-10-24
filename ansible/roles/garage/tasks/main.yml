@@ -5,10 +5,11 @@
       - vault_garage_rpc_secret is defined
       - vault_garage_admin_token is defined
       - vault_garage_webui_user is defined
-      - vault_garage_webui_pass is defined
+      - vault_garage_webui_hash is defined
+      - vault_garage_webui_hash is match('^\\$2[aby]\\$[0-9]{2}\\$.{53}$')
     fail_msg: >-
       garage needs vault_garage_rpc_secret, vault_garage_admin_token, vault_garage_webui_user and
-      vault_garage_webui_pass in the vault that applies to {{ inventory_hostname }}
+      vault_garage_webui_hash (a bcrypt hash, see vault.yml.example) in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
@@ -40,16 +41,6 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
-
-- name: Check if Garage meta directory already has data (i.e., cluster was already bootstrapped)
-  ansible.builtin.find:
-    path: "{{ garage_data_dir }}/meta"
-    file_type: any
-  register: garage_meta_contents
-
-- name: Set fact for first deploy detection
-  ansible.builtin.set_fact:
-    garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"
 
 - name: Render garage.toml
   ansible.builtin.template:

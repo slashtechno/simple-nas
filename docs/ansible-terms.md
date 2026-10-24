@@ -113,7 +113,7 @@ Keywords any task can carry:
 
 - **`when:`**: run conditionally, with filters such as `| bool` and `| default(x)`.
 - **`loop:`**: repeat once per list item.
-- **`register:`**: capture a result. Garage sets `garage_is_first_deploy` from the registered `meta/` listing.
+- **`register:`**: capture a result.
 - **`changed_when:`, `failed_when:`**: override what counts as changed or failed. The restic-init task fails only if it errored and the message wasn't "already exists", so re-running is harmless.
 - **`notify:` and handlers**: a changed task triggers a named handler, which runs once at the end of the play. If a rendered `docker-compose.yml` is byte-identical to the one on the Pi, nothing is notified and the container isn't touched.
 - **`ignore_errors: true`**: keep going after a failure (teardown of a project that may not exist). Each use carries a `noqa` comment saying why.

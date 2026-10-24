@@ -121,10 +121,11 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 ## Garage (S3)
 
-Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_pass` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
+Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_hash` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
 
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`), not as files: [Restore: Garage](./backups.md#restore-garage).
-- The first deploy (empty `<garage_data_dir>/meta`) adds `--single-node` to the compose command to set up the cluster layout; later deploys leave it out.
+- Garage always starts with `--single-node`: it creates the one-node layout on first start and leaves an existing layout alone.
+- `vault_garage_webui_hash` is a bcrypt hash of the web UI password. Generate it with `htpasswd -nBC 10 "" | tr -d ':\n'` (it asks for the password; `htpasswd` is in `apache2-utils`), then paste the line it prints into the vault.
 - Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
 - Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI.
 

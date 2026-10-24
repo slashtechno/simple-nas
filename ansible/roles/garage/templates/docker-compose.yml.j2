@@ -7,21 +7,15 @@ services:
     image: dxflrs/garage:{{ garage_version }}
     container_name: garage
     restart: unless-stopped
-    # --single-node (Garage v2.3+) is only needed on first deploy to auto-configure
-    # the cluster layout. Ansible detects first deploy (empty meta dir) and
-    # injects the flag automatically; subsequent runs omit it.
-    command: ["/garage", "server"{% if garage_is_first_deploy | default(True) %}, "--single-node"{% endif %}]
+    # --single-node creates the one-node cluster layout on first start and leaves an existing layout alone.
+    command: ["/garage", "server", "--single-node"]
     volumes:
       - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta
       - {{ garage_data_dir }}/data:/var/lib/garage/data
     environment:
       GARAGE_CONFIG_FILE: /etc/garage.toml
-    ports:
-      # S3 port is intentionally not exposed on the host — all external S3 traffic
-      # goes through garage-cors-proxy which handles CORS and proxies to garage:3900 internally.
-      - "{{ garage_admin_port }}:{{ garage_admin_port }}"
-      - "{{ garage_rpc_port }}:{{ garage_rpc_port }}"
+    # No host ports: the S3 API goes through garage-cors-proxy, and the admin API and RPC stay on the Docker network.
     networks:
       - {{ docker_network }}
 
@@ -45,16 +39,12 @@ services:
       - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
     environment:
       # Points at Garage's admin API and S3 API — both internal to the Docker network
-      API_BASE_URL: "http://garage:{{ garage_admin_port }}"
+      API_BASE_URL: "http://garage:3903"
       S3_ENDPOINT_URL: "http://garage:{{ garage_s3_port }}"
       CONFIG_PATH: /etc/garage.toml
       # Admin token for the v2 API — must match admin_token in garage.toml
       API_ADMIN_KEY: '{{ vault_garage_admin_token | replace("$", "$$") }}'
-      # Basic auth: format is "username:bcrypt_hash" — set via vault.
-      # $$ escapes the $ in bcrypt hashes so Compose doesn't try to interpolate them as variables.
-      # See https://docs.docker.com/compose/compose-file/compose-file-v3/#interpolation
-      # The salt is derived from the password so the hash, and so this file, is the same on every run; a random salt
-      # would rewrite the file and restart Garage on each deploy. The 22nd salt character is limited to . O e u, hence the fixed O
-      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_pass | password_hash("bcrypt", (vault_garage_webui_pass | hash("sha256"))[:21] ~ "O") | replace("$", "$$") }}'
+      # Basic auth: "username:bcrypt_hash", both from the vault. $$ stops Compose reading the $ in the hash as a variable.
+      AUTH_USER_PASS: '{{ vault_garage_webui_user }}:{{ vault_garage_webui_hash | replace("$", "$$") }}'
     networks:
       - {{ docker_network }}

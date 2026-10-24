@@ -1,14 +1,6 @@
 ---
 # Port of the S3 API.
 garage_s3_port: 3900
-# Port of Garage's node-to-node RPC.
-garage_rpc_port: 3901
-# Port of the static website server.
-garage_web_port: 3902
-# Port of the admin API.
-garage_admin_port: 3903
-# 1 = single node, no replication.
-garage_replication_factor: 1
 # Origins the CORS proxy allows. A list; use "*" for any, or full origins for requests with credentials.
 garage_cors_allowed_origins:
   - "*"           # wildcard: static header, works for non-credentialed requests
