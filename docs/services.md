@@ -56,7 +56,7 @@ Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_s
 
 `/drives` shows USB drives and cards plugged into the host (`usb_automount_enabled`), read-only unless `usb_automount_writable`. Drives listed in `drives` are never shown. See [storage.md](./storage.md#plugged-in-usb-drives-drives).
 
-`/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when the fast and primary roles are on different drives (`copyparty_fast_enabled`; its default is in `ansible/group_vars/all/defaults.yml`). `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
+`/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).
 

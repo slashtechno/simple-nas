@@ -159,7 +159,6 @@
         that:
           - restic_local_rules | reject('match', '^- ') | list == expect.local_paths + fixture_paths
           - restic_cache_dir == expect.cache_dir
-          - copyparty_fast_enabled | bool == expect.copyparty_fast
 
     - name: Read each drive role
       ansible.builtin.set_fact:

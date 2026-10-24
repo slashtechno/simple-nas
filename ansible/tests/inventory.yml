@@ -18,7 +18,6 @@ all:
               expect:
                 local_paths: [/home/pi]
                 cache_dir: /home/pi/.cache/restic
-                copyparty_fast: false
                 unclaimed: [fast, primary, backup]
             # Cloud only: a folder on the root drive and no backup drive. Its exclude list must skip Immich's
             # live database directory like the local one does, and carry the host's own "- " rule and "- !" re-include.
@@ -28,7 +27,6 @@ all:
               expect:
                 local_paths: [/srv/apps]
                 cache_dir: /srv/apps/restic-cache
-                copyparty_fast: false
                 unclaimed: [backup]
                 cloud: true
                 rules: ["- /srv/apps/tmp/*", "- !/srv/apps/tmp/keep"]
@@ -41,7 +39,6 @@ all:
               expect:
                 local_paths: [/srv/apps]
                 cache_dir: /srv/apps/restic-cache
-                copyparty_fast: false
                 unclaimed: []
             # Two drives: one for services and data, one for backups. The host's own "- " rule and "- !"
             # re-include must reach the local exclude list.
@@ -52,7 +49,6 @@ all:
               expect:
                 local_paths: [/mnt/data]
                 cache_dir: /mnt/data/restic-cache
-                copyparty_fast: false
                 unclaimed: []
                 rules: ["- /mnt/data/tmp/*", "- !/mnt/data/tmp/keep"]
             # Three drives, one per role.
@@ -64,5 +60,4 @@ all:
               expect:
                 local_paths: [/mnt/primary, /mnt/fast]
                 cache_dir: /mnt/fast/restic-cache
-                copyparty_fast: true
                 unclaimed: []

@@ -128,9 +128,9 @@ copyparty_files_dir: "{{ primary_drive }}/files"
 # Copyparty's configuration (fast drive).
 copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
 copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"   # thumbnails/dbs/transcode cache (see copyparty role)
-# A /fast volume (SSD scratch and working space) exists only when the fast and primary roles are on
-# different drives; with one drive it would just be a folder of /. See docs/storage.md.
-copyparty_fast_enabled: "{{ 'fast' in drive_mounts and 'primary' in drive_mounts and drive_mounts.fast != drive_mounts.primary }}"
+# Add a /fast volume to Copyparty (SSD scratch and working space). Useful only when the fast and primary
+# roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
+copyparty_fast_enabled: false
 # Where the /fast volume lives.
 copyparty_fast_dir: "{{ fast_drive }}/fast"
 # Gitea's repositories and database (fast drive).
