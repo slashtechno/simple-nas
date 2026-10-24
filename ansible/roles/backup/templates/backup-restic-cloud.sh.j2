@@ -2,8 +2,8 @@
 set -o pipefail
 
 {% if 'backup' in drive_mounts %}
-# Refuse to run if the backup drive isn't actually mounted at {{ backup_drive }}: the service dumps
-# and logs are written there, and an unmounted drive would fill the root drive instead.
+# Refuse to run if the backup drive is not mounted at {{ backup_drive }}: the service dumps and logs
+# are written there, and they would fill the root drive instead.
 if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
@@ -12,24 +12,17 @@ fi
 {% endif %}
 export RESTIC_PASSWORD_FILE="{{ restic_password_file }}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
-# Cache on the fast drive: for the rclone/gdrive repo this matters most —
-# restic avoids re-reading packs over the network during backup/check/forget.
-# Explicit-override form keeps manual test runs able to point elsewhere.
+# restic's cache avoids re-reading packs over the network. The environment variable overrides it for a manual run.
 export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
-# rclone's shared default Google OAuth client hits Drive's per-minute quota
-# fast on a burst of small-file uploads — this throttles request rate to
-# stay under it. See the restic_cloud_rclone_args comment in group_vars.
+# Throttles rclone's request rate to stay under Google Drive's quota (restic_cloud_rclone_args in group_vars).
 RESTIC_RCLONE_OPT=(-o "rclone.args={{ restic_cloud_rclone_args }}")
 
-# A stalled rclone/network pipe can deadlock restic indefinitely while it
-# still holds the repo lock (seen in practice: 6 days stuck, ~2m of actual
-# CPU time). `timeout` guarantees a hang becomes a normal failed cron run
-# instead of silently blocking every later cloud backup/prune.
+# A stalled rclone or network pipe can hang restic while it holds the repository lock. `timeout` turns
+# the hang into a failed cron run instead of blocking every later cloud backup.
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
-# The cloud paths live in backup-paths.txt next to this script (rendered from
-# roles/backup/templates/backup-paths.txt.j2). Comment lines are skipped.
+# The paths to back up: backup-paths.txt next to this script. Comment lines are skipped.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 BACKUP_PATHS_FILE="$SCRIPT_DIR/backup-paths.txt"
 if [ ! -f "$BACKUP_PATHS_FILE" ]; then
@@ -42,7 +35,7 @@ if [ -z "${BACKUP_PATHS[*]}" ]; then
   exit 1
 fi
 
-# Exclude patterns live in restic-excludes-cloud.txt next to this script.
+# Exclude patterns: restic-excludes-cloud.txt next to this script.
 EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-cloud.txt"
 
 LOG_FILE="{{ backup_logs_dir }}/restic-cloud-$(date +%Y-%m-%d).log"
@@ -53,12 +46,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
-  # restic's exit codes: 0 = clean success, 3 = the snapshot was still saved
-  # but some source files couldn't be read — a partial success, not a
-  # failure. cloud_backup_failed only trips on a real error (anything other
-  # than 0/3); any_partial just gets a note in the log. Tracked explicitly
-  # per call rather than reading $? once after the whole loop, since that
-  # only ever reflected whichever command happened to run last.
+  # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read:
+  # it sets any_partial (a log note). Any other non-zero exit sets cloud_backup_failed.
   cloud_backup_failed=false
   any_partial=false
 
@@ -97,10 +86,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
     restic "${RESTIC_RCLONE_OPT[@]}" stats \
       || { echo "ERROR: restic stats failed!"; exit 1; }
 
-    # The backup-status dashboard has no cloud credentials of its own (by
-    # design — see its README section); this cache file is how it shows
-    # cloud snapshots anyway, without needing any. Best-effort: a failure
-    # here shouldn't fail an otherwise-successful backup.
+    # The backup-status dashboard has no cloud credentials; it reads this snapshot list instead.
+    # A failure here does not fail the backup.
     restic "${RESTIC_RCLONE_OPT[@]}" snapshots --json > "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" \
       && mv "{{ backup_logs_dir }}/cloud-snapshots.json.tmp" "{{ backup_logs_dir }}/cloud-snapshots.json" \
       || echo "Warning: could not refresh cloud-snapshots.json cache for the dashboard"

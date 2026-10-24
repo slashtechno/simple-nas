@@ -1,34 +1,26 @@
 #!/bin/bash
 set -o pipefail
 
-# Refuse to run if the backup drive isn't actually mounted at {{ backup_drive }} —
-# otherwise this silently writes multi-GB restic data onto the root filesystem
-# until it fills up (this has happened: a USB dropout unmounted the drive
-# mid-write, and cron kept "succeeding" against the bare mountpoint directory).
+# Refuse to run if the backup drive is not mounted at {{ backup_drive }}: restic would write the
+# repository onto the root filesystem, under the empty mount point, until it fills.
 if ! mountpoint -q {{ backup_drive | quote }}; then
   echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (USB connection, then: sudo mount -a)." >&2
   exit 1
 fi
 
-# Ansible bakes in this deployment's real password-file path; the env var
-# override stays so a manual run can still point elsewhere for testing.
+# The password-file path is set at deploy time; the environment variable overrides it for a manual run.
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-# Cache (index/snapshot copies) on the fast drive — off the spinning backup
-# drive. Same-filesystem caching is near-pointless, so this only pays off
-# once the cache drive differs from the repo drive.
+# restic's index and snapshot cache. It helps only when its drive differs from the repository's.
 export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
-# See the matching comment in backup-restic-cloud.sh.j2 — guards against the
-# same class of hang, even though it's the cloud script (network-dependent)
-# that has actually deadlocked in practice.
+# A hung restic must end as a failed run, not hold the repository lock (see backup-restic-cloud.sh.j2).
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
 LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
-# Exclude patterns live in restic-excludes-local.txt next to this script
-# (rendered from roles/backup/templates/restic-excludes-local.txt.j2).
+# Exclude patterns: restic-excludes-local.txt next to this script.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
@@ -47,12 +39,8 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
     --verbose
   backup_rc=$?
 
-  # restic's exit codes: 0 = clean success, 3 = the snapshot was still saved
-  # but some source files couldn't be read (e.g. a socket, a file that
-  # changed mid-scan) — a partial success, not a failure. Treating exit 3 as
-  # a hard failure (as this script used to) meant a handful of unreadable
-  # files would silently skip forget/prune on an otherwise-good backup,
-  # letting old snapshots accumulate indefinitely.
+  # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read
+  # (a socket, a file that changed mid-scan); it still prunes, so unreadable files cannot stop pruning.
   if [ "$backup_rc" -eq 0 ] || [ "$backup_rc" -eq 3 ]; then
     if [ "$backup_rc" -eq 3 ]; then
       echo "Backup completed with some unreadable source files (exit 3) — snapshot saved, pruning anyway."

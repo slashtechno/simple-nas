@@ -62,7 +62,7 @@ case "$TARGET" in
         set -euo pipefail
         unzip -o /tmp/dump.zip -d /tmp/restore
         cd /tmp/restore
-        # Wipe current data for a clean restore (KISS)
+        # Wipe the current data so the restore is clean
         rm -rf /data/gitea/* /data/git/repositories/*
         # app.ini (rootful: data/conf/app.ini -> /data/gitea/conf/app.ini)
         if [ -f data/conf/app.ini ]; then
@@ -83,15 +83,6 @@ case "$TARGET" in
         # Regenerate hooks to ensure paths are correct
         if command -v gitea >/dev/null 2>&1; then
           /usr/local/bin/gitea -c "/data/gitea/conf/app.ini" admin regenerate hooks || true
-        fi
-        # SQLite-only: prefer the SQLite DB file included in the dump.
-        # If a SQLite DB file exists after copy, do NOT import gitea-db.sql to avoid duplicate schema/data errors.
-        if [ -f /data/gitea/gitea.db ] || [ -f /data/gitea/data/gitea.db ]; then
-          echo "SQLite DB file restored from dump; skipping SQL import."
-        else
-          if [ -f gitea-db.sql ]; then
-            echo "No SQLite DB file found; SQL dump present. Skipping import by default to avoid conflicts."
-          fi
         fi
       '
 
