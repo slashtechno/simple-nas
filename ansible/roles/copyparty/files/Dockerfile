@@ -20,11 +20,11 @@ RUN apk add --no-cache \
     # git \
     # cmake
 
-# rawpy is DISABLED, not deleted. Do not remove this block without asking the owner.
-# Since copyparty 1.20.16 the official images make RAW thumbnails (NEF etc.) with libraw directly:
-# slower than rawpy but good quality. Re-enable if RAW thumbnails are too slow, or for Sony .ARW,
-# which needed rawpy as of 1.20.7. To re-enable: uncomment the next two lines, and the git and
-# cmake packages above (plus the "\" after py3-pip), and rebuild (the rawpy compile takes many minutes on a Pi).
+# The rawpy install below is commented out; keep it, and ask the owner before deleting it.
+# The official image makes RAW thumbnails (NEF etc.) with libraw directly: slower than rawpy but good quality.
+# Sony .ARW thumbnails need rawpy. To switch rawpy on (also if RAW thumbnails are too slow): uncomment the
+# next two lines, and the git and cmake packages above (plus the "\" after py3-pip), and rebuild (the
+# rawpy compile takes many minutes on a Pi).
 # RUN MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages setuptools cython numpy && \
 #     MAKEFLAGS="-j$(nproc)" python3 -m pip install --no-cache-dir --break-system-packages --no-build-isolation git+https://github.com/letmaik/rawpy.git
 

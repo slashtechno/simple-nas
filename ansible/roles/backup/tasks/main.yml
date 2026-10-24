@@ -274,7 +274,7 @@
       when: vault_rclone_gdrive_token | default('') | length > 0
 
     # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
-    # unreachable server) fails the deploy, so a backup that would never run is noticed now.
+    # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
     - name: Initialize cloud restic repository (idempotent)
       ansible.builtin.command:
         cmd: >-
