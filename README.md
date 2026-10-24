@@ -73,5 +73,6 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | Cheat sheet for the optional caddy-docker-proxy reverse proxy |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
-| [docs/encryption.md](./docs/encryption.md) | Design for encryption at rest (not implemented) |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
+
+Research notes are in `docs/research/`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works now.

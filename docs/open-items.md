@@ -22,4 +22,4 @@ Work that is not done and needs the owner's time or hardware, or that lives outs
 ## Waiting for hardware
 
 - Drive migration: a 4 TB backup drive, a WD P10 as `primary`, the T7 stays `fast`. Steps: [storage.md](./storage.md#adding-replacing-or-retiring-a-drive).
-- Encryption at rest: [encryption.md](./encryption.md).
+- Encryption at rest: [research/encryption.md](./research/encryption.md).

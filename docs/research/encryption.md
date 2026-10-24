@@ -1,6 +1,8 @@
-# Encryption at rest (design, not implemented)
+# Encryption at rest (research notes)
 
-Transparent encryption for the `fast` and `primary` drives (see [storage.md](./storage.md)) and the plaintext parts of the `backup` drive. Nothing is implemented. The decisions below are settled; the open questions and the order of work are at the end.
+> **Status: research notes. Nothing here is implemented, and this file is not kept in step with the code.** Treat it as a record of decisions and open questions, not as documentation of how the repo works.
+
+Transparent encryption for the `fast` and `primary` drives (see [storage.md](../storage.md)) and the plaintext parts of the `backup` drive. Nothing is implemented. The decisions below are settled; the open questions and the order of work are at the end.
 
 ## Goal
 
@@ -40,4 +42,4 @@ Requirement: unlockable from any device, including one you do not own, without n
 3. Move the `fast` and `primary` drives and `service-dumps` to gocryptfs; change the `storage` and `backup` roles to mount after unlock instead of at boot.
 4. Fix Docker Compose boot ordering so services start only after mount.
 5. Add passkey path for day-to-day unlock from own devices.
-6. Update [backups.md](./backups.md) and [storage.md](./storage.md) to document the new unlock flow and the reboot-then-no-backup-until-unlocked tradeoff.
+6. Update [backups.md](../backups.md) and [storage.md](../storage.md) to document the new unlock flow and the reboot-then-no-backup-until-unlocked tradeoff.
