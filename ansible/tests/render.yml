@@ -51,8 +51,9 @@
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template renders. Branches behind other settings (Copyparty's SFTP, /fast
-    # and USB volumes) are switched on in the task after this one.
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, SFTP,
+    # /fast and USB volumes; Crafty Bedrock; ntfy iOS push; the Gitea runner; the optional Pics lines) are
+    # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
@@ -64,6 +65,16 @@
         copyparty_sftp_enabled: true
         copyparty_fast_enabled: true
         usb_automount_enabled: true
+
+    - name: Turn on the optional settings that add lines to a template
+      ansible.builtin.set_fact:
+        crafty_bedrock_enabled: true
+        ntfy_ios_push: true
+        vault_gitea_runner_token: "runner$token"
+        vault_pics_alert_urls: "ntfy://example"
+        pics_artist: Render Test
+        pics_website: https://example.test
+        pics_instagram: render_test
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
@@ -117,6 +128,20 @@
       loop: "{{ template_files }}"
       loop_control:
         label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"
+
+    # The optional branches above only count as tested if their lines reach the output.
+    - name: The optional template branches rendered
+      ansible.builtin.assert:
+        that:
+          - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
+          - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
+          - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+        quiet: true
 
 # One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.
 - name: Check each drive layout
