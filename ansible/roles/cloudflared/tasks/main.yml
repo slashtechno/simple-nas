@@ -4,8 +4,9 @@
 # exist, sets the rules, and creates, corrects and deletes DNS records so they match (plan shown first).
 # Cloudflare's API: https://developers.cloudflare.com/api/
 #
-# Every API call runs on the machine running Ansible (delegate_to: localhost), so the broad API token
-# (cloudflare_api_token) never reaches a server. The server gets only the tunnel token.
+# Every API call runs on the machine running Ansible (delegate_to: localhost). This role puts only the tunnel
+# token on the server. The broad API token (cloudflare_api_token) reaches a server only through roles/caddy,
+# when that host sets caddy_private_domains.
 #
 # The API calls sit in one block so the settings shared by all of them are written once:
 #   - delegate_to / become: run on your computer, without sudo.
@@ -108,9 +109,13 @@
       when: cloudflared_tunnel_id is not defined
 
     # Each hostname with its zone: the cloudflare_zones entry whose domain appears in the hostname (checked above).
+    - name: Start the hostname list (it stays empty when cloudflared_ingress is empty)
+      ansible.builtin.set_fact:
+        cloudflared_hostnames: []
+
     - name: Pair each hostname with its zone
       ansible.builtin.set_fact:
-        cloudflared_hostnames: "{{ cloudflared_hostnames | default([]) + [{'hostname': item.hostname, 'zone_id': zone_id}] }}"
+        cloudflared_hostnames: "{{ cloudflared_hostnames + [{'hostname': item.hostname, 'zone_id': zone_id}] }}"
       vars:
         zone_id: "{{ (cloudflare_zones | dict2items | selectattr('key', 'in', item.hostname) | first).value }}"
       loop: "{{ cloudflared_ingress }}"

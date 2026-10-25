@@ -16,7 +16,7 @@ copyparty_base_image: copyparty/iv:1.20.26
 
 # Garage: https://garagehq.deuxfleurs.fr/_releases.html
 garage_version: v2.4.1
-garage_caddy_image: caddy:2.11.7-alpine
+garage_caddy_image: "caddy:{{ caddy_version }}-alpine"
 garage_webui_image: khairul169/garage-webui:1.1.0
 
 # Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases

@@ -2,7 +2,7 @@
 
 Ansible playbooks that set up Raspberry Pis (any Debian-family host) as home servers that run Docker services on the drives plugged into them.
 
-Tested on Raspberry Pi 4 and 5 (arm64). An x86-64 Debian-family host (a mini PC or old laptop) should work: the roles use only apt and Docker, and the one per-CPU download (Zellij) has an x86-64 entry. It is untested there, so check each service's image before relying on it.
+Tested on Raspberry Pi 4 and 5 (arm64). An x86-64 Debian-family host (a mini PC or old laptop) should work: the roles use apt and Docker, and the one per-CPU download (Zellij) has an x86-64 entry. x86-64 is untested, so check each service's image has an x86-64 build before relying on it.
 
 Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in: a service is deployed on a host only when that host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Every flag defaults to false. Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 

@@ -6,7 +6,7 @@ timezone: America/New_York
 # One public key per device that may log in as the Ansible user.
 ssh_authorized_keys:
   - ssh-ed25519 AAAA... you@laptop
-# Domain -> Cloudflare zone ID, for hosts that run a tunnel (cloudflared_enabled).
+# Domain -> Cloudflare zone ID, for hosts that run a tunnel (cloudflared_enabled) or set caddy_private_domains.
 cloudflare_zones:
   example.com: your_zone_id
 # Gitea (gitea_enabled): its public URL, host name and SSH host name.

@@ -2,7 +2,7 @@
 # For each caddy_private_domains entry: a DNS-only A record *.<domain> pointing at this host's Tailscale address.
 # Every record carries the comment caddy_dns_comment, which is how a later deploy knows it is its own.
 # A name that already has a record without that comment stops the deploy; nothing foreign is overwritten.
-# Records with the comment whose domain is no longer listed are deleted.
+# Records with the comment whose domain is not in the list are deleted.
 #
 # Every API call runs on your computer (delegate_to: localhost), so the token never reaches a server.
 # Tasks marked `check_mode: false` only read, so they run with --check; the plan is shown either way.
@@ -18,6 +18,13 @@
   register: caddy_tailscale_ip
   check_mode: false
   changed_when: false
+  when: caddy_private_domains | length > 0
+
+- name: Check Tailscale gave one IPv4 address
+  ansible.builtin.assert:
+    that: caddy_tailscale_ip.stdout | trim is match('^[0-9]+([.][0-9]+){3}$')
+    fail_msg: "`tailscale ip -4` did not print one address. Join the host to your tailnet first (`sudo tailscale up`)."
+    quiet: true
   when: caddy_private_domains | length > 0
 
 - name: Make the DNS records match
@@ -60,21 +67,22 @@
                  else 'keep' if record.content == ip and not record.proxied
                  else 'update' }}
             wanted: {name: "{{ wildcard }}", zone_id: "{{ zone_id }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
-                     comment: "{{ record.comment | default('', true) }}", type: "{{ record.type | default('') }}"}
+                     comment: "{{ record.comment | default('', true) }}", type: "{{ record.type | default('') }}",
+                     count: "{{ records | selectattr('name', 'equalto', wildcard) | list | length }}"}
           loop: "{{ caddy_private_domains }}"
 
         - name: Stop if a name has a record this role did not create
           ansible.builtin.assert:
-            that: item.change == 'create' or (item.type == 'A' and item.comment == caddy_dns_comment)
+            that: item.count | int <= 1 and (item.change == 'create' or (item.type == 'A' and item.comment == caddy_dns_comment))
             fail_msg: >-
-              {{ item.name }} already has a record that this role did not create. If it is unused, delete it in
-              the Cloudflare dashboard (DNS) and deploy again.
+              {{ item.name }} has a record that this role did not create, or more than one record. If they are unused,
+              delete them in the Cloudflare dashboard (DNS) and deploy again.
             quiet: true
           loop: "{{ caddy_wanted | default([]) }}"
           loop_control:
             label: "{{ item.name }}"
 
-        - name: Find records of this host that are no longer wanted
+        - name: Find this host's records for domains not in the list
           ansible.builtin.set_fact:
             caddy_unwanted: >-
               {{ records | selectattr('comment', 'defined') | selectattr('comment', 'equalto', caddy_dns_comment)
@@ -117,7 +125,7 @@
       loop_control:
         label: "{{ item.name }}"
 
-    - name: Delete the records of domains no longer listed
+    - name: Delete the records of domains not in the list
       ansible.builtin.uri:
         url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.id }}"
         method: DELETE

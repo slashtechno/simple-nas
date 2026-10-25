@@ -22,7 +22,7 @@ services:
     environment:
       CADDY_INGRESS_NETWORKS: {{ docker_network }}
 {% if caddy_private_domains | length > 0 %}
-      CLOUDFLARE_API_TOKEN: {{ cloudflare_api_token }}
+      CLOUDFLARE_API_TOKEN: "{{ cloudflare_api_token }}"
     labels:
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}

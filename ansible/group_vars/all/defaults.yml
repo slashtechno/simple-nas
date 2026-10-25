@@ -161,7 +161,7 @@ ntfy_token_file: "{{ services_dir }}/ntfy-token"
 cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
 # Account ID, from the vault.
 cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
-# Domain -> zone ID. Zone IDs aren't secret. Example: `example.com: <zone id>`. Set the real ones in group_vars/all/vars.yml.
+# Domain -> zone ID. Zone IDs aren't secret. Set them in group_vars/all/vars.yml (shape in vars.yml.example).
 cloudflare_zones: {}
 # Cloudflare's API. Not a setting to change.
 cloudflare_api_url: https://api.cloudflare.com/client/v4
