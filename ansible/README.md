@@ -40,7 +40,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
-| `group_vars/all/web_services.yml` | yes | The web UIs: Homepage tile, host port, Caddy container and port | Already there |
+| `group_vars/all/web_services.yml` | yes | The web UIs: Homepage tile, Caddy container and port, and the prefix of each one's `_enabled`, `_port` and `_subdomain` settings | Already there |
 
 Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files.
 

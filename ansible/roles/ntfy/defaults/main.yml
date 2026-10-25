@@ -1,8 +1,10 @@
 ---
 # The address clients use to reach the server (it appears in attachment links and is needed for
 # iOS push). The default is the host's Ansible address, its tailnet name on a host that is on the tailnet.
-# With ntfy_port: "" set it to the Caddy name instead.
-ntfy_base_url: "http://{{ ansible_host | default(inventory_hostname) }}:{{ ntfy_port }}"
+# With ntfy_port: "" there is no such address, so set this to the Caddy name (https://<ntfy_subdomain>.<private domain>).
+ntfy_base_url: >-
+  {{ 'http://' ~ (ansible_host | default(inventory_hostname)) ~ ':' ~ ntfy_port if ntfy_port != ''
+  else undef(hint='ntfy_port is empty: set ntfy_base_url to the Caddy name') }}
 # The one account that may read and write every topic. The password and the access
 # token are in the vault (vault.yml.example says how to make them).
 ntfy_user: alerts

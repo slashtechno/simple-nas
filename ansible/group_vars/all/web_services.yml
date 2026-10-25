@@ -1,31 +1,31 @@
 ---
 # One line per service with a web UI. Homepage lists a tile for each one a host has switched on, and Caddy serves
-# each one at https://<subdomain>.<caddy_private_domains entry> (the tile links to the first entry). To add a service, add a line here and its
-# port and subdomain settings in defaults.yml.
+# each one that has a container and a non-empty <key>_subdomain at https://<subdomain>.<caddy_private_domains entry>
+# (the tile links to the first entry). To add a service, add a line here.
 #   key                the settings' prefix: <key>_enabled switches the service on, <key>_port is its host port and
 #                      <key>_subdomain its name under the private domain (all in group_vars/all/defaults.yml)
 #   port               a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
-#                      network); such a service has no <key>_port and no name, because Caddy cannot reach it
+#                      network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
 #   container, container_port
 #                      what Caddy proxies to on the services network
 #   scheme             http unless set; https means the container serves a self-signed certificate, which Caddy accepts
 #   icon               a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 # Garage, Caddy and Cloudflare Tunnel have no web UI to link to.
 web_services:
-  - {name: Immich, key: immich, 
+  - {name: Immich, key: immich,
      container: immich_server, container_port: 2283, icon: immich, description: Photos}
-  - {name: Copyparty, key: copyparty, 
+  - {name: Copyparty, key: copyparty,
      container: copyparty, container_port: 3923, icon: copyparty, description: Files}
-  - {name: Gitea, key: gitea, 
+  - {name: Gitea, key: gitea,
      container: gitea, container_port: 3000, icon: gitea, description: Git}
-  - {name: pics, key: pics, 
+  - {name: pics, key: pics,
      container: pics, container_port: 8000, icon: mdi-image-multiple, description: Photo culling and sharing}
   - {name: Homebridge, key: homebridge, port: 8581, icon: homebridge, description: HomeKit}
-  - {name: Crafty, key: crafty, 
+  - {name: Crafty, key: crafty,
      container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
-  - {name: Dockge, key: dockge, 
+  - {name: Dockge, key: dockge,
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
-  - {name: ntfy, key: ntfy, 
+  - {name: ntfy, key: ntfy,
      container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
-  - {name: Backups, key: backup_status, 
+  - {name: Backups, key: backup_status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}

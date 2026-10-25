@@ -41,7 +41,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 ## Web addresses and HTTPS
 
-Every service with a web UI listens on a host port and is reachable from any device on your tailnet at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+Every service with a web UI listens on a host port (unless you set it to `""`, below) and is reachable from any device on your tailnet at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
 
 For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name; one choice is yours: which service is the root of the server. Point a name at it with `caddy_sites`: Homepage for a launcher, Copyparty for a file server, Dockge for an app host.
 
@@ -58,7 +58,7 @@ caddy_private_domains: [pi4.example.com]
 - A deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain that is not in the list are deleted. `--check` prints the plan.
 - Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
 - On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`. The subdomains and their container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml) and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
-- Override ports and names in `host_vars/<host>/vars.yml`; any setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml). A changed port also needs the service's own tag (`just deploy gitea --limit <host>`). A port set to `""` publishes no host port, so the service answers only at its Caddy name; the deploy stops if a service has neither. Keep the ports while you rely on them to get in when Caddy or Cloudflare is down:
+- Override ports and names in `host_vars/<host>/vars.yml`; any setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml). A changed port also needs the service's own tag (`just deploy gitea --limit <host>`). A port set to `""` publishes no host port, so the service answers only at its Caddy name; the deploy stops if a service has neither (a service reached only through the Cloudflare Tunnel keeps its port). Keep the ports while you rely on them to get in when Caddy or Cloudflare is down:
 
   ```yaml
   gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
@@ -85,7 +85,7 @@ caddy_private_domains: [pi4.example.com]
 
 ### Short names
 
-A host with `caddy_private_domains` answers its short names on port 80 and redirects them (302) to the first private domain: `http://pi4` to `https://pi4.example.com`, and `http://webtop.pi4` to `https://webtop.pi4.example.com`. The short name is the host's name in the inventory, so give each host its MagicDNS name there; any other name gets short names that never resolve. It covers every service and every app you label in Dockge; nothing is listed per service.
+A host with `caddy_private_domains` answers its short names on port 80 and redirects them (302) to the first private domain: `http://pi4` to `https://pi4.example.com`, and `http://webtop.pi4` to `https://webtop.pi4.example.com`. The short name is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name gets short names that never resolve. It covers every name that exists under the first private domain, services and Dockge apps alike; nothing is listed per service.
 
 - `pi4` resolves through MagicDNS, so `http://pi4/` works as is.
 - `webtop.pi4` needs the domain as a Tailscale search domain, set by hand in the admin console (DNS, Search domains, add `example.com`). Ansible does not manage it. Devices then try `webtop.pi4.example.com` for `webtop.pi4`.

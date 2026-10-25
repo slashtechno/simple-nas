@@ -19,11 +19,9 @@
   localtime
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
   theme: 2
-  # The client address and protocol come from the proxy in front: Cloudflare's tunnel and Caddy both send
-  # X-Forwarded-For (Copyparty's default xff-hdr) and X-Forwarded-Proto, and both reach Copyparty over the Docker network,
-  # so only private addresses (lan) are trusted to send them. rproxy -1 takes the rightmost address, the one the nearest
-  # proxy added, which a client cannot forge. Without these headers Copyparty treats the request as plain http and
-  # rejects logins as cross-origin.
+  # The tunnel and Caddy reach Copyparty over the Docker network and send X-Forwarded-For and -Proto, which Copyparty
+  # trusts only from private addresses (lan). rproxy -1 takes the rightmost address, the one the nearest proxy added,
+  # which a client cannot forge. Without these headers it sees plain http and rejects logins as cross-origin.
   xff-src: lan
   rproxy: -1
   shr: /shares

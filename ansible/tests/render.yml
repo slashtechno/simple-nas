@@ -81,7 +81,7 @@
         copyparty_fast_enabled: true
         usb_automount_enabled: true
 
-    - name: Turn on the optional settings that add lines to a template
+    - name: Turn on the optional settings that change a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
         homepage_links: [{name: Example, href: "https://example.test", description: "a: b", icon: mdi-star, monitor: true}]
@@ -94,6 +94,8 @@
         caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
         immich_port: ""
+        copyparty_port: ""
+        dockge_port: ""
         cloudflare_api_token: render-test-token
 
     - name: Turn on the offsite backup

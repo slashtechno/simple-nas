@@ -127,7 +127,7 @@ Keywords any task can carry:
 
 Config comes from these sources, lowest precedence first:
 
-1. `roles/*/defaults/main.yml`: a role's own settings, such as `crafty_port`.
+1. `roles/*/defaults/main.yml`: a role's own settings, such as `gitea_ssh_port`.
 2. `group_vars/all/defaults.yml`: settings several roles share, each with a default, including every `<name>_enabled` flag (all false). Not edited per host.
 3. `group_vars/all/vars.yml`: your values that apply to every host (timezone, SSH keys, Cloudflare zones). `versions.yml` holds every image and tool version, `vault.yml` the secrets hosts share (Cloudflare token and account, restic password, rclone token, ntfy token).
 4. `host_vars/<host>/vars.yml`: one host's settings, such as its flags, `drives` and the direct link. Beats everything above. `host_vars/<host>/vault.yml` holds that host's service secrets.
