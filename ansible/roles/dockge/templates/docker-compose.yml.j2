@@ -1,6 +1,10 @@
 # Ansible-managed — do not edit directly, edit the dockge_* settings and re-deploy.
 # Dockge has the Docker socket, so it controls every container on this host. Stacks you create in
 # its UI are plain compose.yaml files in {{ dockge_stacks_dir }}; those are yours, not Ansible's.
+networks:
+  {{ docker_network }}:
+    external: true
+
 services:
   dockge:
     image: {{ dockge_image }}
@@ -14,3 +18,5 @@ services:
       - {{ dockge_stacks_dir }}:{{ dockge_stacks_dir }}
     environment:
       DOCKGE_STACKS_DIR: {{ dockge_stacks_dir }}
+    networks:
+      - {{ docker_network }}
