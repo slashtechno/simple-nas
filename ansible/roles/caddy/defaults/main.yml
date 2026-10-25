@@ -3,3 +3,9 @@
 caddy_http_port: 80
 # Host port Caddy listens on for HTTPS.
 caddy_https_port: 443
+# This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
+# For each entry the deploy keeps a DNS-only record *.<domain> pointing at this host's Tailscale address, so
+# <app>.<domain> resolves for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
+# certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
+# Empty: no records, and Caddy has no DNS challenge.
+caddy_private_domains: []

@@ -21,7 +21,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
-| Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflared_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
+| Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Homepage | Start page with a tile for each enabled service on the host | `roles/homepage` | none | [Homepage](#homepage) |
 | Dockge, Caddy | Web UI for your own compose stacks; names for apps, routed by container label | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
@@ -93,10 +93,10 @@ cloudflared_ingress:
 
 Then `just deploy cloudflared`.
 
-Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudflared_ingress` in `host_vars/<host>/vars.yml`. The tunnel is named `<host>-tunnel` unless the host sets `cloudflared_tunnel_name`. `cloudflared_zones` goes in `group_vars/all/vars.yml`; the API token and account ID are `vault_cloudflared_api_token` and `vault_cloudflared_account_id` in `group_vars/all/vault.yml`. A hostname may appear in only one host's `cloudflared_ingress`; the deploy fails if two hosts list it.
+Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudflared_ingress` in `host_vars/<host>/vars.yml`. The tunnel is named `<host>-tunnel` unless the host sets `cloudflared_tunnel_name`. `cloudflare_zones` goes in `group_vars/all/vars.yml`; the API token and account ID are `vault_cloudflared_api_token` and `vault_cloudflared_account_id` in `group_vars/all/vault.yml`. A hostname may appear in only one host's `cloudflared_ingress`; the deploy fails if two hosts list it.
 
-- Each hostname's DNS record is created in the zone from `cloudflared_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cloudflared_zones`, and the API token needs DNS:Edit on that zone.
-- The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain or more than one in `cloudflared_zones`.
+- Each hostname's DNS record is created in the zone from `cloudflare_zones` (domain: zone ID) whose domain appears in the hostname. A hostname on a new domain needs that domain in `cloudflare_zones`, and the API token needs DNS:Edit on that zone.
+- The deploy fails before calling Cloudflare if a rule has anything besides `hostname` and `service` (no `path:`), or if its hostname matches no domain or more than one in `cloudflare_zones`.
 - Hostnames not listed get a 404.
 - Every record the role writes carries the comment `managed by simple-nas, tunnel <tunnel name>`; that comment is how a later deploy knows the record is its own. A deploy prints the DNS plan (create, comment, repoint, delete) before changing anything, and `--check` prints the same plan.
 - A hostname's existing record is kept if it points at this tunnel (the comment is added if missing), and repointed if it has the comment or points at a deleted tunnel. A record that points at another tunnel that still exists, or is any other type (A, MX, TXT, ...), stops the deploy with a message naming it; delete it in the Cloudflare dashboard (DNS) if unused.
@@ -166,7 +166,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 **Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#examples)), not Docker volumes, so deleting a stack is deleting its directory.
 
-**Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
+**Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([networking.md](./networking.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 
 Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml --tags dockge,caddy,cloudflared --limit <host> --vault-password-file .vault-pass`.
 

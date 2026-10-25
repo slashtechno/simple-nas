@@ -43,10 +43,10 @@ restic_cloud_repository: "rclone:gdrive:/pi-nas-backups"
 
 # --- Cloudflare Tunnel ---
 # vault_cloudflared_api_token and vault_cloudflared_account_id are in group_vars/all/vault.yml,
-# cloudflared_zones in group_vars/all/vars.yml: every host that runs a tunnel uses them.
+# cloudflare_zones in group_vars/all/vars.yml: every host that runs a tunnel uses them.
 
 # One entry per public hostname, with exactly two keys: hostname, and service (the internal Docker
-# address). No `path:`. The hostname must contain one domain from cloudflared_zones (group_vars/all/vars.yml). Where a service
+# address). No `path:`. The hostname must contain one domain from cloudflare_zones (group_vars/all/vars.yml). Where a service
 # has a private surface, it publishes two ports and the tunnel points at the guest one.
 cloudflared_ingress:
   # pics' guest surface: share pages and the portfolio, with no owner routes in it. The owner app

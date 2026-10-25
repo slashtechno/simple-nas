@@ -8,7 +8,7 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 ## What `roles/caddy` deploys
 
-Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. The image is pinned in `versions.yml` (`caddy_image`); the README's `ci-alpine` tag is an unstable CI build, so use a version tag.
+Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. The image is built on the host from `roles/caddy/files/Dockerfile`: Caddy, caddy-docker-proxy and the Cloudflare DNS plugin, each pinned in `versions.yml` (`caddy_version`, `caddy_docker_proxy_version`, `caddy_cloudflare_dns_version`). The first build compiles Caddy and takes a few minutes on a Pi.
 
 The ports (`caddy_http_port`, `caddy_https_port`) are in `ansible/roles/caddy/defaults/main.yml`; `caddy_data_dir` is in `ansible/group_vars/all/defaults.yml`. Losing `caddy_data_dir` means certificates are issued again.
 
@@ -47,7 +47,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 - **TLS.**
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.
-  - Avoid custom Caddy builds with DNS-challenge plugins. They add a build to maintain.
+  - Names under a `caddy_private_domains` entry get their certificate through the Cloudflare DNS challenge, which needs no open ports ([networking.md](./networking.md#web-addresses-and-https)). For a name outside those domains Caddy tries the same challenge; use `tls internal` unless the Cloudflare token covers its zone.
 - **Docker socket.** The proxy has full control of Docker through it. Anything that can set labels on a container can publish a route.
 - **Modes.** The role runs the standalone mode (controller and server in one container). The controller/server split is for Swarm clusters.
 

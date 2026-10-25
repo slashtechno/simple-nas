@@ -5,7 +5,7 @@
 # Cloudflare's API: https://developers.cloudflare.com/api/
 #
 # Every API call runs on the machine running Ansible (delegate_to: localhost), so the broad API token
-# (cloudflared_api_token) never reaches a server. The server gets only the tunnel token.
+# (cloudflare_api_token) never reaches a server. The server gets only the tunnel token.
 #
 # The API calls sit in one block so the settings shared by all of them are written once:
 #   - delegate_to / become: run on your computer, without sudo.
@@ -17,10 +17,10 @@
     that:
       - item.keys() | sort | list == ['hostname', 'service']
       # `in` here means the zone's domain appears in the hostname, e.g. angad.me in pics.angad.me.
-      - cloudflared_zones | dict2items | selectattr('key', 'in', item.hostname) | list | length == 1
+      - cloudflare_zones | dict2items | selectattr('key', 'in', item.hostname) | list | length == 1
     fail_msg: >-
       {{ item }} must have only hostname and service (no path), and its hostname must match exactly
-      one domain in cloudflared_zones. See the comments in group_vars/all/vars.yml.
+      one domain in cloudflare_zones. See the comments in group_vars/all/vars.yml.
     quiet: true
   loop: "{{ cloudflared_ingress }}"
   loop_control:
@@ -44,12 +44,12 @@
   module_defaults:
     ansible.builtin.uri:
       headers:
-        Authorization: "Bearer {{ cloudflared_api_token }}"
+        Authorization: "Bearer {{ cloudflare_api_token }}"
   block:
     # --- The tunnel ---
     - name: Look up the tunnel by name
       ansible.builtin.uri:
-        url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel?name={{ cloudflared_tunnel_name }}&is_deleted=false"
+        url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ cloudflared_tunnel_name }}&is_deleted=false"
       check_mode: false
       changed_when: false
       register: cloudflared_lookup
@@ -79,7 +79,7 @@
 
     - name: Create the tunnel
       ansible.builtin.uri:
-        url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel"
+        url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
         method: POST
         body_format: json
         body:
@@ -107,12 +107,12 @@
         cloudflared_tunnel_id: ""
       when: cloudflared_tunnel_id is not defined
 
-    # Each hostname with its zone: the cloudflared_zones entry whose domain appears in the hostname (checked above).
+    # Each hostname with its zone: the cloudflare_zones entry whose domain appears in the hostname (checked above).
     - name: Pair each hostname with its zone
       ansible.builtin.set_fact:
         cloudflared_hostnames: "{{ cloudflared_hostnames | default([]) + [{'hostname': item.hostname, 'zone_id': zone_id}] }}"
       vars:
-        zone_id: "{{ (cloudflared_zones | dict2items | selectattr('key', 'in', item.hostname) | first).value }}"
+        zone_id: "{{ (cloudflare_zones | dict2items | selectattr('key', 'in', item.hostname) | first).value }}"
       loop: "{{ cloudflared_ingress }}"
       loop_control:
         label: "{{ item.hostname }}"
@@ -124,7 +124,7 @@
         # --- The rules ---
         - name: Read the rules the tunnel has now
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
+            url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
           check_mode: false
           changed_when: false
           register: cloudflared_rules_now
@@ -144,7 +144,7 @@
         # The PUT replaces the whole list. The final rule answers 404 for any hostname not listed.
         - name: Set the tunnel's rules
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
+            url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
             method: PUT
             body_format: json
             body:
@@ -153,7 +153,7 @@
           when: cloudflared_rules_differ | bool
 
         # --- DNS: one proxied CNAME per hostname, pointing at <tunnel id>.cfargotunnel.com ---
-        # The zone is the cloudflared_zones entry whose domain appears in the hostname (checked above).
+        # The zone is the cloudflare_zones entry whose domain appears in the hostname (checked above).
         # Every record this role writes carries a comment (cloudflared_dns_comment) that says it is
         # managed here. The plan below is worked out from read-only calls, so --check shows it in full.
         #
@@ -168,15 +168,15 @@
         # at a deleted tunnel and are not ours are only reported.
         - name: Read every DNS record of the zones
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
+            url: "{{ cloudflare_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
           check_mode: false
           changed_when: false
-          loop: "{{ cloudflared_zones.values() | unique | list }}"
+          loop: "{{ cloudflare_zones.values() | unique | list }}"
           register: cloudflared_zone_lists
 
         - name: Read the tunnels that exist in the account
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel?is_deleted=false&per_page=1000"
+            url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel?is_deleted=false&per_page=1000"
           check_mode: false
           changed_when: false
           register: cloudflared_live_tunnels
@@ -257,7 +257,7 @@
         # PATCH changes only the fields sent. A PUT would reset the ones left out, such as proxied.
         - name: Create the missing records
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records"
+            url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records"
             method: POST
             body_format: json
             body:
@@ -273,7 +273,7 @@
 
         - name: Add the comment to records already pointing at this tunnel
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
+            url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
             method: PATCH
             body_format: json
             body:
@@ -284,7 +284,7 @@
 
         - name: Point records at this tunnel
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
+            url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
             method: PATCH
             body_format: json
             body:
@@ -297,7 +297,7 @@
 
         - name: Delete records that are not in cloudflared_ingress
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.id }}"
+            url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.id }}"
             method: DELETE
           loop: "{{ cloudflared_dns_deletes }}"
           loop_control:
@@ -316,9 +316,9 @@
 # can always be rewritten, and it can be revoked in Cloudflare without touching the API token.
 - name: Fetch the tunnel token
   ansible.builtin.uri:
-    url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/token"
+    url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/token"
     headers:
-      Authorization: "Bearer {{ cloudflared_api_token }}"
+      Authorization: "Bearer {{ cloudflare_api_token }}"
   delegate_to: localhost
   become: false
   check_mode: false

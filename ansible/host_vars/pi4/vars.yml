@@ -6,6 +6,8 @@
 # own backup drive only: pinas owns the offsite repository, and two hosts must never back up into one.
 dockge_enabled: true
 caddy_enabled: true
+# Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/networking.md#web-addresses-and-https).
+caddy_private_domains: [pi4.slashtechno.com]
 backup_local_enabled: true   # daily backup to the `backup` drive
 
 # --- Drives ---

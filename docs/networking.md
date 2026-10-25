@@ -54,6 +54,24 @@ tailscale_serve_port: "{{ copyparty_port }}"
 - Caddy (`caddy_enabled`) gives apps names of their own ([caddy-reference.md](./caddy-reference.md)). It publishes port 443 by default, and then `https://<host>` does not connect, so the deploy stops: set `caddy_https_port` (for example `8443`) when a host uses both.
 - To stop serving, run `sudo tailscale serve reset` on the host; the setting only ever adds.
 
+### Names for apps: `caddy_private_domains`
+
+For `https://<app>.<host>.<your domain>` with a Let's Encrypt certificate, tailnet only, with no port forwarding:
+
+```yaml
+caddy_enabled: true
+caddy_private_domains: [pi4.example.com]
+```
+
+- The domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
+- A deploy keeps a DNS-only record `*.pi4.example.com` pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain you removed from the list are deleted. `--check` prints the plan.
+- Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
+- An app takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
+- To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
+- Public names do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
+- The bare `pi4.example.com` has no record; the front door above is the host's tailnet name.
+- Caddy's token is in its compose file on the host, and Caddy sits next to the Docker socket. The token is the same one the tunnel uses; a token limited to `Zone:DNS:Edit` is enough if the host does not run a tunnel.
+
 ## Direct Ethernet link
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.

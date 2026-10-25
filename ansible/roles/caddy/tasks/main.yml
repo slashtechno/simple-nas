@@ -7,8 +7,40 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-- name: Deploy caddy
-  ansible.builtin.import_role:
-    name: compose_service
-  vars:
-    compose_service_name: caddy
+- name: Create Caddy compose directory
+  ansible.builtin.file:
+    path: "{{ services_dir }}/caddy"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Copy the Dockerfile
+  ansible.builtin.copy:
+    src: Dockerfile
+    dest: "{{ services_dir }}/caddy/Dockerfile"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+
+# Holds the Cloudflare token when caddy_private_domains is set, so the file stays out of --diff.
+- name: Render Caddy docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ services_dir }}/caddy/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  diff: false
+
+- name: Build and start Caddy
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/caddy"
+    state: present
+    build: always
+
+# Without Cloudflare zones there is nothing to manage. With them, this also deletes the records of a domain
+# removed from caddy_private_domains.
+- name: Make Cloudflare DNS match caddy_private_domains
+  ansible.builtin.import_tasks: private_domains.yml
+  when: cloudflare_zones | length > 0

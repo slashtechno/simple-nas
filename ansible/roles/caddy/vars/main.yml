@@ -1,0 +1,3 @@
+---
+# Written in the comment of every DNS record this role manages. It is how a later deploy knows a record is its own.
+caddy_dns_comment: "managed by simple-nas, caddy {{ inventory_hostname }}"

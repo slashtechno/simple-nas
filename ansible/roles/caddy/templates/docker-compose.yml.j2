@@ -7,7 +7,12 @@ networks:
 
 services:
   caddy:
-    image: {{ caddy_image }}
+    build:
+      context: .
+      args:
+        CADDY_VERSION: {{ caddy_version }}
+        CADDY_DOCKER_PROXY_VERSION: {{ caddy_docker_proxy_version }}
+        CADDY_CLOUDFLARE_DNS_VERSION: {{ caddy_cloudflare_dns_version }}
     container_name: caddy
     restart: unless-stopped
     ports:
@@ -16,6 +21,12 @@ services:
       - "{{ caddy_https_port }}:443/udp"
     environment:
       CADDY_INGRESS_NETWORKS: {{ docker_network }}
+{% if caddy_private_domains | length > 0 %}
+      CLOUDFLARE_API_TOKEN: {{ cloudflare_api_token }}
+    labels:
+      # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
+      caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
+{% endif %}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ caddy_data_dir }}:/data

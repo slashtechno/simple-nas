@@ -2,11 +2,3 @@
 # One tunnel per host, found by name on each deploy. A host that already has a tunnel under another name
 # sets cloudflared_tunnel_name in host_vars/<host>/vars.yml so that tunnel is kept.
 cloudflared_tunnel_name: "{{ inventory_hostname }}-tunnel"
-
-# Cloudflare API token, from the vault.
-cloudflared_api_token: "{{ vault_cloudflared_api_token }}"
-# Cloudflare account ID, from the vault.
-cloudflared_account_id: "{{ vault_cloudflared_account_id }}"
-# Domain -> zone ID, for the DNS record of each cloudflared_ingress hostname (the domain that appears in the hostname).
-# Zone IDs aren't secret. The API token needs DNS:Edit on each of these zones. Example: `example.com: <zone id>`.
-cloudflared_zones: {}

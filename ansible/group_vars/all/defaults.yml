@@ -156,10 +156,20 @@ crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 # File on the host holding vault_ntfy_token, read by alert.sh.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
 
+# --- Cloudflare account (roles/cloudflared and roles/caddy; teardown does not read it) ---
+# API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
+cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
+# Account ID, from the vault.
+cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
+# Domain -> zone ID. Zone IDs aren't secret. Example: `example.com: <zone id>`. Set the real ones in group_vars/all/vars.yml.
+cloudflare_zones: {}
+# Cloudflare's API. Not a setting to change.
+cloudflare_api_url: https://api.cloudflare.com/client/v4
+
 # --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
 # Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
 # One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
-# The hostname must contain one domain from cloudflared_zones. A hostname may appear on only one host; the deploy fails otherwise.
+# The hostname must contain one domain from cloudflare_zones. A hostname may appear on only one host; the deploy fails otherwise.
 cloudflared_ingress: []
 
 # --- Direct Ethernet link (roles/network; teardown.yml also reads it; docs/networking.md#direct-ethernet-link) ---

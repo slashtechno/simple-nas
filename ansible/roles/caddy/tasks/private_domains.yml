@@ -1,0 +1,126 @@
+---
+# For each caddy_private_domains entry: a DNS-only A record *.<domain> pointing at this host's Tailscale address.
+# Every record carries the comment caddy_dns_comment, which is how a later deploy knows it is its own.
+# A name that already has a record without that comment stops the deploy; nothing foreign is overwritten.
+# Records with the comment whose domain is no longer listed are deleted.
+#
+# Every API call runs on your computer (delegate_to: localhost), so the token never reaches a server.
+# Tasks marked `check_mode: false` only read, so they run with --check; the plan is shown either way.
+- name: Check each private domain contains one domain from cloudflare_zones
+  ansible.builtin.assert:
+    that: cloudflare_zones | dict2items | selectattr('key', 'in', item) | list | length == 1
+    fail_msg: "{{ item }} must contain exactly one domain from cloudflare_zones (group_vars/all/vars.yml)."
+    quiet: true
+  loop: "{{ caddy_private_domains }}"
+
+- name: Read this host's Tailscale address
+  ansible.builtin.command: tailscale ip -4
+  register: caddy_tailscale_ip
+  check_mode: false
+  changed_when: false
+  when: caddy_private_domains | length > 0
+
+- name: Make the DNS records match
+  delegate_to: localhost
+  become: false
+  module_defaults:
+    ansible.builtin.uri:
+      headers:
+        Authorization: "Bearer {{ cloudflare_api_token }}"
+  block:
+    - name: Read every DNS record of the zones
+      ansible.builtin.uri:
+        url: "{{ cloudflare_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
+      check_mode: false
+      changed_when: false
+      loop: "{{ cloudflare_zones.values() | unique | list }}"
+      register: caddy_zone_lists
+
+    # The plan trusts these lists to be complete, so a second page stops the deploy.
+    - name: Stop if a zone has more than one page of records
+      ansible.builtin.assert:
+        that: caddy_zone_lists.results | map(attribute='json.result_info.total_pages') | select('gt', 1) | list | length == 0
+        fail_msg: A zone has more than 5000 DNS records. This role reads one page only.
+        quiet: true
+
+    - name: Work out what to change
+      vars:
+        records: "{{ caddy_zone_lists.results | map(attribute='json.result') | flatten }}"
+        ip: "{{ caddy_tailscale_ip.stdout | default('') | trim }}"
+      block:
+        - name: Pair each private domain with its record
+          ansible.builtin.set_fact:
+            caddy_wanted: "{{ caddy_wanted | default([]) + [wanted] }}"
+          vars:
+            wildcard: "*.{{ item }}"
+            zone_id: "{{ (cloudflare_zones | dict2items | selectattr('key', 'in', item) | first).value }}"
+            record: "{{ records | selectattr('name', 'equalto', wildcard) | first | default({}) }}"
+            change: >-
+              {{ 'create' if record | length == 0
+                 else 'keep' if record.content == ip and not record.proxied
+                 else 'update' }}
+            wanted: {name: "{{ wildcard }}", zone_id: "{{ zone_id }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
+                     comment: "{{ record.comment | default('', true) }}", type: "{{ record.type | default('') }}"}
+          loop: "{{ caddy_private_domains }}"
+
+        - name: Stop if a name has a record this role did not create
+          ansible.builtin.assert:
+            that: item.change == 'create' or (item.type == 'A' and item.comment == caddy_dns_comment)
+            fail_msg: >-
+              {{ item.name }} already has a record that this role did not create. If it is unused, delete it in
+              the Cloudflare dashboard (DNS) and deploy again.
+            quiet: true
+          loop: "{{ caddy_wanted | default([]) }}"
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Find records of this host that are no longer wanted
+          ansible.builtin.set_fact:
+            caddy_unwanted: >-
+              {{ records | selectattr('comment', 'defined') | selectattr('comment', 'equalto', caddy_dns_comment)
+                 | rejectattr('name', 'in', caddy_wanted | default([]) | map(attribute='name') | list) | list }}
+
+    - name: Show the DNS plan
+      ansible.builtin.debug:
+        msg:
+          - "create: {{ caddy_wanted | default([]) | selectattr('change', 'equalto', 'create') | map(attribute='name') | list }}"
+          - "update: {{ caddy_wanted | default([]) | selectattr('change', 'equalto', 'update') | map(attribute='name') | list }}"
+          - "delete: {{ caddy_unwanted | map(attribute='name') | list }}"
+
+    # DNS only (proxied: false): Cloudflare cannot proxy traffic to a Tailscale address, and the name must not
+    # work for anyone outside the tailnet. PATCH changes only the fields sent.
+    - name: Create the records
+      ansible.builtin.uri:
+        url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records"
+        method: POST
+        body_format: json
+        body:
+          type: A
+          name: "{{ item.name }}"
+          content: "{{ caddy_tailscale_ip.stdout | trim }}"
+          ttl: 1   # 1 means automatic
+          proxied: false
+          comment: "{{ caddy_dns_comment }}"
+      loop: "{{ caddy_wanted | default([]) | selectattr('change', 'equalto', 'create') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Update the records
+      ansible.builtin.uri:
+        url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
+        method: PATCH
+        body_format: json
+        body:
+          content: "{{ caddy_tailscale_ip.stdout | trim }}"
+          proxied: false
+      loop: "{{ caddy_wanted | default([]) | selectattr('change', 'equalto', 'update') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+    - name: Delete the records of domains no longer listed
+      ansible.builtin.uri:
+        url: "{{ cloudflare_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.id }}"
+        method: DELETE
+      loop: "{{ caddy_unwanted }}"
+      loop_control:
+        label: "{{ item.name }}"
