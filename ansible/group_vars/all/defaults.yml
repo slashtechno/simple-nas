@@ -182,6 +182,8 @@ direct_link_prefix: 30
 
 # --- Host ports of the web UIs ---
 # Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet).
+# Immich's web UI and API (the mobile app connects here).
+immich_port: 2283
 # Copyparty's web UI and WebDAV.
 copyparty_port: 3923
 # Gitea's web UI.

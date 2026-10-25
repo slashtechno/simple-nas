@@ -13,7 +13,8 @@ services:
     volumes:
       - {{ services_dir }}/homepage/config:/app/config
     environment:
-      # Homepage answers only on the exact host:port a request names; anything else gets a 400.
-      HOMEPAGE_ALLOWED_HOSTS: "{{ [homepage_host, inventory_hostname] | unique | map('regex_replace', '$', ':' ~ homepage_port) | join(',') }}"
+      # Homepage answers only on the exact Host header a request names; anything else gets a 400. The bare
+      # name is what a browser sends when the page is served on port 443 (tailscale_serve_target).
+      HOMEPAGE_ALLOWED_HOSTS: "{{ ([homepage_host, inventory_hostname] | unique | map('regex_replace', '$', ':' ~ homepage_port) | list + [homepage_host]) | join(',') }}"
     networks:
       - {{ docker_network }}

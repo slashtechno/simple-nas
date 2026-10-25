@@ -3,9 +3,8 @@
 title: {{ inventory_hostname | to_json }}
 disableUpdateCheck: true
 layout:
-  Services:
+{% for host in groups['servers'] + ['Links'] %}
+  {{ host | to_json }}:
     style: row
     columns: 3
-  Links:
-    style: row
-    columns: 3
+{% endfor %}

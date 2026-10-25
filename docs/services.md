@@ -151,11 +151,12 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 ## Homepage
 
-A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) with one tile per enabled service on that host that has a web UI on a host port. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
+A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all your servers. Run it on one host: it shows a group of tiles for every host in the inventory, one tile per service that host has switched on and that has a web UI on a host port, each with a green or red dot for whether the page answers. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
 
 - Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
-- The tiles are the `homepage_tiles` list in `roles/homepage/vars/main.yml`; add a line to add a tile. Links follow the services' port settings, except Immich (2283) and Homebridge (8581), which are fixed. Garage, Caddy and Cloudflare Tunnel have no web UI to link to. Crafty's panel uses a self-signed certificate, so its tile shows a browser warning.
-- `homepage_links` adds your own tiles in a "Links" group: a public hostname, a service on another host, any page. With two servers, run Homepage on one and add the other's services here; the format and an example are in `roles/homepage/defaults/main.yml`.
+- Each host's tiles link to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
+- The tiles are the `homepage_tiles` list in `roles/homepage/vars/main.yml`, with a comment on each field; add a line to add a tile. Garage, Caddy and Cloudflare Tunnel have no web UI to link to. Crafty's panel uses a self-signed certificate: its tile has no dot and the browser warns.
+- `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, any page. The format and an example are in `roles/homepage/defaults/main.yml`.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
 - The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.
 - Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app ([widgets](https://gethomepage.dev/widgets/)).
