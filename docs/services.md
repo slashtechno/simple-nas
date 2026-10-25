@@ -135,7 +135,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_adm
 
 One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
 
-- Panel: `https://<pi-ip>:28443` (`crafty_panel_port`, self-signed certificate). The first admin password is in `docker logs crafty` or `<crafty_data_dir>/config/default-creds.txt`. Change it in the panel, then delete that file.
+- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `docker logs crafty` or `<crafty_data_dir>/config/default-creds.txt`. Change it in the panel, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
 - `crafty_memory_limit` (default 3g) caps all servers combined. On a 4 GB Pi it competes with Immich if both run on the host.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.

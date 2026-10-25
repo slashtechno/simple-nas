@@ -205,7 +205,7 @@ ntfy_port: 8090
 # The read-only backup dashboard. It has no login.
 backup_status_port: 8091
 # Crafty's panel (HTTPS); the container always listens on 8443.
-crafty_panel_port: 28443
+crafty_port: 28443
 
 # --- Names of the web UIs under the private domain ---
 # With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<private domain>

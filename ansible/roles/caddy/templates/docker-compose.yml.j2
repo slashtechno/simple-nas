@@ -31,8 +31,8 @@ services:
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
       # One site per service this host runs (web_services, group_vars/all/web_services.yml), unless its subdomain is "".
-{% for svc in web_services if svc.subdomain_setting is defined and hostvars[inventory_hostname][svc.flag] | bool and hostvars[inventory_hostname][svc.subdomain_setting] != '' %}
-      caddy_{{ site.n }}: "{% for domain in caddy_private_domains %}{{ hostvars[inventory_hostname][svc.subdomain_setting] }}.{{ domain }}{{ ' ' if not loop.last }}{% endfor %}"
+{% for svc in web_services if svc.port is not defined and hostvars[inventory_hostname][svc.key ~ '_enabled'] | bool and hostvars[inventory_hostname][svc.key ~ '_subdomain'] != '' %}
+      caddy_{{ site.n }}: "{% for domain in caddy_private_domains %}{{ hostvars[inventory_hostname][svc.key ~ '_subdomain'] }}.{{ domain }}{{ ' ' if not loop.last }}{% endfor %}"
       caddy_{{ site.n }}.reverse_proxy: "{{ svc.scheme | default('http') }}://{{ svc.container }}:{{ svc.container_port }}"
 {% if svc.scheme | default('http') == 'https' %}
       caddy_{{ site.n }}.reverse_proxy.transport: http
