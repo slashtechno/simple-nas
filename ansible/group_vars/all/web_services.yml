@@ -1,6 +1,6 @@
 ---
 # One line per service with a web UI. Homepage lists a tile for each one a host has switched on, and Caddy serves
-# each one at https://<subdomain>.<first caddy_private_domains entry>. To add a service, add a line here and its
+# each one at https://<subdomain>.<caddy_private_domains entry> (the tile links to the first entry). To add a service, add a line here and its
 # port and subdomain settings in defaults.yml.
 #   flag               the service's <name>_enabled setting
 #   port_setting       the setting that holds its host port (group_vars/all/defaults.yml)

@@ -91,7 +91,7 @@
         pics_artist: Render Test
         pics_website: https://example.test
         pics_instagram: render_test
-        caddy_private_domains: [caddy.example.test]
+        caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
         gitea_subdomain: ""
         cloudflare_api_token: render-test-token
@@ -173,7 +173,7 @@
         that:
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
           - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_0: \"immich.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
