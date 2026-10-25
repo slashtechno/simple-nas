@@ -12,6 +12,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - `just check` (in `ansible/`) must pass: lint, syntax-check, the vars check (vault name or `undef` setting missing from its example), the doc link check and the template render test. Add lint skips only with a written reason.
 - Never run playbooks against a host. Check changes with `--syntax-check` and `--list-tasks`; the owner runs `--check --diff`.
 - Commit small and labeled; refactors go on a branch.
+- Note to Claude: for an independent review, run `pi -p --no-session --model deepseek-v4.1-flash "<read-only prompt>" < /dev/null > scratch/<name>.txt` (also `glm-5.3-flash`) in the background; without `< /dev/null` it hangs. Tell it not to edit files or read the vault, and verify its findings before acting.
 - Backups: [docs/backups.md](./docs/backups.md).
 - Docs state how things are, as plain reference: no narratives, test logs, scenario walk-throughs or history. Temporary notes, test checklists and scratch output go in `scratch/` (git ignores it; wipe it freely). Move anything lasting into the docs, written as reference.
 - `TODO.md` is the owner's list of work that waits for their time or hardware; each item says what it waits for, and an item is deleted when done. Facts and decisions go in the docs, not there.
