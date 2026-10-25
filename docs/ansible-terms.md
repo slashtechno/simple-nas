@@ -23,7 +23,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 - `inventory = inventory/hosts.yml`: the default inventory.
 - `interpreter_python = /usr/bin/python3`: fixed so Ansible does not warn about discovering Python.
 - `pipelining = True`: faster deploys over SSH.
-- `stdout_callback = default`, `result_format = yaml`: how task results print.
+- `result_format = yaml`: how task results print.
 - `collections_path = ~/.ansible/collections`: where Galaxy-installed collections live.
 
 The inventory is `groups → hosts → connection vars`. This repo has one group, `servers`, and both playbooks run on it. The group carries no settings; what a host runs is set in its own `host_vars/<host>/vars.yml`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
@@ -74,7 +74,6 @@ Files:
 - `file`: create, own or permission a path, or delete it (`state: absent`)
 - `copy`: push a static file or a literal `content:` string
 - `template`: render a `.j2` file, then push it
-- `find`: search for files into a registered variable (Garage's first-deploy check)
 - `git`: clone a repo (pics, through `github_clone`)
 - `lineinfile`: set one line in a file (containerd's `config.toml`)
 - `ansible.posix.authorized_key`: add SSH public keys
@@ -128,7 +127,7 @@ Keywords any task can carry:
 Config comes from these sources, lowest precedence first:
 
 1. `roles/*/defaults/main.yml`: a role's own settings, such as `gitea_ssh_port`.
-2. `group_vars/all/defaults.yml`: settings several roles share, each with a default, including every `<name>_enabled` flag (all false). Not edited per host.
+2. `group_vars/all/defaults.yml`: settings several roles share, each with a default, including every `<name>_enabled` flag (all false except `storage_enabled`). Not edited per host.
 3. `group_vars/all/vars.yml`: your values that apply to every host (timezone, SSH keys, Cloudflare zones). `versions.yml` holds every image and tool version, `vault.yml` the secrets hosts share (Cloudflare token and account, restic password, rclone token, ntfy token).
 4. `host_vars/<host>/vars.yml`: one host's settings, such as its flags, `drives` and the direct link. Beats everything above. `host_vars/<host>/vault.yml` holds that host's service secrets.
 
@@ -166,7 +165,7 @@ Values in `{{ ... }}` are Jinja2. A `|` passes the value on its left through a f
 | `list \| select`, `\| reject('match', 're')` | Keeps the truthy items; drops the ones matching a regular expression. |
 | `list \| subelements('volumes')` | One pair per item and per entry of its sub-list, so a loop sees both. |
 | `x is defined`, `x is match('re')` | Tests: is the variable set; does the text match a regular expression. |
-| `x \| password_hash(...)`, `\| hash('sha256')`, `\| b64encode` | Hash a password; hash a string; base64-encode it. |
+| `x \| password_hash(...)`, `\| b64encode` | Hash a password; base64-encode a string. |
 | `{%- set _ = d.update({...}) -%}` | Calls a method inside a template. `{%-` and `-%}` trim the blank lines around the tag. |
 | `{% if %}`, `{% for %}` | Template logic in `.j2` files; the `{% %}` lines produce no output. |
 

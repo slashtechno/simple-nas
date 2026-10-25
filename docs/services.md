@@ -104,7 +104,6 @@ Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudfla
 - The tunnel is found by name. If the name changes (the host's key in the inventory, or `cloudflared_tunnel_name`), the next deploy creates a tunnel under the new name. The DNS records still point at the old tunnel, which exists, so the deploy stops and names them. Delete the old tunnel in the dashboard (Zero Trust, Networks, Tunnels) and deploy again: that repoints the records at the new tunnel and gives the host the new token, and the public hostnames are down for the moment that takes.
 - The tunnel is remotely managed: the deploy sets its rules at Cloudflare through the API (from your machine), and the host holds only a tunnel token (`/opt/services/cloudflared/token`). If no tunnel named `cloudflared_tunnel_name` exists, the deploy creates it.
 - If a tunnel with that name exists but is "locally managed", the deploy stops. Use its migrate option in the dashboard (Zero Trust, Networks, Tunnels), or delete the tunnel (public hostnames are offline until the next deploy).
-- A leftover `*.json` credentials file in `/opt/services/cloudflared/` is not used and not touched; delete it by hand.
 
 ## ntfy: failure alerts
 
@@ -115,7 +114,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
-- The server denies everyone but the `alerts` user and its token, so the published port is not open to the LAN. The user and token are set from the compose file at every start; the data directory only holds message history.
+- The server denies everyone but the `alerts` user and its token, so the published port asks for a login even on the LAN. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
 - Another host sends alerts to the same server by setting `ntfy_alert_url` to `http://<ntfy-host-tailscale-name>:8090/alerts` in its `host_vars`; it needs `vault_ntfy_token` (`group_vars/all/vault.yml`).
 - `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
@@ -129,7 +128,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_adm
 - Garage always starts with `--single-node`: it creates the one-node layout on first start and leaves an existing layout alone.
 - `vault_garage_webui_pass` is the web UI password; the deploy hashes it (bcrypt with a fixed salt, so the output is the same on every run).
 - Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
-- Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI.
+- Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI. The same S3 API answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 
 ## Crafty (Minecraft servers)
 
@@ -156,7 +155,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 - Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name and on the address Ansible reaches the host at. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([networking.md](./networking.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
-- The tiles are the `web_services` list in `group_vars/all/web_services.yml`, with a comment on each field; add a line to add a tile. Garage, Caddy and Cloudflare Tunnel have no web UI to link to. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
+- The tiles are the `web_services` list in `group_vars/all/web_services.yml`, with a comment on each field; add a line to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: none has a host port or a Caddy name of its own. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
 - The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.
@@ -164,7 +163,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 ## Ad-hoc app platform
 
-**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#examples)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([networking.md](./networking.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 

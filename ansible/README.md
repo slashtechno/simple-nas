@@ -21,7 +21,7 @@ All commands below run from `ansible/`.
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Add a drive or move data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
-| Give services `https://` names, or change a port or name | `caddy_private_domains` (every service then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/networking.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
+| Give services `https://` names, or change a port or name | `caddy_private_domains` (each service with a web UI then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/networking.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
 | See what is running | nothing | `just status`, or open the Homepage |
 | Add a public hostname | `cloudflared_ingress` in `host_vars/<host>/vars.yml` ([services](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
@@ -34,7 +34,7 @@ All commands below run from `ansible/`.
 | File | In git | Holds | Create it |
 |---|---|---|---|
 | `inventory/hosts.yml` | no (addresses) | The hosts under `servers`, with SSH address, user and key | Copy `hosts.yml.example` |
-| `group_vars/all/defaults.yml` | yes | Every shared setting with its default; all `<name>_enabled` flags, all false | Already there; not edited |
+| `group_vars/all/defaults.yml` | yes | Every shared setting with its default; all `<name>_enabled` flags, all false except `storage_enabled` | Already there; not edited |
 | `group_vars/all/vars.yml` | yes | Your values that apply to every host (timezone, SSH keys, Cloudflare zones, Gitea and pics URLs) | Copy `vars.yml.example` |
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
@@ -127,7 +127,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | Image versions | `group_vars/all/versions.yml` |
 | Computed from the above (`fast_drive`, `drive_mounts`, ...) | the last section of `group_vars/all/defaults.yml`; not edited |
 
-Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. Options private to a role start with the role name.
+Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. Options private to a role start with the role name (`ssh_authorized_keys` is the exception, listed in `group_vars/all/vars.yml.example`).
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 
@@ -145,7 +145,7 @@ A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, beca
 ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-password-file .vault-pass
 ```
 
-Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Copyparty and backup-status build on the host and always rebuild, so `docker_pull_policy` doesn't apply to them.
+Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Caddy, Copyparty, pics and backup-status build on the host and always rebuild, so `docker_pull_policy` doesn't apply to them.
 
 ## Disable or remove a service
 

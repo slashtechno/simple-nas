@@ -7,12 +7,7 @@ ntfy_alert_url: ""
 #   /path        back this path up (an absolute path)
 #   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
 #   - !pattern   put back something an earlier "- " line left out
-# Example:
-#   restic_local_rules:
-#     - /mnt/data                                  # back up this drive
-#     - /home/pi/notes                             # and this folder
-#     - "- **/*.iso"                               # but no .iso file
-#     - "- !/mnt/data/downloads/keep.iso"          # except this one
+# A worked example is in docs/backups.md#choosing-what-is-backed-up.
 # The service dumps dir is always added, and caches and live database directories are always skipped
 # (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
 # Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as

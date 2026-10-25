@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:`, the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:` (a root-drive entry has only `mount` and `roles`, see [below](#using-the-root-drive-for-fast-or-primary)), the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
 
 | Role | Holds |
 |---|---|
@@ -64,7 +64,7 @@ drives:
 The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`.
 
 - **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits up to 30 seconds and then fails with `No such device`. The mount point is a placeholder, not a plain folder, so a container cannot write to the root drive. After the drive returns, the next access mounts it again, with no script or udev rule.
-- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting. The deploy requires it on every drive.
+- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting. The deploy requires it on every drive (it skips the drive checks on a host with `storage_enabled: false`).
 - **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
 - **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
 - **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
