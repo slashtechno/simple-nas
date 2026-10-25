@@ -1,12 +1,12 @@
 ---
 # Every host: a role is claimed at most once and only known roles are used.
 - name: Validate the drive roles
+  vars:
+    claimed_roles: "{{ drives | map(attribute='roles', default=[]) | flatten }}"
   ansible.builtin.assert:
     that:
-      - (drives | map(attribute='roles', default=[]) | flatten | length)
-        == (drives | map(attribute='roles', default=[]) | flatten | unique | length)
-      - (drives | map(attribute='roles', default=[]) | flatten)
-        | difference(['fast', 'primary', 'backup']) | length == 0
+      - claimed_roles | length == claimed_roles | unique | length
+      - claimed_roles | difference(['fast', 'primary', 'backup']) | length == 0
     fail_msg: >-
       Invalid drive roles in `drives`: a role (fast, primary, backup) can be claimed by only one drive,
       and no other role names exist. Any one drive may hold several roles.

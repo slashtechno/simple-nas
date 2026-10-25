@@ -132,15 +132,14 @@
         # Only the hostnames and services are compared; Cloudflare adds fields of its own to each rule.
         # The last rule (no hostname) is the catch-all, which this role always sets.
         - name: Work out whether the rules differ
+          vars:
+            rules_now: >-
+              {{ cloudflared_rules_now.json.result.config.ingress | default([], true)
+                 | selectattr('hostname', 'defined') | list }}
           ansible.builtin.set_fact:
             cloudflared_rules_differ: >-
-              {{ (cloudflared_rules_now.json.result.config.ingress | default([], true)
-                  | selectattr('hostname', 'defined') | map(attribute='hostname') | list)
-                 != (cloudflared_ingress | map(attribute='hostname') | list)
-                 or
-                 (cloudflared_rules_now.json.result.config.ingress | default([], true)
-                  | selectattr('hostname', 'defined') | map(attribute='service') | list)
-                 != (cloudflared_ingress | map(attribute='service') | list) }}
+              {{ rules_now | map(attribute='hostname') | list != cloudflared_ingress | map(attribute='hostname') | list
+                 or rules_now | map(attribute='service') | list != cloudflared_ingress | map(attribute='service') | list }}
 
         # The PUT replaces the whole list. The final rule answers 404 for any hostname not listed.
         - name: Set the tunnel's rules
