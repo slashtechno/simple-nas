@@ -210,13 +210,22 @@ crafty_panel_port: 28443
 # --- Names of the web UIs under the private domain ---
 # With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<first private domain>
 # (docs/networking.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
+# Immich's name.
 immich_subdomain: immich
+# Copyparty's name.
 copyparty_subdomain: copyparty
-gitea_subdomain: git
+# Gitea builds its links from gitea_root_url, a single address, so it has no name by default. To give it one,
+# set gitea_root_url to the same address (and the name is then also what the Homepage links to).
+gitea_subdomain: ""
+# pics' owner pages.
 pics_subdomain: pics
+# Crafty's panel.
 crafty_subdomain: crafty
+# Dockge's name.
 dockge_subdomain: dockge
+# ntfy's name; its own base URL (ntfy_base_url) is the address phones use.
 ntfy_subdomain: ntfy
+# The backup dashboard's name.
 backup_status_subdomain: backups
 
 # This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.

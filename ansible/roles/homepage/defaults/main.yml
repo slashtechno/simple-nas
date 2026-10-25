@@ -4,11 +4,11 @@ homepage_port: 3001
 # The address you open the page at. The default is the address Ansible reaches the host at (the full tailnet
 # name in the inventory). The page also answers on its Ansible address and the inventory name with homepage_port;
 # any other address (a LAN IP, a Caddy name from caddy_sites) gets a host validation error, so set this to the one you use. The tiles do not use
-# it: each host's tiles link to that host's own ansible_host.
+# it: they link to each service's Caddy name, or to its host's ansible_host and port.
 homepage_host: "{{ ansible_host | default(inventory_hostname) }}"
 # Extra tiles, shown in a "Links" group after the host groups: a public hostname, a page on a machine that is
 # not in the inventory, an app you made in Dockge (use its Caddy name). Each is {name, href}, with an optional
-# description, icon (same names as homepage_tiles) and monitor: true for an up/down dot. For example:
+# description, icon (same names as web_services) and monitor: true for an up/down dot. For example:
 #   - {name: Router, href: "http://192.168.1.1", description: Admin page}
 #   - {name: Uptime Kuma, href: "https://kuma.pi4.example.com", icon: uptime-kuma, monitor: true}
 homepage_links: []

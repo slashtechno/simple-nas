@@ -21,7 +21,7 @@ All commands below run from `ansible/`.
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Add a drive or move data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
-| Give a service an `https://` name (the root of the server) | `caddy_sites` and `caddy_private_domains` in `host_vars/<host>/vars.yml` ([HTTPS](../docs/networking.md#web-addresses-and-https)) | `just deploy dockge,caddy --limit <host>` |
+| Give services `https://` names, or change a port or name | `caddy_private_domains` (every service then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/networking.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
 | See what is running | nothing | `just status`, or open the Homepage |
 | Add a public hostname | `cloudflared_ingress` in `host_vars/<host>/vars.yml` ([services](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
@@ -40,6 +40,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
+| `group_vars/all/web_services.yml` | yes | The web UIs: Homepage tile, host port, Caddy container and port | Already there |
 
 Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files.
 
@@ -170,5 +171,6 @@ Drive mounts, the restic password and Tailscale state are never touched.
 6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
 7. A public hostname needs a `cloudflared_ingress` rule.
 8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_rules` to send it offsite.
-9. Add its secrets to the matching `vault.yml.example`, and a row to the services table in [../docs/services.md](../docs/services.md).
-10. `just check`, then `just deploy myservice`.
+9. A web UI gets a line in `group_vars/all/web_services.yml` (Homepage tile and Caddy name) and its `myservice_port` and `myservice_subdomain` in `group_vars/all/defaults.yml`.
+10. Add its secrets to the matching `vault.yml.example`, and a row to the services table in [../docs/services.md](../docs/services.md).
+11. `just check`, then `just deploy myservice`.

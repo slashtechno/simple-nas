@@ -57,8 +57,8 @@ caddy_private_domains: [pi4.example.com]
 - The domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
 - A deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain that is not in the list are deleted. `--check` prints the plan.
 - Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
-- Every service from this repo that is switched on gets `https://<subdomain>.<first private domain>`, for example `https://immich.pi4.example.com`. The subdomains and their container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml) and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). Homebridge has no name: it runs on the host network.
-- Override ports and names in `host_vars/<host>/vars.yml`; any setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml). Then run `just deploy caddy,homepage --limit <host>` and, for a port, the service's own tag too:
+- On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<first private domain>`, for example `https://immich.pi4.example.com`. The subdomains and their container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml) and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). Homebridge has no name: it runs on the host network.
+- Override ports and names in `host_vars/<host>/vars.yml`; any setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml). Then run `just deploy caddy,homepage --limit <host>` and, for a port, the service's own tag too (`just deploy gitea --limit <host>`):
 
   ```yaml
   gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
@@ -66,7 +66,7 @@ caddy_private_domains: [pi4.example.com]
   ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
   ```
 
-  A subdomain is a single label. The container ports in `web_services.yml` are fixed by the images and are not settings. With more than one domain in `caddy_private_domains`, services use the first one. The Homepage tiles link to the names. Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
+  The names come from the labels on the Caddy container, and the Homepage reads them when it is deployed, so after switching a service on or off, or changing a port or name, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443. A subdomain is a single label. The container ports in `web_services.yml` are fixed by the images and are not settings. With more than one domain in `caddy_private_domains`, services use the first one. The Homepage tiles link to the names. Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
 - A name of your own for a container of this repo, such as the root of the server as the start page, takes `caddy_sites`, a map of name to `container:port` on the `services` network:
 
   ```yaml

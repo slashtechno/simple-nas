@@ -38,7 +38,7 @@ services:
 | `caddy_0`, `caddy_1` (with matching `caddy_0.reverse_proxy`, ...) | Separate site blocks in one container |
 | `caddy_ingress_network: name` | Use this network for `{{upstreams}}` on this container |
 
-Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. The README has no basic-auth example; check the generated Caddyfile before relying on it.
+Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate: `caddy_0.reverse_proxy: https://crafty:8443`, `caddy_0.reverse_proxy.transport: http` and `caddy_0.reverse_proxy.transport.tls_insecure_skip_verify: ""`. The README has no basic-auth example; check the generated Caddyfile before relying on it.
 
 ## Gotchas for this repo
 
