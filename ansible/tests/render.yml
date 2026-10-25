@@ -182,6 +182,7 @@
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'NTFY_BEHIND_PROXY' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
