@@ -23,9 +23,17 @@ services:
       CADDY_INGRESS_NETWORKS: {{ docker_network }}
 {% if caddy_private_domains | length > 0 %}
       CLOUDFLARE_API_TOKEN: "{{ cloudflare_api_token }}"
+{% endif %}
+{% if caddy_private_domains | length > 0 or caddy_sites | length > 0 %}
     labels:
+{% if caddy_private_domains | length > 0 %}
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
+{% endif %}
+{% for address, upstream in caddy_sites.items() %}
+      caddy_{{ loop.index0 }}: {{ address }}
+      caddy_{{ loop.index0 }}.reverse_proxy: {{ upstream }}
+{% endfor %}
 {% endif %}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

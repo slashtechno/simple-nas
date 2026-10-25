@@ -1,7 +1,7 @@
 ---
 # pics builds from a private repo with vault_github_read_token. It reaches Copyparty as the "photos" account
 # (copyparty_service_accounts). The container publishes <pics_port> on the host, so the whole app (owner pages
-# included) is on your LAN and tailnet with no `tailscale serve` needed. Only guest pages go public, through the
+# included) is on your LAN and tailnet. Only guest pages go public, through the
 # cloudflared_ingress entry, which points at pics_public_port. The owner pages' host port is pics_port, in
 # group_vars/all/defaults.yml.
 

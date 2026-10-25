@@ -33,14 +33,14 @@
     mode: "0640"
   diff: false
 
-- name: Build and start Caddy
-  community.docker.docker_compose_v2:
-    project_src: "{{ services_dir }}/caddy"
-    state: present
-    build: always
-
 # With no zones and no private domains there is nothing to manage. Private domains with no zones fail the first check.
 # With zones, this also deletes the records of a domain that was taken out of caddy_private_domains.
 - name: Make Cloudflare DNS match caddy_private_domains
   ansible.builtin.import_tasks: private_domains.yml
   when: cloudflare_zones | length > 0 or caddy_private_domains | length > 0
+
+- name: Build and start Caddy
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/caddy"
+    state: present
+    build: always

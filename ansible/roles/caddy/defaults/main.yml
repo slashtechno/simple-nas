@@ -9,3 +9,9 @@ caddy_https_port: 443
 # certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
 # Empty: no records, and Caddy has no DNS challenge.
 caddy_private_domains: []
+# Names Caddy serves for containers of your own roles, as site address: upstream, where the upstream is a
+# container name and its port on the services network. For example the start page at the root of the server:
+#   home.pi4.example.com: homepage:3000
+# A name under a caddy_private_domains entry gets a Let's Encrypt certificate. An app you run yourself
+# (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md); use this for the roles here.
+caddy_sites: {}

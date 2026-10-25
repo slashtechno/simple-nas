@@ -27,28 +27,3 @@
     state: present
     tailscale_up_skip: true
   when: not ansible_check_mode
-
-# Both want port 443 on the tailnet address. With Caddy publishing 443 the HTTPS connection to the host fails.
-- name: Check Caddy leaves port 443 free for the front door
-  ansible.builtin.assert:
-    that: not (caddy_enabled | bool and caddy_https_port | default(443) | int == 443)
-    fail_msg: >-
-      tailscale_serve_port needs port 443 and Caddy is publishing it. Set caddy_https_port to another port
-      (8443) in this host's vars.yml, then deploy caddy and tailscale.
-    quiet: true
-  when: tailscale_serve_port | string | length > 0
-
-- name: Read what Tailscale already serves
-  ansible.builtin.command: tailscale serve status
-  register: tailscale_serve_status
-  changed_when: false
-  check_mode: false
-  when: tailscale_serve_port | string | length > 0
-
-# Running the same command again is harmless, but it would report a change on every deploy.
-- name: Serve the front door at https://<host>
-  ansible.builtin.command: tailscale serve --bg --https=443 http://127.0.0.1:{{ tailscale_serve_port }}
-  changed_when: true
-  when:
-    - tailscale_serve_port | string | length > 0
-    - ('127.0.0.1:' ~ tailscale_serve_port) not in tailscale_serve_status.stdout
