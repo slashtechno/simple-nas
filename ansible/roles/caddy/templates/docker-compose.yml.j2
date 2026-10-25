@@ -34,9 +34,6 @@ services:
 {% for svc in web_services if svc.subdomain_setting is defined and hostvars[inventory_hostname][svc.flag] | bool and hostvars[inventory_hostname][svc.subdomain_setting] != '' %}
       caddy_{{ site.n }}: "{% for domain in caddy_private_domains %}{{ hostvars[inventory_hostname][svc.subdomain_setting] }}.{{ domain }}{{ ' ' if not loop.last }}{% endfor %}"
       caddy_{{ site.n }}.reverse_proxy: "{{ svc.scheme | default('http') }}://{{ svc.container }}:{{ svc.container_port }}"
-{% if svc.header_up is defined %}
-      caddy_{{ site.n }}.reverse_proxy.header_up: "{{ svc.header_up }}"
-{% endif %}
 {% if svc.scheme | default('http') == 'https' %}
       caddy_{{ site.n }}.reverse_proxy.transport: http
       caddy_{{ site.n }}.reverse_proxy.transport.tls_insecure_skip_verify: ""

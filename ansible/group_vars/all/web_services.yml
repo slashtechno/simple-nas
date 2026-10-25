@@ -10,15 +10,13 @@
 #   container, container_port
 #                      what Caddy proxies to on the services network
 #   scheme             http unless set; https means the container serves a self-signed certificate, which Caddy accepts
-#   header_up          a request header Caddy adds for the container; Copyparty reads the client address and
-#                      protocol only when its xff-hdr header is present (roles/copyparty/templates/copyparty.conf.j2)
 #   icon               a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 # Garage, Caddy and Cloudflare Tunnel have no web UI to link to.
 web_services:
   - {name: Immich, flag: immich_enabled, port_setting: immich_port, subdomain_setting: immich_subdomain,
      container: immich_server, container_port: 2283, icon: immich, description: Photos}
   - {name: Copyparty, flag: copyparty_enabled, port_setting: copyparty_port, subdomain_setting: copyparty_subdomain,
-     container: copyparty, container_port: 3923, header_up: "CF-Connecting-IP {remote_host}", icon: copyparty, description: Files}
+     container: copyparty, container_port: 3923, icon: copyparty, description: Files}
   - {name: Gitea, flag: gitea_enabled, port_setting: gitea_port, subdomain_setting: gitea_subdomain,
      container: gitea, container_port: 3000, icon: gitea, description: Git}
   - {name: pics, flag: pics_enabled, port_setting: pics_port, subdomain_setting: pics_subdomain,

@@ -20,8 +20,6 @@
   localtime
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
   theme: 2
-  # The tunnel sends cf-connecting-ip; Caddy is told to send the same header (header_up in
-  # group_vars/all/web_services.yml). Without it Copyparty ignores the proxy's protocol and rejects logins as cross-origin.
   # The client address and protocol come from the proxy in front: Cloudflare's tunnel and Caddy both send
   # X-Forwarded-For and X-Forwarded-Proto. -1 takes the rightmost address, the one the nearest proxy added, which a
   # client cannot forge. Without these headers Copyparty treats the request as plain http and rejects logins as cross-origin.
