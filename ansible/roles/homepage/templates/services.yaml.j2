@@ -26,5 +26,11 @@
 {% if link.description is defined %}
         description: {{ link.description | to_json }}
 {% endif %}
+{% if link.icon is defined %}
+        icon: {{ link.icon | to_json }}
+{% endif %}
+{% if link.monitor | default(false) %}
+        siteMonitor: {{ link.href | to_json }}
+{% endif %}
 {% endfor %}
 {% endif %}

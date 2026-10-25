@@ -83,7 +83,7 @@
     - name: Turn on the optional settings that add lines to a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
-        homepage_links: [{name: Example, href: "https://example.test", description: "a: b"}]
+        homepage_links: [{name: Example, href: "https://example.test", description: "a: b", icon: mdi-star, monitor: true}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
@@ -196,6 +196,8 @@
             | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.test:5001', 'http://peer.example.test:8090']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.test'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
