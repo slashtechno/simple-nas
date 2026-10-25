@@ -1,4 +1,4 @@
-# Ansible-managed — do not edit directly, edit the caddy_* settings and re-deploy.
+# Ansible-managed — do not edit directly, edit the settings and re-deploy.
 # caddy-docker-proxy builds its Caddyfile from the labels of containers on the {{ docker_network }} network;
 # the label syntax is in docs/caddy-reference.md. It has the Docker socket, like Dockge.
 networks:
@@ -16,9 +16,9 @@ services:
     container_name: caddy
     restart: unless-stopped
     ports:
-      - "{{ caddy_http_port }}:80"
-      - "{{ caddy_https_port }}:443/tcp"
-      - "{{ caddy_https_port }}:443/udp"
+      - "80:80"
+      - "443:443/tcp"
+      - "443:443/udp"
     environment:
       CADDY_INGRESS_NETWORKS: {{ docker_network }}
 {% if caddy_private_domains | length > 0 %}

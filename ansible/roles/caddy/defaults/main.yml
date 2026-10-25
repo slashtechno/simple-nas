@@ -1,8 +1,4 @@
 ---
-# Host port Caddy listens on for HTTP.
-caddy_http_port: 80
-# Host port Caddy listens on for HTTPS.
-caddy_https_port: 443
 # Names Caddy serves for containers of your own roles, as site address: upstream, where the upstream is a
 # container name and its port on the services network (example: docs/networking.md#names-for-apps-caddy_private_domains).
 # A name under a caddy_private_domains entry gets a Let's Encrypt certificate. An app you run yourself

@@ -13,7 +13,6 @@
   # Version checker: reports in the log and UI when the running version has a security advisory.
   # It fetches the advisory feed from the URL below.
   vc-url: https://api.copyparty.eu/advisories
-  xff-src: lan,100.64.0.0/10
   ui-filesz: 5c
   # Sort file2.txt before file10.txt, and show times in the viewer's local timezone (a browser-side default).
   nsort
@@ -21,9 +20,11 @@
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
   theme: 2
   # The client address and protocol come from the proxy in front: Cloudflare's tunnel and Caddy both send
-  # X-Forwarded-For and X-Forwarded-Proto. -1 takes the rightmost address, the one the nearest proxy added, which a
-  # client cannot forge. Without these headers Copyparty treats the request as plain http and rejects logins as cross-origin.
-  xff-hdr: x-forwarded-for
+  # X-Forwarded-For (Copyparty's default xff-hdr) and X-Forwarded-Proto, and both reach Copyparty over the Docker network,
+  # so only private addresses (lan) are trusted to send them. rproxy -1 takes the rightmost address, the one the nearest
+  # proxy added, which a client cannot forge. Without these headers Copyparty treats the request as plain http and
+  # rejects logins as cross-origin.
+  xff-src: lan
   rproxy: -1
   shr: /shares
 {% if copyparty_sftp_enabled | bool %}

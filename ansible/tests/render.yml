@@ -93,7 +93,6 @@
         pics_instagram: render_test
         caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
-        gitea_subdomain: ""
         cloudflare_api_token: render-test-token
 
     - name: Turn on the offsite backup
@@ -155,17 +154,17 @@
       loop_control:
         label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"
 
-    # Compose rejects a service whose `environment:` or `volumes:` key has no value, which is what a template
-    # leaves behind when its last entry is removed.
-    - name: Every rendered compose file has a value under each service's environment and volumes
+    # Compose rejects a service whose `environment:`, `volumes:` or `labels:` key has no value, which is what a
+    # template leaves behind when its last entry is removed.
+    - name: Every rendered compose file has a value under each service's environment, volumes and labels
       ansible.builtin.assert:
         that: >-
-          (lookup('ansible.builtin.file', out_dir ~ '/' ~ item ~ '/docker-compose.yml') | from_yaml).services.values()
-          | map(attribute=key, default='x') | select('none') | list | length == 0
+          (lookup('ansible.builtin.file', out_dir ~ '/' ~ item.0 ~ '/docker-compose.yml') | from_yaml).services.values()
+          | map(attribute=item.1, default='x') | select('none') | list | length == 0
         quiet: true
-      vars:
-        key: environment
-      loop: "{{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename') | list }}"
+      loop: >-
+        {{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename')
+        | product(['environment', 'volumes', 'labels']) | list }}
 
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered

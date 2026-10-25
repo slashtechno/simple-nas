@@ -10,13 +10,13 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet. The image is built on the host from `roles/caddy/files/Dockerfile`: Caddy, caddy-docker-proxy and the Cloudflare DNS plugin, each pinned in `versions.yml` (`caddy_version`, `caddy_docker_proxy_version`, `caddy_cloudflare_dns_version`). The first build compiles Caddy and takes a few minutes on a Pi.
 
-The ports (`caddy_http_port`, `caddy_https_port`) are in `ansible/roles/caddy/defaults/main.yml`; `caddy_data_dir` is in `ansible/group_vars/all/defaults.yml`. Losing `caddy_data_dir` means certificates are issued again.
+Caddy listens on ports 80 and 443 of the host; `caddy_data_dir` is in `ansible/group_vars/all/defaults.yml`. Losing `caddy_data_dir` means certificates are issued again.
 
 The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
 ## Label syntax
 
-Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one per service from `web_services`, plus `caddy_sites`) ([networking.md](./networking.md#names-for-apps-caddy_private_domains)).
+Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the two short-name redirects) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short names](./networking.md#short-names)).
 
 ```yaml
 services:
@@ -38,7 +38,7 @@ services:
 | `caddy_0`, `caddy_1` (with matching `caddy_0.reverse_proxy`, ...) | Separate site blocks in one container |
 | `caddy_ingress_network: name` | Use this network for `{{upstreams}}` on this container |
 
-Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate: `caddy_0.reverse_proxy: https://crafty:8443`, `caddy_0.reverse_proxy.transport: http` and `caddy_0.reverse_proxy.transport.tls_insecure_skip_verify: ""`. The README has no basic-auth example; check the generated Caddyfile before relying on it.
+Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate (`scheme: https` in `web_services.yml`). The README has no basic-auth example; check the generated Caddyfile before relying on it.
 
 ## Gotchas for this repo
 
