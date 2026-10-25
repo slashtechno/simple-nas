@@ -15,6 +15,6 @@ services:
     environment:
       # Homepage answers only on the exact Host header a request names; anything else gets a 400. The bare
       # name is what a browser sends when the page is served on port 443 (tailscale_serve_port).
-      HOMEPAGE_ALLOWED_HOSTS: "{{ ([homepage_host, inventory_hostname] | unique | map('regex_replace', '$', ':' ~ homepage_port) | list + [homepage_host]) | join(',') }}"
+      HOMEPAGE_ALLOWED_HOSTS: "{{ homepage_host }}:{{ homepage_port }},{{ inventory_hostname }}:{{ homepage_port }},{{ homepage_host }}"
     networks:
       - {{ docker_network }}

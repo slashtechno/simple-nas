@@ -51,7 +51,7 @@ tailscale_serve_port: "{{ copyparty_port }}"
 
 - Tailscale terminates the HTTPS and forwards to `127.0.0.1:<port>`; tailnet only, nothing is public. Turn on HTTPS Certificates for the tailnet first (admin console, DNS page).
 - The service has to accept the bare tailnet name as its address. Homepage does. Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
-- Caddy (`caddy_enabled`) is the other route, for apps that should have names of their own; see [caddy-reference.md](./caddy-reference.md). It does not need `tailscale_serve_port`.
+- Caddy (`caddy_enabled`) gives apps names of their own ([caddy-reference.md](./caddy-reference.md)). It publishes port 443 by default, and then `https://<host>` does not connect, so the deploy stops: set `caddy_https_port` (for example `8443`) when a host uses both.
 - To stop serving, run `sudo tailscale serve reset` on the host; the setting only ever adds.
 
 ## Direct Ethernet link

@@ -2,12 +2,13 @@
 # (homepage_tiles, roles/homepage/vars/main.yml), then homepage_links. Values go through to_json so a colon or
 # quote in a name or description stays valid YAML.
 {% for host in groups['servers'] %}
-{# Skip a host with no web UI, so no empty group is drawn. #}
-{% if homepage_tiles | map(attribute='flag') | map('extract', hostvars[host]) | map('bool') | select | list %}
-- {{ host }}:
 {% for tile in homepage_tiles if hostvars[host][tile.flag] | bool %}
+{# The loop only visits enabled tiles, so its first pass is the host's first tile: draw the group heading then. #}
+{% if loop.first %}
+- {{ host }}:
+{% endif %}
 {% set port = tile.port if tile.port is defined else hostvars[host][tile.port_setting] %}
-{% set href = (tile.scheme | default('http')) ~ '://' ~ hostvars[host].ansible_host ~ ':' ~ port %}
+{% set href = (tile.scheme | default('http')) ~ '://' ~ hostvars[host].ansible_host | default(host) ~ ':' ~ port %}
     - {{ tile.name | to_json }}:
         href: {{ href | to_json }}
         description: {{ tile.description | to_json }}
@@ -16,7 +17,6 @@
         siteMonitor: {{ href | to_json }}
 {% endif %}
 {% endfor %}
-{% endif %}
 {% endfor %}
 {% if homepage_links | length > 0 %}
 - Links:
