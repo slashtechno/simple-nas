@@ -1,8 +1,8 @@
 # Simple NAS
 
-Ansible playbooks that set up Raspberry Pis (any Debian-family host) as home servers that run Docker services on the drives plugged into them.
+Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a home server running Docker services, with their data on the drives plugged into it.
 
-Tested on Raspberry Pi 4 and 5 (arm64). An x86-64 Debian-family host (a mini PC or old laptop) should work: the roles use apt and Docker, and the one per-CPU download (Zellij) has an x86-64 entry. x86-64 is untested, so check each service's image has an x86-64 build before relying on it.
+Tested on Raspberry Pi 4 and 5 (arm64). x86-64 machines (a mini PC, an old laptop) are untested but should work; check that each service's image has an x86-64 build.
 
 Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in: a service is deployed on a host only when that host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Every flag defaults to false (`storage_enabled` is true). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
