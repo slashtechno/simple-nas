@@ -17,7 +17,7 @@ services:
       DB_PASSWORD: '{{ vault_immich_db_password | replace("$", "$$") }}'
       DB_DATABASE_NAME: immich
     ports:
-      - "2283:2283"
+      - "{{ immich_port }}:2283"
     networks:
       - {{ docker_network }}
     depends_on:

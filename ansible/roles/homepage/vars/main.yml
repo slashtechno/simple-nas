@@ -1,14 +1,21 @@
 ---
-# One tile per service that publishes a web UI on a host port. A tile shows when its service is enabled on the
-# host. Immich and Homebridge have fixed ports; the rest follow their port setting in group_vars/all/defaults.yml.
-# Garage, Caddy and Cloudflare Tunnel have no web UI to link to. To add a tile, add a line here.
+# One tile per service that publishes a web UI on a host port. The page lists every host in the inventory
+# (group `servers`) and shows a host's tile when that host has the service's flag on. To add a tile, add a line.
+#   flag          the service's <name>_enabled setting
+#   port_setting  the setting that holds its host port (group_vars/all/defaults.yml)
+#   port          a fixed port, for a service whose port is not ours to set (Homebridge runs on the host network)
+#   scheme        http unless set
+#   monitor       false for a page the up/down dot cannot check (Crafty's certificate is self-signed)
+#   icon          a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
+# Garage, Caddy and Cloudflare Tunnel have no web UI to link to.
 homepage_tiles:
-  - {name: Immich, enabled: "{{ immich_enabled }}", href: "http://{{ homepage_host }}:2283", description: Photos}
-  - {name: Copyparty, enabled: "{{ copyparty_enabled }}", href: "http://{{ homepage_host }}:{{ copyparty_port }}", description: Files}
-  - {name: Gitea, enabled: "{{ gitea_enabled }}", href: "http://{{ homepage_host }}:{{ gitea_port }}", description: Git}
-  - {name: pics, enabled: "{{ pics_enabled }}", href: "http://{{ homepage_host }}:{{ pics_port }}", description: Photo culling and sharing}
-  - {name: Homebridge, enabled: "{{ homebridge_enabled }}", href: "http://{{ homepage_host }}:8581", description: HomeKit}
-  - {name: Crafty, enabled: "{{ crafty_enabled }}", href: "https://{{ homepage_host }}:{{ crafty_panel_port }}", description: Minecraft servers}
-  - {name: Dockge, enabled: "{{ dockge_enabled }}", href: "http://{{ homepage_host }}:{{ dockge_port }}", description: Compose stacks}
-  - {name: ntfy, enabled: "{{ ntfy_enabled }}", href: "http://{{ homepage_host }}:{{ ntfy_port }}", description: Alerts}
-  - {name: Backups, enabled: "{{ backup_status_enabled }}", href: "http://{{ homepage_host }}:{{ backup_status_port }}", description: Backup status}
+  - {name: Immich, flag: immich_enabled, port_setting: immich_port, icon: immich, description: Photos}
+  - {name: Copyparty, flag: copyparty_enabled, port_setting: copyparty_port, icon: copyparty, description: Files}
+  - {name: Gitea, flag: gitea_enabled, port_setting: gitea_port, icon: gitea, description: Git}
+  - {name: pics, flag: pics_enabled, port_setting: pics_port, icon: mdi-image-multiple, description: Photo culling and sharing}
+  - {name: Homebridge, flag: homebridge_enabled, port: 8581, icon: homebridge, description: HomeKit}
+  - {name: Crafty, flag: crafty_enabled, port_setting: crafty_panel_port, scheme: https, monitor: false, icon: crafty-controller,
+     description: Minecraft servers}
+  - {name: Dockge, flag: dockge_enabled, port_setting: dockge_port, icon: dockge, description: Compose stacks}
+  - {name: ntfy, flag: ntfy_enabled, port_setting: ntfy_port, icon: ntfy, description: Alerts}
+  - {name: Backups, flag: backup_status_enabled, port_setting: backup_status_port, icon: restic, description: Backup status}

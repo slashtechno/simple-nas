@@ -23,17 +23,19 @@ Internet → Cloudflare Tunnel (hostnames come from cloudflared_ingress)
 
 A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
 
-```yaml
-drives:
-  - { uuid: "your-ssd-uuid",    mount: /mnt/ssd,    fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
-  - { uuid: "your-backup-uuid", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
-```
-
-More examples: [docs/storage.md](./docs/storage.md#examples).
+The one-, two- and three-drive layouts are written out in [docs/storage.md](./docs/storage.md#examples).
 
 </details>
 
 To set up and deploy, start with [ansible/README.md](./ansible/README.md).
+
+## Daily use
+
+- **Find everything:** with `homepage_enabled` on one host, its page lists every service on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
+- **Choose what the server opens to:** `tailscale_serve_port` makes one service (the Homepage, Copyparty, Dockge) the root at `https://<host>` ([docs/networking.md](./docs/networking.md#web-addresses-and-https)).
+- **See what runs:** `just status` in `ansible/` lists the containers on every server.
+- **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
+- **Change something:** edit the host's `vars.yml`, then `just preview` and `just deploy` ([ansible/README.md](./ansible/README.md#commands)).
 
 ## Backups
 

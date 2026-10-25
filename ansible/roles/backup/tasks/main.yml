@@ -37,14 +37,13 @@
   when: backup_cloud_enabled | bool
 
 - name: Check every backup rule is a path or starts with "- "
+  vars:
+    bad_rules: "{{ (restic_local_rules + restic_cloud_rules) | reject('match', '^(- .+|/.+)$') | list }}"
   ansible.builtin.assert:
-    that: >-
-      (restic_local_rules + restic_cloud_rules)
-      | reject('match', '^(- .+|/.+)$') | list | length == 0
+    that: bad_rules | length == 0
     fail_msg: >-
       Every line of restic_local_rules and restic_cloud_rules is an absolute path, "- pattern" or
-      "- !pattern" (a dash and a space). Offending lines:
-      {{ (restic_local_rules + restic_cloud_rules) | reject('match', '^(- .+|/.+)$') | list }}
+      "- !pattern" (a dash and a space). Offending lines: {{ bad_rules }}
     quiet: true
 
 - name: Check the local backup covers every enabled service's data

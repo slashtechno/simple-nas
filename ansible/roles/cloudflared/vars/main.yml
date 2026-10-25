@@ -1,3 +1,5 @@
 ---
 # Cloudflare's API. A role's vars/ file holds constants: unlike defaults/, a host_vars file cannot override it.
 cloudflared_api_url: https://api.cloudflare.com/client/v4
+# Written in the comment of every DNS record this role manages. It is how a later deploy knows a record is its own.
+cloudflared_dns_comment: "managed by simple-nas, tunnel {{ cloudflared_tunnel_name }}"

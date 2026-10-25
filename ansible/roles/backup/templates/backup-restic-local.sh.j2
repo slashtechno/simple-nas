@@ -53,7 +53,12 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
   # list stable: restic forget groups snapshots by host and paths, so changing
   # it starts a new group and the old group's last snapshots stay until you
   # forget them by hand. Add "- " lines to restic_local_rules to skip things instead.
-  restic backup {{ (restic_local_rules | reject('match', '^- ') | list + [service_dumps_dir]) | unique | map('quote') | join(' ') }} \
+  BACKUP_PATHS=(
+{% for path in (restic_local_rules | reject('match', '^- ') | list + [service_dumps_dir]) | unique %}
+    {{ path | quote }}
+{% endfor %}
+  )
+  restic backup "${BACKUP_PATHS[@]}" \
     --exclude-file "$EXCLUDE_FILE" \
     --tag daily \
     --verbose
