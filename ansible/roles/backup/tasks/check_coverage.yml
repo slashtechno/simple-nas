@@ -1,25 +1,29 @@
 ---
 # A service whose data directory is outside every path the local backup copies would be missing from it, silently.
-# One line per service data directory; add a line when a service gets a new one. Immich's raw database directory is
+# One line per service: add a line when a service gets a new data directory. Immich's raw database directory is
 # not listed: it is excluded on purpose and reaches the backup through its dump.
 # To leave a directory out on purpose, add "- <that directory>" to restic_local_rules: it then counts as decided.
 - name: Check every enabled service's data is inside a locally backed-up path
   vars:
-    backup_service_dirs: >-
-      {{ ([immich_upload_location] if immich_enabled | bool else [])
-         + ([copyparty_files_dir, copyparty_config_dir] if copyparty_enabled | bool else [])
-         + ([copyparty_collab_dir] if copyparty_enabled | bool and copyparty_collab_enabled | bool else [])
-         + ([gitea_data_dir, gitea_runner_data_dir] if gitea_enabled | bool else [])
-         + ([pics_data_dir] if pics_enabled | bool else [])
-         + ([homebridge_config_dir] if homebridge_enabled | bool else [])
-         + ([garage_data_dir] if garage_enabled | bool else [])
-         + ([crafty_data_dir] if crafty_enabled | bool else [])
-         + ([ntfy_data_dir] if ntfy_enabled | bool else [])
-         + ([dockge_stacks_dir, dockge_data_dir] if dockge_enabled | bool else [])
-         + ([caddy_data_dir] if caddy_enabled | bool else []) }}
+    service_data:
+      - {enabled: "{{ immich_enabled }}", dirs: ["{{ immich_upload_location }}"]}
+      - {enabled: "{{ copyparty_enabled }}", dirs: ["{{ copyparty_files_dir }}", "{{ copyparty_config_dir }}"]}
+      - {enabled: "{{ copyparty_enabled and copyparty_collab_enabled }}", dirs: ["{{ copyparty_collab_dir }}"]}
+      - {enabled: "{{ gitea_enabled }}", dirs: ["{{ gitea_data_dir }}", "{{ gitea_runner_data_dir }}"]}
+      - {enabled: "{{ pics_enabled }}", dirs: ["{{ pics_data_dir }}"]}
+      - {enabled: "{{ homebridge_enabled }}", dirs: ["{{ homebridge_config_dir }}"]}
+      - {enabled: "{{ garage_enabled }}", dirs: ["{{ garage_data_dir }}"]}
+      - {enabled: "{{ crafty_enabled }}", dirs: ["{{ crafty_data_dir }}"]}
+      - {enabled: "{{ ntfy_enabled }}", dirs: ["{{ ntfy_data_dir }}"]}
+      - {enabled: "{{ dockge_enabled }}", dirs: ["{{ dockge_stacks_dir }}", "{{ dockge_data_dir }}"]}
+      - {enabled: "{{ caddy_enabled }}", dirs: ["{{ caddy_data_dir }}"]}
+    backup_service_dirs: "{{ service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
+    # The paths the backup copies: the plain lines of restic_local_rules, then the "- /path" lines (a path the
+    # owner decided to leave out), each without a trailing slash.
     backup_local_paths: >-
       {{ (restic_local_rules | reject('match', '^- ') | list + restic_local_rules | select('match', '^- /') | map('regex_replace', '^- ', '') | list)
          | map('regex_replace', '/$', '') | list }}
+    # A directory is covered when it is one of those paths or inside one: the path, then "/" or the end.
     backup_uncovered: >-
       {{ backup_service_dirs | reject('match', '^(' ~ (backup_local_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
   ansible.builtin.assert:
