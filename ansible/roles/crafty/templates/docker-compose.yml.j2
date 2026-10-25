@@ -20,7 +20,9 @@ services:
     environment:
       TZ: {{ timezone }}
     ports:
+{% if crafty_port != '' %}
       - "{{ crafty_port }}:8443"
+{% endif %}
       - "{{ crafty_mc_ports }}:{{ crafty_mc_ports }}"
 {% if crafty_bedrock_enabled %}
       - "19132:19132/udp"

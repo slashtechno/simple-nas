@@ -190,6 +190,8 @@ direct_link_prefix: 30
 # so it is reachable at http://<host-tailscale-name>:<port> from any device on your tailnet; docs/networking.md
 # covers HTTPS. pics' guest pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at
 # pics_public_port).
+# Set one to "" to publish no host port: the service is then reachable only through its Caddy name, so the host needs
+# caddy_private_domains and a non-empty <name>_subdomain (the deploy checks this). Keep the port as a way in when Caddy is down.
 # Immich's web UI and API (the mobile app connects here).
 immich_port: 2283
 # Copyparty's web UI and WebDAV.

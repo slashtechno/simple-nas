@@ -26,10 +26,14 @@ services:
 {% endif %}
     environment:
       TZ: {{ timezone }}
+{% if copyparty_port != '' or copyparty_sftp_enabled | bool %}
     ports:
+{% if copyparty_port != '' %}
       - "{{ copyparty_port }}:3923"
+{% endif %}
 {% if copyparty_sftp_enabled | bool %}
       - "{{ copyparty_sftp_port }}:{{ copyparty_sftp_port }}"
+{% endif %}
 {% endif %}
     networks:
       - {{ docker_network }}

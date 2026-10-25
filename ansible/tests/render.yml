@@ -93,6 +93,7 @@
         pics_instagram: render_test
         caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
+        immich_port: ""
         cloudflare_api_token: render-test-token
 
     - name: Turn on the offsite backup
@@ -154,9 +155,9 @@
       loop_control:
         label: "{{ item | dirname | dirname | basename }}/{{ item | basename }}"
 
-    # Compose rejects a service whose `environment:`, `volumes:` or `labels:` key has no value, which is what a
+    # Compose rejects a service whose `environment:`, `volumes:`, `labels:` or `ports:` key has no value, which is what a
     # template leaves behind when its last entry is removed.
-    - name: Every rendered compose file has a value under each service's environment, volumes and labels
+    - name: Every rendered compose file has a value under each service's environment, volumes, labels and ports
       ansible.builtin.assert:
         that: >-
           (lookup('ansible.builtin.file', out_dir ~ '/' ~ item.0 ~ '/docker-compose.yml') | from_yaml).services.values()
@@ -164,7 +165,7 @@
         quiet: true
       loop: >-
         {{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename')
-        | product(['environment', 'volumes', 'labels']) | list }}
+        | product(['environment', 'volumes', 'labels', 'ports']) | list }}
 
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered
@@ -176,6 +177,7 @@
           - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_8: \"http://render-full\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_9.redir: \"https://{labels.1}.caddy.example.test{uri}\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"

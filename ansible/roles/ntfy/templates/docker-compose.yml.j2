@@ -11,8 +11,10 @@ services:
     container_name: ntfy
     restart: unless-stopped
     command: serve
+{% if ntfy_port != '' %}
     ports:
       - "{{ ntfy_port }}:80"
+{% endif %}
     volumes:
       - {{ ntfy_data_dir }}:/var/lib/ntfy
       - /etc/localtime:/etc/localtime:ro

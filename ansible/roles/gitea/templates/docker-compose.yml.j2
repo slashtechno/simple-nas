@@ -25,7 +25,9 @@ services:
 {% endif %}
     ports:
       - "{{ gitea_ssh_port }}:22"
+{% if gitea_port != '' %}
       - "{{ gitea_port }}:3000"
+{% endif %}
     networks:
       - {{ docker_network }}
 

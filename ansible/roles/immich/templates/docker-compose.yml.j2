@@ -16,8 +16,10 @@ services:
       DB_USERNAME: immich
       DB_PASSWORD: '{{ vault_immich_db_password | replace("$", "$$") }}'
       DB_DATABASE_NAME: immich
+{% if immich_port != '' %}
     ports:
       - "{{ immich_port }}:2283"
+{% endif %}
     networks:
       - {{ docker_network }}
     depends_on:

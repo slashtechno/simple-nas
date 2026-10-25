@@ -38,6 +38,22 @@
         quiet: true
       tags: [always]
 
+    # A service with no host port is reachable only through its Caddy name.
+    - name: Check every web service has a host port or a Caddy name
+      ansible.builtin.assert:
+        that: >-
+          vars[item.key ~ '_port'] != ''
+          or (caddy_enabled | bool and caddy_private_domains | length > 0 and vars[item.key ~ '_subdomain'] != '')
+        fail_msg: >-
+          {{ item.name }} has no host port ({{ item.key }}_port: "") and no Caddy name. Give it a port, or turn on
+          caddy_enabled and caddy_private_domains and keep {{ item.key }}_subdomain non-empty (docs/networking.md).
+        quiet: true
+      loop: "{{ web_services | rejectattr('port', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: vars[item.key ~ '_enabled'] | bool
+      tags: [always]
+
   tasks:
     # Drives first: docker_data_root (common) may sit on one.
     - name: Mount the drives

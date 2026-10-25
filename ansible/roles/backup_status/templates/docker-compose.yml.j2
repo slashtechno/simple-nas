@@ -29,7 +29,9 @@ services:
       HOST_RESTIC_CLOUD_RETENTION: "{{ restic_cloud_retention }}"
       HOST_RESTIC_CLOUD_RCLONE_ARGS: "{{ restic_cloud_rclone_args }}"
       HOST_SCRIPTS_DIR: "{{ scripts_dir }}"
+{% if backup_status_port != '' %}
     ports:
       - "{{ backup_status_port }}:8080"
+{% endif %}
     networks:
       - {{ docker_network }}
