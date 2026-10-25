@@ -1,7 +1,7 @@
 ---
 # The tunnel is remotely managed: its ingress rules live at Cloudflare and the container only needs
 # a token. A deploy makes Cloudflare match cloudflared_ingress: it creates the tunnel if it does not
-# exist, sets the rules, creates a DNS record per hostname, and reports leftover records.
+# exist, sets the rules, and creates, corrects and deletes DNS records so they match (plan shown first).
 # Cloudflare's API: https://developers.cloudflare.com/api/
 #
 # Every API call runs on the machine running Ansible (delegate_to: localhost), so the broad API token
@@ -154,61 +154,154 @@
 
         # --- DNS: one proxied CNAME per hostname, pointing at <tunnel id>.cfargotunnel.com ---
         # The zone is the cloudflared_zones entry whose domain appears in the hostname (checked above).
-        # A hostname's existing record, whatever its type, is looked up first so nothing unrelated is
-        # overwritten. This role replaces a record only if it points at a tunnel (*.cfargotunnel.com),
-        # such as the one you deleted. Anything else stops the deploy and tells you what to do.
-        - name: Look up the existing DNS record of each hostname
+        # Every record this role writes carries a comment (cloudflared_dns_comment) that says it is
+        # managed here. The plan below is worked out from read-only calls, so --check shows it in full.
+        #
+        # A hostname's existing record:
+        #   none                                          create
+        #   CNAME to this tunnel                          keep (add the comment if it is missing)
+        #   has the comment, or points at a deleted tunnel  point it at this tunnel
+        #   points at another tunnel that exists          stop: that tunnel is serving it
+        #   anything else (A, MX, TXT, ...)               stop
+        # A record not in cloudflared_ingress is deleted if it has the comment or points at this tunnel
+        # (a hostname added in the Zero Trust dashboard, or removed from the list). Records that point
+        # at a deleted tunnel and are not ours are only reported.
+        - name: Read every DNS record of the zones
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records?name={{ item.hostname }}"
+            url: "{{ cloudflared_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
           check_mode: false
           changed_when: false
+          loop: "{{ cloudflared_zones.values() | unique | list }}"
+          register: cloudflared_zone_lists
+
+        - name: Read the tunnels that exist in the account
+          ansible.builtin.uri:
+            url: "{{ cloudflared_api_url }}/accounts/{{ cloudflared_account_id }}/cfd_tunnel?is_deleted=false&per_page=1000"
+          check_mode: false
+          changed_when: false
+          register: cloudflared_live_tunnels
+
+        # The plan trusts these lists to be complete, so a second page stops the deploy.
+        - name: Stop if a listing has more than one page
+          ansible.builtin.assert:
+            that:
+              - cloudflared_zone_lists.results | map(attribute='json.result_info.total_pages') | select('gt', 1) | list | length == 0
+              - cloudflared_live_tunnels.json.result_info.total_pages | default(1) <= 1
+            fail_msg: A zone or the tunnel list has more than 5000 or 1000 entries. This role reads one page only.
+            quiet: true
+
+        - name: Collect what the plan needs
+          ansible.builtin.set_fact:
+            cloudflared_our_target: "{{ cloudflared_tunnel_id }}.cfargotunnel.com"
+            cloudflared_live_targets: "{{ cloudflared_live_tunnels.json.result | map(attribute='id') | map('regex_replace', '$', '.cfargotunnel.com') | list }}"
+            cloudflared_dns_records: "{{ cloudflared_zone_lists.results | map(attribute='json.result') | flatten }}"
+
+        - name: Stop if a hostname has a record that belongs to something else
+          vars:
+            record: "{{ cloudflared_dns_records | selectattr('name', 'equalto', item.hostname) | first | default({}) }}"
+          ansible.builtin.assert:
+            that: >-
+              record | length == 0
+              or (record.type == 'CNAME'
+                  and (record.content == cloudflared_our_target
+                       or record.comment | default('', true) == cloudflared_dns_comment
+                       or (record.content.endswith('.cfargotunnel.com') and record.content not in cloudflared_live_targets)))
+            fail_msg: >-
+              {{ item.hostname }} already has a {{ record.type | default('') }} record ({{ record.content | default('') }})
+              that this role did not create and that another tunnel or service uses. If it is unused, delete it in
+              the Cloudflare dashboard (DNS) and deploy again.
+            quiet: true
           loop: "{{ cloudflared_hostnames }}"
           loop_control:
             label: "{{ item.hostname }}"
-          register: cloudflared_dns_now
 
-        - name: Stop if a hostname already has a record that is not a tunnel
-          ansible.builtin.assert:
-            that: >-
-              item.json.result | length == 0
-              or (item.json.result[0].type == 'CNAME'
-                  and item.json.result[0].content.endswith('.cfargotunnel.com'))
-            fail_msg: >-
-              {{ item.item.hostname }} already has a {{ item.json.result[0].type | default('') }} record
-              ({{ item.json.result[0].content | default('') }}) that is not a Cloudflare tunnel. Delete it in
-              the Cloudflare dashboard (DNS) if it is unused, then deploy again.
-            quiet: true
-          loop: "{{ cloudflared_dns_now.results | default([]) }}"
+        - name: Work out what each hostname needs
+          vars:
+            record: "{{ cloudflared_dns_records | selectattr('name', 'equalto', item.hostname) | first | default({}) }}"
+            change: >-
+              {{ 'create' if record | length == 0
+                 else 'keep' if record.content == cloudflared_our_target and record.comment | default('', true) == cloudflared_dns_comment
+                 else 'adopt' if record.content == cloudflared_our_target
+                 else 'repoint' }}
+          ansible.builtin.set_fact:
+            cloudflared_dns_actions: >-
+              {{ cloudflared_dns_actions | default([])
+                 + [{'hostname': item.hostname, 'zone_id': item.zone_id, 'action': change, 'record_id': record.id | default('')}] }}
+          loop: "{{ cloudflared_hostnames }}"
           loop_control:
-            label: "{{ item.item.hostname | default('') }}"
+            label: "{{ item.hostname }}"
 
-        - name: Delete records that point at a different tunnel (such as a deleted one)
-          ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.item.zone_id }}/dns_records/{{ item.json.result[0].id }}"
-            method: DELETE
-          loop: "{{ cloudflared_dns_now.results | default([]) }}"
-          loop_control:
-            label: "{{ item.item.hostname | default('') }}"
-          when:
-            - item.json.result | length > 0
-            - item.json.result[0].content != cloudflared_tunnel_id + '.cfargotunnel.com'
+        - name: Work out which records to delete and which to report
+          vars:
+            declared: "{{ cloudflared_hostnames | map(attribute='hostname') | list }}"
+            ours: >-
+              {{ cloudflared_dns_records | selectattr('comment', 'defined') | selectattr('comment', 'equalto', cloudflared_dns_comment) | list
+                 + cloudflared_dns_records | selectattr('type', 'equalto', 'CNAME') | selectattr('content', 'equalto', cloudflared_our_target) | list }}
+            to_delete: "{{ ours | unique(attribute='id') | rejectattr('name', 'in', declared) | list }}"
+          ansible.builtin.set_fact:
+            cloudflared_dns_deletes: "{{ to_delete }}"
+            cloudflared_dns_dangling: >-
+              {{ cloudflared_dns_records | selectattr('type', 'equalto', 'CNAME') | selectattr('content', 'search', '[.]cfargotunnel[.]com$')
+                 | rejectattr('content', 'in', cloudflared_live_targets) | rejectattr('name', 'in', declared)
+                 | rejectattr('id', 'in', to_delete | map(attribute='id') | list) | list }}
 
+        - name: Show the DNS plan
+          ansible.builtin.debug:
+            msg:
+              - "create:   {{ cloudflared_dns_actions | selectattr('action', 'equalto', 'create') | map(attribute='hostname') | list }}"
+              - "comment:  {{ cloudflared_dns_actions | selectattr('action', 'equalto', 'adopt') | map(attribute='hostname') | list }}"
+              - "repoint:  {{ cloudflared_dns_actions | selectattr('action', 'equalto', 'repoint') | map(attribute='hostname') | list }}"
+              - "delete:   {{ cloudflared_dns_deletes | map(attribute='name') | list }}"
+              - "not ours, point at a deleted tunnel (left alone): {{ cloudflared_dns_dangling | map(attribute='name') | list }}"
+
+        # PATCH changes only the fields sent. A PUT would reset the ones left out, such as proxied.
         - name: Create the missing records
           ansible.builtin.uri:
-            url: "{{ cloudflared_api_url }}/zones/{{ item.item.zone_id }}/dns_records"
+            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records"
             method: POST
             body_format: json
             body:
               type: CNAME
-              name: "{{ item.item.hostname }}"
-              content: "{{ cloudflared_tunnel_id }}.cfargotunnel.com"
+              name: "{{ item.hostname }}"
+              content: "{{ cloudflared_our_target }}"
               ttl: 1   # 1 means automatic
               proxied: true
-          loop: "{{ cloudflared_dns_now.results | default([]) }}"
+              comment: "{{ cloudflared_dns_comment }}"
+          loop: "{{ cloudflared_dns_actions | selectattr('action', 'equalto', 'create') | list }}"
           loop_control:
-            label: "{{ item.item.hostname | default('') }}"
-          when:
-            - (item.json.result | length == 0) or (item.json.result[0].content != cloudflared_tunnel_id + '.cfargotunnel.com')
+            label: "{{ item.hostname }}"
+
+        - name: Add the comment to records already pointing at this tunnel
+          ansible.builtin.uri:
+            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
+            method: PATCH
+            body_format: json
+            body:
+              comment: "{{ cloudflared_dns_comment }}"
+          loop: "{{ cloudflared_dns_actions | selectattr('action', 'equalto', 'adopt') | list }}"
+          loop_control:
+            label: "{{ item.hostname }}"
+
+        - name: Point records at this tunnel
+          ansible.builtin.uri:
+            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.record_id }}"
+            method: PATCH
+            body_format: json
+            body:
+              content: "{{ cloudflared_our_target }}"
+              proxied: true
+              comment: "{{ cloudflared_dns_comment }}"
+          loop: "{{ cloudflared_dns_actions | selectattr('action', 'equalto', 'repoint') | list }}"
+          loop_control:
+            label: "{{ item.hostname }}"
+
+        - name: Delete records that are not in cloudflared_ingress
+          ansible.builtin.uri:
+            url: "{{ cloudflared_api_url }}/zones/{{ item.zone_id }}/dns_records/{{ item.id }}"
+            method: DELETE
+          loop: "{{ cloudflared_dns_deletes }}"
+          loop_control:
+            label: "{{ item.name }}"
 
 # --- On the server ---
 - name: Create the cloudflared directory
