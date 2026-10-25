@@ -39,6 +39,21 @@ nmcli device wifi list         # networks the Pi can see right now
 - The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, and the default Ethernet profile must be named `Wired connection 1` (the name on those systems); on a host where it has another name, the link's disable and revert steps fail. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
 - The Ubuntu Server installer writes its own netplan file and a cloud-init file that already disables cloud-init's network config; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init at first boot. Either way the file `roles/network` writes makes cloud-init leave the network alone afterwards.
 
+## Web addresses and HTTPS
+
+Every service with a web UI listens on a host port and is reachable from any device on your tailnet at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+
+To make one service the root of the server, at `https://<host's tailnet name>` with a real certificate, set `tailscale_serve_port` in the host's `vars.yml` to that service's port. The choice is yours: Homepage for a launcher, Copyparty for a file server, Dockge for an app host.
+
+```yaml
+tailscale_serve_port: "{{ copyparty_port }}"
+```
+
+- Tailscale terminates the HTTPS and forwards to `127.0.0.1:<port>`; tailnet only, nothing is public. Turn on HTTPS Certificates for the tailnet first (admin console, DNS page).
+- The service has to accept the bare tailnet name as its address. Homepage does. Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
+- Caddy (`caddy_enabled`) is the other route, for apps that should have names of their own; see [caddy-reference.md](./caddy-reference.md). It does not need `tailscale_serve_port`.
+- To stop serving, run `sudo tailscale serve reset` on the host; the setting only ever adds.
+
 ## Direct Ethernet link
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.

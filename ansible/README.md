@@ -73,7 +73,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. Create `host_vars/<host>/vault.yml` from `host_vars/vault.yml.example`, keep the keys the enabled services use, and encrypt it. Shared secrets (Cloudflare, restic) go in `group_vars/all/vault.yml`.
-5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)).
+5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
 ## Using this repo for your own hosts
@@ -97,6 +97,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
+| `just status [host]` | `docker ps` on every server, or on one host |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |

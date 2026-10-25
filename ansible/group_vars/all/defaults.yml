@@ -175,13 +175,11 @@ direct_link_peer_ip: 10.10.20.2
 # Prefix length; 30 leaves room for just these two addresses.
 direct_link_prefix: 30
 
-# --- Copyparty ---
-# Every service that publishes a host port is reachable at http://<host-tailscale-name>:<port> from
-# any device on your tailnet. That needs nothing extra: no `tailscale serve`. pics' guest
-# pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at pics_public_port).
-
 # --- Host ports of the web UIs ---
-# Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet).
+# Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet),
+# so it is reachable at http://<host-tailscale-name>:<port> from any device on your tailnet; docs/networking.md
+# covers HTTPS. pics' guest pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at
+# pics_public_port).
 # Immich's web UI and API (the mobile app connects here).
 immich_port: 2283
 # Copyparty's web UI and WebDAV.

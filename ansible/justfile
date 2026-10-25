@@ -48,6 +48,10 @@ tags image filter='.' count='30':
 deploy tags='' *flags:
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
+# What is running on every server (or `just status pinas` for one): the containers and how long they have been up.
+status limit='servers':
+    ansible {{ limit }} --vault-password-file .vault-pass --become -a "docker ps"
+
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags:
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
