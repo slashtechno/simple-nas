@@ -66,10 +66,10 @@ caddy_private_domains: [pi4.example.com]
 
   Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
 - An app of your own takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
-- Caddy needs port 443 on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that ever served on 443 needs `sudo tailscale serve reset` first.
+- Caddy needs port 443 on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
 - Public names do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
-- Both the bare name and any name under it can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
+- Both the bare name and any name one label below it (`app.pi4.example.com`) can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
 - Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
 ## Direct Ethernet link

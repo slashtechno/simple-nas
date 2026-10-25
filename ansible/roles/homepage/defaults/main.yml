@@ -2,8 +2,8 @@
 # Host port of the start page.
 homepage_port: 3001
 # The address you open the page at. The default is the address Ansible reaches the host at (the full tailnet
-# name in the inventory). The page also answers on the inventory name with homepage_port; any other address
-# (a LAN IP, a Caddy name from caddy_sites) gets a host validation error, so set this to the one you use. The tiles do not use
+# name in the inventory). The page also answers on its Ansible address and the inventory name with homepage_port;
+# any other address (a LAN IP, a Caddy name from caddy_sites) gets a host validation error, so set this to the one you use. The tiles do not use
 # it: each host's tiles link to that host's own ansible_host.
 homepage_host: "{{ ansible_host | default(inventory_hostname) }}"
 # Extra tiles, shown in a "Links" group after the host groups: a public hostname, a page on a machine that is

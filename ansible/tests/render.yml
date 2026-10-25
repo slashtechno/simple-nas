@@ -197,6 +197,8 @@
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
           - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.icon == 'mdi-star'
+          - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.test'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"

@@ -39,7 +39,7 @@
   ansible.builtin.import_tasks: private_domains.yml
   when: cloudflare_zones | length > 0 or caddy_private_domains | length > 0
 
-# After the DNS records, so the names resolve when Caddy first asks Let's Encrypt for their certificates.
+# After the DNS records: a DNS failure stops the deploy before Caddy is rebuilt.
 - name: Build and start Caddy
   community.docker.docker_compose_v2:
     project_src: "{{ services_dir }}/caddy"
