@@ -230,26 +230,16 @@ docker_daemon_options: >-
 # Code that works without a role asks `'fast' in drive_mounts`; code that needs one reads
 # fast_drive / primary_drive / backup_drive, which fail with a message naming the missing role.
 # Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
-# How it is built: `{% for %}` loops over the drives and each drive's roles, and `_m.update({role: mount})`
-# fills a dictionary. `{%- set _ = ... -%}` is the usual way to call a method in Jinja, because a plain
-# `{{ }}` would print its result; the `-` trims the blank lines the tags would leave.
+# `subelements` pairs every drive with each of its roles; the dict is role -> mount point of that drive.
 drive_mounts: >-
-  {%- set _m = {} -%}
-  {%- for _d in drives -%}
-  {%- for _r in _d.roles | default([]) -%}
-  {%- set _ = _m.update({_r: _d.mount}) -%}
-  {%- endfor -%}{%- endfor -%}
-  {{ _m }}
+  {%- set pairs = drives | subelements('roles', skip_missing=True) -%}
+  {{ dict(pairs | map(attribute='1') | zip(pairs | map(attribute='0.mount'))) }}
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
 # The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
 # A drive with only the backup role is not listed: the scripts check it on their own.
 data_drive_mounts: >-
-  {%- set _m = [] -%}
-  {%- for _d in drives if _d.uuid is defined -%}
-  {%- if _d.roles | default([]) | intersect(['fast', 'primary']) | length > 0 and _d.mount not in _m -%}
-  {%- set _ = _m.append(_d.mount) -%}
-  {%- endif -%}{%- endfor -%}
-  {{ _m }}
+  {{ drives | selectattr('uuid', 'defined') | selectattr('roles', 'defined')
+     | rejectattr('roles', 'subset', ['backup']) | map(attribute='mount') | unique | list }}
 # Mount point of the drive with the fast role (read-only; derived from `drives`).
 fast_drive: >-
   {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its
