@@ -156,6 +156,14 @@ crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 # File on the host holding vault_ntfy_token, read by alert.sh.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
 
+# Homepage (roles/homepage) lists these for every host, so the setting is shared, not the role's.
+# Tiles for apps on this host that Ansible does not deploy (stacks you made in Dockge), shown in the host's group
+# after its services, with the same up/down dot. Each entry is {name, port, icon, description}, with an optional
+# scheme (https) and monitor (false). The page links to <the host's ansible_host>:<port>. For example:
+#   - {name: Uptime Kuma, port: 3002, icon: uptime-kuma, description: Uptime monitor}
+# The tile appears on the Homepage after `just deploy homepage --limit <the host that runs the Homepage>`.
+homepage_extra_tiles: []
+
 # --- Cloudflare account (roles/cloudflared and roles/caddy; teardown does not read it) ---
 # API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
 cloudflare_api_token: "{{ vault_cloudflared_api_token }}"

@@ -23,6 +23,7 @@
       ansible.builtin.set_fact:
         dockge_enabled: true
         ntfy_enabled: true
+        homepage_extra_tiles: [{name: Extra, port: 3002, icon: mdi-star, description: "an app Ansible does not deploy"}]
 
 - name: Render all role templates against the example vars
   hosts: render-full
@@ -193,7 +194,8 @@
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | length == 9
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
-            | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.test:5001', 'http://peer.example.test:8090']
+            | map(attribute='value') | map(attribute='href') | list
+            == ['http://peer.example.test:5001', 'http://peer.example.test:8090', 'http://peer.example.test:3002']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
