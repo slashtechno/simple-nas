@@ -20,6 +20,8 @@
   localtime
   # Default theme 2 = pm-monokai. Clients can still pick another in the UI settings.
   theme: 2
+  # The tunnel sends cf-connecting-ip; Caddy is told to send the same header (header_up in
+  # group_vars/all/web_services.yml). Without it Copyparty ignores the proxy's protocol and rejects logins as cross-origin.
   xff-hdr: cf-connecting-ip
   rproxy: 1
   shr: /shares

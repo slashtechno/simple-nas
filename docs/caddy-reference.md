@@ -42,6 +42,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## Gotchas for this repo
 
+- **Apps that read the client address from a header.** Copyparty is set to read `cf-connecting-ip` (the Cloudflare tunnel sends it) and ignores the proxy's protocol without it, which shows "switch to https" and rejects logins as cross-origin. Caddy sends that header to Copyparty (`header_up` in `web_services.yml`). An app of your own that behaves the same way needs `caddy.reverse_proxy.header_up: "<Header> {remote_host}"` for the header it reads.
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
 - **Shared network.** A stack must declare the external `services` network (`docker_network`) and join it; a container not on it is invisible to `{{upstreams}}`.
 - **TLS.**
