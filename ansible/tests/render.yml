@@ -3,7 +3,7 @@
 # Runs on your machine only (no Pi, no vault): `just test` runs this, then
 # shellchecks the rendered scripts. It catches:
 #   - a template using a variable that isn't defined in defaults.yml, vars.yml.example,
-#     vault.yml.example, versions.yml or the role's defaults/
+#     vault.yml.example, versions.yml, web_services.yml or the role's defaults/
 #   - a key in a vars.yml (group_vars/all, host_vars/<host>) that no example or role defaults
 #     file declares
 #   - template syntax errors
@@ -61,6 +61,7 @@
            + [repo + '/group_vars/all/defaults.yml',
               repo + '/group_vars/all/vars.yml.example',
               repo + '/group_vars/all/versions.yml',
+              repo + '/group_vars/all/web_services.yml',
               repo + '/host_vars/vars.yml.example',
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
@@ -92,6 +93,7 @@
         pics_instagram: render_test
         caddy_private_domains: [caddy.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
+        gitea_subdomain: ""
         cloudflare_api_token: render-test-token
 
     - name: Turn on the offsite backup
@@ -170,7 +172,10 @@
       ansible.builtin.assert:
         that:
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
-          - "'caddy_0.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'caddy_0: \"immich.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
@@ -191,6 +196,10 @@
             == ['render-full', 'render-peer', 'Links']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | length == 9
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
+            | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
+            == ['https://immich.caddy.example.test', 'http://full.example.test:3000', 'https://crafty.caddy.example.test']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
             | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.test:5001', 'http://peer.example.test:8090']

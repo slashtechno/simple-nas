@@ -1,0 +1,31 @@
+---
+# One line per service with a web UI. Homepage lists a tile for each one a host has switched on, and Caddy serves
+# each one at https://<subdomain>.<first caddy_private_domains entry>. To add a service, add a line.
+#   flag               the service's <name>_enabled setting
+#   port_setting       the setting that holds its host port (group_vars/all/defaults.yml)
+#   port               a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host network)
+#   subdomain_setting  the setting that holds its name under the private domain (group_vars/all/defaults.yml);
+#                      left out for a service Caddy cannot reach (Homebridge: host network)
+#   container, container_port
+#                      what Caddy proxies to on the services network
+#   scheme             http unless set; https means the container serves a self-signed certificate, which Caddy accepts
+#   icon               a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
+# Garage, Caddy and Cloudflare Tunnel have no web UI to link to.
+web_services:
+  - {name: Immich, flag: immich_enabled, port_setting: immich_port, subdomain_setting: immich_subdomain,
+     container: immich_server, container_port: 2283, icon: immich, description: Photos}
+  - {name: Copyparty, flag: copyparty_enabled, port_setting: copyparty_port, subdomain_setting: copyparty_subdomain,
+     container: copyparty, container_port: 3923, icon: copyparty, description: Files}
+  - {name: Gitea, flag: gitea_enabled, port_setting: gitea_port, subdomain_setting: gitea_subdomain,
+     container: gitea, container_port: 3000, icon: gitea, description: Git}
+  - {name: pics, flag: pics_enabled, port_setting: pics_port, subdomain_setting: pics_subdomain,
+     container: pics, container_port: 8000, icon: mdi-image-multiple, description: Photo culling and sharing}
+  - {name: Homebridge, flag: homebridge_enabled, port: 8581, icon: homebridge, description: HomeKit}
+  - {name: Crafty, flag: crafty_enabled, port_setting: crafty_panel_port, subdomain_setting: crafty_subdomain,
+     container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
+  - {name: Dockge, flag: dockge_enabled, port_setting: dockge_port, subdomain_setting: dockge_subdomain,
+     container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
+  - {name: ntfy, flag: ntfy_enabled, port_setting: ntfy_port, subdomain_setting: ntfy_subdomain,
+     container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
+  - {name: Backups, flag: backup_status_enabled, port_setting: backup_status_port, subdomain_setting: backup_status_subdomain,
+     container: backup-status, container_port: 8080, icon: restic, description: Backup status}

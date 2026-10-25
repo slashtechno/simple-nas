@@ -26,13 +26,25 @@ services:
 {% endif %}
 {% if caddy_private_domains | length > 0 or caddy_sites | length > 0 %}
     labels:
+{% set site = namespace(n=0) %}
 {% if caddy_private_domains | length > 0 %}
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
+      # One site per service this host runs (web_services, group_vars/all/web_services.yml), unless its subdomain is "".
+{% for svc in web_services if svc.subdomain_setting is defined and hostvars[inventory_hostname][svc.flag] | bool and hostvars[inventory_hostname][svc.subdomain_setting] != '' %}
+      caddy_{{ site.n }}: "{{ hostvars[inventory_hostname][svc.subdomain_setting] }}.{{ caddy_private_domains[0] }}"
+      caddy_{{ site.n }}.reverse_proxy: "{{ svc.scheme | default('http') }}://{{ svc.container }}:{{ svc.container_port }}"
+{% if svc.scheme | default('http') == 'https' %}
+      caddy_{{ site.n }}.reverse_proxy.transport: http
+      caddy_{{ site.n }}.reverse_proxy.transport.tls_insecure_skip_verify: ""
+{% endif %}
+{% set site.n = site.n + 1 %}
+{% endfor %}
 {% endif %}
 {% for address, upstream in caddy_sites.items() %}
-      caddy_{{ loop.index0 }}: "{{ address }}"
-      caddy_{{ loop.index0 }}.reverse_proxy: "{{ upstream }}"
+      caddy_{{ site.n }}: "{{ address }}"
+      caddy_{{ site.n }}.reverse_proxy: "{{ upstream }}"
+{% set site.n = site.n + 1 %}
 {% endfor %}
 {% endif %}
     volumes:

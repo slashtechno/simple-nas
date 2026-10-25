@@ -207,6 +207,26 @@ backup_status_port: 8091
 # Crafty's panel (HTTPS); the container always listens on 8443.
 crafty_panel_port: 28443
 
+# --- Names of the web UIs under the private domain ---
+# With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<first private domain>
+# (docs/networking.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
+immich_subdomain: immich
+copyparty_subdomain: copyparty
+gitea_subdomain: git
+pics_subdomain: pics
+crafty_subdomain: crafty
+dockge_subdomain: dockge
+ntfy_subdomain: ntfy
+backup_status_subdomain: backups
+
+# This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
+# Here, not in the caddy role, because the Homepage on another host reads it to link to these names.
+# For each entry the deploy keeps DNS-only records <domain> and *.<domain> pointing at this host's Tailscale address, so
+# <domain> and <app>.<domain> resolve for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
+# certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
+# Empty: no records, and Caddy has no DNS challenge. Services are served under the first entry only.
+caddy_private_domains: []
+
 # Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
 # (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
 copyparty_collab_enabled: false

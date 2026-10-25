@@ -1,21 +1,26 @@
 # Ansible-managed — do not edit directly. One group per host in the inventory, with a tile per enabled service
-# (homepage_tiles, roles/homepage/vars/main.yml), then homepage_links. Values go through to_json so a colon or
+# (web_services, group_vars/all/web_services.yml), then homepage_links. Values go through to_json so a colon or
 # quote in a name or description stays valid YAML.
 {% for host in groups['servers'] %}
-{% for tile in homepage_tiles if hostvars[host][tile.flag] | bool %}
+{% for tile in web_services if hostvars[host][tile.flag] | bool %}
 {# The loop only visits enabled tiles, so its first pass is the host's first tile: draw the group heading then. #}
 {% if loop.first %}
 - {{ host }}:
 {% endif %}
+{% set domains = hostvars[host].caddy_private_domains %}
+{% set sub = hostvars[host][tile.subdomain_setting] if tile.subdomain_setting is defined else '' %}
+{# A service with a name under the host's private domain links to that name (HTTPS on port 443); otherwise to host:port. #}
+{% if hostvars[host].caddy_enabled | bool and domains | length > 0 and sub != '' %}
+{% set href = 'https://' ~ sub ~ '.' ~ domains[0] %}
+{% else %}
 {% set port = tile.port if tile.port is defined else hostvars[host][tile.port_setting] %}
 {% set href = (tile.scheme | default('http')) ~ '://' ~ hostvars[host].ansible_host | default(host) ~ ':' ~ port %}
+{% endif %}
     - {{ tile.name | to_json }}:
         href: {{ href | to_json }}
         description: {{ tile.description | to_json }}
         icon: {{ tile.icon | to_json }}
-{% if tile.monitor | default(true) %}
         siteMonitor: {{ href | to_json }}
-{% endif %}
 {% endfor %}
 {% endfor %}
 {% if homepage_links | length > 0 %}
