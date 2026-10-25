@@ -46,6 +46,17 @@ services:
       caddy_{{ site.n }}.reverse_proxy: "{{ upstream }}"
 {% set site.n = site.n + 1 %}
 {% endfor %}
+{% set short = namespace(done=[]) %}
+{% for domain in caddy_private_domains %}
+{% for search in caddy_search_domains if domain.endswith('.' ~ search) and domain[:-(search | length) - 1] not in short.done %}
+{% set name = domain[:-(search | length) - 1] %}
+      # Short names: http://{{ name }} and http://<app>.{{ name }} redirect to the same name under {{ search }}, which is what the tailnet search domain resolves them to.
+      caddy_{{ site.n }}: "http://{{ name }} http://*.{{ name }}"
+      caddy_{{ site.n }}.redir: "https://{host}.{{ search }}{uri}"
+{% set site.n = site.n + 1 %}
+{% set short.done = short.done + [name] %}
+{% endfor %}
+{% endfor %}
 {% endif %}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

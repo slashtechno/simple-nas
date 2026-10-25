@@ -82,6 +82,23 @@ caddy_private_domains: [pi4.example.com]
 - Both the bare name and any name one label below it (`app.pi4.example.com`) can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
 - Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
+### Short names: `caddy_search_domains`
+
+Typing `webtop.pi4/` instead of `webtop.pi4.example.com`: a Tailscale search domain makes the short name resolve, and Caddy redirects it to the full name.
+
+```yaml
+caddy_search_domains: [example.com]   # with caddy_private_domains: [pi4.example.com]
+```
+
+1. In the Tailscale admin console, DNS, Search domains, add `example.com`. This is a manual step outside Ansible. Devices on the tailnet then try `webtop.pi4.example.com` for the name `webtop.pi4`.
+2. Deploy: `just deploy caddy --limit <host>`.
+
+- Caddy answers `http://pi4` and `http://<app>.pi4` on port 80 and redirects (302) to the same name with the search domain added: `https://webtop.pi4.example.com`. It covers every service and every app you label in Dockge; nothing is listed per service. `pi4` alone opens whatever serves the bare `pi4.example.com`.
+- `pi4` alone also resolves through MagicDNS without the search domain, so `http://pi4/` reaches Caddy either way. DNS only maps names to addresses; ports 80 and 443 stay with Caddy.
+- Type the `http://` or a trailing slash (`webtop.pi4/`), or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
+- A private domain that does not end in a search domain gets no short name. Two private domains with the same short name (`pi4.example.com` and `pi4.example.org`) share one redirect, to the first.
+- Empty (the default): no short names, and the search domain is not needed.
+
 ## Direct Ethernet link
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.

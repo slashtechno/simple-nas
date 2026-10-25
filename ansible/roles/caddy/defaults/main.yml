@@ -8,3 +8,7 @@ caddy_https_port: 443
 # A name under a caddy_private_domains entry gets a Let's Encrypt certificate. An app you run yourself
 # (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md); use this for the roles here.
 caddy_sites: {}
+# Tailnet search domains (Tailscale admin console, DNS, Search domains), such as [example.com]. With one set, a private
+# domain under it, such as pi4.example.com, also answers at http://pi4 and http://<app>.pi4 with a redirect to the full
+# name (docs/networking.md#short-names-caddy_search_domains). Empty: no short names.
+caddy_search_domains: []
