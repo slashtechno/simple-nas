@@ -21,6 +21,8 @@ All commands below run from `ansible/`.
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Add a drive or move data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
+| Make a service the root of the server (`https://<host>`) | `tailscale_serve_port` in `host_vars/<host>/vars.yml` ([HTTPS](../docs/networking.md#web-addresses-and-https)) | `just deploy tailscale --limit <host>` |
+| See what is running | nothing | `just status`, or open the Homepage |
 | Add a public hostname | `cloudflared_ingress` in `host_vars/<host>/vars.yml` ([services](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview without changing anything | nothing | `just preview <tag> --limit <host>` |
