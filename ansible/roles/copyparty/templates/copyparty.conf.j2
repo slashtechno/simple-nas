@@ -22,8 +22,11 @@
   theme: 2
   # The tunnel sends cf-connecting-ip; Caddy is told to send the same header (header_up in
   # group_vars/all/web_services.yml). Without it Copyparty ignores the proxy's protocol and rejects logins as cross-origin.
-  xff-hdr: cf-connecting-ip
-  rproxy: 1
+  # The client address and protocol come from the proxy in front: Cloudflare's tunnel and Caddy both send
+  # X-Forwarded-For and X-Forwarded-Proto. -1 takes the rightmost address, the one the nearest proxy added, which a
+  # client cannot forge. Without these headers Copyparty treats the request as plain http and rejects logins as cross-origin.
+  xff-hdr: x-forwarded-for
+  rproxy: -1
   shr: /shares
 {% if copyparty_sftp_enabled | bool %}
   # sftp-pw reuses [accounts] below, no separate credential store.
