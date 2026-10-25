@@ -4,14 +4,13 @@ caddy_http_port: 80
 # Host port Caddy listens on for HTTPS.
 caddy_https_port: 443
 # This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
-# For each entry the deploy keeps a DNS-only record *.<domain> pointing at this host's Tailscale address, so
-# <app>.<domain> resolves for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
+# For each entry the deploy keeps DNS-only records <domain> and *.<domain> pointing at this host's Tailscale address, so
+# <domain> and <app>.<domain> resolve for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
 # certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
 # Empty: no records, and Caddy has no DNS challenge.
 caddy_private_domains: []
 # Names Caddy serves for containers of your own roles, as site address: upstream, where the upstream is a
-# container name and its port on the services network. For example the start page at the root of the server:
-#   home.pi4.example.com: homepage:3000
+# container name and its port on the services network (example: docs/networking.md#names-for-apps-caddy_private_domains).
 # A name under a caddy_private_domains entry gets a Let's Encrypt certificate. An app you run yourself
 # (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md); use this for the roles here.
 caddy_sites: {}

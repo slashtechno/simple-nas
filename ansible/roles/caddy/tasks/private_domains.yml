@@ -1,5 +1,5 @@
 ---
-# For each caddy_private_domains entry: a DNS-only A record *.<domain> pointing at this host's Tailscale address.
+# For each caddy_private_domains entry: DNS-only A records <domain> and *.<domain> pointing at this host's Tailscale address.
 # Every record carries the comment caddy_dns_comment, which is how a later deploy knows it is its own.
 # A name that already has a record without that comment stops the deploy; nothing foreign is overwritten.
 # Records with the comment whose domain is not in the list are deleted.
@@ -55,21 +55,20 @@
         records: "{{ caddy_zone_lists.results | map(attribute='json.result') | flatten }}"
         ip: "{{ caddy_tailscale_ip.stdout | default('') | trim }}"
       block:
-        - name: Pair each private domain with its record
+        - name: Pair each name with its record
           ansible.builtin.set_fact:
             caddy_wanted: "{{ caddy_wanted | default([]) + [wanted] }}"
           vars:
-            wildcard: "*.{{ item }}"
             zone_id: "{{ (cloudflare_zones | dict2items | selectattr('key', 'in', item) | first).value }}"
-            record: "{{ records | selectattr('name', 'equalto', wildcard) | first | default({}) }}"
+            record: "{{ records | selectattr('name', 'equalto', item) | first | default({}) }}"
             change: >-
               {{ 'create' if record | length == 0
                  else 'keep' if record.content == ip and not record.proxied
                  else 'update' }}
-            wanted: {name: "{{ wildcard }}", zone_id: "{{ zone_id }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
+            wanted: {name: "{{ item }}", zone_id: "{{ zone_id }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
                      comment: "{{ record.comment | default('', true) }}", type: "{{ record.type | default('') }}",
-                     count: "{{ records | selectattr('name', 'equalto', wildcard) | list | length }}"}
-          loop: "{{ caddy_private_domains }}"
+                     count: "{{ records | selectattr('name', 'equalto', item) | list | length }}"}
+          loop: "{{ caddy_private_domains + (caddy_private_domains | map('regex_replace', '^', '*.') | list) }}"
 
         - name: Stop if a name has a record this role did not create
           ansible.builtin.assert:

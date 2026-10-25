@@ -31,8 +31,8 @@ services:
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
 {% endif %}
 {% for address, upstream in caddy_sites.items() %}
-      caddy_{{ loop.index0 }}: {{ address }}
-      caddy_{{ loop.index0 }}.reverse_proxy: {{ upstream }}
+      caddy_{{ loop.index0 }}: "{{ address }}"
+      caddy_{{ loop.index0 }}.reverse_proxy: "{{ upstream }}"
 {% endfor %}
 {% endif %}
     volumes:

@@ -55,7 +55,7 @@ caddy_private_domains: [pi4.example.com]
 ```
 
 - The domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
-- A deploy keeps a DNS-only record `*.pi4.example.com` pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain that is not in the list are deleted. `--check` prints the plan.
+- A deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain that is not in the list are deleted. `--check` prints the plan.
 - Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
 - A service from this repo takes a name with `caddy_sites`, a map of name to `container:port` on the `services` network. The root of the server as the start page:
 
@@ -66,9 +66,10 @@ caddy_private_domains: [pi4.example.com]
 
   Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
 - An app of your own takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
+- Caddy needs port 443 on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that ever served on 443 needs `sudo tailscale serve reset` first.
 - To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
 - Public names do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
-- The bare `pi4.example.com` has no record; the front door above is the host's tailnet name.
+- Both the bare name and any name under it can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
 - Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
 ## Direct Ethernet link
