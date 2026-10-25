@@ -1,0 +1,8 @@
+---
+# The host port of the service that answers at https://<this host's tailnet name> (port 443, tailnet only,
+# with a real certificate from Tailscale). Set it to homepage_port for a start page, copyparty_port for a
+# file server, dockge_port for a stack manager. Empty (the default) serves nothing. The service must accept
+# the bare tailnet name as its address: Homepage does; Gitea, ntfy and others need their own base URL changed.
+# Needs HTTPS Certificates switched on for the tailnet (Tailscale admin console, DNS page). Tailscale remembers
+# the setting across reboots; to stop serving, run `sudo tailscale serve reset` on the host.
+tailscale_serve_port: ""

@@ -27,3 +27,18 @@
     state: present
     tailscale_up_skip: true
   when: not ansible_check_mode
+
+- name: Read what Tailscale already serves
+  ansible.builtin.command: tailscale serve status
+  register: tailscale_serve_status
+  changed_when: false
+  check_mode: false
+  when: tailscale_serve_port | string | length > 0
+
+# Running the same command again is harmless, but it would report a change on every deploy.
+- name: Serve the front door at https://<host>
+  ansible.builtin.command: tailscale serve --bg --https=443 http://127.0.0.1:{{ tailscale_serve_port }}
+  changed_when: true
+  when:
+    - tailscale_serve_port | string | length > 0
+    - ('127.0.0.1:' ~ tailscale_serve_port) not in tailscale_serve_status.stdout
