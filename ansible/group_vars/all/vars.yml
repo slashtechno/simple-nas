@@ -9,8 +9,6 @@ ssh_authorized_keys:
 cloudflare_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
   angad.me: f0cf329b896c61d1f5bc2a4c53c03647
-# Short names such as http://webtop.pi4 redirect to the full name (docs/networking.md#short-names-caddy_search_domains).
-caddy_search_domains: [slashtechno.com]
 copyparty_service_accounts:
   - user: photos
     pass: "{{ vault_copyparty_photos_pass }}"
