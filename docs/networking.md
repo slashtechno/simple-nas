@@ -88,7 +88,6 @@ caddy_private_domains: [pi4.example.com]
 A host with `caddy_private_domains` answers `http://<host>` on port 80 and redirects it (302) to the first private domain: `http://pi4` to `https://pi4.example.com`. `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name never resolves.
 
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
-- Only the host name has a short form. Apps use their full names (`webtop.pi4.example.com`).
 
 ## Direct Ethernet link
 
