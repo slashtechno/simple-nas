@@ -93,7 +93,7 @@
         pics_instagram: render_test
         caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
-        caddy_bare_names: true
+        caddy_bare_names_enabled: true
         immich_port: ""
         copyparty_port: ""
         dockge_port: ""

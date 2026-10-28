@@ -7,4 +7,4 @@ caddy_sites: {}
 
 # Redirect a bare app name (http://webtop/) to its full name. Needs <host>.<private domain> in Tailscale's search
 # domains (docs/networking.md#short-name); with that missing, nothing changes.
-caddy_bare_names: false
+caddy_bare_names_enabled: false
