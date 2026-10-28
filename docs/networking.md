@@ -87,6 +87,7 @@ caddy_private_domains: [pi4.example.com]
 
 A host with `caddy_private_domains` answers `http://<host>` on port 80 and redirects it (302) to the first private domain: `http://pi4` to `https://pi4.example.com`. `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name never resolves.
 
+- `caddy_bare_names: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`. Add `<host>.example.com` once under Tailscale admin console, DNS, Search domains. Only the first host in the list answers, because each host's wildcard record resolves every name; a name that also exists at the top domain (a tunnel hostname) resolves there instead. macOS searches only single-label names, so only bare names work there.
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
 
 ## Direct Ethernet link

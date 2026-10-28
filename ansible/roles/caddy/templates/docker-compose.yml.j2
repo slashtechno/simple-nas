@@ -51,6 +51,12 @@ services:
       caddy_{{ site.n }}: "http://{{ inventory_hostname }}"
       caddy_{{ site.n }}.redir: "https://{{ caddy_private_domains[0] }}{uri}"
 {% set site.n = site.n + 1 %}
+{% if caddy_bare_names | bool %}
+      # Bare app names: http://webtop redirects to https://webtop.{{ caddy_private_domains[0] }}.
+      caddy_{{ site.n }}: "http://*"
+      caddy_{{ site.n }}.redir: "https://{host}.{{ caddy_private_domains[0] }}{uri}"
+{% set site.n = site.n + 1 %}
+{% endif %}
 {% endif %}
 {% endif %}
     volumes:

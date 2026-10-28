@@ -93,6 +93,7 @@
         pics_instagram: render_test
         caddy_private_domains: [caddy.example.test, second.example.test]
         caddy_sites: {home.caddy.example.test: "homepage:3000"}
+        caddy_bare_names: true
         immich_port: ""
         copyparty_port: ""
         dockge_port: ""
@@ -177,6 +178,7 @@
           - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'caddy_9.redir: \"https://{host}.caddy.example.test{uri}\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_8: \"http://render-full\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
