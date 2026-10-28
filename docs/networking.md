@@ -54,21 +54,44 @@ caddy_enabled: true
 caddy_private_domains: [pi4.example.com]
 ```
 
-- The domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
-- A deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach. Every record carries the comment `managed by simple-nas, caddy <host>`; a name that already has a record without it stops the deploy, and records with it for a domain that is not in the list are deleted. `--check` prints the plan.
-- Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
-- On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`. The subdomains and their container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml) and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
-- Override ports and names in `host_vars/<host>/vars.yml`; any setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml). A changed port also needs the service's own tag (`just deploy gitea --limit <host>`). A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate), so the service answers only at its Caddy name; the deploy stops if a service has neither (a service reached only through the Cloudflare Tunnel keeps its port). Keep the ports while you rely on them to get in when Caddy or Cloudflare is down:
+- **Cloudflare:** the domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
+- **DNS:** a deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
+  - Every record carries the comment `managed by simple-nas, caddy <host>`.
+  - A name that already has a record without it stops the deploy. Records with it for a domain not in the list are deleted.
+  - `--check` prints the plan. To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
+- **Certificates:** Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
+- **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
+- **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
+- **Secrets:** Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
-  ```yaml
-  gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
-  gitea_subdomain: code        # https://code.pi4.example.com
-  ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
-  dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
-  ```
+#### Service names
 
-- The names come from the labels on the Caddy container, and the Homepage reads them when it is deployed, so run `just deploy caddy,homepage --limit <host>` after any of these changes (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443. A subdomain is a single label. The container ports in `web_services.yml` are fixed by the images and are not settings. With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first. Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
-- A name of your own for a container of this repo, such as the root of the server as the start page, takes `caddy_sites`, a map of address to Caddy directives (`reverse_proxy` takes `container:port` on the `services` network):
+On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
+
+- The subdomains and container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
+- Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
+- With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first.
+- Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
+
+#### Ports and names
+
+Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml).
+
+```yaml
+gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
+gitea_subdomain: code        # https://code.pi4.example.com
+ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
+dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
+```
+
+- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name; a service reached only through the Cloudflare Tunnel keeps its port.
+- Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
+- A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
+- The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.
+
+#### Names of your own
+
+- **A container of this repo**, such as the root of the server as the start page, takes `caddy_sites`: a map of address to Caddy directives (`reverse_proxy` takes `container:port` on the `services` network).
 
   ```yaml
   caddy_sites:
@@ -76,22 +99,31 @@ caddy_private_domains: [pi4.example.com]
   homepage_host: home.pi4.example.com   # Homepage refuses any other address
   ```
 
-  Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
-- An app of your own takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
-- Caddy needs port 443 on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
-- To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
-- Public names do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
-- Both the domain itself and any name one label below it (`app.pi4.example.com`) can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
-- Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
+  - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
+  - Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
+- **An app of your own** takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
 
 ### Short name
 
-A host with `caddy_private_domains` answers `http://<host>` on port 80 and redirects it (302) to the first private domain: `http://pi4` to `https://pi4.example.com`. `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
+A host with `caddy_private_domains` redirects `http://<host>` (302) to the first private domain: `http://pi4` to `https://pi4.example.com`.
 
-- `caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`. Add the private domain (`pi4.example.com`, not `example.com`) once under Tailscale admin console, DNS, Search domains.
-- Every bare name, an app or a `caddy_sites` redirect, reaches the first host in the search list, so only that host's apps and redirects work bare. The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own app).
-- A redirect is a `caddy_sites` entry: `"http://mygh": {redir: "https://github.com/owner{uri}"}` opens `mygh/repo` at github.com/owner/repo.
+- `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
+
+#### Bare names
+
+`caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`.
+
+- Add the private domain (`pi4.example.com`, not `example.com`) once under Tailscale admin console, DNS, Search domains.
+- The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own app).
+- Every bare name reaches the first host in the search list, so only that host's apps and redirects work bare.
+
+A redirect is a `caddy_sites` entry. This one opens `mygh/repo` at github.com/owner/repo:
+
+```yaml
+caddy_sites:
+  "http://mygh": {redir: "https://github.com/owner{uri}"}
+```
 
 ## Direct Ethernet link
 
