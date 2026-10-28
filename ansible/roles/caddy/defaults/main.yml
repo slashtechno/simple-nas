@@ -5,6 +5,6 @@
 # (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md); use this for the roles here.
 caddy_sites: {}
 
-# Redirect a bare app name (http://webtop/) to its full name. Needs <host>.<private domain> in Tailscale's search
-# domains (docs/networking.md#short-name); with that missing, nothing changes.
+# Redirect a bare app name (http://webtop/) to its full name. Needs the private domain in Tailscale's search
+# domains (docs/networking.md#short-name).
 caddy_bare_names_enabled: false

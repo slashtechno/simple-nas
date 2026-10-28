@@ -24,3 +24,6 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [backup]
+
+# Redirect bare app names (http://webtop/) to their full names.
+caddy_bare_names_enabled: true

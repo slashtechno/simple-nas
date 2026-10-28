@@ -80,15 +80,15 @@ caddy_private_domains: [pi4.example.com]
 - Caddy needs port 443 on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
 - Public names do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
-- Both the bare name and any name one label below it (`app.pi4.example.com`) can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
+- Both the domain itself and any name one label below it (`app.pi4.example.com`) can be a `caddy_sites` address, so `pi4.example.com` itself can open the start page, Copyparty or Dockge.
 - Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
 ### Short name
 
 A host with `caddy_private_domains` answers `http://<host>` on port 80 and redirects it (302) to the first private domain: `http://pi4` to `https://pi4.example.com`. `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name never resolves.
 
-- `caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`. Add `<host>.example.com` (not `example.com`) once under Tailscale admin console, DNS, Search domains.
-- With several hosts, the first one in the search list takes every bare name, including apps it does not run. The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own apps).
+- `caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`. Add the private domain (`pi4.example.com`, not `example.com`) once under Tailscale admin console, DNS, Search domains.
+- With several hosts, the first one in the search list takes every bare name, so a bare name works only for apps on that host. The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own apps).
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
 
 ## Direct Ethernet link

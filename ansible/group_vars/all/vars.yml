@@ -20,5 +20,3 @@ pics_public_url: "https://pics.angad.me"
 gitea_root_url: "https://git.slashtechno.com/"
 gitea_domain: "git.slashtechno.com"
 gitea_ssh_domain: "git.slashtechno.com"
-# Redirect bare app names (http://webtop/) to their full names.
-caddy_bare_names_enabled: true

@@ -70,3 +70,6 @@ cloudflared_ingress:
     service: "http://garage-cors-proxy:3900"
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
+
+# Redirect bare app names (http://webtop/) to their full names.
+caddy_bare_names_enabled: true
