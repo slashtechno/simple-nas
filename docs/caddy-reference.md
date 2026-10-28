@@ -16,7 +16,7 @@ The container joins `services` (`docker_network`, created by `roles/network` on 
 
 ## Label syntax
 
-Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the short-name redirect) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short names](./networking.md#short-names)).
+Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the short-name redirect) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short names](./networking.md#short-name)).
 
 ```yaml
 services:
