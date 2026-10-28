@@ -88,7 +88,7 @@ caddy_private_domains: [pi4.example.com]
 A host with `caddy_private_domains` answers its short names on port 80 and redirects them (302) to the first private domain: `http://pi4` to `https://pi4.example.com`, and `http://webtop.pi4` to `https://webtop.pi4.example.com`. The short name is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name gets short names that never resolve. It covers every name that exists under the first private domain, services and Dockge apps alike; nothing is listed per service.
 
 - `pi4` resolves through MagicDNS, so `http://pi4/` works as is.
-- `webtop.pi4` needs the domain as a Tailscale search domain (admin console, DNS, Search domains; Ansible does not manage it). The device's resolver must apply search domains to dotted names: Linux does; macOS needs the search domain set in its network settings (untested).
+- `webtop.pi4` does not resolve: MagicDNS knows only `pi4`. Add the private domain as a search domain (Tailscale admin console, DNS, Search domains; Ansible does not manage it) and the device appends it. Without that, use the full name.
 - Caddy sees only the name you typed, so the search domain is not a Caddy setting.
 - Type `http://` or a trailing slash (`webtop.pi4/`), or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
 - A subdomain is one label: `webtop.pi4` redirects, `a.b.pi4` does not.
