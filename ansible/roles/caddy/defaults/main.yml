@@ -1,8 +1,8 @@
 ---
-# Names Caddy serves for containers of your own roles, as site address: upstream, where the upstream is a
-# container name and its port on the services network (example: docs/networking.md#names-for-apps-caddy_private_domains).
-# A name under a caddy_private_domains entry gets a Let's Encrypt certificate. An app you run yourself
-# (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md); use this for the roles here.
+# Extra sites Caddy serves, as address: {Caddy directive: arguments} (examples: docs/networking.md#names-for-apps-caddy_private_domains).
+# A directive with no arguments takes "". A name under a caddy_private_domains entry gets a Let's Encrypt certificate.
+# An app you run yourself (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md).
+# A host's value replaces any group_vars value.
 caddy_sites: {}
 
 # Redirect a bare app name (http://webtop/) to its full name. Needs the private domain in Tailscale's search

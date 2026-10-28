@@ -41,9 +41,11 @@ services:
 {% set site.n = site.n + 1 %}
 {% endfor %}
 {% endif %}
-{% for address, upstream in caddy_sites.items() %}
+{% for address, directives in caddy_sites.items() %}
       caddy_{{ site.n }}: "{{ address }}"
-      caddy_{{ site.n }}.reverse_proxy: "{{ upstream }}"
+{% for directive, value in directives.items() %}
+      caddy_{{ site.n }}.{{ directive }}: "{{ value }}"
+{% endfor %}
 {% set site.n = site.n + 1 %}
 {% endfor %}
 {% if caddy_private_domains | length > 0 %}

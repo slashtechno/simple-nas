@@ -68,10 +68,13 @@ caddy_private_domains: [pi4.example.com]
   ```
 
 - The names come from the labels on the Caddy container, and the Homepage reads them when it is deployed, so run `just deploy caddy,homepage --limit <host>` after any of these changes (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443. A subdomain is a single label. The container ports in `web_services.yml` are fixed by the images and are not settings. With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first. Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
-- A name of your own for a container of this repo, such as the root of the server as the start page, takes `caddy_sites`, a map of name to `container:port` on the `services` network:
+- A name of your own for a container of this repo, such as the root of the server as the start page, takes `caddy_sites`, a map of address to Caddy directives (`reverse_proxy` takes `container:port` on the `services` network):
 
   ```yaml
-  caddy_sites: {home.pi4.example.com: "homepage:3000"}
+  caddy_sites:
+    home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+    "http://gh": {redir: "https://github.com{uri}"}   # gh/owner/repo opens github.com/owner/repo; see Short name
+    "http://mygh": {redir: "https://github.com/owner{uri}"}   # mygh/repo opens github.com/owner/repo
   homepage_host: home.pi4.example.com   # Homepage refuses any other address
   ```
 
