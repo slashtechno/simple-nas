@@ -96,6 +96,7 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
   ```yaml
   caddy_sites:
     home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+    gh.pi4.example.com: {redir: "https://github.com{uri}"}   # gh.pi4.example.com/owner/repo opens github.com/owner/repo
   homepage_host: home.pi4.example.com   # Homepage refuses any other address
   ```
 
@@ -109,21 +110,6 @@ A host with `caddy_private_domains` redirects `http://<host>` (302) to the first
 
 - `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
-
-#### Bare names
-
-`caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`.
-
-- Add the private domain (`pi4.example.com`, not `example.com`) once under Tailscale admin console, DNS, Search domains.
-- The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own app).
-- Every bare name reaches the first host in the search list, so only that host's apps and redirects work bare.
-
-A redirect is a `caddy_sites` entry. This one opens `mygh/repo` at github.com/owner/repo:
-
-```yaml
-caddy_sites:
-  "http://mygh": {redir: "https://github.com/owner{uri}"}
-```
 
 ## Direct Ethernet link
 

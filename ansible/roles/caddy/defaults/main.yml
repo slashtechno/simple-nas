@@ -3,7 +3,3 @@
 # A directive with no arguments takes "". A name under a caddy_private_domains entry gets a Let's Encrypt certificate.
 # An app you run yourself (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md).
 caddy_sites: {}
-
-# Redirect a bare app name (http://webtop/) to its full name. Needs the private domain in Tailscale's search
-# domains (docs/networking.md#short-name).
-caddy_bare_names_enabled: false
