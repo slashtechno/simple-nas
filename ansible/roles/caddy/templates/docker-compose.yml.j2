@@ -47,12 +47,10 @@ services:
 {% set site.n = site.n + 1 %}
 {% endfor %}
 {% if caddy_private_domains | length > 0 %}
-      # Short names: http://{{ inventory_hostname }} and http://<app>.{{ inventory_hostname }}, which MagicDNS and a tailnet search domain resolve here, redirect to the first private domain.
+      # Short name: http://{{ inventory_hostname }}, which MagicDNS resolves here, redirects to the first private domain.
       caddy_{{ site.n }}: "http://{{ inventory_hostname }}"
       caddy_{{ site.n }}.redir: "https://{{ caddy_private_domains[0] }}{uri}"
-      caddy_{{ site.n + 1 }}: "http://*.{{ inventory_hostname }}"
-      caddy_{{ site.n + 1 }}.redir: "https://{labels.1}.{{ caddy_private_domains[0] }}{uri}"
-{% set site.n = site.n + 2 %}
+{% set site.n = site.n + 1 %}
 {% endif %}
 {% endif %}
     volumes:

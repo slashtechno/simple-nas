@@ -178,7 +178,6 @@
           - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_8: \"http://render-full\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_9.redir: \"https://{labels.1}.caddy.example.test{uri}\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
