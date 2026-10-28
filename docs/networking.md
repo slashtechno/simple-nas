@@ -73,8 +73,7 @@ caddy_private_domains: [pi4.example.com]
   ```yaml
   caddy_sites:
     home.pi4.example.com: {reverse_proxy: "homepage:3000"}
-    "http://gh": {redir: "https://github.com{uri}"}   # gh/owner/repo opens github.com/owner/repo; see Short name
-    "http://mygh": {redir: "https://github.com/owner{uri}"}   # mygh/repo opens github.com/owner/repo
+    "http://mygh": {redir: "https://github.com/owner{uri}"}   # mygh/repo opens github.com/owner/repo; see Short name
   homepage_host: home.pi4.example.com   # Homepage refuses any other address
   ```
 
@@ -91,7 +90,7 @@ caddy_private_domains: [pi4.example.com]
 A host with `caddy_private_domains` answers `http://<host>` on port 80 and redirects it (302) to the first private domain: `http://pi4` to `https://pi4.example.com`. `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`); any other name never resolves.
 
 - `caddy_bare_names_enabled: true` also redirects a bare app name: `webtop/` to `https://webtop.pi4.example.com`. Add the private domain (`pi4.example.com`, not `example.com`) once under Tailscale admin console, DNS, Search domains.
-- With several hosts, the first one in the search list takes every bare name, so a bare name works only for apps on that host. The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own apps).
+- With several hosts, the first one in the search list takes every bare name, so a bare name works only for apps on that host. A redirect to an outside site (`mygh`) works from any host: put it on every host. The name typed must be the app's subdomain (`<name>_subdomain` for the services here, the Caddy label for your own apps).
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
 
 ## Direct Ethernet link
