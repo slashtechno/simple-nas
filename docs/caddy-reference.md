@@ -16,7 +16,7 @@ The container joins `services` (`docker_network`, created by `roles/network` on 
 
 ## Label syntax
 
-Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry (its keys are the directives, written as `caddy_N.<directive>`), and the short-name redirects) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short name](./networking.md#short-name)).
+Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the short-name redirects) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short name](./networking.md#short-name)).
 
 ```yaml
 services:
@@ -49,7 +49,8 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.
   - Names under a `caddy_private_domains` entry get their certificate through the Cloudflare DNS challenge, which needs no open ports ([networking.md](./networking.md#web-addresses-and-https)). For a name outside those domains Caddy tries the same challenge; use `tls internal` unless the Cloudflare token covers its zone.
-- **`caddy_sites` values.** Keys are flat and a dot nests (`header.X-Frame-Options`); `{uri}` takes single braces; an argument with spaces needs backticks. If a change has no effect, read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
+- **`caddy_sites` values.** Each directive becomes a label `caddy_N.<directive>`, so a value is one string and a dot in the key nests (`header.X-Frame-Options`); `{uri}` takes single braces, and a `$` is written `$$` (Compose reads it first).
+- **Checking a site.** Read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
 - **Docker socket.** The proxy has full control of Docker through it. Anything that can set labels on a container can publish a route.
 - **Modes.** The role runs the standalone mode (controller and server in one container). The controller/server split is for Swarm clusters.
 

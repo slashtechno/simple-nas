@@ -44,7 +44,7 @@ services:
 {% for address, directives in caddy_sites.items() %}
       caddy_{{ site.n }}: "{{ address }}"
 {% for directive, value in directives.items() %}
-      caddy_{{ site.n }}.{{ directive }}: "{{ value }}"
+      caddy_{{ site.n }}.{{ directive }}: {{ value | to_json }}
 {% endfor %}
 {% set site.n = site.n + 1 %}
 {% endfor %}

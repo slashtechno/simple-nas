@@ -34,7 +34,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 ## Daily use
 
 - **Find everything:** with `homepage_enabled` on one host, its page lists every service on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
-- **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` names the root of the server (the Homepage, Copyparty, Dockge) ([docs/networking.md](./docs/networking.md#web-addresses-and-https)).
+- **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/networking.md](./docs/networking.md#web-addresses-and-https)).
 - **See what runs:** `just status` in `ansible/` lists the containers on every server.
 - **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
 - **Change something:** edit the host's `vars.yml`, then `just preview` and `just deploy` ([ansible/README.md](./ansible/README.md#commands)).

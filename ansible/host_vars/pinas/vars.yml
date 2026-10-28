@@ -20,7 +20,7 @@ caddy_enabled: true   # names with real certificates for the services here
 # Names under pinas.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/networking.md#web-addresses-and-https).
 caddy_private_domains: [pinas.slashtechno.com]
 # The root of the server: https://pinas.slashtechno.com opens the start page.
-caddy_sites: {pinas.slashtechno.com: {reverse_proxy: "homepage:3000"}, "http://gh": {redir: "https://github.com{uri}"}}
+caddy_sites: {pinas.slashtechno.com: {reverse_proxy: "homepage:3000"}}
 homepage_host: pinas.slashtechno.com   # Homepage refuses any address but this one, the inventory name and the tailnet name
 
 # Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers)
@@ -70,6 +70,3 @@ cloudflared_ingress:
     service: "http://garage-cors-proxy:3900"
   - hostname: garage.slashtechno.com
     service: "http://garage-webui:3909"
-
-# Redirect bare app names (http://webtop/) to their full names.
-caddy_bare_names_enabled: true
