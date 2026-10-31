@@ -4,14 +4,9 @@
 
 ## Threat model
 
-Protects against:
+Protects against: a drive that is lost, stolen, sold, discarded or sent back for repair, and a thief who has the whole host while it is powered off. File content is unreadable without the passphrase.
 
-- A drive that is lost, stolen, sold, discarded or sent back for repair. File content is unreadable without the passphrase.
-- A thief who has the whole host while it is powered off.
-- An attacker who finds the remote unlock page. It sits behind Cloudflare Access (a login), so a stranger cannot even try passphrases.
-- A keylogger on a device you do not own, for the one-time break-glass passphrase only (see [Unlocking](#unlocking)).
-
-Does not protect against: someone with the host while it is running and unlocked, file names, sizes and modification times (gocryptfs shows the folder structure), or a compromised Cloudflare account.
+Does not protect against: someone with the host while it is running and unlocked, file names, sizes and modification times (gocryptfs shows the folder structure), or a passphrase typed on a device that records it (see [Unlocking](#unlocking)).
 
 ## Decisions
 
@@ -19,13 +14,13 @@ Does not protect against: someone with the host while it is running and unlocked
 - **The restic repository on the `backup` drive stays unencrypted by gocryptfs.** restic already encrypts it with its own password, and a second layer ties two recovery paths to one key. `service-dumps/` and the logs on that drive sit in a gocryptfs folder next to it.
 - **No automatic unlock.** No keyfile on the root drive, no Tang, no stored passphrase. A host that unlocks itself hands the thief what they need.
 - **One rule for Docker: it does not start at boot.** The unlock script mounts the drives, then starts Docker. Every container waits for the unlock, including ones with no encrypted volumes, and `docker_data_root` may point at an encrypted drive. The alternative is deciding stack by stack which ones need the drives, and each exception is a way for Postgres to run `initdb` on an empty folder.
-- **Whatever is needed to unlock must not need unlocking.** That is `sshd` and Tailscale (both on the host, not in Docker), and for the remote path below, a tunnel that does not run in Docker.
+- **Whatever is needed to unlock must not need unlocking.** That is `sshd` and Tailscale, both on the host, not in Docker.
 
 ## Unlocking
 
-- **Own device:** SSH over Tailscale, run `unlock.sh`, type the passphrase. It lives in a password manager, so a passkey or biometric unlocks the manager and nothing else is needed.
-- **Device you do not own:** a Cloudflare Tunnel with Cloudflare Access in front (login by a one-time emailed PIN or a hardware key), pointing at an SSH terminal in the browser or at a one-field unlock page. Cloudflare provides the login, the throttling and the lockout, so none of that is built here, and the passphrase is typed by you, never stored on a server. Check the current Cloudflare docs for browser-rendered SSH before choosing between the two.
-- **One-time passphrase for untrusted devices:** gocryptfs reads its key from a config file, and `-config` can point at a second file with a different passphrase for the same data. Keep a break-glass passphrase in a second file, use it on the stranger's device, then delete that file from a trusted device. A keylogger learns a passphrase that no longer works.
+SSH to the host, run `unlock.sh`, type the passphrase. This works from any device, including one you do not own.
+
+A device you do not own may record what you type. After using one, change the passphrase with `gocryptfs -passwd`, which does not re-encrypt the data. This only helps if nobody has already copied `gocryptfs.conf` from the drive: someone with that file and the old passphrase can still open the data. Full protection means creating a new gocryptfs folder and copying the files in.
 
 ## Limits
 
@@ -35,7 +30,7 @@ Does not protect against: someone with the host while it is running and unlocked
 
 ## Open questions
 
-- The `cloudflared` role runs the tunnel in Docker, so it is down until the unlock. Moving it to a host service solves the remote-unlock case; a second host-level tunnel for unlock only is the alternative.
+- How to reach the host from a device that is not on your tailnet. Tailscale can be logged in on a borrowed device for the session, or SSH can be exposed another way; pick one when this is built.
 - Whether the automount options in [storage.md](../storage.md#how-a-drive-is-mounted) work when the folder behind the mount is a gocryptfs mount.
 - Speed. The Pi 4 may lack ARM crypto extensions, so AES may not keep up with the direct link's 117 MB/s ([networking.md](../networking.md#direct-ethernet-link)). Compare `gocryptfs -init -xchacha` with the default on the host first.
 
@@ -44,5 +39,4 @@ Does not protect against: someone with the host while it is running and unlocked
 1. Benchmark gocryptfs AES against XChaCha20 on the NAS host.
 2. Put one new drive's data folder under gocryptfs during the drive migration, mount it by hand, and settle the automount question.
 3. Write `unlock.sh` and stop Docker starting at boot.
-4. Add the Cloudflare Access path.
-5. Describe the unlock step in [backups.md](../backups.md) and [storage.md](../storage.md).
+4. Describe the unlock step in [backups.md](../backups.md) and [storage.md](../storage.md).
