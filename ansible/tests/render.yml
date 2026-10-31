@@ -190,6 +190,7 @@
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "(garage_data_dir ~ '/meta') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(caddy_data_dir ~ '/caddy') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - >-
             drives | map(attribute='uuid') | map('lower') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
             | length == 0

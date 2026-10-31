@@ -1,4 +1,9 @@
 # Per-service patterns shared by the local and cloud exclude lists (included by both).
+{% if caddy_enabled | bool %}
+# Root-owned by the Caddy container, mode 700: the backup user cannot read it, so without this line
+# every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.
+{{ caddy_data_dir }}/caddy
+{% endif %}
 {% if gitea_enabled | bool %}
 {{ gitea_data_dir }}/ssh
 {% endif %}
