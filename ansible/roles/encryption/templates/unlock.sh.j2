@@ -7,6 +7,17 @@ read -rsp "gocryptfs passphrase: " PASS
 echo
 MOUNTED=0
 
+# A container that started while a folder was locked still sees the empty folder; a restart shows the files.
+# This runs when the script ends, even when a later folder fails, so folders mounted before the failure are not
+# left with stale containers. Containers without a restart policy are not started again.
+restart_docker_if_mounted() {
+  if [ "$MOUNTED" = 1 ]; then
+    systemctl restart docker
+    echo "Docker restarted."
+  fi
+}
+trap restart_docker_if_mounted EXIT
+
 {% for folder in encrypted_pairs %}
 # --- {{ folder.mount }} ---
 if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
@@ -26,11 +37,6 @@ if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
 fi
 {% endfor %}
 
-# A container that started while a folder was locked still sees the empty folder; a restart shows the files.
-# Containers without a restart policy are not started again by this.
-if [ "$MOUNTED" = 1 ]; then
-  systemctl restart docker
-  echo "Unlocked. Docker restarted."
-else
+if [ "$MOUNTED" = 0 ]; then
   echo "Already unlocked."
 fi
