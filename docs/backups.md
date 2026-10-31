@@ -262,7 +262,7 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ## Restore: Garage
 
-Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database, so `<garage_data_dir>/meta` is excluded from the file backup and reaches it through `garage-meta-<timestamp>.tar.gz` in `service-dumps` (the data blocks under `<garage_data_dir>/data` are plain files in the backup). The tarball holds the node key: keep it as private as the vault.
+Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database, so `<garage_data_dir>/meta` is excluded from the file backup and reaches it through `garage-meta-<timestamp>.tar.gz` in `service-dumps` (the data blocks under `<garage_data_dir>/data` are plain files in the backup). The tarball holds the node key: keep it as private as the vault. A deploy stops when `<garage_data_dir>/data` has files and `<garage_data_dir>/meta` is empty, because Garage would start a new empty cluster beside the old blocks: put the metadata back first.
 
 ```bash
 cd /opt/services/garage && docker compose stop garage

@@ -17,8 +17,8 @@ services:
 {% endif %}
     volumes:
       - {{ ntfy_data_dir }}:/var/lib/ntfy
-      - /etc/localtime:/etc/localtime:ro
     environment:
+      TZ: {{ timezone }}
       NTFY_BASE_URL: "{{ ntfy_base_url }}"
       NTFY_LISTEN_HTTP: ":80"
       # Behind Caddy: the visitor is the rightmost X-Forwarded-For address, which Caddy sets, so rate limits are per client.

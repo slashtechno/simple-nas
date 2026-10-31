@@ -1,6 +1,7 @@
 ---
-# Tailscale's install script adds its own apt source and keyring. The role writes a source for the same
-# repository, and apt refuses two sources with different keys.
+# Tailscale's install script adds its own apt source and keyring. The collection role below writes a source for
+# the same repository (tailscale.sources, key in /etc/apt/keyrings), and apt refuses two sources with different
+# keys. These two files are the install script's; the collection never writes them.
 - name: Remove the install script's Tailscale apt source
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/tailscale.list
