@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:` (a root-drive entry has only `mount` and `roles`, see [below](#using-the-root-drive-for-fast-or-primary)), the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `roles:`, `fstype` (default `ext4`) and `options` (default `defaults`) (a root-drive entry has only `mount` and `roles`, see [below](#using-the-root-drive-for-fast-or-primary)), the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
 
 | Role | Holds |
 |---|---|
@@ -31,40 +31,39 @@ A host with one USB drive for apps and backups. The backup drive must have a `uu
 
 ```yaml
 drives:
-  - { uuid: "1111-AAAA", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, backup] }
+  - { uuid: "1111-AAAA", mount: /mnt/data, roles: [fast, backup] }
 ```
 
 A one-drive NAS (the same trade-off applies):
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7, fstype: ext4, options: "defaults,nofail",
-      roles: [fast, primary, backup] }
+  - { uuid: "...", mount: /mnt/t7, roles: [fast, primary, backup] }
 ```
 
 An SSD for apps and files plus a separate backup drive. The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed:
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/t7,     roles: [fast, primary] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 A three-drive NAS (fast SSD, slow bulk drive, backup target):
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast] }
-  - { uuid: "...", mount: /mnt/p10,    fstype: ext4, options: "defaults,nofail", roles: [primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/t7,     roles: [fast] }
+  - { uuid: "...", mount: /mnt/p10,    roles: [primary] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 ### How a drive is mounted
 
-The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`.
+The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. It also adds `nofail` unless your `options` already have it.
 
 - **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits up to 30 seconds and then fails with `No such device`. The mount point is a placeholder, not a plain folder, so a container cannot write to the root drive. After the drive returns, the next access mounts it again, with no script or udev rule.
-- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting. The deploy requires it on every drive (it skips the drive checks on a host with `storage_enabled: false`).
+- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting.
 - **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
 - **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
 - **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
@@ -78,7 +77,7 @@ A `drives` entry with no `uuid` is a folder on the root drive (the drive the OS 
 ```yaml
 drives:
   - { mount: /srv/data, roles: [fast, primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 The `backup` role needs an entry with a `uuid`, or the deploy fails: a backup on the root drive dies with it. Other downsides: the Immich database wears out an SD card, and one root drive failure loses the OS and the data together.

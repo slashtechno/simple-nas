@@ -24,27 +24,21 @@
     quiet: true
   when: "'backup' in drive_mounts"
 
-# `nofail` makes the drive's mount wanted, not required, by local-fs.target, so a drive that fails to mount cannot
-# drop a headless host into emergency mode, unreachable over SSH.
-- name: Validate that every drive is mounted with nofail
-  ansible.builtin.assert:
-    that: mounted_drives | map(attribute='options', default='') | reject('search', 'nofail') | list | length == 0
-    fail_msg: >-
-      Every `drives` entry with a `uuid` needs `nofail` in its `options` (for example `defaults,nofail`),
-      or a drive that fails to mount can stop the host booting.
-    quiet: true
-
 # Each drive is mounted lazily by systemd (x-systemd.automount): a tripwire filesystem sits on the mount point
 # from boot and mounts the drive on first access. With the drive missing, an access fails with "No such device"
 # after 30 seconds instead of writing to a plain folder on the root drive, and the next access after the drive
-# returns mounts it again. `nofail` keeps a missing drive from stopping the host booting. See docs/storage.md.
+# returns mounts it again. See docs/storage.md.
+# `nofail` makes the drive's mount wanted, not required, by local-fs.target, so a drive that fails to mount cannot
+# drop a headless host into emergency mode, unreachable over SSH. It is added unless the drive's options have it.
 # systemd reads fstab at boot and on daemon-reload; the tripwire is armed at the next boot.
 - name: Add drives to fstab
+  vars:
+    drive_options: "{{ item.options | default('defaults') }}"
   ansible.posix.mount:
     path: "{{ item.mount }}"
     src: "UUID={{ item.uuid }}"
-    fstype: "{{ item.fstype }}"
-    opts: "{{ item.options }},x-systemd.automount,x-systemd.device-timeout=30s"
+    fstype: "{{ item.fstype | default('ext4') }}"
+    opts: "{{ drive_options ~ ('' if 'nofail' in drive_options else ',nofail') }},x-systemd.automount,x-systemd.device-timeout=30s"
     state: mounted
   loop: "{{ mounted_drives }}"
   notify: Reload systemd daemon

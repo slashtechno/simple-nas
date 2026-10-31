@@ -18,9 +18,9 @@
 # use: an unclaimed role fails the deploy with a message naming it. No `backup` drive means no local backup.
 # A drive with no `roles:` is only mounted.
 # Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
-# Examples for one, two and three drives, and the `nofail` option: docs/storage.md#examples
+# Examples for one, two and three drives, fstype and options: docs/storage.md#examples
 # drives:
-#   - { uuid: "...", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
+#   - { uuid: "...", mount: /mnt/data, roles: [fast, primary] }
 
 # --- Encryption ---
 # Folders stored encrypted with gocryptfs; unlock by hand after each boot (docs/encryption.md).
