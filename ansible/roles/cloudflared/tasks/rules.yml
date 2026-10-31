@@ -1,6 +1,6 @@
 ---
 # --- The rules ---
-- name: Read the rules the tunnel has now
+- name: Read the rules the tunnel has
   ansible.builtin.uri:
     url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel/{{ cloudflared_tunnel_id }}/configurations"
   check_mode: false
