@@ -42,6 +42,8 @@
 
     # ── Per-service teardown ───────────────────────────────────────────────
 
+    # data_paths lists each service's data directories from group_vars/all/defaults.yml. The same list is kept in
+    # roles/backup/tasks/check_coverage.yml; when a service gets a new data directory, change both.
     - name: Stop and remove Immich
       tags: [immich]
       ansible.builtin.import_tasks: teardown_service.yml
@@ -162,8 +164,8 @@
             - backup-cloud
             - restic-check
 
-        # Removes only the files the backup role installs. The dump scripts in dump.d
-        # belong to the immich and gitea roles and go with their services; wiping
+        # Removes only the files the backup role installs (the list in roles/backup/tasks/main.yml; keep the two
+        # in step). The dump scripts in dump.d belong to the service roles and go with their services; wiping
         # the whole directory would leave --tags backup redeploys without them,
         # so backups would "succeed" with no database dump.
         - name: Remove backup scripts
@@ -207,10 +209,8 @@
       block:
         - name: Remove the udev rule
           ansible.builtin.file:
-            path: "{{ item }}"
+            path: /etc/udev/rules.d/98-usb-automount.rules
             state: absent
-          loop:
-            - /etc/udev/rules.d/98-usb-automount.rules
 
         - name: Reload udev rules
           ansible.builtin.command: udevadm control --reload-rules

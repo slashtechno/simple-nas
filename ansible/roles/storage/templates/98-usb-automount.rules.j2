@@ -3,7 +3,7 @@
 # means that drive gets mounted a second time here. Upper and lower case are both skipped.
 # add|change: a card put into a reader that is already plugged in sends only `change`. A repeat mount of a mounted device fails harmlessly.
 # nosuid,nodev,noexec: nothing on a plugged-in drive can run. ro: see usb_automount_writable.
-{% set drive_uuids = drives | selectattr('uuid', 'defined') | map(attribute='uuid') | list %}
+{% set drive_uuids = mounted_drives | map(attribute='uuid') | list %}
 {% set root_uuids = ansible_mounts | selectattr('mount', 'in', ['/', '/boot', '/boot/efi', '/boot/firmware'])
    | map(attribute='uuid') | reject('equalto', 'N/A') | list %}
 {% set skipped_uuids = drive_uuids + root_uuids %}

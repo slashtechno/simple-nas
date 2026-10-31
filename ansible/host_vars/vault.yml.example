@@ -13,14 +13,14 @@ vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
 # Copyparty admin password.
 vault_copyparty_pass: "yourpassword"
-# Friends who can access /collab via WebDAV. Used only when copyparty_collab_enabled is true (vars.yml):
+# Friends who can access /collab via WebDAV. Used only when copyparty_collab_enabled is true (vars.yml).
 vault_copyparty_collab_users:
   - user: "friend1"
     pass: "change-me-generate-with-openssl-rand-base64-32"
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
-# Only used if copyparty_sftp_enabled is true (vars.yml) -- the scoped
-# SFTP account for pocketpi's sync: read, write, move and delete on /files:
+# Only used if copyparty_sftp_enabled is true (vars.yml): the scoped SFTP account for
+# a sync client, with read, write, move and delete on /files.
 vault_pocketpi_sftp_user: "pocketpi"
 # Password of the SFTP account above.
 vault_pocketpi_sftp_pass: "change-me-generate-with-openssl-rand-base64-32"
@@ -35,8 +35,10 @@ vault_github_read_token: "github_pat_..."
 vault_pics_password: "change-me-12-characters-minimum"
 # Signs pics' share links.
 vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
-vault_pics_alert_urls: ""   # optional Apprise URLs, space-separated
-vault_gitea_runner_token: ""   # optional; leave empty to skip runner
+# Optional Apprise URLs for pics' alerts, space-separated.
+vault_pics_alert_urls: ""
+# Optional; leave empty to skip the Gitea runner.
+vault_gitea_runner_token: ""
 # Shared secret for Garage's node-to-node RPC.
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 # Token for Garage's admin API.

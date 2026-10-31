@@ -17,7 +17,7 @@
 # A backup there would die with the root drive, so the backup role needs an entry with a `uuid`.
 - name: Validate that the backup role is on a mounted drive
   ansible.builtin.assert:
-    that: drives | selectattr('mount', 'equalto', drive_mounts.backup) | selectattr('uuid', 'defined') | list | length == 1
+    that: mounted_drives | selectattr('mount', 'equalto', drive_mounts.backup) | list | length == 1
     fail_msg: >-
       The `backup` role is on {{ drive_mounts.backup }}, which has no `uuid`, so it is a folder on the root
       drive. A backup on the same drive as the system is not a backup. Give the backup role to an entry that has a `uuid`.
@@ -28,7 +28,7 @@
 # drop a headless host into emergency mode, unreachable over SSH.
 - name: Validate that every drive is mounted with nofail
   ansible.builtin.assert:
-    that: drives | selectattr('uuid', 'defined') | map(attribute='options', default='') | reject('search', 'nofail') | list | length == 0
+    that: mounted_drives | map(attribute='options', default='') | reject('search', 'nofail') | list | length == 0
     fail_msg: >-
       Every `drives` entry with a `uuid` needs `nofail` in its `options` (for example `defaults,nofail`),
       or a drive that fails to mount can stop the host booting.
@@ -46,14 +46,14 @@
     fstype: "{{ item.fstype }}"
     opts: "{{ item.options }},x-systemd.automount,x-systemd.device-timeout=30s"
     state: mounted
-  loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
+  loop: "{{ mounted_drives }}"
   notify: Reload systemd daemon
 
 # Once the automount is armed, `state: mounted` sees the placeholder and mounts nothing, and a plain stat of the
 # path does not trigger the mount. Opening it with /. does, and fails after the timeout if the drive is missing.
 - name: Check every drive is mounted
   ansible.builtin.command: mountpoint -q {{ (item.mount ~ '/.') | quote }}
-  loop: "{{ drives | selectattr('uuid', 'defined') | list }}"
+  loop: "{{ mounted_drives }}"
   changed_when: false
   when: not ansible_check_mode
 
@@ -67,25 +67,21 @@
 
 # USB drives plugged in are mounted at /run/media/system/<label>. The rule calls systemd-mount, not mount,
 # because udev runs in its own mount namespace. systemd-mount creates the mount point.
-- name: Install the USB automount rule
+- name: Install the USB automount udev rule
+  ansible.builtin.template:
+    src: 98-usb-automount.rules.j2
+    dest: /etc/udev/rules.d/98-usb-automount.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload udev rules
   when: usb_automount_enabled | bool
-  block:
-    - name: Install the USB automount udev rule
-      ansible.builtin.template:
-        src: 98-usb-automount.rules.j2
-        dest: /etc/udev/rules.d/98-usb-automount.rules
-        owner: root
-        group: root
-        mode: "0644"
-      notify: Reload udev rules
 
-# Switched off: remove what the block above installs. Drives already mounted stay mounted until unplugged or reboot.
+# Switched off: remove what the task above installs. Drives already mounted stay mounted until unplugged or reboot.
 - name: Remove the USB automount rule when it is switched off
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: /etc/udev/rules.d/98-usb-automount.rules
     state: absent
-  loop:
-    - /etc/udev/rules.d/98-usb-automount.rules
   notify: Reload udev rules
   when: not usb_automount_enabled | bool
 

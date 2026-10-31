@@ -6,14 +6,14 @@
 
 # Timezone for the host and its containers. List names with `timedatectl list-timezones`.
 timezone: UTC
-# Where compose projects and helper scripts are deployed on the host.
+# Where compose projects are deployed on the host.
 services_dir: /opt/services
 # Where the helper and backup scripts are deployed.
 scripts_dir: "{{ services_dir }}/scripts"
 # --- Which services run on a host ---
-# Every service is off until a host switches it on: set `<name>_enabled: true` in
-# host_vars/<host>/vars.yml, and false again to stop deploying it.
-# A service that is already deployed keeps running; remove it with `ansible-playbook teardown.yml --limit <host> --tags <name>`.
+# Every service is off until a host sets `<name>_enabled: true` in host_vars/<host>/vars.yml (ansible/README.md).
+# Setting it false again stops deploying it but keeps it running; remove it with
+# `ansible-playbook teardown.yml --limit <host> --tags <name>`.
 # What each service needs (drive roles, vault entries) is in docs/services.md.
 
 # Immich photo library with machine learning.
@@ -108,7 +108,7 @@ restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 # Leave it alone unless you see that error.
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 
-# --- Data directories (teardown.yml also reads them) ---
+# --- Data directories (teardown.yml also reads them; so does the coverage check in roles/backup/tasks/check_coverage.yml) ---
 # One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
 # (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
 # default backup (restic_local_rules) does not cover it. A variable that uses a drive role fails with a
@@ -137,6 +137,11 @@ copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"
 copyparty_fast_enabled: false
 # Where the /fast volume lives.
 copyparty_fast_dir: "{{ fast_drive }}/fast"
+# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
+# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
+copyparty_collab_enabled: false
+# Directory behind /collab (primary drive).
+copyparty_collab_dir: "{{ primary_drive }}/collab"
 # Gitea's repositories and database (fast drive).
 gitea_data_dir: "{{ fast_drive }}/docker/gitea"
 # The Gitea runner's registration (.runner); on the fast drive so it is backed up.
@@ -186,12 +191,9 @@ direct_link_peer_ip: 10.10.20.2
 direct_link_prefix: 30
 
 # --- Host ports of the web UIs ---
-# Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet),
-# so it is reachable at http://<host-tailscale-name>:<port> from any device on your tailnet; docs/networking.md
-# covers HTTPS. pics' guest pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at
-# pics_public_port).
-# Set one to "" to publish no host port: the service is then reachable only through its Caddy name, so the host needs
-# caddy_enabled, caddy_private_domains and a non-empty <name>_subdomain (the deploy checks this). Keep the port as a way in when Caddy is down.
+# Set here because the Homepage links to them. Each listens on every interface: http://<host-tailscale-name>:<port>
+# (HTTPS: docs/caddy-reference.md). Set one to "" to publish no host port; the service is then
+# reachable only through its Caddy name, which the deploy checks is set up.
 # Immich's web UI and API (the mobile app connects here).
 immich_port: 2283
 # Copyparty's web UI and WebDAV.
@@ -211,7 +213,7 @@ crafty_port: 28443
 
 # --- Names of the web UIs under the private domain ---
 # With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<private domain>
-# (docs/networking.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
+# (docs/caddy-reference.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
 # Immich's name.
 immich_subdomain: immich
 # Copyparty's name.
@@ -234,16 +236,9 @@ backup_status_subdomain: backups
 # Here, not in the caddy role, because the Homepage on another host reads it to link to these names.
 # For each entry the deploy keeps DNS-only records <domain> and *.<domain> pointing at this host's Tailscale address, so
 # <domain> and <app>.<domain> resolve for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
-# certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
+# certificate for every name it serves under it (docs/caddy-reference.md#web-addresses-and-https).
 # Empty: no records, and Caddy has no DNS challenge. Every service is served under every entry; the Homepage links to the first.
 caddy_private_domains: []
-
-# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
-# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
-copyparty_collab_enabled: false
-
-# Directory behind /collab (primary drive).
-copyparty_collab_dir: "{{ primary_drive }}/collab"
 
 # Accounts for apps that talk to Copyparty. Each gets its own volume at
 # /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
@@ -251,7 +246,7 @@ copyparty_collab_dir: "{{ primary_drive }}/collab"
 # Example, a photo app: no d on photos, so without delete Copyparty also refuses overwrites (it renames
 # instead) and the app can't destroy a photo; it may delete only in its own photos-trash volume.
 #   - user: photos
-#     pass: "{{ vault_copyparty_photos_pass }}"
+#     pass: "{{ vault_copyparty_photos_pass }}"   # the pics role sends this vault entry, so keep the name
 #     volumes:
 #       - { folder: photos, perms: rwm }
 #       - { folder: photos-trash, perms: rwmd }
@@ -275,11 +270,13 @@ docker_daemon_options: >-
 drive_mounts: >-
   {%- set pairs = drives | subelements('roles', skip_missing=True) -%}
   {{ dict(pairs | map(attribute='1') | zip(pairs | map(attribute='0.mount'))) }}
+# The `drives` entries that have a `uuid`: the ones mounted through fstab. An entry without one is only a folder.
+mounted_drives: "{{ drives | selectattr('uuid', 'defined') | list }}"
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
 # The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
 # A drive with only the backup role is not listed: the scripts check it on their own.
 data_drive_mounts: >-
-  {{ drives | selectattr('uuid', 'defined') | selectattr('roles', 'defined')
+  {{ mounted_drives | selectattr('roles', 'defined')
      | rejectattr('roles', 'subset', ['backup']) | map(attribute='mount') | unique | list }}
 # Mount point of the drive with the fast role (read-only; derived from `drives`).
 fast_drive: >-

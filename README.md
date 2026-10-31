@@ -4,7 +4,7 @@ Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a
 
 Tested on Raspberry Pi 4 and 5 (arm64). x86-64 machines (a mini PC, an old laptop) are untested but should work; check that each service's image has an x86-64 build.
 
-Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in: a service is deployed on a host only when that host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Every flag defaults to false (`storage_enabled` is true). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
+Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
 The services are listed, with what each one is and needs, in [docs/services.md](./docs/services.md#services). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
 
@@ -34,7 +34,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 ## Daily use
 
 - **Find everything:** with `homepage_enabled` on one host, its page lists every service on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
-- **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/networking.md](./docs/networking.md#web-addresses-and-https)).
+- **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/caddy-reference.md](./docs/caddy-reference.md#web-addresses-and-https)).
 - **See what runs:** `just status` in `ansible/` lists the containers on every server.
 - **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
 - **Change something:** edit the host's `vars.yml`, then `just preview` and `just deploy` ([ansible/README.md](./ansible/README.md#commands)).
@@ -56,7 +56,7 @@ Fully automated once enabled: daily local, weekly cloud, weekly integrity check,
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
-| [docs/caddy-reference.md](./docs/caddy-reference.md) | Cheat sheet for the optional caddy-docker-proxy reverse proxy |
+| [docs/caddy-reference.md](./docs/caddy-reference.md) | The optional Caddy reverse proxy: names, ports, HTTPS and label syntax |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 

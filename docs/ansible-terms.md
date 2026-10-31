@@ -10,21 +10,12 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 |---|---|
 | `ansible.cfg` | Project settings, read automatically from this directory |
 | `inventory/hosts.yml` | Who to run against |
-| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
+| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `web_services.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
 | `requirements.yml` | Collections and roles to install first (`just deps`) |
 | `site.yml`, `teardown.yml` | The playbooks |
 | `roles/*/` | How to deploy each piece |
 
-`ansible.cfg` keys:
-
-- `roles_path = ~/.ansible/roles:roles`: where role names are looked up, in order. The first is Galaxy-installed roles (not committed), the second is this repo's.
-- `host_key_checking = False`: skips the SSH host-key prompt.
-- `become = True`, `become_method = sudo`: every task runs as root.
-- `inventory = inventory/hosts.yml`: the default inventory.
-- `interpreter_python = /usr/bin/python3`: fixed so Ansible does not warn about discovering Python.
-- `pipelining = True`: faster deploys over SSH.
-- `result_format = yaml`: how task results print.
-- `collections_path = ~/.ansible/collections`: where Galaxy-installed collections live.
+`ansible.cfg` explains each of its keys in comments.
 
 The inventory is `groups → hosts → connection vars`. This repo has one group, `servers`, and both playbooks run on it. The group carries no settings; what a host runs is set in its own `host_vars/<host>/vars.yml`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 
@@ -46,7 +37,7 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 ```
 
 - **`tags`**: run a subset, e.g. `--tags immich` or `--tags backup,storage`.
-- **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false in `group_vars/all/defaults.yml`, so a service is skipped unless a host asks for it.
+- **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false, so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
 - **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS and that Docker is not a snap; they carry `tags: [always]`.
 - **`teardown.yml`** is one play of tasks, one entry per service with its own `tags:`, mostly through `teardown_service.yml`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.

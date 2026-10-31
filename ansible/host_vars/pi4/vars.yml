@@ -6,7 +6,7 @@
 # own backup drive only: pinas owns the offsite repository, and two hosts must never back up into one.
 dockge_enabled: true
 caddy_enabled: true
-# Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/networking.md#web-addresses-and-https).
+# Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).
 caddy_private_domains: [pi4.slashtechno.com]
 # The root of the server: https://pi4.slashtechno.com opens Dockge.
 caddy_sites: {pi4.slashtechno.com: {reverse_proxy: "dockge:5001"}}

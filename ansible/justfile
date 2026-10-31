@@ -1,6 +1,11 @@
 # Common commands. Run `just` to list them. Install: brew install just
 # (or run any recipe without installing: uvx --from rust-just just <recipe>)
 
+# Lint tool versions. A new release can fail `just check` with no change in this repo, so they are pinned; raise them on purpose.
+ansible_lint := "ansible-lint==26.10.1"
+shellcheck := "shellcheck-py==0.11.0.1"
+ruff := "ruff==0.17.3"
+
 default:
     @just --list
 
@@ -11,9 +16,9 @@ deps:
 
 # Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the dashboard
 lint:
-    uvx ansible-lint
-    uvx --from shellcheck-py shellcheck --severity=warning roles/*/files/*.sh
-    uvx ruff check --isolated --select F,B roles/backup_status/files
+    uvx {{ ansible_lint }}
+    uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files
 
 # Both playbooks parse
 syntax:
@@ -25,7 +30,7 @@ test:
     set -euo pipefail
     out="$(mktemp -d)"
     ansible-playbook -i tests/inventory.yml tests/render.yml -e "out_dir=$out"
-    find "$out" -name '*.sh' -print0 | xargs -0 uvx --from shellcheck-py shellcheck --severity=warning
+    find "$out" -name '*.sh' -print0 | xargs -0 uvx --from {{ shellcheck }} shellcheck --severity=warning
     echo "Rendered templates are in $out"
 
 # Fail if a vault name or a setting with no default is missing from its example file

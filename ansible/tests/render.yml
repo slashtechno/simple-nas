@@ -143,6 +143,25 @@
       loop_control:
         loop_var: real_file
 
+    - name: Work out which services Caddy names
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
+
+    # The roles pair a hostname with its Cloudflare zone by comparing the zone with the hostname's tails
+    # (x.example.com, example.com, com). This checks that the expression keeps working on the installed ansible-core.
+    - name: A hostname matches only a zone it equals or ends with after a dot
+      vars:
+        zones: {example.com: id-1, ample.com: id-2, me.com: id-3}
+        tails: "{{ item.name | regex_findall('(?=(?:^|[.])(.+))') }}"
+        matched: "{{ zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
+      ansible.builtin.assert:
+        that: matched == item.zones
+      loop:
+        - {name: x.example.com, zones: [id-1]}
+        - {name: example.com, zones: [id-1]}
+        - {name: a.b.ample.com, zones: [id-2]}
+        - {name: notexample.com, zones: []}
+        - {name: home.com, zones: []}
+
     - name: Create one output directory per role
       ansible.builtin.file:
         path: "{{ out_dir }}/{{ item }}"
