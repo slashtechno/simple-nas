@@ -1,4 +1,8 @@
-# Per-service patterns shared by the local and cloud exclude lists (included by both).
+# Patterns shared by the local and cloud exclude lists (included by both).
+{% if docker_data_root | length > 0 %}
+# Docker's images and layers: root-owned and rebuilt by pulling.
+{{ docker_data_root }}
+{% endif %}
 {% if caddy_enabled | bool %}
 # Root-owned by the Caddy container, mode 700: the backup user cannot read it, so without this line
 # every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.

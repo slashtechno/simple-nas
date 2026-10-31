@@ -57,7 +57,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 - The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
 - Both repositories always include `service_dumps_dir` as well.
 - With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). The offsite list is not checked: it is short on purpose.
-- Always excluded: `restic_cache_dir`, `**/.cache` folders, `lost+found` on the primary drive, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
+- Always excluded: `restic_cache_dir`, the restic repository itself, `**/.cache` folders and `lost+found` on every drive that holds data, Docker's own storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`, `roles/garage/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 ## Choosing what is backed up
@@ -287,11 +287,11 @@ Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl statu
 ## Disaster recovery (all drives fail)
 
 1. Get the vault password from Bitwarden first; without it nothing below works. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and that password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
-2. Pull from the cloud repository. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
+2. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)), then pull from the cloud repository. With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)), so those come back only from an [offline copy](#offline-copy-on-a-second-drive). It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    export RESTIC_PASSWORD_FILE=~/.restic-password
    export RESTIC_REPOSITORY="<your restic_cloud_repository>"
    restic -o rclone.args="serve restic --stdio --tpslimit=10" snapshots --group-by path
    restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
    ```
-3. Restore the Immich and Gitea databases from the dumps restored in step 2 (see Restore: Immich database and Restore: Gitea above, using the restored `service-dumps` folder).
+3. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 2 (see Restore: Immich database, Restore: Gitea and Restore: Garage above, using the restored `service-dumps` folder).

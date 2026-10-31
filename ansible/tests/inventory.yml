@@ -61,6 +61,7 @@ all:
             - {uuid: "5555-EEEE", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}
             - {uuid: "6666-FFFF", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
           expect:
+            services: [immich, copyparty, gitea]
             local_paths: [/mnt/primary, /mnt/fast]
             cache_dir: /mnt/fast/restic-cache
             unclaimed: []

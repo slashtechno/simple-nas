@@ -114,7 +114,7 @@
       ansible.builtin.assert:
         that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml"
         fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/defaults.yml does not declare."
-      loop: "{{ site_yml.content | b64decode | regex_findall('when: (\\w+)_enabled') }}"
+      loop: "{{ site_yml.content | b64decode | regex_findall('(\\w+)_enabled') | unique }}"
 
     # After include_vars, which would reset drives to the example's empty list.
     - name: Claim every drive role on its own drive
@@ -351,6 +351,16 @@
             local_excludes: "{{ local_excludes_file.content | b64decode }}"
           ansible.builtin.assert:
             that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
+          when: backup_local_enabled | bool
+
+        - name: Every drive with data has its lost+found and the repository left out of the local backup
+          vars:
+            local_excludes: "{{ local_excludes_file.content | b64decode }}"
+          ansible.builtin.assert:
+            that:
+              - "(item ~ '/lost+found') in local_excludes"
+              - "restic_repo_path in local_excludes"
+          loop: "{{ data_drive_mounts }}"
           when: backup_local_enabled | bool
 
         - name: Every service's data is inside a locally backed-up path

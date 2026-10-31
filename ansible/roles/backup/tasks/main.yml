@@ -194,6 +194,22 @@
     mode: "0600"
   no_log: true   # the password would show in --diff
 
+# Before the cloud setup, so a cloud failure (an expired Drive token) cannot stop the local repository being created.
+- name: Initialize local restic repository (idempotent)
+  ansible.builtin.command:
+    cmd: restic init
+  environment:
+    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+    RESTIC_REPOSITORY: "{{ restic_repo_path }}"
+  register: restic_init
+  changed_when: "'created restic repository' in restic_init.stdout"
+  failed_when:
+    - restic_init.rc != 0
+    - "'already exists' not in restic_init.stderr"
+  become: true
+  become_user: "{{ ansible_user }}"
+  when: backup_local_enabled | bool
+
 # alert.sh reads the token from this file; with no ntfy_alert_url the file is removed.
 - name: Write the ntfy token file
   ansible.builtin.copy:
@@ -287,21 +303,6 @@
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
           "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
-
-- name: Initialize local restic repository (idempotent)
-  ansible.builtin.command:
-    cmd: restic init
-  environment:
-    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
-    RESTIC_REPOSITORY: "{{ restic_repo_path }}"
-  register: restic_init
-  changed_when: "'created restic repository' in restic_init.stdout"
-  failed_when:
-    - restic_init.rc != 0
-    - "'already exists' not in restic_init.stderr"
-  become: true
-  become_user: "{{ ansible_user }}"
-  when: backup_local_enabled | bool
 
 - name: Remove the weekly cloud backup job when the offsite backup is off
   ansible.builtin.cron:
