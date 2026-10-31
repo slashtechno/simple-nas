@@ -296,3 +296,5 @@ Check with `mountpoint /mnt/backup`, `journalctl -t backup` and `systemctl statu
    restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
    ```
 3. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 2 (see Restore: Immich database, Restore: Gitea and Restore: Garage above, using the restored `service-dumps` folder).
+
+If the host uses [encryption](./encryption.md), the backup scripts refuse to run while a folder is locked; unlock first.

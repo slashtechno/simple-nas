@@ -23,4 +23,11 @@ fi
 # snapshot counts toward retention and pushes out good ones.
 {{ guard(mount, 'refusing to back up an empty folder') }}
 {% endfor %}
+{% for folder in encrypted_folders %}
+# The drive is mounted even while {{ folder.mount }} is locked; only the .mounted file inside shows it is unlocked.
+if ! mountpoint -q {{ folder.mount | quote }} || [ ! -e {{ (folder.mount ~ '/.mounted') | quote }} ]; then
+  echo "ERROR: {{ folder.mount }} is locked (run unlock.sh) — refusing to back up an empty folder." >&2
+  exit 1
+fi
+{% endfor %}
 {%- endmacro %}

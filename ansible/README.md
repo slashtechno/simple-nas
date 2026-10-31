@@ -27,6 +27,7 @@ All commands below run from `ansible/`.
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview without changing anything | nothing | `just preview <tag> --limit <host>` |
 | Check my edits before committing | nothing | `just check` |
+| Encrypt a folder | `encryption_enabled` and `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption --limit <host>`, then unlock by hand |
 | Restore from a backup | nothing | [docs/backups.md](../docs/backups.md) |
 
 ## Which files hold what

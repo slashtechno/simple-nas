@@ -1,0 +1,25 @@
+#!/bin/bash
+# Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh
+# Asks for the passphrase once, mounts each encrypted folder, checks each one, then starts Docker.
+set -euo pipefail
+
+read -rsp "gocryptfs passphrase: " PASS
+echo
+
+{% for folder in encrypted_folders %}
+# --- {{ folder.mount }} ---
+# -allow_other lets containers (other user ids) read the files. Never -nonempty: a folder that something
+# wrote into while locked must make the mount fail, not get hidden.
+if ! mountpoint -q {{ folder.mount | quote }}; then
+  gocryptfs -allow_other {{ folder.cipher_dir | quote }} {{ folder.mount | quote }} <<<"$PASS" >/dev/null
+fi
+# .mounted lives inside the encrypted folder (created once, see docs/encryption.md). Without it this is
+# the empty folder underneath, and Docker must not start on it.
+if [ ! -e {{ (folder.mount ~ '/.mounted') | quote }} ]; then
+  echo "ERROR: {{ folder.mount }} is mounted but has no .mounted file. Not starting Docker." >&2
+  exit 1
+fi
+{% endfor %}
+
+systemctl start docker
+echo "Unlocked. Docker is running."

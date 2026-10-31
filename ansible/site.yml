@@ -73,6 +73,12 @@
       tags: [tailscale]
       when: tailscale_enabled | bool
 
+    - name: Set up encrypted folders
+      ansible.builtin.import_role:
+        name: encryption
+      tags: [encryption]
+      when: encryption_enabled | bool
+
     - name: Set up the Docker network and the direct link
       ansible.builtin.import_role:
         name: network

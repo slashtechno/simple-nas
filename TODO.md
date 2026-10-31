@@ -18,5 +18,5 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 ## Waiting for hardware or a decision
 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md).
-- Encryption at rest: [docs/research/encryption.md](./docs/research/encryption.md).
+- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive to run the recovery drill and test Postgres on a gocryptfs mount before real data goes in.
 - A pics `archive_dir` option belongs in the pics repository, with its path under a drive that has a role so the backup covers it.

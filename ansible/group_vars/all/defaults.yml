@@ -49,6 +49,14 @@ backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false
 
+# Encrypt folders with gocryptfs (docs/encryption.md). Docker no longer starts at boot: sudo unlock.sh mounts the folders, then starts it.
+encryption_enabled: false
+# The encrypted folders. cipher_dir holds the encrypted files on an ordinary drive; mount is where the
+# decrypted files appear, and the path services and backups use. Example, in host_vars/<host>/vars.yml:
+#   encrypted_folders:
+#     - { cipher_dir: /mnt/primary/.encrypted, mount: /mnt/primary/data }
+encrypted_folders: []
+
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
 storage_enabled: true
 # This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
