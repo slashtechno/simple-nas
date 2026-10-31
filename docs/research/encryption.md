@@ -26,7 +26,7 @@ A device you do not own may record what you type. After using one, change the pa
 ## Limits
 
 - The root drive is not encrypted: a headless host cannot take a passphrase at boot. It holds the restic password file and the Tailscale and Cloudflare credentials, so a thief with the whole host can open the cloud backup but not the local drives.
-- A host with no `backup` drive keeps service dumps in `/var/lib/backup-work` on the root drive, unencrypted.
+- A host with no `backup` drive keeps service dumps in `/var/lib/backup-work` on the root drive, unencrypted. Streaming each dump straight into restic (`restic backup --stdin`) would leave no plaintext dump on disk; see the open question below.
 - After a reboot nothing runs until someone unlocks. The 02:00 and Sunday 04:00 backups fail until then; the cron lines already log the failure with `logger -t backup` (through `alert.sh`).
 
 ## Open questions
@@ -36,6 +36,8 @@ A device you do not own may record what you type. After using one, change the pa
 - Whether the automount options in [storage.md](../storage.md#how-a-drive-is-mounted) work when the folder behind the mount is a gocryptfs mount.
 - How to reach the host from a device that is not on your tailnet. Tailscale can be logged in on a borrowed device for the session, or SSH can be exposed another way; pick one when this is built.
 - Speed. The Pi 4 may lack ARM crypto extensions, so AES may not keep up with the direct link's 117 MB/s ([networking.md](../networking.md#direct-ethernet-link)). Compare `gocryptfs -init -xchacha` with the default on the host first.
+
+- Service dumps. They exist only so restic can read them. Streaming each into restic removes the plaintext file, the keep-3 rotation and `service_dumps_dir`. The cost: a dump that fails halfway can still be saved as the newest snapshot (today the `.tmp` and rename stop that), a restore needs the restic repository instead of a plain file on the backup drive, and the restore steps in [backups.md](../backups.md) have not been run yet. Decide after the restore drill in [TODO.md](../../TODO.md).
 
 ## Order of work
 
