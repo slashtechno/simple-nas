@@ -125,7 +125,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_pass` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
 
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`), not as files: [Restore: Garage](./backups.md#restore-garage).
-- Garage always starts with `--single-node`: it creates the one-node layout on first start and leaves an existing layout alone.
+- Garage reads its cluster layout from `garage_data_dir/meta`. A first deploy (empty meta dir) starts with `--single-node` so Garage auto-configures the one-node layout; later starts omit the flag, which Garage requires once a layout exists (v2.4.1 errors with "layout version is already superior to 1").
 - `vault_garage_webui_pass` is the web UI password; the deploy hashes it (bcrypt with a fixed salt, so the output is the same on every run).
 - Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
 - Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI. The same S3 API answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
