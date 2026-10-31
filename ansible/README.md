@@ -181,7 +181,7 @@ Drive mounts, the restic password and Tailscale state are never touched.
 5. `site.yml`: add an `import_role` task with a tag and `when: myservice_enabled | bool`.
 6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
 7. A public hostname needs a `cloudflared_ingress` rule.
-8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_rules` to send it offsite.
+8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_rules` to send it offsite.
 9. A web UI gets a line in `group_vars/all/web_services.yml` (Homepage tile and Caddy name) and its `myservice_port` and `myservice_subdomain` in `group_vars/all/defaults.yml`.
 10. Add its secrets to the matching `vault.yml.example`, and a row to the services table in [../docs/services.md](../docs/services.md).
 11. `just check`, then `just deploy myservice`.

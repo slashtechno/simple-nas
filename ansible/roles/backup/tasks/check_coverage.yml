@@ -4,7 +4,7 @@
 # not listed: it is excluded on purpose and reaches the backup through its dump. Copyparty's hist directory is
 # not listed either: restic-excludes-services.txt.j2 leaves it out because it can be rebuilt.
 # teardown.yml reads the same directories; keep the two lists in step.
-# To leave a directory out on purpose, add "- <that directory>" to restic_local_rules: it then counts as decided.
+# To leave a directory out on purpose, add "- <that directory>" to restic_local_extra_rules: it then counts as decided.
 - name: Check every enabled service's data is inside a locally backed-up path
   vars:
     service_data:
@@ -33,6 +33,6 @@
     that: backup_uncovered | length == 0
     fail_msg: >-
       These data directories are outside every path in restic_local_rules, so the local backup would skip them:
-      {{ backup_uncovered }}. Add each one (or its drive) to restic_local_rules (docs/backups.md), or move the data.
-      To leave one out on purpose, add "- <the directory>" to restic_local_rules.
+      {{ backup_uncovered }}. Add each one (or its drive) to restic_local_extra_rules (docs/backups.md), or move the data.
+      To leave one out on purpose, add "- <the directory>" to restic_local_extra_rules.
     quiet: true

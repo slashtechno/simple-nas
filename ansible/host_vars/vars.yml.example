@@ -29,7 +29,7 @@
 
 # --- Offsite backup ---
 # backup_cloud_enabled turns on the weekly offsite copy for this host. It uploads only the base directory and
-# Copyparty's config; add data paths to restic_cloud_rules (docs/backups.md). Every host needs its own
+# Copyparty's config; add data paths to restic_cloud_extra_rules (docs/backups.md). Every host needs its own
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
 # backup_cloud_enabled: true
 # restic_cloud_repository: "rclone:gdrive:/<host>-backups"

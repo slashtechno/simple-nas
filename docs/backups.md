@@ -15,7 +15,7 @@ A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 
 - It cannot report a job that never runs (host off, cron stopped): alerts fire only when a job runs and fails. Covering that needs an external heartbeat service, which this repo does not run.
 - It has no automatic integrity check. The weekly `restic check` job exists only for the local repository, and the cloud check is manual ([Checking the cloud repo](#checking-the-cloud-repo-manual)).
-- Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_rules`; restic sends only data that changed, but it reads all of it each run.
+- Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_extra_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.
 
 The backups run as the ansible user. Files only root can read (`/etc`, data owned by a container's user) are skipped, and restic reports them as `error:` lines. The snapshot is saved without them, the old snapshots are still pruned, and then the run fails so the alert fires. A stack whose containers write as root needs its data dumped or its owner changed.
@@ -45,11 +45,11 @@ Paths below use `/mnt/backup` for the backup drive and `/mnt/t7` for the fast an
 
 ## What is backed up where
 
-What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/roles/backup/defaults/main.yml`. With the defaults on a NAS:
+What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/roles/backup/defaults/main.yml`. To add to a default, put lines in `restic_local_extra_rules` or `restic_cloud_extra_rules`; setting the main list replaces the default. With the defaults on a NAS:
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
-| Files on the `primary` and `fast` drives (photos, Copyparty files, service data) | Yes | Only the paths you add to `restic_cloud_rules` |
+| Files on the `primary` and `fast` drives (photos, Copyparty files, service data) | Yes | Only the paths you add to `restic_cloud_extra_rules` |
 | Copyparty config (`copyparty_config_dir`) | Yes | Yes |
 | Compose files, scripts and the credentials written into them (`services_dir`) | No | Yes |
 | Immich database | Dump only (the raw Postgres directory is excluded) | Dump only |
@@ -59,7 +59,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 
 - The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
 - Both repositories always include `service_dumps_dir` as well.
-- With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). The offsite list is not checked: it is short on purpose.
+- With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_extra_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). The offsite list is not checked: it is short on purpose.
 - Always excluded: `restic_cache_dir`, the restic repository itself, `**/.cache` folders and `lost+found` on every drive that holds data, Docker's own storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`, `roles/garage/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
@@ -76,15 +76,14 @@ Each rules list holds one rule per line. A line is one of:
 Worked example, in `host_vars/<host>/vars.yml`. Add a folder, leave out a kind of file, then keep one file of that kind:
 
 ```yaml
-restic_local_rules:
-  - /mnt/t7                              # the drive to back up
-  - /home/user/notes                     # add a folder outside it
+restic_local_extra_rules:
+  - /home/user/notes                     # add a folder to the default
   - "- **/*.iso"                         # leave out every .iso file
   - "- !/mnt/t7/downloads/keep.iso"      # but keep this one
 ```
 
 - Quote the `- ` lines in YAML, as above.
-- Setting a list replaces its default. Start from the default paths in `ansible/roles/backup/defaults/main.yml` and add to them, or the default drives drop out.
+- The `_extra_rules` lists add to the default. Setting `restic_local_rules` or `restic_cloud_rules` itself replaces the default, so the default drives drop out unless you list them.
 - A `- !` line cannot bring back a file inside a folder that a `- ` line left out as a whole. To keep one file out of an excluded folder, exclude the folder's other contents by pattern instead.
 - `- !` needs restic 0.13.0 or newer (Debian bookworm ships 0.14).
 - After editing, run `just deploy backup`.
