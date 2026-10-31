@@ -49,16 +49,9 @@ backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false
 
-# Encrypt folders with gocryptfs (docs/encryption.md). Docker no longer starts at boot: sudo unlock.sh mounts the folders, then starts it.
-encryption_enabled: false
-# The encrypted folders. cipher_dir holds the encrypted files on an ordinary drive; mount is where the
-# decrypted files appear, and the path services and backups use. Example, in host_vars/<host>/vars.yml:
-#   encrypted_folders:
-#     - { cipher_dir: /mnt/primary/.encrypted, mount: /mnt/primary/data }
+# Folders stored encrypted with gocryptfs (docs/encryption.md): a list of paths, each the folder services use,
+# for example `- /mnt/primary/immich`. Unlock by hand after every boot with sudo unlock.sh.
 encrypted_folders: []
-# systemd units started after Docker at every unlock: services of yours that run outside Docker and need an
-# encrypted folder. Do not enable them at boot (docs/encryption.md#services-you-run-yourself).
-unlock_start_units: []
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
 storage_enabled: true
@@ -292,6 +285,13 @@ mounted_drives: "{{ drives | selectattr('uuid', 'defined') | list }}"
 data_drive_mounts: >-
   {{ mounted_drives | selectattr('roles', 'defined')
      | rejectattr('roles', 'subset', ['backup']) | map(attribute='mount') | unique | list }}
+# Each encrypted folder with the hidden folder next to it that holds its encrypted files.
+encrypted_pairs: >-
+  {%- set pairs = [] -%}
+  {%- for folder in encrypted_folders -%}
+  {%- set _ = pairs.append({'mount': folder, 'cipher': (folder | dirname) ~ '/.' ~ (folder | basename) ~ '.gocryptfs'}) -%}
+  {%- endfor -%}
+  {{ pairs }}
 # Mount point of the drive with the fast role (read-only; derived from `drives`).
 fast_drive: >-
   {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its

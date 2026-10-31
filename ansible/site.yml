@@ -54,54 +54,6 @@
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
       tags: [always]
 
-    # Runs on every deploy, even with --tags: a service role writing into a locked folder would fill the empty
-    # directory under the mount point, and that data would be hidden at the next unlock.
-    - name: Check the encrypted folders are set up and unlocked
-      when: encryption_enabled | bool
-      tags: [always]
-      block:
-        # Separate from the loop below: a loop over an empty list runs nothing and would pass.
-        - name: Check there is at least one encrypted folder
-          ansible.builtin.assert:
-            that: encrypted_folders | length > 0
-            fail_msg: encryption_enabled is true but encrypted_folders is empty (docs/encryption.md).
-            quiet: true
-
-        - name: Check each encrypted folder has two different folders
-          ansible.builtin.assert:
-            that:
-              - item.cipher_dir is defined and item.mount is defined
-              - >-
-                encrypted_folders | selectattr('cipher_dir', 'equalto', item.mount) | list | length == 0
-                and not item.cipher_dir.startswith(item.mount ~ '/')
-                and not item.mount.startswith(item.cipher_dir ~ '/')
-            fail_msg: >-
-              Each encrypted_folders entry needs a cipher_dir and a mount, and the two must be
-              different folders, neither inside the other (docs/encryption.md).
-            quiet: true
-          loop: "{{ encrypted_folders }}"
-          loop_control:
-            label: "{{ item.mount | default('?') }}"
-
-        - name: Look for .mounted in each encrypted folder
-          ansible.builtin.stat:
-            path: "{{ item.mount }}/.mounted"
-          register: encrypted_mounted
-          loop: "{{ encrypted_folders }}"
-          loop_control:
-            label: "{{ item.mount }}"
-
-        - name: Check each encrypted folder is unlocked
-          ansible.builtin.assert:
-            that: item.stat.exists
-            fail_msg: >-
-              {{ item.item.mount }} is locked, or was never set up (no .mounted file inside it). Run
-              sudo {{ scripts_dir }}/unlock.sh on {{ inventory_hostname }}, or create the folder first (docs/encryption.md#create-a-folder).
-            quiet: true
-          loop: "{{ encrypted_mounted.results }}"
-          loop_control:
-            label: "{{ item.item.mount }}"
-
   tasks:
     # Drives first: docker_data_root (common) may sit on one.
     - name: Mount the drives
@@ -121,11 +73,10 @@
       tags: [tailscale]
       when: tailscale_enabled | bool
 
-    - name: Set up encrypted folders
+    - name: Set up encryption
       ansible.builtin.import_role:
         name: encryption
       tags: [encryption]
-      when: encryption_enabled | bool
 
     - name: Set up the Docker network and the direct link
       ansible.builtin.import_role:

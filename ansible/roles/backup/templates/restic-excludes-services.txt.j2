@@ -1,4 +1,8 @@
 # Patterns shared by the local and cloud exclude lists (included by both).
+{% for folder in encrypted_pairs %}
+# The encrypted copy of {{ folder.mount }}: restic backs up the decrypted files, so saving these too would store everything twice.
+{{ folder.cipher }}
+{% endfor %}
 {% if docker_data_root | length > 0 %}
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}

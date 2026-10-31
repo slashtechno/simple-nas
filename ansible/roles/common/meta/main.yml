@@ -4,5 +4,3 @@ dependencies:
       docker_users: ["{{ ansible_user }}"]
       docker_install_compose_plugin: true
       docker_install_compose: false
-      # With encryption, unlock.sh starts Docker after the folders are mounted (docs/encryption.md).
-      docker_service_enabled: "{{ not (encryption_enabled | bool) }}"

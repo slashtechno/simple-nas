@@ -1,7 +1,7 @@
 ---
-# gocryptfs encrypts the folders in `encrypted_folders`. Creating a folder (`gocryptfs -init`) and unlocking
-# after every boot are done by hand; docs/encryption.md has the steps. This role installs the tools and
-# stops Docker starting at boot, so no container can write into a folder before it is unlocked.
+# Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
+# (`gocryptfs -init`) and unlocking after each boot are done by hand; this role installs the tools and unlock.sh.
+# With no encrypted folder it removes unlock.sh again.
 - name: Install gocryptfs and FUSE
   ansible.builtin.apt:
     name:
@@ -10,13 +10,7 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
-
-# docker.service is kept off boot by docker_service_enabled in roles/common/meta/main.yml. Without this,
-# a connection to the Docker socket would start Docker anyway.
-- name: Stop the Docker socket starting Docker at boot
-  ansible.builtin.systemd:
-    name: docker.socket
-    enabled: false
+  when: encrypted_folders | length > 0
 
 - name: Install the unlock script
   ansible.builtin.template:
@@ -25,3 +19,10 @@
     owner: root
     group: root
     mode: "0750"
+  when: encrypted_folders | length > 0
+
+- name: Remove the unlock script
+  ansible.builtin.file:
+    path: "{{ scripts_dir }}/unlock.sh"
+    state: absent
+  when: encrypted_folders | length == 0
