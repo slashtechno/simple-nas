@@ -42,8 +42,8 @@
     - name: Check every web service has a host port or a Caddy name
       ansible.builtin.assert:
         that: >-
-          vars[item.key ~ '_port'] != ''
-          or (caddy_enabled | bool and caddy_private_domains | length > 0 and vars[item.key ~ '_subdomain'] != '')
+          lookup('ansible.builtin.vars', item.key ~ '_port', default='') != ''
+          or (caddy_enabled | bool and caddy_private_domains | length > 0 and lookup('ansible.builtin.vars', item.key ~ '_subdomain', default='') != '')
         fail_msg: >-
           {{ item.name }} has no host port ({{ item.key }}_port: "") and no Caddy name. Give it a port, or turn on
           caddy_enabled and caddy_private_domains and keep {{ item.key }}_subdomain non-empty (docs/networking.md).
@@ -51,7 +51,7 @@
       loop: "{{ web_services | rejectattr('port', 'defined') | list }}"
       loop_control:
         label: "{{ item.name }}"
-      when: vars[item.key ~ '_enabled'] | bool
+      when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
       tags: [always]
 
   tasks:
