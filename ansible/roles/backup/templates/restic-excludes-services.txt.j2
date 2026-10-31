@@ -12,6 +12,11 @@
 # every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.
 {{ caddy_data_dir }}/caddy
 {% endif %}
+{% if cloudflared_enabled | bool %}
+# Owned by the Cloudflare container's user, mode 400: the backup user cannot read it, so without this line every
+# run fails with restic exit 3. A deploy writes it again from Cloudflare.
+{{ services_dir }}/cloudflared/token
+{% endif %}
 {% if gitea_enabled | bool %}
 {{ gitea_data_dir }}/ssh
 {% endif %}

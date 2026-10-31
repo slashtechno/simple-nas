@@ -206,6 +206,7 @@
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
           - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
           - "'/mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(services_dir ~ '/cloudflared/token') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - "'/mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
