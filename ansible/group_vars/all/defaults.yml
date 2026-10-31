@@ -4,7 +4,7 @@
 # A value of `{{ undef(hint=...) }}` has no sensible default: set it in vars.yml, or the deploy stops and prints the hint.
 # Secrets go in a vault.yml next to this file, never here. Vault names are in vault.yml.example.
 
-# Timezone for the host and its containers. List names with `timedatectl list-timezones`.
+# Timezone for the host and the containers whose image reads TZ. List names with `timedatectl list-timezones`.
 timezone: UTC
 # Where compose projects are deployed on the host.
 services_dir: /opt/services
@@ -49,8 +49,9 @@ backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false
 
-# Folders stored encrypted with gocryptfs (docs/encryption.md): a list of paths, each the folder services use,
-# for example `- /mnt/primary/immich`. Unlock by hand after every boot with sudo unlock.sh.
+# Folders stored encrypted with gocryptfs: absolute paths, each the folder a service already uses, for example
+# `- /mnt/primary/immich`. Listing a folder is what switches encryption on (docs/encryption.md). After every boot
+# run sudo unlock.sh; all folders share one passphrase. Not docker_data_root.
 encrypted_folders: []
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
@@ -275,21 +276,32 @@ docker_daemon_options: >-
 # Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
 # `subelements` pairs every drive with each of its roles; the dict is role -> mount point of that drive.
 drive_mounts: >-
-  {%- set pairs = drives | subelements('roles', skip_missing=True) -%}
-  {{ dict(pairs | map(attribute='1') | zip(pairs | map(attribute='0.mount'))) }}
+  {%- set mounts = {} -%}
+  {%- for drive in drives -%}
+  {%- for role in drive.roles | default([]) -%}
+  {%- set _ = mounts.update({role: drive.mount}) -%}
+  {%- endfor -%}
+  {%- endfor -%}
+  {{ mounts }}
 # The `drives` entries that have a `uuid`: the ones mounted through fstab. An entry without one is only a folder.
 mounted_drives: "{{ drives | selectattr('uuid', 'defined') | list }}"
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
 # The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
 # A drive with only the backup role is not listed: the scripts check it on their own.
 data_drive_mounts: >-
-  {{ mounted_drives | selectattr('roles', 'defined')
-     | rejectattr('roles', 'subset', ['backup']) | map(attribute='mount') | unique | list }}
+  {%- set mounts = [] -%}
+  {%- for drive in mounted_drives -%}
+  {%- if drive.roles | default([]) | intersect(['fast', 'primary']) | length > 0 and drive.mount not in mounts -%}
+  {%- set _ = mounts.append(drive.mount) -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {{ mounts }}
 # Each encrypted folder with the hidden folder next to it that holds its encrypted files.
 encrypted_pairs: >-
   {%- set pairs = [] -%}
   {%- for folder in encrypted_folders -%}
-  {%- set _ = pairs.append({'mount': folder, 'cipher': (folder | dirname) ~ '/.' ~ (folder | basename) ~ '.gocryptfs'}) -%}
+  {%- set path = folder | regex_replace('/+$', '') -%}
+  {%- set _ = pairs.append({'mount': path, 'cipher': (path | dirname) ~ '/.' ~ (path | basename) ~ '.gocryptfs'}) -%}
   {%- endfor -%}
   {{ pairs }}
 # Mount point of the drive with the fast role (read-only; derived from `drives`).

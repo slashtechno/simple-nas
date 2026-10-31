@@ -16,10 +16,12 @@ if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "tr
 fi
 
 echo "Dumping Immich DB..."
+# Only the `immich` database (POSTGRES_DB in docker-compose.yml.j2). pg_dumpall would also drop and recreate the
+# role and the maintenance database, which the restore cannot do while connected as that role.
 # Write to a .tmp name and rename on success, so a half-written dump never
 # looks like a good one (and never counts toward the "keep 3").
 if ! docker exec "$CONTAINER" \
-     pg_dumpall --clean --if-exists --username="$DB_USER" | gzip > "$DUMP.tmp"; then
+     pg_dump --clean --if-exists --username="$DB_USER" immich | gzip > "$DUMP.tmp"; then
   rm -f "$DUMP.tmp"
   echo "Error: Immich DB dump failed (check DB credentials)" >&2
   exit 1

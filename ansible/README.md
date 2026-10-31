@@ -27,7 +27,7 @@ All commands below run from `ansible/`.
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview without changing anything | nothing | `just preview <tag> --limit <host>` |
 | Check my edits before committing | nothing | `just check` |
-| Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption --limit <host>`, then unlock by hand |
+| Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption,backup --limit <host>`, then [set up the folder](../docs/encryption.md#set-up-a-folder) |
 | Restore from a backup | nothing | [docs/backups.md](../docs/backups.md) |
 
 ## Which files hold what
@@ -86,7 +86,7 @@ Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is 
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
-- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`. You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, and a `drives` entry with the `fast` role (Dockge keeps its stacks there; add a `backup` drive for backups). You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
 
 To add your own service as a fork, follow [Add a new service](#add-a-new-service).
 

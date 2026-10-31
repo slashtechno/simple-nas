@@ -10,14 +10,14 @@ Does not protect against:
 
 - someone with the host while it is running and unlocked;
 - file names, sizes and modification times, which gocryptfs shows;
-- the root drive. A headless host cannot take a passphrase at boot, so the root drive holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the cloud backup, but not an encrypted folder;
+- the root drive. A headless host cannot take a passphrase at boot, so the root drive holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the local and the cloud backups, though not an encrypted folder;
 - a passphrase typed on a device that records it (see [Unlocking from another device](#unlocking-from-another-device)).
 
 Quantum computers weaken but do not break the 256-bit symmetric encryption gocryptfs and restic use. The weak point is the passphrase: use a long random one from a password manager.
 
 ## How it works
 
-In `host_vars/<host>/vars.yml`, list the folders (any folder on any drive, such as the data folder of one service):
+In `host_vars/<host>/vars.yml`, list absolute paths of folders on any drive, such as the data folder of one service:
 
 ```yaml
 encrypted_folders:
@@ -25,60 +25,47 @@ encrypted_folders:
   - /mnt/backup/service-dumps
 ```
 
-Each folder you list is two folders on the drive:
+Each listed folder is two folders on the drive:
 
 | Path | What it is |
 |---|---|
 | `/mnt/primary/immich` | The decrypted view, mounted by `unlock.sh`. Services and backups use this path, so no other setting changes. |
-| `/mnt/primary/.immich.gocryptfs` | The encrypted files, next to it. This hidden folder is what you keep safe. |
+| `/mnt/primary/.immich.gocryptfs` | The encrypted files, next to it. |
 
-Folders you do not list stay plain. Encryption is **not in place**: gocryptfs encrypts a file when it is copied into the view, so existing data is moved in ([Moving data in](#moving-data-in)).
+Folders you do not list stay plain. While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
 
-While a folder is locked it is an empty folder marked immutable (`chattr +i`, set by `unlock.sh`). Nothing can write into it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. The backup scripts refuse to run, like for a drive that is not mounted.
-
-Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
+Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
 
 ## Set up a folder
 
-1. Add the path to `encrypted_folders` and run `just deploy encryption --limit <host>` (installs gocryptfs and `unlock.sh`).
-2. On the host, with the folder empty or not yet existing:
+1. Add the path to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. That installs gocryptfs and two scripts, and teaches the backups to refuse a locked folder and to skip the encrypted files (they would be stored twice).
+2. Stop the service that uses the folder, and keep it stopped until step 5 is done. Rename a folder that already holds data, and create an empty one:
 
 ```bash
-sudo mkdir -p /mnt/primary/immich
-sudo gocryptfs -init -xchacha /mnt/primary/.immich.gocryptfs   # -xchacha on a Pi 4; leave it off on a Pi 5 or x86-64
+sudo mv /mnt/primary/immich /mnt/primary/immich.plain      # skip if the folder is new
+sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/immich
 sudo /opt/services/scripts/unlock.sh
 ```
 
-`-init` prints the **master key** once. Put it in your password manager and on paper, and copy `gocryptfs.conf` off the host. Either one recreates a lost config (gocryptfs wiki, "Recreate gocryptfs.conf using masterkey"); with neither, a lost `gocryptfs.conf` means lost data. A lost `gocryptfs.diriv` has no documented recovery, so the whole `.gocryptfs` folder is what you keep safe. Use the same passphrase for every folder and `unlock.sh` asks once.
-
-The cipher is fixed at `-init`. `gocryptfs -speed` 2.5.1 measured:
-
-| Host | AES-GCM | XChaCha20 | Use |
-|---|---|---|---|
-| Pi 4 (no AES instructions) | 44 MB/s | 162 MB/s | `-xchacha` |
-| Pi 5 (has them) | about 1170 MB/s | 507 MB/s | default |
-
-On x86-64, which has AES instructions, use the default. A drive moved to another host keeps its cipher. XChaCha20 needs gocryptfs 2.2 or later on every machine that opens the folder, a Mac included (`brew install gocryptfs macfuse`).
-
-### Moving data in
-
-A folder that already holds data: stop its service, rename the folder to `<name>.plain`, set it up as above, then move the files in file by file:
+3. `init-encrypted-folder.sh` prints a **master key** once. Put it in your password manager, and copy `gocryptfs.conf` from the `.gocryptfs` folder off the host. Without that file the data cannot be opened. The script picks the cipher for this CPU and it cannot be changed later. On a host without AES instructions (Raspberry Pi 4) that is XChaCha20, which needs gocryptfs 2.2 or later on any other machine that opens the folder, such as a Mac (`brew install gocryptfs macfuse`). Use the same passphrase for every folder; `unlock.sh` asks once.
+4. Move the data in, file by file:
 
 ```bash
+cd /mnt/primary/immich.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt
 sudo rsync -aHAX --remove-source-files /mnt/primary/immich.plain/ /mnt/primary/immich/
+cd /mnt/primary/immich && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
+diff /tmp/before.txt /tmp/after.txt && echo identical
 ```
 
-`--remove-source-files` deletes each source file once it is copied, so the drive needs room for roughly the largest file plus about 1% overhead, not a second copy of everything. Before you start:
+`--remove-source-files` deletes each file once it is copied, so the drive needs room for roughly the largest file plus about 1% overhead, not a second copy. (A sparse file takes its full size.) Take a backup and check that it restores first ([backups.md](./backups.md)): a power cut at the wrong moment can lose the file being moved. If the move stops half way, run the same `rsync` again.
 
-- take a backup and check it restores ([backups.md](./backups.md));
-- save a checksum list (`cd immich.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt`), and after the move run the same in the new folder and `diff` the two lists;
-- if the move stops half way, run the same command again: it carries on.
+5. When the lists are identical, remove the leftover empty folders (`sudo rm -r /mnt/primary/immich.plain`) and start the service. Finish before 02:00, or the nightly backup also stores the half-moved folder.
 
-Deleting files does not erase them from the drive. A drive that held plain data may still hold it: re-format or `blkdiscard` it before it leaves your hands. A new, empty drive (the [drive migration](../plans/drive-migration.md) has two) needs none of this: set the folders up first, then copy the old data in.
+Deleting files does not erase them from the drive. A drive that held plain data may still hold it: re-format it before it leaves your hands. A new, empty drive needs none of this: set the folders up first, then copy the old data in.
 
 ### Turning it off
 
-Unlock, copy the files to a plain folder (`rsync -aHAX`), point the service at it, remove the path from `encrypted_folders`, deploy `encryption`, `sudo umount` the folder and delete both folders. The role removes `unlock.sh`; nothing else was changed.
+Unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, deploy `encryption,backup`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the two scripts; gocryptfs stays installed.
 
 ## Unlocking
 
@@ -89,43 +76,20 @@ ssh <host>
 sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
-It mounts each folder and restarts Docker so containers see the files. A wrong passphrase stops it before Docker restarts. It never uses `-nonempty`: if something got into a locked folder anyway, the mount fails instead of hiding it.
+It mounts each folder that is locked and restarts Docker, so containers see the files; containers started without a restart policy are not started again. A wrong passphrase stops it before Docker restarts, and it says which folder it was unlocking. It never uses `-nonempty`, and it stops if a locked folder is not empty (move the files away first) instead of hiding them. Run on an unlocked host it does nothing.
 
-After a reboot, services with encrypted data stay down until someone unlocks. The 02:00 and Sunday 04:00 backups fail until then and log the failure with `logger -t backup`. ntfy runs in Docker, so nothing alerts you that the host is locked.
+After a reboot, services with encrypted data stay down until someone unlocks, and the backups refuse to run. With `ntfy_alert_url` set a failed backup pushes an alert; otherwise it is only in the log (`logger -t backup`). Listing the dumps folder (`service_dumps_dir`) means every backup waits for the unlock.
 
-To lock again: `sudo docker stop` the containers that use the folder, then `sudo umount <folder>`.
+To lock again: stop the containers that use the folder, then `sudo umount <folder>`.
 
 ### Unlocking from another device
 
-Unlocking works from any device that can SSH to the host. A borrowed device may record what you type. Afterwards change the passphrase with `sudo gocryptfs -passwd /mnt/primary/.immich.gocryptfs`. That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`. Full protection means a new gocryptfs folder and a copy of the files into it.
+Unlocking works from any device that can SSH to the host. A borrowed device may record what you type. Afterwards change the passphrase with `sudo gocryptfs -passwd <the .gocryptfs folder>`. That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`. Full protection means a new gocryptfs folder and a copy of the files into it.
 
-## Services and backups
+## If gocryptfs.conf is lost
 
-- **Services from this repo:** list the folder that holds their data. Their settings stay the same.
-- **Your own Docker services:** keep their data in a listed folder, or leave them unencrypted; both work. Give them `restart: unless-stopped`.
-- **Your own systemd services** that need a locked folder: disable them at boot (`sudo systemctl disable <unit>`) and start them by hand after `unlock.sh`.
-- **Backups** copy the decrypted files through the mount, and skip the `.gocryptfs` folders (they would be stored twice). The restic repository is encrypted by restic with its own password and a restore needs no gocryptfs. To encrypt service dumps, list their folder (`service_dumps_dir`). A host with no `backup` drive keeps dumps in `/var/lib/backup-work` on the root drive, unencrypted.
-- Paths of your own services go in `restic_local_rules` ([backups.md](./backups.md#choosing-what-is-backed-up)).
+The backups hold the decrypted files and exclude the `.gocryptfs` folders, so the way back is: create a new encrypted folder, restore the files from restic into it ([backups.md](./backups.md)). The master key can recreate the file (gocryptfs wiki, "Recreate gocryptfs.conf using masterkey") only with the same options the folder was created with, which `init-encrypted-folder.sh` does not record. A folder of your own that is not in `restic_local_rules` has no such backup.
 
-## Tested
+## Status
 
-On a Pi 4 with a scratch loop-device drive, removed afterwards:
-
-- A wrong passphrase stops `unlock.sh`; the right one mounts; file names on the drive are encrypted; a second run changes nothing.
-- A locked folder rejects writes from the host and from containers, and a container whose data is in a subfolder of it fails to start with an error. After the unlock and a Docker restart it runs and reads the files. A container started while locked does not see the files until Docker restarts.
-- A mount over a folder with a file in it fails (exit 10).
-- A container running as another user id can read the files with `-allow_other` and not without it.
-- Moving 701 files (300 MB) into a gocryptfs folder on a drive that was 86% full: a plain `rsync` ran out of space, `--remove-source-files` finished, every checksum matched and `gocryptfs -fsck` found no problems.
-- SQLite in WAL mode survived six `kill -9`s during writes with `integrity_check` ok each time.
-
-Not tested: Postgres on a gocryptfs mount (Immich's database), a real deploy of the role, and the rest of the recovery drill below. Run the drill on a scratch folder before real data goes in.
-
-## Recovery drill
-
-1. Init, mount, write files, unmount, run `gocryptfs -fsck`.
-2. Delete `gocryptfs.conf`, recreate it from the master key, remount and read the files.
-3. Change the passphrase with `-passwd` and check the old one fails.
-4. Mount the same folder on a Mac and read the files.
-5. Leave the folder locked and run a backup script: it must refuse.
-6. Restore a restic snapshot to a clean folder and compare checksums.
-7. If a database goes on the mount: `kill -9` Postgres a few times under load and check it recovers.
+Tested on a Pi 4 with a scratch drive: unlock, a wrong passphrase, a locked folder rejecting writes, containers reading the files, a 300 MB move into a nearly full drive, SQLite surviving `kill -9`. Not tested: Postgres on a gocryptfs mount (so keep Immich's database folder out of the list for now), a real deploy of the role, and the recovery drill in [TODO.md](../TODO.md).

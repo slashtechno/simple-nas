@@ -77,3 +77,29 @@
     fail_msg: "ntfy_alert_url is set but vault_ntfy_token is not in group_vars/all/vault.yml (see vault.yml.example)."
     quiet: true
   when: ntfy_alert_url | length > 0
+
+# The backup leaves out Immich's and Garage's live database directories (restic-excludes-services.txt.j2); the
+# dump their roles install is the only copy. Without the dump script the backup would run without errors and
+# hold no database. The roles run before this one in site.yml.
+- name: Look for the dump scripts of the services whose live database is left out
+  vars:
+    services_with_dump:
+      - {name: immich, enabled: "{{ immich_enabled }}"}
+      - {name: garage, enabled: "{{ garage_enabled }}"}
+  ansible.builtin.stat:
+    path: "{{ service_dump_scripts_dir }}/{{ item }}.sh"
+  register: backup_dump_scripts
+  loop: "{{ services_with_dump | selectattr('enabled') | map(attribute='name') | list }}"
+  when: not ansible_check_mode
+
+- name: Check those dump scripts are installed
+  ansible.builtin.assert:
+    that: item.stat.exists
+    fail_msg: >-
+      {{ item.item }} is enabled but {{ service_dump_scripts_dir }}/{{ item.item }}.sh is not installed, so the
+      backup would hold no {{ item.item }} database. Deploy {{ item.item }} first: just deploy {{ item.item }}.
+    quiet: true
+  loop: "{{ backup_dump_scripts.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: not ansible_check_mode

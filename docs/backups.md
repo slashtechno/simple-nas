@@ -248,6 +248,8 @@ cd /opt/services/immich && docker compose stop immich_server
 docker compose start immich_server
 ```
 
+The dump holds only the `immich` database, and the restore replays it into the `immich` database that Postgres creates on first start, so it also works on a fresh Immich container after a disk loss. A dump named `immich-db-*` made by an older version holds the whole Postgres cluster and cannot be replayed this way: open it with `gunzip -c`, copy the part between `\connect immich` and the next `\connect` into a new file, and restore that.
+
 ---
 
 ## Restore: Gitea

@@ -1,24 +1,36 @@
 #!/bin/bash
 # Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh
-# Asks for the passphrase once and mounts each encrypted folder, then restarts Docker.
+# Asks for the passphrase once and mounts each encrypted folder. Restarts Docker if it mounted any.
 set -euo pipefail
 
 read -rsp "gocryptfs passphrase: " PASS
 echo
+MOUNTED=0
 
 {% for folder in encrypted_pairs %}
 # --- {{ folder.mount }} ---
 if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
-  # While locked, the empty folder is made immutable: nothing can write into it, so a container or a deploy
-  # that runs before the unlock fails with "Operation not permitted" instead of filling the drive underneath.
-  # The flag stays on the folder across reboots and does not touch the decrypted files.
+  echo "Unlocking {{ folder.mount }}"
+  # The folder must be empty: files left in it would be hidden by the mount. Move them away first (docs/encryption.md).
+  if [ -n "$(ls -A {{ folder.mount | quote }})" ]; then
+    echo "ERROR: {{ folder.mount }} is not empty. Move its files away, then run this again (docs/encryption.md)." >&2
+    exit 1
+  fi
+  # While locked, the empty folder is immutable: nothing can be created in it, so a container or a deploy that
+  # runs before the unlock fails with "Operation not permitted" instead of filling the drive underneath.
+  # The flag stays on the folder across reboots (to remove it: chattr -i) and does not touch the decrypted files.
   chattr +i {{ folder.mount | quote }}
-  # -allow_other lets containers, which run as other user ids, read the files. Never -nonempty: if something
-  # got into the folder anyway, the mount fails instead of hiding it.
+  # -allow_other lets containers, which run as other user ids, read the files. Never -nonempty.
   gocryptfs -allow_other {{ folder.cipher | quote }} {{ folder.mount | quote }} <<<"$PASS" >/dev/null
+  MOUNTED=1
 fi
 {% endfor %}
 
 # A container that started while a folder was locked still sees the empty folder; a restart shows the files.
-systemctl restart docker
-echo "Unlocked. Docker restarted."
+# Containers without a restart policy are not started again by this.
+if [ "$MOUNTED" = 1 ]; then
+  systemctl restart docker
+  echo "Unlocked. Docker restarted."
+else
+  echo "Already unlocked."
+fi

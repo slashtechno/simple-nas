@@ -32,7 +32,7 @@
           /bin/bash {{ (scripts_dir ~ '/backup-restic-local.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
           /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
-          "backup-restic-local failed (see backup-cron.log; is {{ backup_drive }} mounted and not full?)"
+          "backup-restic-local failed (see backup-cron.log; is {{ backup_drive }} mounted and not full, and is every encrypted folder unlocked?)"
 
     - name: Schedule weekly restic integrity check (Wednesday 3 AM)
       ansible.builtin.cron:

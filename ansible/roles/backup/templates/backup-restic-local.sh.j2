@@ -31,6 +31,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
   restic unlock
   # restic forget --prune needs free room to rewrite packs, so a full drive cannot clean itself up: stop early.
   used_pct=$(df --output=pcent {{ backup_drive | quote }} | tail -1 | tr -dc '0-9')
+  [ -n "$used_pct" ] || { echo "ERROR: could not read the free space on {{ backup_drive }}."; exit 1; }
   if [ "$used_pct" -ge 95 ]; then
     echo "ERROR: {{ backup_drive }} is ${used_pct}% full; free space or lower restic_local_retention before the next backup."
     exit 1

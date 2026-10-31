@@ -99,7 +99,7 @@
         copyparty_port: ""
         dockge_port: ""
         cloudflare_api_token: render-test-token
-        encrypted_folders: [/mnt/primary/immich]
+        encrypted_folders: [/mnt/primary/immich/]   # the trailing slash is tolerated
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
@@ -198,6 +198,9 @@
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
           # Encryption: unlock.sh makes the locked folder immutable, mounts with -allow_other and never -nonempty;
           # the backups refuse a locked folder and skip its encrypted copy.
+          - "'.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'-xchacha' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'chattr +i /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'gocryptfs -allow_other /mnt/primary/.immich.gocryptfs /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"

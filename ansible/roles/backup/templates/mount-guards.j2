@@ -23,8 +23,8 @@ fi
 # snapshot counts toward retention and pushes out good ones.
 {{ guard(mount, 'refusing to back up an empty folder') }}
 {% endfor %}
-{% for folder in encrypted_folders %}
-# The drive is mounted even while {{ folder }} is locked, so the check above passes; this one catches the lock.
-{{ guard(folder, 'it is locked, run unlock.sh; refusing to back up an empty folder') }}
+{% for folder in encrypted_pairs %}
+# The drive is mounted even while {{ folder.mount }} is locked, so the check above passes; this one catches the lock.
+{{ guard(folder.mount, 'it is locked, run unlock.sh; refusing to back up an empty folder') }}
 {% endfor %}
 {%- endmacro %}

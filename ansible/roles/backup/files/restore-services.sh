@@ -32,7 +32,7 @@ case "$TARGET" in
       docker start "$IMMICH_DB_CONTAINER" && sleep 3
     fi
     
-    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql -v ON_ERROR_STOP=1 --username="$IMMICH_DB_USER" postgres
+    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql -v ON_ERROR_STOP=1 --username="$IMMICH_DB_USER" immich
     echo "Immich DB restored"
     ;;
 
