@@ -8,6 +8,8 @@ Protects against: a drive that is lost, stolen, sold, discarded or sent back for
 
 Does not protect against: someone with the host while it is running and unlocked, file names, sizes and modification times (gocryptfs shows the folder structure), or a passphrase typed on a device that records it (see [Unlocking](#unlocking)).
 
+Quantum computers: the drives and the restic repositories use 256-bit symmetric encryption (gocryptfs, restic), which a quantum computer weakens but does not break. The weak point is the passphrase, so use a long random one. Public-key links (SSH, Tailscale) are the part that is exposed to record-now-decrypt-later; recent OpenSSH uses a hybrid post-quantum key exchange by default (verify the version on each host).
+
 ## Decisions
 
 - **gocryptfs, not LUKS.** It encrypts files on an ordinary ext4 drive, so there is no LUKS container to recover, and a Mac can open the drive (`brew install gocryptfs macfuse`). LUKS needs a Linux machine to recover and hides file names, which is not worth that here. The new drives from the [drive migration](../../plans/drive-migration.md) are formatted as ext4 either way; the encrypted folder is created on them.
