@@ -15,7 +15,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 |---|---|---|---|---|
 | Immich | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles; `vault_immich_db_password` | [Immich](#immich) |
 | Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_pass`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
-| Gitea | Git server | `roles/gitea` | `fast` drive role; `gitea_root_url`, `gitea_domain`, `gitea_ssh_domain`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
+| Gitea | Git server | `roles/gitea` | `fast` drive role; `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
 | pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` drive role; Copyparty with a `photos` service account; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
@@ -41,7 +41,7 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 
 Git hosting with an optional Actions runner.
 
-- Set `gitea_root_url`, `gitea_domain` and `gitea_ssh_domain` in `group_vars/all/vars.yml` or the host's `vars.yml`.
+- Set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. `gitea_domain` and `gitea_ssh_domain` default to its host name; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
 - The database is dumped before each backup by `roles/gitea/files/dump.sh`.
