@@ -7,8 +7,8 @@ services:
     image: dxflrs/garage:{{ garage_version }}
     container_name: garage
     restart: unless-stopped
-    # --single-node creates the one-node cluster layout on first start and leaves an existing layout alone.
-    command: ["/garage", "server", "--single-node"]
+    # Only injected on first deploy; see tasks/main.yml for why the flag must not be unconditional.
+    command: ["/garage", "server"{% if garage_is_first_deploy | default(True) %}, "--single-node"{% endif %}]
     volumes:
       - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
       - {{ garage_data_dir }}/meta:/var/lib/garage/meta

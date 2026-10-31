@@ -20,6 +20,19 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
+# --single-node auto-configures the cluster layout on first start, but Garage refuses it
+# when an existing layout has version > 1 (v2.4.1: "Refusing to run in single-node mode").
+# So the flag goes in only when the meta directory is still empty, i.e. a first deploy.
+- name: Check if the Garage meta directory has data (the cluster is already bootstrapped)
+  ansible.builtin.find:
+    path: "{{ garage_data_dir }}/meta"
+    file_type: any
+  register: garage_meta_contents
+
+- name: Set the first-deploy flag
+  ansible.builtin.set_fact:
+    garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"
+
 - name: Create Garage data directories
   ansible.builtin.file:
     path: "{{ item }}"
