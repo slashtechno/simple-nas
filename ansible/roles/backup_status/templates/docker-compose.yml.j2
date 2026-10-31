@@ -34,7 +34,7 @@ services:
       RESTIC_REPO_PATH: /data/restic-repo
       BACKUP_LOGS_DIR: /data/logs
       RESTIC_PASSWORD_FILE: /data/restic-password
-      HOST_CONFIG: {{ host_config | to_json | to_json }}
+      HOST_CONFIG: {{ host_config | to_json | replace('$', '$$') | to_json }}
 {% if backup_status_port != '' %}
     ports:
       - "{{ backup_status_port }}:8080"
