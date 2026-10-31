@@ -79,6 +79,16 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
+## Pick what you use
+
+Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. Docker, the base packages and the shared Docker network are always installed. Three example hosts:
+
+- **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
+- **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
+- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`. You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+
+To add your own service as a fork, follow [Add a new service](#add-a-new-service).
+
 ## Using this repo for your own hosts
 
 The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs), kept in git so the owner's setup is reproducible. Anyone else who copies the repo replaces them:
