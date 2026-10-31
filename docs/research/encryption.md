@@ -13,7 +13,7 @@ Quantum computers: the drives and the restic repositories use 256-bit symmetric 
 ## Decisions
 
 - **gocryptfs, not LUKS.** It encrypts files on an ordinary ext4 drive, so there is no LUKS container to recover, and a Mac can open the drive (`brew install gocryptfs macfuse`). LUKS needs a Linux machine to recover and hides file names, which is not worth that here. The new drives from the [drive migration](../../plans/drive-migration.md) are formatted as ext4 either way; the encrypted folder is created on them.
-- **Create it with `gocryptfs -init -xchacha`, default file names, and never mount with `-nonempty`.** The Pi 4's CPU has no AES instructions (check: `grep -o -w aes /proc/cpuinfo` prints nothing), and a 2021 benchmark on a Pi 4 measured about 21 MB/s for the default AES-GCM against about 118 MB/s for XChaCha20 (re-run `gocryptfs -speed` on the host). XChaCha needs gocryptfs 2.2 or later on every machine that opens the drive, the Mac included. Without `-nonempty`, a mount over a folder that something wrote into fails loudly instead of hiding those files.
+- **Create it with `gocryptfs -init`, default file names, and never mount with `-nonempty`.** The cipher is fixed at init, so choose it for the CPU that mounts the drive. `gocryptfs -speed` 2.5.1 on the hosts: the Pi 4 has no AES instructions and measured 44 MB/s for AES-GCM against 162 MB/s for XChaCha20 (so use `-init -xchacha`); the Pi 5 has them and measured about 1170 MB/s for AES-GCM against 507 MB/s for XChaCha20 (so use the default). A drive moved between hosts keeps its cipher. XChaCha needs gocryptfs 2.2 or later on every machine that opens the drive, the Mac included. Without `-nonempty`, a mount over a folder that something wrote into fails loudly instead of hiding those files (tested on the Pi 4: exit code 10, "directory not empty"). On a USB 2 stick the Pi 4 wrote 4.9 MB/s through gocryptfs against 7.7 MB/s raw, so the stick, not the cipher, was the limit; `gocryptfs -fsck` reported no problems.
 - **The master key and `gocryptfs.conf` are kept off the host.** `-init` prints the master key once: store it in the password manager and on paper. Copy `gocryptfs.conf` off the host too. Either one recreates a lost config (gocryptfs wiki: "Recreate gocryptfs.conf using masterkey"). A lost `gocryptfs.diriv` has no documented recovery, so the raw ciphertext folder is part of what you keep safe.
 - **Services and backups check that the plaintext is really mounted.** `mountpoint -q` plus a `.mounted` file inside the plaintext folder, in `unlock.sh` before Docker starts and in the backup scripts before restic runs. Otherwise restic saves a snapshot of an empty folder.
 - **restic backs up the plaintext through the mount.** The repository is encrypted by restic anyway, and a restore needs no gocryptfs.
@@ -60,7 +60,6 @@ Run on a scratch folder before real data goes in:
 
 ## Order of work
 
-1. Run `gocryptfs -speed` on the NAS host.
-2. Run the recovery drill above, then put one new drive's data folder under gocryptfs during the drive migration, mount it by hand, and settle the automount question.
-3. Write `unlock.sh` and stop Docker starting at boot.
-4. Describe the unlock step in [backups.md](../backups.md) and [storage.md](../storage.md).
+1. Run the recovery drill above, then put one new drive's data folder under gocryptfs during the drive migration, mount it by hand, and settle the automount question.
+2. Write `unlock.sh` and stop Docker starting at boot.
+3. Describe the unlock step in [backups.md](../backups.md) and [storage.md](../storage.md).
