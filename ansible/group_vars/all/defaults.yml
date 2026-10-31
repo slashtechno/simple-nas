@@ -178,12 +178,13 @@ cloudflare_api_url: https://api.cloudflare.com/client/v4
 cloudflared_ingress: []
 
 # --- Direct Ethernet link (roles/network; teardown.yml also reads it; docs/networking.md#direct-ethernet-link) ---
-# A cable straight from the Pi to a laptop: a static address on the Pi, no gateway, and a dnsmasq that hands the
-# laptop its address on that port only. The port must be idle, not the one the Pi is managed over.
+# A cable straight from this host to a laptop: a static address on the host, no gateway, and a dnsmasq that hands the
+# laptop its address on that port only. The port must be idle, not the one the host is managed over.
 direct_link_enabled: false
-# The Pi's network port for the cable.
+# The host's network port for the cable (`ip link` lists them). A Raspberry Pi's wired port is eth0; on an x86-64
+# machine it is named like enp3s0, so set it there.
 direct_link_iface: eth0
-# The Pi's address on the link.
+# The host's address on the link.
 direct_link_ip: 10.10.20.1
 # The address handed to the laptop.
 direct_link_peer_ip: 10.10.20.2

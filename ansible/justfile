@@ -41,6 +41,10 @@ vars:
 links:
     python3 tools/check_links.py
 
+# Check that every pinned image has arm64 and amd64 builds (needs docker and network; not part of `check`)
+platforms:
+    python3 tools/check_platforms.py
+
 # Everything CI runs. Run this before committing.
 check: lint syntax vars links test
 

@@ -2,7 +2,7 @@
 
 Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a home server running Docker services, with their data on the drives plugged into it.
 
-Tested on Raspberry Pi 4 and 5 (arm64). x86-64 machines (a mini PC, an old laptop) are untested but should work; check that each service's image has an x86-64 build.
+Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x86-64 (a mini PC, an old laptop; not yet run on real hardware). Every pinned image has both builds: `just platforms` in `ansible/` checks that after a version change.
 
 Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 

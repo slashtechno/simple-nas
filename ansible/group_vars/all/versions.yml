@@ -30,7 +30,7 @@ gitea_runner_image: docker.io/gitea/act_runner:0.6.1
 
 homebridge_image: homebridge/homebridge:2026-08-28
 
-# backup-status dashboard (built on the Pi)
+# backup-status dashboard (built on the host)
 restic_image: restic/restic:0.19.1
 backup_status_python_image: python:3.14.9-slim
 
