@@ -11,7 +11,7 @@ networks:
 
 services:
   crafty:
-    image: registry.gitlab.com/crafty-controller/crafty-4:{{ crafty_version }}
+    image: {{ crafty_image }}
     container_name: crafty
     restart: unless-stopped
     mem_limit: {{ crafty_memory_limit }}

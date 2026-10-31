@@ -5,8 +5,10 @@
 # A floating tag (latest, release, nightly) only moves when you deploy with
 # `-e docker_pull_policy=always`. Prefer a version.
 
-# Immich: release notes https://github.com/immich-app/immich/releases
+# Immich: the server and machine-learning images must use the same version. Release notes https://github.com/immich-app/immich/releases
 immich_version: v3.1.0
+immich_server_image: "ghcr.io/immich-app/immich-server:{{ immich_version }}"
+immich_machine_learning_image: "ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}"
 # Postgres and Valkey are pinned by digest: change only when Immich's notes say so.
 immich_postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
 immich_valkey_image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
@@ -15,12 +17,12 @@ immich_valkey_image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b
 copyparty_base_image: copyparty/iv:1.20.26
 
 # Garage: https://garagehq.deuxfleurs.fr/_releases.html
-garage_version: v2.4.1
+garage_image: dxflrs/garage:v2.4.1
 garage_caddy_image: "caddy:{{ caddy_version }}-alpine"
 garage_webui_image: khairul169/garage-webui:1.1.0
 
 # Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
-crafty_version: 4.11.0
+crafty_image: registry.gitlab.com/crafty-controller/crafty-4:4.11.0
 
 # Gitea and its runner: https://github.com/go-gitea/gitea/releases
 gitea_image: gitea/gitea:1.27.3

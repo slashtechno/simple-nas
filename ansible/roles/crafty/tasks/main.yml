@@ -1,6 +1,4 @@
 ---
-
-
 - name: Create Crafty data directories
   ansible.builtin.file:
     path: "{{ crafty_data_dir }}/{{ item }}"

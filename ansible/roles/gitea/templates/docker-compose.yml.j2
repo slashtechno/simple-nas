@@ -1,3 +1,4 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 networks:
   {{ docker_network }}:
     external: true
@@ -11,6 +12,7 @@ services:
       - {{ gitea_data_dir }}:/data
       - /etc/localtime:/etc/localtime:ro
     environment:
+      # Must be the uid and gid of ansible_user, who owns the data directories (tasks/main.yml).
       USER_UID: 1000
       USER_GID: 1000
       GITEA__server__ROOT_URL: {{ gitea_root_url }}

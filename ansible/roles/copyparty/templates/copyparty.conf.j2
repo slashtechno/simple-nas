@@ -5,8 +5,7 @@
   e2ts
   # WebDAV write support for every volume. Volumes do not inherit flags, but `daw` is also a global option.
   daw
-  # Thumbnails, databases and the transcode cache live in this one directory (`copyparty_hist_dir`) instead of a
-  # `.hist` folder inside each volume.
+  # Thumbnails, databases and the transcode cache live in `copyparty_hist_dir` instead of a `.hist` folder inside each volume.
   hist: /hist
   # Cap the thumbnailer's RAM at 1 GiB (upstream's default is 60% of system RAM).
   th-ram-max: 1
@@ -41,7 +40,7 @@
 {% if copyparty_sftp_enabled | bool %}
   {{ vault_pocketpi_sftp_user }}: {{ vault_pocketpi_sftp_pass }}
 {% endif %}
-{% for s in copyparty_service_accounts | default([]) %}
+{% for s in copyparty_service_accounts %}
   {{ s.user }}: {{ s.pass }}
 {% endfor %}
 
@@ -54,7 +53,7 @@
 {% endif %}
 
 {# One volume per service-account folder, a subfolder of /files. #}
-{% for s in copyparty_service_accounts | default([]) %}
+{% for s in copyparty_service_accounts %}
 {% for v in s.volumes %}
 [/{{ v.folder }}]
   /files/{{ v.folder }}

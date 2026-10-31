@@ -1,3 +1,4 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 # SigV4 S3 clients that sign Accept-Encoding (e.g. rclone) get "Invalid signature" through the Cloudflare Tunnel in front of this -- Cloudflare rewrites that header in transit; client-side fix is excluding it from the signature (rclone: sign_accept_encoding = false), see git.deuxfleurs.fr/Deuxfleurs/garage/issues/895.
 :{{ garage_s3_port }} {
 {% if garage_cors_allowed_origins == ['*'] %}

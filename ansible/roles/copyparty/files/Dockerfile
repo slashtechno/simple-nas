@@ -35,7 +35,4 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
     pillow-heif \
     pillow-avif-plugin
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["python3", "-m", "copyparty", "-c", "/cfg/copyparty.conf"]

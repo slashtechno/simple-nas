@@ -1,10 +1,11 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 networks:
   {{ docker_network }}:
     external: true
 
 services:
   garage:
-    image: dxflrs/garage:{{ garage_version }}
+    image: {{ garage_image }}
     container_name: garage
     restart: unless-stopped
     # Only injected on first deploy; see tasks/main.yml for why the flag must not be unconditional.

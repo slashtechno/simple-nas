@@ -4,8 +4,6 @@
 copyparty_sftp_enabled: false
 # Host port of the SFTP listener.
 copyparty_sftp_port: 3922
-
-
 # The Copyparty admin login, from the vault.
 copyparty_user: "{{ vault_copyparty_user }}"
 # The Copyparty admin password, from the vault.

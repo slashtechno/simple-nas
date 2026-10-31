@@ -6,7 +6,7 @@ set -euo pipefail
 
 DUMP_DIR="$1"
 CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
-# Postgres role inside the container (matches POSTGRES_USER in the immich compose file)
+# Postgres role inside the container; keep it the same as POSTGRES_USER in the immich compose file and restore-services.sh
 DB_USER="${IMMICH_DB_USER:-immich}"
 DUMP="$DUMP_DIR/immich-db-$(date +%Y%m%dT%H%M%S).sql.gz"
 
