@@ -109,9 +109,10 @@
       when: cloudflared_tunnel_id is not defined
 
     # Each hostname with its zone: the cloudflare_zones entry whose domain appears in the hostname (checked above).
-    - name: Start the hostname list (it stays empty when cloudflared_ingress is empty)
+    - name: Start the hostname and DNS action lists (they stay empty when cloudflared_ingress is empty)
       ansible.builtin.set_fact:
         cloudflared_hostnames: []
+        cloudflared_dns_actions: []
 
     - name: Pair each hostname with its zone
       ansible.builtin.set_fact:
@@ -230,7 +231,7 @@
                  else 'repoint' }}
           ansible.builtin.set_fact:
             cloudflared_dns_actions: >-
-              {{ cloudflared_dns_actions | default([])
+              {{ cloudflared_dns_actions
                  + [{'hostname': item.hostname, 'zone_id': item.zone_id, 'action': change, 'record_id': record.id | default('')}] }}
           loop: "{{ cloudflared_hostnames }}"
           loop_control:
