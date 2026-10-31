@@ -22,12 +22,20 @@ if ! docker exec --user git "$CONTAINER" test -r "$APP_INI"; then
 fi
 
 echo "Creating Gitea dump..."
-if docker exec --user git "$CONTAINER" gitea dump \
+if ! docker exec --user git "$CONTAINER" gitea dump \
      --config "$APP_INI" --tempdir /tmp --file "$TARGET" --skip-log; then
-  docker cp "$CONTAINER:$TARGET" "$DUMP_DIR/"
-  docker exec "$CONTAINER" rm -f "$TARGET"
-  echo "Gitea dump written to $DUMP_DIR/$(basename "$TARGET")"
-else
   echo "ERROR: gitea dump failed" >&2
   exit 1
 fi
+
+# Copy to a .tmp name and rename on success, so a half-copied dump never looks like a good one
+# (and never counts toward the "keep 3").
+OUT="$DUMP_DIR/$(basename "$TARGET")"
+if ! docker cp "$CONTAINER:$TARGET" "$OUT.tmp"; then
+  rm -f "$OUT.tmp"
+  echo "ERROR: could not copy the Gitea dump out of the container" >&2
+  exit 1
+fi
+docker exec "$CONTAINER" rm -f "$TARGET"
+mv "$OUT.tmp" "$OUT"
+echo "Gitea dump written to $OUT"

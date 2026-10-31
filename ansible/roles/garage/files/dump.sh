@@ -30,5 +30,12 @@ for f in node_key node_key.pub cluster_layout; do
   docker cp "$CONTAINER:$META/$f" "$WORK/$f"
 done
 
-tar -C "$WORK" -czf "$TARGET" .
+# Write to a .tmp name and rename on success, so a half-written dump never looks like a good one
+# (and never counts toward the "keep 3").
+if ! tar -C "$WORK" -czf "$TARGET.tmp" .; then
+  rm -f "$TARGET.tmp"
+  echo "ERROR: could not write the Garage metadata dump" >&2
+  exit 1
+fi
+mv "$TARGET.tmp" "$TARGET"
 echo "Garage metadata dump written to $TARGET"

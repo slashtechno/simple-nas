@@ -20,7 +20,7 @@ services:
       GITEA__database__DB_TYPE: sqlite3
       GITEA__database__PATH: /data/gitea/gitea.db
       GITEA__service__DISABLE_REGISTRATION: "true"
-{% if vault_gitea_runner_token %}
+{% if vault_gitea_runner_token | default("") %}
       GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
 {% endif %}
     ports:
@@ -31,7 +31,7 @@ services:
     networks:
       - {{ docker_network }}
 
-{% if vault_gitea_runner_token %}
+{% if vault_gitea_runner_token | default("") %}
   gitea-runner:
     image: {{ gitea_runner_image }}
     container_name: gitea-runner
