@@ -9,7 +9,7 @@
 **/.cache
 # Credentials: restic's own password and the Drive token must never be in a backup, even under a path you add.
 {{ restic_password_file }}
-/home/{{ ansible_user }}/.config/rclone
+{{ rclone_config_dir }}
 {% include 'restic-excludes-services.txt.j2' %}
 
 # Yours: the "- " lines of restic_cloud_rules, with the "- " removed ("- !" becomes "!")

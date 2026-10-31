@@ -2,6 +2,20 @@ networks:
   {{ docker_network }}:
     external: true
 
+{# Host-side values the page needs to build the SSH commands it shows. to_json twice makes a quoted YAML string. #}
+{% set host_config = {
+  "sshUser": ansible_user,
+  "backupDrive": backup_drive,
+  "cloudEnabled": backup_cloud_enabled | bool,
+  "resticRepoPath": restic_repo_path,
+  "resticPasswordFile": restic_password_file,
+  "resticCloudRepository": restic_cloud_repository,
+  "resticLocalRetention": restic_local_retention,
+  "resticCloudRetention": restic_cloud_retention,
+  "resticCloudRcloneArgs": restic_cloud_rclone_args,
+  "scriptsDir": scripts_dir,
+} %}
+
 services:
   backup-status:
     build:
@@ -17,18 +31,10 @@ services:
       - {{ backup_logs_dir }}:/data/logs:ro
       - {{ restic_password_file }}:/data/restic-password:ro
     environment:
-      SSH_USER: "{{ ansible_user }}"
       RESTIC_REPO_PATH: /data/restic-repo
       BACKUP_LOGS_DIR: /data/logs
       RESTIC_PASSWORD_FILE: /data/restic-password
-      HOST_BACKUP_DRIVE: "{{ backup_drive }}"
-      HOST_RESTIC_REPO_PATH: "{{ restic_repo_path }}"
-      HOST_RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
-      HOST_RESTIC_CLOUD_REPOSITORY: "{{ restic_cloud_repository }}"
-      HOST_RESTIC_LOCAL_RETENTION: "{{ restic_local_retention }}"
-      HOST_RESTIC_CLOUD_RETENTION: "{{ restic_cloud_retention }}"
-      HOST_RESTIC_CLOUD_RCLONE_ARGS: "{{ restic_cloud_rclone_args }}"
-      HOST_SCRIPTS_DIR: "{{ scripts_dir }}"
+      HOST_CONFIG: {{ host_config | to_json | to_json }}
 {% if backup_status_port != '' %}
     ports:
       - "{{ backup_status_port }}:8080"

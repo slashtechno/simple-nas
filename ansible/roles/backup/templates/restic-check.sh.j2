@@ -1,18 +1,14 @@
 #!/bin/bash
+{% import 'mount-guards.j2' as guards with context %}
 set -o pipefail
 
-# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
-# bare path also succeeds on the automount placeholder of a missing drive.
-if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — skipping integrity check." >&2
-  exit 1
-fi
+{{ guards.require_mounted(backup_drive, 'skipping integrity check') }}
 
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
 export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
-# A hung check must end as a failed run, not hold the repository lock (see backup-restic-cloud.sh.j2).
+# A hung check must end as a failed run, not hold the repository lock.
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
 # One log file per day; every run appends a "=== Integrity Check" header, and the dashboard
@@ -23,8 +19,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 {
   echo "=== Integrity Check: $(date) ==="
-  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
-  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  # A restic killed mid-run (reboot, power loss) leaves a lock behind. `unlock` removes only stale locks.
   restic unlock
   restic check
   check_rc=$?

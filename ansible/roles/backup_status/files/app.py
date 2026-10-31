@@ -28,17 +28,9 @@ RESTIC_REPO_PATH = os.environ["RESTIC_REPO_PATH"]
 RESTIC_PASSWORD_FILE = os.environ["RESTIC_PASSWORD_FILE"]
 BACKUP_LOGS_DIR = os.environ["BACKUP_LOGS_DIR"]
 
-# Host-side values from group_vars, used only to build the SSH commands shown
-# in the UI (they run on the Pi, not in this container).
-SSH_USER = os.environ["SSH_USER"]
-HOST_BACKUP_DRIVE = os.environ["HOST_BACKUP_DRIVE"]
-HOST_RESTIC_REPO_PATH = os.environ["HOST_RESTIC_REPO_PATH"]
-HOST_RESTIC_PASSWORD_FILE = os.environ["HOST_RESTIC_PASSWORD_FILE"]
-HOST_RESTIC_CLOUD_REPOSITORY = os.environ["HOST_RESTIC_CLOUD_REPOSITORY"]
-HOST_RESTIC_LOCAL_RETENTION = os.environ["HOST_RESTIC_LOCAL_RETENTION"]
-HOST_RESTIC_CLOUD_RETENTION = os.environ["HOST_RESTIC_CLOUD_RETENTION"]
-HOST_RESTIC_CLOUD_RCLONE_ARGS = os.environ["HOST_RESTIC_CLOUD_RCLONE_ARGS"]
-HOST_SCRIPTS_DIR = os.environ["HOST_SCRIPTS_DIR"]
+# Host-side values from the compose file (HOST_CONFIG, JSON): used to build the SSH commands shown in
+# the UI, which run on the host, not in this container.
+HOST_CONFIG = json.loads(os.environ["HOST_CONFIG"])
 
 PORT = int(os.environ.get("PORT", "8080"))
 CACHE_TTL_SECONDS = 30
@@ -92,6 +84,11 @@ def run_restic_lines(args):
 def read_text(path):
     with open(path, "r", errors="replace") as f:
         return f.read()
+
+
+def repo_mounted():
+    """The repository's config file exists only while the backup drive is mounted."""
+    return os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
 
 
 def human_bytes(n):
@@ -161,7 +158,7 @@ def build_local_daily_status(stale_after):
     and integrity jobs can only be judged from logs: this container has no
     cloud credentials and `restic check` leaves nothing to query.
     """
-    if not os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config")):
+    if not repo_mounted():
         return {"ok": False, "stale": True, "last_run_human": None, "detail_human": "backup drive not mounted"}
     snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
     daily_times = [
@@ -208,15 +205,17 @@ def parse_integrity_log(stale_after):
 def build_status():
     jobs = {
         "local_daily": build_local_daily_status(LOCAL_STALE_AFTER_SECONDS),
-        "cloud_weekly": parse_dated_job_log(
-            os.path.join(BACKUP_LOGS_DIR, "restic-cloud-*.log"),
-            WEEKLY_STALE_AFTER_SECONDS,
-        ),
         "integrity_check": parse_integrity_log(WEEKLY_STALE_AFTER_SECONDS),
     }
+    # A host without a cloud backup has no cloud log to show.
+    if HOST_CONFIG["cloudEnabled"]:
+        jobs["cloud_weekly"] = parse_dated_job_log(
+            os.path.join(BACKUP_LOGS_DIR, "restic-cloud-*.log"),
+            WEEKLY_STALE_AFTER_SECONDS,
+        )
 
-    mounted = os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
-    drive = {"mounted": mounted, "label": HOST_BACKUP_DRIVE}
+    mounted = repo_mounted()
+    drive = {"mounted": mounted, "label": HOST_CONFIG["backupDrive"]}
     if mounted:
         usage = shutil.disk_usage(RESTIC_REPO_PATH)
         drive["free_human"] = f"{human_bytes(usage.free)} free"
@@ -266,7 +265,7 @@ def _snapshot_row(snap, repo):
 def build_snapshots():
     # No per-snapshot `restic stats`: it walks the whole tree and took 30s+
     # per snapshot on the HDD.
-    mounted = os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
+    mounted = repo_mounted()
     local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"])) if mounted else []
     cloud_snapshots = read_cloud_snapshots_cache()
 
@@ -308,16 +307,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _index(self):
         with open(os.path.join(BASE_DIR, "index.html"), "r") as f:
             html = f.read()
-        html = (
-            html.replace("__SSH_USER__", SSH_USER)
-            .replace("__HOST_RESTIC_REPO_PATH__", HOST_RESTIC_REPO_PATH)
-            .replace("__HOST_RESTIC_PASSWORD_FILE__", HOST_RESTIC_PASSWORD_FILE)
-            .replace("__HOST_RESTIC_CLOUD_REPOSITORY__", HOST_RESTIC_CLOUD_REPOSITORY)
-            .replace("__HOST_RESTIC_LOCAL_RETENTION__", HOST_RESTIC_LOCAL_RETENTION)
-            .replace("__HOST_RESTIC_CLOUD_RETENTION__", HOST_RESTIC_CLOUD_RETENTION)
-            .replace("__HOST_RESTIC_CLOUD_RCLONE_ARGS__", HOST_RESTIC_CLOUD_RCLONE_ARGS)
-            .replace("__HOST_SCRIPTS_DIR__", HOST_SCRIPTS_DIR)
-        )
+        # "<" is escaped so no value can end the script tag early.
+        config_json = json.dumps(HOST_CONFIG).replace("<", "\\u003c")
+        html = html.replace("__HOST_CONFIG__", config_json)
         self._send(html.encode(), "text/html; charset=utf-8")
 
     def do_GET(self):

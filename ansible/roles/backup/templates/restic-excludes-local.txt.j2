@@ -12,7 +12,7 @@
 # Credentials: restic's own password and the Drive token must never be in a backup. They sit in the user's
 # home, which is backed up on a host with no fast or primary drive.
 {{ restic_password_file }}
-/home/{{ ansible_user }}/.config/rclone
+{{ rclone_config_dir }}
 # lost+found is root-only, so restic exits 3 on it; every drive formatted by mkfs.ext4 has one.
 {% for mount in data_drive_mounts %}
 {{ mount }}/lost+found

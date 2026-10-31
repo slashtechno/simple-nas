@@ -37,7 +37,9 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 - Logs: `backup_logs_dir`, one file per job per day, plus `backup-cron.log`.
 - With a local backup both live on the backup drive (`<backup drive>/service-dumps`, `<backup drive>/logs`). Without one they live in `/var/lib/backup-work`.
 - Every restic call has a timeout (`restic_command_timeout`), so a stalled network pipe fails the run instead of holding the repository lock.
+- The first backup into a new, empty repository can take longer than `restic_command_timeout` (default 2 hours) when there is a lot of data. The run is killed and alerts. Raise the timeout for that run: set `restic_command_timeout: "12h"` in `host_vars/<host>/vars.yml`, `just deploy backup`, run the job by hand ([Checking backup status](#checking-backup-status)), then remove the line and deploy again.
 - Snapshot retention is `restic_local_retention` and `restic_cloud_retention`.
+- The local backup refuses to start when the backup drive is 95% full or more: `restic forget --prune` needs free room to rewrite packs, so a full drive cannot clean itself up. The failure reaches the alert, and the log says how full the drive is.
 
 Paths below use `/mnt/backup` for the backup drive and `/mnt/t7` for the fast and primary drive. Use the mounts from your `drives`.
 
@@ -52,6 +54,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 | Compose files, scripts and the credentials written into them (`services_dir`) | No | Yes |
 | Immich database | Dump only (the raw Postgres directory is excluded) | Dump only |
 | Gitea database and repositories | Dump, plus the raw data (SSH host keys excluded) | Dump only |
+| Garage metadata | Dump only (`<garage_data_dir>/meta` is excluded); the data blocks are plain files | Dump only |
 | Restic password | No | No |
 
 - The restic password is not in any backup. Its only copy is `vault_restic_password` in `group_vars/all/vault.yml`, and the vault password is in Bitwarden ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
@@ -275,8 +278,6 @@ docker compose start garage
 This restore has not been rehearsed on a real host. Try it once into a scratch Garage before relying on it, and keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
 
 ---
-
-The local backup refuses to start when the backup drive is 95% full or more: `restic forget --prune` needs free room to rewrite packs, so a full drive cannot clean itself up. The failure reaches the alert, and the log says how full the drive is.
 
 ## If the backup drive disconnects
 

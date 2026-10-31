@@ -76,7 +76,7 @@
       connects as <code id="sshUser">&hellip;</code>
       @ <code id="sshHost">&hellip;</code>
     </p>
-    <small>Both come from this deployment's config — nothing here is guessed or hardcoded.</small>
+    <small>The user comes from this deployment's config; the host is the address you opened this page at.</small>
   </article>
 
   <section class="status-grid" aria-label="Job status" id="statusGrid">
@@ -147,17 +147,8 @@
 
 <script>
   // Filled in by the server from its own deployment config (Ansible vars) —
-  // never guessed or hardcoded client-side. See app.py's index() handler.
-  const NAS_CONFIG = {
-    sshUser: "__SSH_USER__",
-    resticRepoPath: "__HOST_RESTIC_REPO_PATH__",
-    resticPasswordFile: "__HOST_RESTIC_PASSWORD_FILE__",
-    resticCloudRepository: "__HOST_RESTIC_CLOUD_REPOSITORY__",
-    resticLocalRetention: "__HOST_RESTIC_LOCAL_RETENTION__",
-    resticCloudRetention: "__HOST_RESTIC_CLOUD_RETENTION__",
-    resticCloudRcloneArgs: "__HOST_RESTIC_CLOUD_RCLONE_ARGS__",
-    scriptsDir: "__HOST_SCRIPTS_DIR__",
-  };
+  // never guessed or hardcoded client-side. See app.py's _index().
+  const NAS_CONFIG = __HOST_CONFIG__;
 
   const sshHostEl = document.getElementById('sshHost');
   const overlay = document.getElementById('overlay');
@@ -296,7 +287,7 @@
       ['cloud_weekly', 'Cloud · weekly'],
       ['integrity_check', 'Integrity check'],
     ];
-    const cards = jobs.map(([key, label]) => {
+    const cards = jobs.filter(([key]) => key in data.jobs).map(([key, label]) => {
       const j = data.jobs[key] || {};
       const pill = !j.last_run_human ? 'no data' : (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed'));
       return `<article>

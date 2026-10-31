@@ -1,7 +1,7 @@
 # Paths backed up to the cloud (Google Drive) by backup-restic-cloud.sh, one per line,
 # each as its own restic snapshot group. Lines starting with # are ignored.
 # Rendered from the paths in restic_cloud_rules (group_vars); its "- " lines are in restic-excludes-cloud.txt.
-# Gitea and Immich's databases reach the cloud through their dumps
+# Live databases reach the cloud through their dumps
 # (dump.d scripts run by backup-services.sh), because a raw copy of a live database can be inconsistent.
 {% for path in restic_cloud_rules | reject('match', '^- ') %}
 {{ path }}
