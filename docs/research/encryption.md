@@ -13,7 +13,8 @@ Does not protect against: someone with the host while it is running and unlocked
 - **gocryptfs, not LUKS.** It encrypts files on an ordinary ext4 drive, so there is no LUKS container to recover, and a Mac can open the drive (`brew install gocryptfs macfuse`). LUKS needs a Linux machine to recover and hides file names, which is not worth that here. The new drives from the [drive migration](../../plans/drive-migration.md) are formatted as ext4 either way; the encrypted folder is created on them.
 - **The restic repository on the `backup` drive stays unencrypted by gocryptfs.** restic already encrypts it with its own password, and a second layer ties two recovery paths to one key. `service-dumps/` and the logs on that drive sit in a gocryptfs folder next to it.
 - **No automatic unlock.** No keyfile on the root drive, no Tang, no stored passphrase. A host that unlocks itself hands the thief what they need.
-- **One rule for Docker: it does not start at boot.** The unlock script mounts the drives, then starts Docker. Every container waits for the unlock, including ones with no encrypted volumes, and `docker_data_root` may point at an encrypted drive. The alternative is deciding stack by stack which ones need the drives, and each exception is a way for Postgres to run `initdb` on an empty folder.
+- **Mount layout.** The ciphertext folder sits on the ext4 drive, and the plaintext is mounted over the path services use (for example `/mnt/t7/docker`). Docker's own storage (`docker_data_root`) stays on plain ext4: overlay2 does not run on a FUSE filesystem (verify on the host).
+- **One rule for Docker: it does not start at boot.** The unlock script mounts the plaintext folders, then starts Docker. Every container waits for the unlock, including ones with no encrypted volumes. The alternative is deciding stack by stack which ones need the plaintext, and each exception is a way for Postgres to run `initdb` on an empty folder.
 - **Whatever is needed to unlock must not need unlocking.** That is `sshd` and Tailscale, both on the host, not in Docker.
 
 ## Unlocking
@@ -30,8 +31,10 @@ A device you do not own may record what you type. After using one, change the pa
 
 ## Open questions
 
-- How to reach the host from a device that is not on your tailnet. Tailscale can be logged in on a borrowed device for the session, or SSH can be exposed another way; pick one when this is built.
+- The backup scripts check `mountpoint -q <data drive>/.` ([storage.md](../storage.md#how-a-drive-is-mounted)). With gocryptfs the ext4 drive is mounted even while the plaintext is locked, so the check passes and restic would save an empty folder. The check must look at the plaintext mounts.
+- Nothing tells you the host is locked after a reboot; ntfy runs in Docker, so it is down too. A small systemd unit at boot could send a "locked" message to an external service.
 - Whether the automount options in [storage.md](../storage.md#how-a-drive-is-mounted) work when the folder behind the mount is a gocryptfs mount.
+- How to reach the host from a device that is not on your tailnet. Tailscale can be logged in on a borrowed device for the session, or SSH can be exposed another way; pick one when this is built.
 - Speed. The Pi 4 may lack ARM crypto extensions, so AES may not keep up with the direct link's 117 MB/s ([networking.md](../networking.md#direct-ethernet-link)). Compare `gocryptfs -init -xchacha` with the default on the host first.
 
 ## Order of work

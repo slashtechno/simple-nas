@@ -3,5 +3,5 @@
 crafty_mc_ports: "25565-25575"
 # Also publish 19132/udp for Bedrock servers.
 crafty_bedrock_enabled: false
-# Memory limit for the whole container, all servers combined; leave room for Immich on a 4 GB Pi.
+# Memory limit for the whole container, all servers combined; leave room for the other services.
 crafty_memory_limit: 3g
