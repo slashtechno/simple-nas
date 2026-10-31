@@ -1,0 +1,24 @@
+---
+# The services this repo runs on the host that get an https name (web_services, group_vars/all/web_services.yml):
+# one entry each, with the names it is served under, one per caddy_private_domains entry. The compose template loops over this list.
+- name: Start the list of services with a name (it stays empty when none has one)
+  ansible.builtin.set_fact:
+    caddy_web_sites: []
+
+- name: Add each service that is switched on and has a subdomain
+  ansible.builtin.set_fact:
+    caddy_web_sites: "{{ caddy_web_sites + [site] }}"
+  vars:
+    subdomain: "{{ lookup('vars', item.key ~ '_subdomain') }}"
+    site:
+      hosts: "{{ caddy_private_domains | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}"
+      container: "{{ item.container }}"
+      container_port: "{{ item.container_port }}"
+      scheme: "{{ item.scheme | default('http') }}"
+  loop: "{{ web_services }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - item.port is not defined   # a service with a fixed host port has no name (Homebridge)
+    - lookup('vars', item.key ~ '_enabled') | bool
+    - lookup('vars', item.key ~ '_subdomain') != ''

@@ -17,6 +17,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ dockge_data_dir }}:/app/data
+      # Dockge needs the same stacks path inside and outside its container.
       - {{ dockge_stacks_dir }}:{{ dockge_stacks_dir }}
     environment:
       DOCKGE_STACKS_DIR: {{ dockge_stacks_dir }}

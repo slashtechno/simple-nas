@@ -1,5 +1,5 @@
 ---
-# Extra sites Caddy serves, as address: {Caddy directive: arguments} (examples: docs/networking.md#names-for-apps-caddy_private_domains).
+# Extra sites Caddy serves, as address: {Caddy directive: arguments} (examples: docs/caddy-reference.md#names-for-apps-caddy_private_domains).
 # A directive with no arguments takes "". A name under a caddy_private_domains entry gets a Let's Encrypt certificate.
 # An app you run yourself (Dockge stacks) takes a name with labels instead (docs/caddy-reference.md).
 caddy_sites: {}

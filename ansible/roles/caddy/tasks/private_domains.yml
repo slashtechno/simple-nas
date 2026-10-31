@@ -6,12 +6,29 @@
 #
 # Every API call runs on your computer (delegate_to: localhost), so the token never reaches a server.
 # Tasks marked `check_mode: false` only read, so they run with --check; the plan is shown either way.
-- name: Check each private domain contains one domain from cloudflare_zones
+- name: Start the name list (it stays empty when caddy_private_domains is empty)
+  ansible.builtin.set_fact:
+    caddy_names: []
+
+# A name belongs to the cloudflare_zones domain it equals or ends with after a dot (not any domain
+# that merely appears inside it: example.com must not match ample.com). `tails` lists the name and every
+# part after a dot: *.x.example.com, x.example.com, example.com, com.
+- name: Pair each name with its zone (the domains and their wildcards)
+  ansible.builtin.set_fact:
+    caddy_names: "{{ caddy_names + [{'name': item, 'zone_ids': zone_ids}] }}"
+  vars:
+    tails: "{{ item | regex_findall('(?=(?:^|[.])(.+))') }}"
+    zone_ids: "{{ cloudflare_zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
+  loop: "{{ caddy_private_domains + (caddy_private_domains | map('regex_replace', '^', '*.') | list) }}"
+
+- name: Check that each private domain matches exactly one domain in cloudflare_zones
   ansible.builtin.assert:
-    that: cloudflare_zones | dict2items | selectattr('key', 'in', item) | list | length == 1
-    fail_msg: "{{ item }} must contain exactly one domain from cloudflare_zones (group_vars/all/vars.yml)."
+    that: item.zone_ids | length == 1
+    fail_msg: "{{ item.name }} must equal, or be a subdomain of, exactly one domain in cloudflare_zones (group_vars/all/vars.yml)."
     quiet: true
-  loop: "{{ caddy_private_domains }}"
+  loop: "{{ caddy_names }}"
+  loop_control:
+    label: "{{ item.name }}"
 
 - name: Read this host's Tailscale address
   ansible.builtin.command: tailscale ip -4
@@ -43,6 +60,7 @@
       loop: "{{ cloudflare_zones.values() | unique | list }}"
       register: caddy_zone_lists
 
+    # roles/cloudflared/tasks/dns.yml reads the records the same way; change the paging in both.
     # The plan trusts these lists to be complete, so a second page stops the deploy.
     - name: Stop if a zone has more than one page of records
       ansible.builtin.assert:
@@ -59,16 +77,17 @@
           ansible.builtin.set_fact:
             caddy_wanted: "{{ caddy_wanted | default([]) + [wanted] }}"
           vars:
-            zone_id: "{{ (cloudflare_zones | dict2items | selectattr('key', 'in', item) | first).value }}"
-            record: "{{ records | selectattr('name', 'equalto', item) | first | default({}) }}"
+            record: "{{ records | selectattr('name', 'equalto', item.name) | first | default({}) }}"
             change: >-
               {{ 'create' if record | length == 0
                  else 'keep' if record.content == ip and not record.proxied
                  else 'update' }}
-            wanted: {name: "{{ item }}", zone_id: "{{ zone_id }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
+            wanted: {name: "{{ item.name }}", zone_id: "{{ item.zone_ids | first }}", change: "{{ change }}", record_id: "{{ record.id | default('') }}",
                      comment: "{{ record.comment | default('', true) }}", type: "{{ record.type | default('') }}",
-                     count: "{{ records | selectattr('name', 'equalto', item) | list | length }}"}
-          loop: "{{ caddy_private_domains + (caddy_private_domains | map('regex_replace', '^', '*.') | list) }}"
+                     count: "{{ records | selectattr('name', 'equalto', item.name) | list | length }}"}
+          loop: "{{ caddy_names }}"
+          loop_control:
+            label: "{{ item.name }}"
 
         - name: Stop if a name has a record this role did not create
           ansible.builtin.assert:

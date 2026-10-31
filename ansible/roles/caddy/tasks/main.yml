@@ -23,6 +23,9 @@
     group: "{{ ansible_user }}"
     mode: "0644"
 
+- name: Work out which services get a name
+  ansible.builtin.import_tasks: web_sites.yml
+
 # Holds the Cloudflare token when caddy_private_domains is set, so the file stays out of --diff.
 - name: Render Caddy docker-compose.yml
   ansible.builtin.template:

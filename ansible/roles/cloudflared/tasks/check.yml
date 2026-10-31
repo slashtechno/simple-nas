@@ -1,0 +1,50 @@
+---
+# The settings are checked here, before any Cloudflare call.
+- name: Check cloudflared_ingress before calling Cloudflare
+  ansible.builtin.assert:
+    that: item.keys() | sort | list == ['hostname', 'service']
+    fail_msg: "{{ item }} must have only hostname and service (no path). See the comments in group_vars/all/vars.yml."
+    quiet: true
+  loop: "{{ cloudflared_ingress }}"
+  loop_control:
+    label: "{{ item.hostname | default(item) }}"
+
+# Two hosts serving one hostname would fight over its DNS record, so each hostname belongs to one host.
+# Only hosts with cloudflared_enabled count: a host that does not run a tunnel does not touch DNS.
+- name: Check that no other host serves the same hostname
+  vars:
+    other_tunnel_hosts: "{{ groups['servers'] | difference([inventory_hostname]) | map('extract', hostvars) | selectattr('cloudflared_enabled') | list }}"
+    their_hostnames: "{{ other_tunnel_hosts | map(attribute='cloudflared_ingress') | flatten | map(attribute='hostname') | list }}"
+    my_hostnames: "{{ cloudflared_ingress | map(attribute='hostname') | list }}"
+  ansible.builtin.assert:
+    that: my_hostnames | intersect(their_hostnames) | length == 0
+    fail_msg: A hostname in cloudflared_ingress is also in another host's cloudflared_ingress. Each hostname belongs to one host.
+    quiet: true
+
+- name: Start the hostname list (it stays empty when cloudflared_ingress is empty)
+  ansible.builtin.set_fact:
+    cloudflared_hostnames: []
+
+# A hostname belongs to the cloudflare_zones domain it equals or ends with after a dot (not any domain
+# that merely appears inside it: example.com must not match ample.com). `tails` lists the hostname and every
+# part after a dot: x.example.com, example.com, com.
+- name: Pair each hostname with its zone
+  ansible.builtin.set_fact:
+    cloudflared_hostnames: "{{ cloudflared_hostnames + [{'hostname': item.hostname, 'zone_ids': zone_ids}] }}"
+  vars:
+    tails: "{{ item.hostname | regex_findall('(?=(?:^|[.])(.+))') }}"
+    zone_ids: "{{ cloudflare_zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
+  loop: "{{ cloudflared_ingress }}"
+  loop_control:
+    label: "{{ item.hostname }}"
+
+- name: Check that each hostname matches exactly one domain in cloudflare_zones
+  ansible.builtin.assert:
+    that: item.zone_ids | length == 1
+    fail_msg: >-
+      {{ item.hostname }} must equal, or be a subdomain of, exactly one domain in cloudflare_zones.
+      See the comments in group_vars/all/vars.yml.
+    quiet: true
+  loop: "{{ cloudflared_hostnames }}"
+  loop_control:
+    label: "{{ item.hostname }}"

@@ -1,6 +1,6 @@
-# caddy-docker-proxy reference
+# Caddy
 
-Label syntax for the optional reverse proxy. Source: the [project README](https://github.com/lucaslorentz/caddy-docker-proxy). Deployed by `roles/caddy` on a host that sets `caddy_enabled: true`.
+The optional reverse proxy: what `roles/caddy` deploys, the names and ports it serves, and the label syntax of caddy-docker-proxy ([project README](https://github.com/lucaslorentz/caddy-docker-proxy)).
 
 ## What it does
 
@@ -14,9 +14,81 @@ Caddy listens on ports 80 and 443 of the host; `caddy_data_dir` is in `ansible/g
 
 The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
+## Web addresses and HTTPS
+
+Every service with a web UI listens on a host port (unless you set it to `""`, below) and is reachable from any device on your tailnet at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+
+For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name; one choice is yours: which service is the root of the server. Point a name at it with `caddy_sites`: Homepage for a launcher, Copyparty for a file server, Dockge for an app host.
+
+### Names for apps: `caddy_private_domains`
+
+For `https://<app>.<host>.<your domain>` with a Let's Encrypt certificate, tailnet only, with no port forwarding:
+
+```yaml
+caddy_enabled: true
+caddy_private_domains: [pi4.example.com]
+```
+
+- **Cloudflare:** the domain must equal, or be a subdomain of, one domain in `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
+- **DNS:** a deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
+  - Every record carries the comment `managed by simple-nas, caddy <host>`.
+  - A name that already has a record without it stops the deploy. Records with it for a domain not in the list are deleted.
+  - `--check` prints the plan. To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
+- **Certificates:** Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
+- **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
+- **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
+- **Secrets:** Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
+
+#### Service names
+
+On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
+
+- The subdomains and container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
+- Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
+- With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first.
+- Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
+
+#### Ports and names
+
+Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml).
+
+```yaml
+gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
+gitea_subdomain: code        # https://code.pi4.example.com
+ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
+dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
+```
+
+- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name; a service reached only through the Cloudflare Tunnel keeps its port.
+- Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
+- A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
+- The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.
+
+#### Names of your own
+
+- **A container of this repo**, such as the root of the server as the start page, takes `caddy_sites`: a map of address to Caddy directives (`reverse_proxy` takes `container:port` on the `services` network).
+
+  ```yaml
+  caddy_sites:
+    home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+    gh.pi4.example.com: {redir: "https://github.com{uri}"}   # gh.pi4.example.com/owner/repo opens github.com/owner/repo
+  homepage_host: home.pi4.example.com   # Homepage refuses any other address
+  ```
+
+  - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
+  - Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
+- **An app of your own** takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` (see [Label syntax](#label-syntax)).
+
+### Short name
+
+A host with `caddy_private_domains` redirects `http://<host>` (302) to the first private domain: `http://pi4` to `https://pi4.example.com`.
+
+- `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
+- Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
+
 ## Label syntax
 
-Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the short-name redirect) ([networking.md](./networking.md#names-for-apps-caddy_private_domains), [short name](./networking.md#short-name)).
+Labels go on the app's container, which must join the same `services` network. For the services of this repo, the Caddy container carries the labels instead (one site per service from `web_services`, one per `caddy_sites` entry, and the short-name redirect) ([names for apps](#names-for-apps-caddy_private_domains), [short name](#short-name)).
 
 ```yaml
 services:
@@ -38,7 +110,7 @@ services:
 | `caddy_0`, `caddy_1` (with matching `caddy_0.reverse_proxy`, ...) | Separate site blocks in one container |
 | `caddy_ingress_network: name` | Use this network for `{{upstreams}}` on this container |
 
-Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate (`scheme: https` in `web_services.yml`). The README has no basic-auth example; check the generated Caddyfile before relying on it.
+Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate (`scheme: https` in `web_services.yml`).
 
 ## Gotchas for this repo
 
@@ -48,7 +120,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 - **TLS.**
   - Let's Encrypt HTTP-01 needs the internet to reach ports 80/443 on the machine. On a LAN or tailnet that is not the case, so use `tls internal` and trust Caddy's root CA on each device.
   - Behind cloudflared, Cloudflare terminates TLS. Use `http://app.example.com` as the site address so Caddy does not attempt ACME.
-  - Names under a `caddy_private_domains` entry get their certificate through the Cloudflare DNS challenge, which needs no open ports ([networking.md](./networking.md#web-addresses-and-https)). For a name outside those domains Caddy tries the same challenge; use `tls internal` unless the Cloudflare token covers its zone.
+  - Names under a `caddy_private_domains` entry get their certificate through the Cloudflare DNS challenge, which needs no open ports ([Web addresses and HTTPS](#web-addresses-and-https)). For a name outside those domains Caddy tries the same challenge; use `tls internal` unless the Cloudflare token covers its zone.
 - **`caddy_sites` values.** Each directive becomes a label `caddy_N.<directive>`, so a value is one string and a dot in the key nests (`header.X-Frame-Options`); `{uri}` takes single braces, and a `$` is written `$$` (Compose reads it first).
 - **Checking a site.** Read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
 - **Docker socket.** The proxy has full control of Docker through it. Anything that can set labels on a container can publish a route.
