@@ -10,25 +10,25 @@ Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles 
 |---|---|---|---|
 | `fast` | Samsung T7 500GB SSD | `/mnt/t7` | Docker data, Immich database, configs, restic cache, Copyparty `hist` |
 | `primary` | WD_BLACK P10 2TB | `/mnt/main` | photos, files, collab |
-| `backup` | Seagate ST4000NM0033 4TB | `/mnt/backup` | restic repo, service dumps, logs |
+| `backup` | Seagate IronWolf 6TB (used) | `/mnt/backup` | restic repo, service dumps, logs |
 
 Starting layout: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has `[backup]`.
 
 ## 0. Vet the new drives
 
-Run on each new drive, especially the used ST4000NM0033:
+Run on each new drive, especially the used IronWolf; read its SMART yourself, not the seller's:
 
 ```bash
 smartctl -a /dev/sdX        # power-on hours, reallocated and pending sectors
 smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 ```
 
-- [ ] ST4000NM0033 (3.5") needs a powered USB-SATA dock (12V).
+- [ ] IronWolf (3.5") needs a powered USB-SATA dock (12V).
 - [ ] P10 (2.5") is bus-powered. On pinas the T7 and P10 share a 1.6A USB budget (the 500GB HDD has its own brick); check their combined draw or use a powered hub.
 
 ## 1. Backup drive swap (low risk, first)
 
-- [ ] Format the ST4000NM0033 as ext4 on the host and note its UUID.
+- [ ] Format the IronWolf as ext4 on the host and note its UUID.
 - [ ] Stop the old backup drive's units (`sudo systemctl stop mnt-backup.automount mnt-backup.mount`, see docs/storage.md "Detach a drive") and plug in the new one.
 - [ ] Set the `uuid:` of the `backup` entry in `drives` to the new drive (mount stays `/mnt/backup`).
 - [ ] `just deploy storage,backup --limit <host>`. The storage role updates the fstab line for `/mnt/backup` and mounts the new drive; the backup role runs `restic init` on it.
