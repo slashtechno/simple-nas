@@ -85,6 +85,44 @@ After a reboot nothing runs until someone unlocks. The 02:00 and Sunday 04:00 ba
 
 Unlocking works from any device that can SSH to the host. A borrowed device may record what you type. After using one, change the passphrase with `sudo gocryptfs -passwd <cipher_dir>`, which does not re-encrypt the data. This only helps if nobody has copied `gocryptfs.conf` from the drive: someone with that file and the old passphrase can still open the data. Full protection means creating a new gocryptfs folder and copying the files in.
 
+## Services and encrypted folders
+
+- **Services from this repo** need nothing extra. Docker is off until `unlock.sh` has mounted every folder, so a container never starts on a locked folder; its `restart: unless-stopped` brings it up when Docker starts. A deploy checks that every folder is unlocked first and stops with a message if one is not, even when you deploy a single service with `--tags`.
+- **Locking again** (a lost drive about to be unplugged, or a borrowed device): `sudo systemctl stop docker docker.socket`, then `sudo umount <mount>` for each folder. Unmounting fails while a container still holds the folder open.
+- **Moving a service into an encrypted folder:** set its `*_data_dir` (or `immich_upload_location` and similar) to a path under `mount`; [Migrate](#migrate-to-or-from-encryption) has the full steps. A service whose data directory is outside every `mount` stays unencrypted; nothing checks this, because you may want some data plain.
+
+### Services you run yourself
+
+Services that this repo does not manage can still use its unlock, backup and mount checks.
+
+- **In Docker** (your own compose files, or stacks made in Dockge): put their data under a `mount` path and give them `restart: unless-stopped`. They start when Docker starts after the unlock.
+- **Outside Docker** (a systemd unit on the host): list the unit in `unlock_start_units` and leave it disabled at boot (`sudo systemctl disable <unit>`), or it starts on an empty folder. `unlock.sh` starts it after Docker.
+- **Backups:** add their paths to `restic_local_rules` ([backups.md](./backups.md#choosing-what-is-backed-up)). The locked-folder check covers every entry in `encrypted_folders`, whatever the path. This repo's coverage check only knows its own services. A live database needs a dump script, installed by hand as `<name>.sh` in `service_dump_scripts_dir` ([backups.md](./backups.md)), because no role of yours installs it.
+- **Only some features:** leave every service flag off and set just `encryption_enabled`, `encrypted_folders` and `backup_local_enabled`.
+
+## Migrate to or from encryption
+
+Both directions copy the data, check the copy, then switch the path. Plan for the downtime; do one service or folder at a time.
+
+### Plain to encrypted
+
+1. [Create the folder](#create-a-folder) on the same drive and mount it. Add `encryption_enabled` and `encrypted_folders` to `vars.yml`.
+2. Stop the service: `docker compose -f /opt/services/<name>/docker-compose.yml down`.
+3. Copy: `sudo rsync -aHAX /mnt/primary/immich/ /mnt/primary/data/immich/`. Compare with `sudo rsync -aHAXn --checksum --itemize-changes /mnt/primary/immich/ /mnt/primary/data/immich/`: it should print nothing.
+4. Point the service's data setting at the new path in `vars.yml` and run `just deploy <name> --limit <host>`. Start with a deploy of `common` and `encryption` once, so Docker stops starting at boot.
+5. Check the service works. Take a backup (`sudo /opt/services/scripts/backup-restic-local.sh`) so the new paths are in a snapshot.
+6. Delete the old plain folder. Deleting does not erase it from the drive: a drive that held plain data still holds it. If the drive may leave your hands, `blkdiscard` it (SSD) or overwrite it, and re-format before use.
+
+Old restic snapshots keep the old paths; they are restic-encrypted and age out under the retention rules.
+
+### Encrypted to plain
+
+1. Unlock. Stop the service as above.
+2. Copy out: `sudo rsync -aHAX /mnt/primary/data/immich/ /mnt/primary/immich/` and compare as above.
+3. Point the data setting back at the plain path. When no folder is left, remove `encrypted_folders` and set `encryption_enabled: false`.
+4. `just deploy common,<name> --limit <host>`. Docker starts at boot again; run `sudo systemctl enable docker.socket` once, which the encryption role had disabled.
+5. Check, back up, then `sudo umount` the folder and delete the `cipher_dir` and the folder it was mounted on.
+
 ## Backups
 
 - restic backs up the decrypted files through the mount. The repository is encrypted by restic with its own password, and a restore needs no gocryptfs.

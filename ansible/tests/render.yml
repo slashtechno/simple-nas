@@ -99,6 +99,7 @@
         copyparty_port: ""
         dockge_port: ""
         cloudflare_api_token: render-test-token
+        unlock_start_units: [my-app.service]
         encrypted_folders:
           - {cipher_dir: /mnt/primary/.encrypted, mount: /mnt/primary/data}
 
@@ -199,6 +200,7 @@
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
           # Encryption: unlock.sh mounts with -allow_other and without -nonempty, and the backup refuses a locked folder.
           - "'gocryptfs -allow_other /mnt/primary/.encrypted /mnt/primary/data' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'systemctl start my-app.service' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
           - "'/mnt/primary/data/.mounted' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
           - "'/mnt/primary/data/.mounted' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-cloud.sh')"

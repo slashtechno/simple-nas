@@ -56,6 +56,9 @@ encryption_enabled: false
 #   encrypted_folders:
 #     - { cipher_dir: /mnt/primary/.encrypted, mount: /mnt/primary/data }
 encrypted_folders: []
+# systemd units started after Docker at every unlock: services of yours that run outside Docker and need an
+# encrypted folder. Do not enable them at boot (docs/encryption.md#services-you-run-yourself).
+unlock_start_units: []
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
 storage_enabled: true

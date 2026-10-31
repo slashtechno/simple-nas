@@ -22,4 +22,7 @@ fi
 {% endfor %}
 
 systemctl start docker
+{% for unit in unlock_start_units %}
+systemctl start {{ unit | quote }}
+{% endfor %}
 echo "Unlocked. Docker is running."
