@@ -11,14 +11,19 @@
     caddy_names: []
 
 # A name belongs to the cloudflare_zones domain it equals or ends with after a dot (not any domain
-# that merely appears inside it: example.com must not match ample.com). `tails` lists the name and every
-# part after a dot: *.x.example.com, x.example.com, example.com, com.
+# that merely appears inside it: example.com must not match ample.com). zone_ids collects the zone of each match.
 - name: Pair each name with its zone (the domains and their wildcards)
   ansible.builtin.set_fact:
     caddy_names: "{{ caddy_names + [{'name': item, 'zone_ids': zone_ids}] }}"
   vars:
-    tails: "{{ item | regex_findall('(?=(?:^|[.])(.+))') }}"
-    zone_ids: "{{ cloudflare_zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
+    zone_ids: >-
+      {%- set ids = [] -%}
+      {%- for zone in cloudflare_zones | dict2items -%}
+      {%- if item == zone.key or item.endswith('.' ~ zone.key) -%}
+      {%- set _ = ids.append(zone.value) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ ids }}
   loop: "{{ caddy_private_domains + (caddy_private_domains | map('regex_replace', '^', '*.') | list) }}"
 
 - name: Check that each private domain matches exactly one domain in cloudflare_zones

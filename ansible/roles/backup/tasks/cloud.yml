@@ -50,16 +50,18 @@
     # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
     # The offsite list is short on purpose (photos and files are large), so say what it leaves out instead of letting
     # the owner assume everything is offsite. Read-only: it also runs under --check.
-    - name: Say which service data the offsite backup does not include
+    - name: Find the service data the offsite backup does not include
+      ansible.builtin.import_tasks: find_uncovered.yml
       vars:
-        offsite_paths: "{{ (restic_cloud_rules | reject('match', '^- ') | list) | map('regex_replace', '/$', '') | list }}"
-        not_offsite: >-
-          {{ backup_service_dirs | reject('match', '^(' ~ (offsite_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
+        backup_dirs: "{{ backup_service_dirs }}"
+        backup_paths: "{{ (restic_cloud_rules | reject('match', '^- ') | list) | map('regex_replace', '/$', '') | list }}"
+
+    - name: Say which service data the offsite backup does not include
       ansible.builtin.debug:
         msg: >-
-          Not in the offsite backup: {{ not_offsite }}. Add the ones you want to restic_cloud_extra_rules
+          Not in the offsite backup: {{ backup_uncovered }}. Add the ones you want to restic_cloud_extra_rules
           (docs/backups.md); they stay in the local backup either way.
-      when: not_offsite | length > 0
+      when: backup_uncovered | length > 0
 
     - name: Initialize cloud restic repository (idempotent)
       ansible.builtin.command:

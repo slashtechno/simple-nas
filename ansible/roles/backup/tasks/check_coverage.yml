@@ -3,16 +3,21 @@
 # The directories are backup_service_dirs (roles/backup/defaults/main.yml), built from the `data` and `keep` lists in
 # group_vars/all/services.yml: a service's new data directory goes there. Folders in encrypted_folders are checked too.
 # To leave a directory out on purpose, add "- <that directory>" to restic_local_extra_rules: it then counts as decided.
-- name: Check every enabled service's data is inside a locally backed-up path
-  vars:
-    # The paths the backup copies: the plain lines of restic_local_rules, then the "- /path" lines (a path the
-    # owner decided to leave out), each without a trailing slash.
+- name: Work out which paths the local backup copies
+  ansible.builtin.set_fact:
+    # The plain lines of restic_local_rules, then the "- /path" lines (a path the owner decided to leave out),
+    # each without a trailing slash.
     backup_local_paths: >-
       {{ (restic_local_rules | reject('match', '^- ') | list + restic_local_rules | select('match', '^- /') | map('regex_replace', '^- ', '') | list)
          | map('regex_replace', '/$', '') | list }}
-    # A directory is covered when it is one of those paths or inside one: the path, then "/" or the end.
-    backup_uncovered: >-
-      {{ backup_service_dirs | reject('match', '^(' ~ (backup_local_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
+
+- name: Find the service data outside those paths
+  ansible.builtin.import_tasks: find_uncovered.yml
+  vars:
+    backup_dirs: "{{ backup_service_dirs }}"
+    backup_paths: "{{ backup_local_paths }}"
+
+- name: Check every enabled service's data is inside a locally backed-up path
   ansible.builtin.assert:
     that: backup_uncovered | length == 0
     fail_msg: >-

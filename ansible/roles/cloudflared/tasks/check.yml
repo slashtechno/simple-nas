@@ -26,14 +26,19 @@
     cloudflared_hostnames: []
 
 # A hostname belongs to the cloudflare_zones domain it equals or ends with after a dot (not any domain
-# that merely appears inside it: example.com must not match ample.com). `tails` lists the hostname and every
-# part after a dot: x.example.com, example.com, com.
+# that merely appears inside it: example.com must not match ample.com). zone_ids collects the zone of each match.
 - name: Pair each hostname with its zone
   ansible.builtin.set_fact:
     cloudflared_hostnames: "{{ cloudflared_hostnames + [{'hostname': item.hostname, 'zone_ids': zone_ids}] }}"
   vars:
-    tails: "{{ item.hostname | regex_findall('(?=(?:^|[.])(.+))') }}"
-    zone_ids: "{{ cloudflare_zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
+    zone_ids: >-
+      {%- set ids = [] -%}
+      {%- for zone in cloudflare_zones | dict2items -%}
+      {%- if item.hostname == zone.key or item.hostname.endswith('.' ~ zone.key) -%}
+      {%- set _ = ids.append(zone.value) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ ids }}
   loop: "{{ cloudflared_ingress }}"
   loop_control:
     label: "{{ item.hostname }}"
