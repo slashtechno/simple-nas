@@ -45,21 +45,10 @@ restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mou
 service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
 # Where rclone keeps its remote's login. The cloud backup creates it and the backup lists never copy it.
 rclone_config_dir: "/home/{{ ansible_user }}/.config/rclone"
-# Where each service keeps data that the backup must cover: one line per service, with the directories to check
-# (roles/backup/tasks/check_coverage.yml, and the offsite notice in cloud.yml). Immich's raw database directory and
-# Copyparty's hist directory are not listed: restic-excludes-services.txt.j2 leaves them out on purpose.
-# Folders in encrypted_folders are listed too, because they can be anywhere.
-backup_service_data:
-  - {enabled: "{{ immich_enabled }}", dirs: ["{{ immich_upload_location }}"]}
-  - {enabled: "{{ copyparty_enabled }}", dirs: ["{{ copyparty_files_dir }}", "{{ copyparty_config_dir }}"]}
-  - {enabled: "{{ copyparty_enabled and copyparty_collab_enabled }}", dirs: ["{{ copyparty_collab_dir }}"]}
-  - {enabled: "{{ copyparty_enabled and copyparty_fast_enabled }}", dirs: ["{{ copyparty_fast_dir }}"]}
-  - {enabled: "{{ gitea_enabled }}", dirs: ["{{ gitea_data_dir }}", "{{ gitea_runner_data_dir }}"]}
-  - {enabled: "{{ pics_enabled }}", dirs: ["{{ pics_data_dir }}"]}
-  - {enabled: "{{ homebridge_enabled }}", dirs: ["{{ homebridge_config_dir }}"]}
-  - {enabled: "{{ garage_enabled }}", dirs: ["{{ garage_data_dir }}"]}
-  - {enabled: "{{ crafty_enabled }}", dirs: ["{{ crafty_data_dir }}"]}
-  - {enabled: "{{ ntfy_enabled }}", dirs: ["{{ ntfy_data_dir }}"]}
-  - {enabled: "{{ dockge_enabled }}", dirs: ["{{ dockge_stacks_dir }}", "{{ dockge_data_dir }}"]}
-  - {enabled: "{{ caddy_enabled }}", dirs: ["{{ caddy_data_dir }}"]}
-  - {enabled: "{{ encrypted_folders | length > 0 }}", dirs: "{{ encrypted_pairs | map(attribute='mount') | list }}"}
+# The directories the backup must cover: the data of every service this host runs (group_vars/all/services.yml;
+# the `no_backup` ones are left out on purpose), plus the folders in encrypted_folders, which can be anywhere.
+# Used by roles/backup/tasks/check_coverage.yml and the offsite notice in cloud.yml.
+backup_service_dirs: >-
+  {{ (services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten
+      + services | selectattr('key', 'in', enabled_service_keys) | map(attribute='keep', default=[]) | flatten
+      + encrypted_pairs | map(attribute='mount') | list) | select | list }}

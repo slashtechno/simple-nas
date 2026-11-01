@@ -1,5 +1,5 @@
 ---
-# The services this repo runs on the host that get an https name (web_services, group_vars/all/web_services.yml):
+# The services this repo runs on the host that get an https name (web_services, group_vars/all/services.yml):
 # one entry each, with the names it is served under, one per caddy_private_domains entry. The compose template loops over this list.
 - name: Start the list of services with a name (it stays empty when none has one)
   ansible.builtin.set_fact:

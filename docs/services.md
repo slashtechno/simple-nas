@@ -80,7 +80,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
 2. In the host's vault add `vault_pics_password` (12+ characters) and `vault_pics_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `photos` account and its two volumes first.
 
-The database is in `pics_data_dir`, covered by the daily backup; the app also writes its own daily snapshots there. `teardown.yml --tags pics` keeps that data unless `-e remove_data=true`.
+The database is in `pics_data_dir`, covered by the daily backup; the app also writes its own daily snapshots there. `teardown.yml -e only=pics` keeps that data unless `-e remove_data=true`.
 
 ## Cloudflare: add a public hostname
 
@@ -156,7 +156,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 - Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name and on the address Ansible reaches the host at. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
-- The tiles are the `web_services` list in `group_vars/all/web_services.yml`, with a comment on each field; add a line to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: none has a host port or a Caddy name of its own. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
+- The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: none has a host port or a Caddy name of its own. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
 - The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.

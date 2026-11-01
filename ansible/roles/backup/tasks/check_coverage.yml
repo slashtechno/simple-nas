@@ -1,12 +1,10 @@
 ---
 # A service whose data directory is outside every path the local backup copies would be missing from it, silently.
-# The list is backup_service_data (roles/backup/defaults/main.yml): add a line there when a service gets a new
-# data directory. Folders in encrypted_folders are checked too.
-# teardown.yml lists the directories it deletes; keep that list in step.
+# The directories are backup_service_dirs (roles/backup/defaults/main.yml), built from the `data` and `keep` lists in
+# group_vars/all/services.yml: a service's new data directory goes there. Folders in encrypted_folders are checked too.
 # To leave a directory out on purpose, add "- <that directory>" to restic_local_extra_rules: it then counts as decided.
 - name: Check every enabled service's data is inside a locally backed-up path
   vars:
-    backup_service_dirs: "{{ backup_service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
     # The paths the backup copies: the plain lines of restic_local_rules, then the "- /path" lines (a path the
     # owner decided to leave out), each without a trailing slash.
     backup_local_paths: >-

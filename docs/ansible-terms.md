@@ -10,7 +10,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 |---|---|
 | `ansible.cfg` | Project settings, read automatically from this directory |
 | `inventory/hosts.yml` | Who to run against |
-| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `web_services.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
+| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `services.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
 | `requirements.yml` | Collections and roles to install first (`just deps`) |
 | `site.yml`, `teardown.yml` | The playbooks |
 | `roles/*/` | How to deploy each piece |
@@ -40,7 +40,7 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 - **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false (the base switches `storage_enabled` and `tailscale_enabled` default to true), so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
 - **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS and that Docker is not a snap; they carry `tags: [always]`.
-- **`teardown.yml`** is one play of tasks, one entry per service with its own `tags:`, mostly through `teardown_service.yml`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
+- **`teardown.yml`** is one play of tasks. One looped `include_tasks` of `teardown_service.yml` removes every entry of `services` (`-e only=a,b` picks some); the backup, network and storage blocks have their own `tags:`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
 
 ## 3. Role anatomy
 

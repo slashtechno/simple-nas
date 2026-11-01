@@ -14,7 +14,7 @@ All commands below run from `ansible/`.
 |---|---|---|
 | Deploy everything to one host | nothing | `just deploy '' --limit <host> -K` |
 | Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>` |
-| Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml --tags <name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
+| Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
 | Look up a setting, its default and every override | nothing | `grep -rn "^<name>:" group_vars host_vars roles/*/defaults` |
 | Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
@@ -42,7 +42,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
-| `group_vars/all/web_services.yml` | yes | The web UIs: Homepage tile, Caddy container and port, and the prefix of each one's `_enabled`, `_port` and `_subdomain` settings | Already there |
+| `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
 Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files.
 
@@ -184,7 +184,7 @@ Set `<name>_enabled: false` in `host_vars/<host>/vars.yml` (or delete the line) 
 `teardown.yml` runs every block on every host it reaches, so it refuses to run without `--limit <host>`.
 
 ```bash
-ansible-playbook teardown.yml --limit pi4 --tags garage --vault-password-file .vault-pass       # one service, data kept
+ansible-playbook teardown.yml --limit pi4 -e only=garage --vault-password-file .vault-pass      # one service, data kept (names: the keys in group_vars/all/services.yml)
 ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass                     # everything, data kept
 ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
@@ -196,11 +196,12 @@ Drive mounts, the restic password and Tailscale state are never touched.
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
 2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`.
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
-4. `defaults/main.yml`: settings only this role reads. Shared values (the data dir, the `myservice_enabled` flag, the ports used in `cloudflared_ingress`) go in `group_vars/all/defaults.yml` with a comment; values with no sensible default go in `vars.yml.example`.
-5. `site.yml`: add an `import_role` task with a tag and `when: myservice_enabled | bool`.
-6. `teardown.yml`: add an entry using `import_tasks: teardown_service.yml` with `service` and `data_paths`.
-7. A public hostname needs a `cloudflared_ingress` rule.
-8. A live database needs `files/dump.sh`, installed into `service_dump_scripts_dir` (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)). Plain files need nothing; add the data dir to `restic_cloud_extra_rules` to send it offsite.
-9. A web UI gets a line in `group_vars/all/web_services.yml` (Homepage tile and Caddy name) and its `myservice_port` and `myservice_subdomain` in `group_vars/all/defaults.yml`.
-10. Add its secrets to the matching `vault.yml.example`, and a row to the services table in [../docs/services.md](../docs/services.md).
-11. `just check`, then `just deploy myservice`.
+4. `defaults/main.yml`: settings only this role reads.
+5. `group_vars/all/defaults.yml`: `myservice_enabled: false`, the data directory settings and, for a web UI, `myservice_port` and `myservice_subdomain`, each with a comment. Values with no sensible default go in `vars.yml.example`.
+6. `group_vars/all/services.yml`: one entry. It lists the data directories (the backup must cover them, and teardown deletes them with `remove_data=true`) and, for a web UI, the Homepage tile and Caddy container. The comment at the top of the file describes each field.
+7. `site.yml`: an `import_role` task with the tag `myservice` and `when: myservice_enabled | bool`.
+8. Its secrets go in the matching `vault.yml.example`, and a row naming `roles/myservice` in the table in [../docs/services.md](../docs/services.md).
+9. Optional: a public hostname needs a `cloudflared_ingress` rule; a live database needs `files/dump.sh` installed into `service_dump_scripts_dir` and `dump_required: true` in its entry (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)); data outside the offsite backup goes in `restic_cloud_extra_rules`.
+10. `just check` fails with the exact missing line if steps 5 to 8 are incomplete. Then `just deploy myservice`.
+
+Teardown (`teardown.yml -e only=myservice`), backup coverage, the Homepage tile and the Caddy name come from the entry in step 6 and need nothing else.

@@ -33,7 +33,7 @@ caddy_private_domains: [pi4.example.com]
 - **DNS:** a deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
   - Every record carries the comment `managed by simple-nas, caddy <host>`.
   - A name that already has a record without it stops the deploy. Records with it for a domain not in the list are deleted.
-  - `--check` prints the plan. To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
+  - `--check` prints the plan. To remove the records, set the list to `[]` and deploy before `teardown.yml -e only=caddy`; teardown does not call Cloudflare.
 - **Certificates:** Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
 - **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
@@ -43,7 +43,7 @@ caddy_private_domains: [pi4.example.com]
 
 On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
 
-- The subdomains and container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
+- The subdomains and container ports are in [services.yml](../ansible/group_vars/all/services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
 - Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
 - With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first.
 - Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
@@ -110,7 +110,7 @@ services:
 | `caddy_0`, `caddy_1` (with matching `caddy_0.reverse_proxy`, ...) | Separate site blocks in one container |
 | `caddy_ingress_network: name` | Use this network for `{{upstreams}}` on this container |
 
-Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate (`scheme: https` in `web_services.yml`).
+Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` block. An empty value gives a directive with no arguments. This repo uses that for a backend with a self-signed certificate (`scheme: https` in `services.yml`).
 
 ## Gotchas for this repo
 

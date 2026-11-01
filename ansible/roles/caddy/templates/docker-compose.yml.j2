@@ -30,7 +30,7 @@ services:
 {% if caddy_private_domains | length > 0 %}
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
-      # One site per service this host runs (web_services, group_vars/all/web_services.yml), unless its subdomain is "".
+      # One site per service this host runs (web_services, group_vars/all/services.yml), unless its subdomain is "".
 {% for web in caddy_web_sites %}
       caddy_{{ site.n }}: "{{ web.hosts }}"
       caddy_{{ site.n }}.reverse_proxy: "{{ web.scheme }}://{{ web.container }}:{{ web.container_port }}"

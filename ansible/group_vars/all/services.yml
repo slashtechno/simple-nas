@@ -1,0 +1,67 @@
+---
+# One entry per service this repo deploys; the roles that are not a service (common, storage, tailscale, network,
+# encryption, backup, compose_service, github_clone) are not listed. To add a service, add an entry here; README's
+# "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
+# the data directories in defaults.yml): a list is replaced whole by a host, so keep values out of it.
+#   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
+#              <key>_subdomain its name under the private domain. The role is roles/<key>.
+#   compose    the service's directory under services_dir (also its compose project). Teardown removes it.
+#   data       directories that hold the service's data. The local backup must cover them (the deploy fails
+#              otherwise), the offsite notice names them, and teardown deletes them with remove_data=true. An empty
+#              string is skipped, so "{{ x if x_enabled | bool else '' }}" makes a directory conditional.
+#   no_backup  directories teardown deletes but the backup leaves out on purpose (restic-excludes-services.txt.j2)
+#   keep       directories the backup must cover but teardown never deletes (they hold the owner's files)
+#   dump_required
+#              true when the backup leaves out the live database; the dump script the role installs is then the
+#              only copy, so the deploy fails if it is missing
+#   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
+#   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
+#              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
+#   container, container_port
+#              what Caddy proxies to on the services network
+#   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
+#   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
+services:
+  - {name: Immich, key: immich, compose: immich, dump_required: true,
+     data: ["{{ immich_upload_location }}"], no_backup: ["{{ immich_db_data_location }}"],
+     container: immich_server, container_port: 2283, icon: immich, description: Photos}
+  - {name: Copyparty, key: copyparty, compose: copyparty,
+     data: ["{{ copyparty_files_dir }}", "{{ copyparty_config_dir }}",
+            "{{ copyparty_collab_dir if copyparty_collab_enabled | bool else '' }}",
+            "{{ copyparty_fast_dir if copyparty_fast_enabled | bool else '' }}"],
+     no_backup: ["{{ copyparty_hist_dir }}"],
+     container: copyparty, container_port: 3923, icon: copyparty, description: Files}
+  - {name: Gitea, key: gitea, compose: gitea,
+     data: ["{{ gitea_data_dir }}", "{{ gitea_runner_data_dir }}"],
+     container: gitea, container_port: 3000, icon: gitea, description: Git}
+  - {name: pics, key: pics, compose: pics, data: ["{{ pics_data_dir }}"],
+     container: pics, container_port: 8000, icon: mdi-image-multiple, description: Photo culling and sharing}
+  - {name: Homebridge, key: homebridge, compose: homebridge, data: ["{{ homebridge_config_dir }}"],
+     port: 8581, icon: homebridge, description: HomeKit}
+  - {name: Crafty, key: crafty, compose: crafty, data: ["{{ crafty_data_dir }}"],
+     container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
+  # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
+  - {name: Dockge, key: dockge, compose: dockge, data: ["{{ dockge_data_dir }}"], keep: ["{{ dockge_stacks_dir }}"],
+     container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
+  - {name: ntfy, key: ntfy, compose: ntfy, data: ["{{ ntfy_data_dir }}"],
+     container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
+  - {name: Backups, key: backup_status, compose: backup-status,
+     container: backup-status, container_port: 8080, icon: restic, description: Backup status}
+  # No web UI, so no tile and no Caddy name.
+  - {name: Garage, key: garage, compose: garage, dump_required: true, data: ["{{ garage_data_dir }}"]}
+  - {name: Caddy, key: caddy, compose: caddy, data: ["{{ caddy_data_dir }}"]}
+  - {name: Homepage, key: homepage, compose: homepage}
+  # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
+  - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}
+
+# The entries with a web UI, in the order above.
+web_services: "{{ services | selectattr('icon', 'defined') | list }}"
+
+# The keys of the entries whose <key>_enabled is true on this host. lookup('vars', ...) reads a setting whose name is
+# built from the key, which a filter cannot do. Use it as: services | selectattr('key', 'in', enabled_service_keys)
+enabled_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}

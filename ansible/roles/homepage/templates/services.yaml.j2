@@ -1,5 +1,5 @@
 # Ansible-managed — do not edit directly. One group per host in the inventory, with a tile per enabled service
-# (web_services, group_vars/all/web_services.yml), then homepage_links. Values go through to_json so a colon or
+# (web_services, group_vars/all/services.yml), then homepage_links. Values go through to_json so a colon or
 # quote in a name or description stays valid YAML.
 {% for host in groups['servers'] %}
 {% set domains = hostvars[host].caddy_private_domains %}

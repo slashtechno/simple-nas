@@ -6,7 +6,7 @@ homepage_port: 3001
 homepage_host: "{{ ansible_host | default(inventory_hostname) }}"
 # Extra tiles, shown in a "Links" group after the host groups: a public hostname, a page on a machine that is
 # not in the inventory, an app you made in Dockge (use its Caddy name). Each is {name, href}, with an optional
-# description, icon (same names as web_services) and monitor: true for an up/down dot. For example:
+# description, icon (same names as the icon in services.yml) and monitor: true for an up/down dot. For example:
 #   - {name: Router, href: "http://192.168.1.1", description: Admin page}
 #   - {name: Uptime Kuma, href: "https://kuma.pi4.example.com", icon: uptime-kuma, monitor: true}
 homepage_links: []

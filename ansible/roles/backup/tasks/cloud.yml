@@ -53,9 +53,8 @@
     - name: Say which service data the offsite backup does not include
       vars:
         offsite_paths: "{{ (restic_cloud_rules | reject('match', '^- ') | list) | map('regex_replace', '/$', '') | list }}"
-        service_dirs: "{{ backup_service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
         not_offsite: >-
-          {{ service_dirs | reject('match', '^(' ~ (offsite_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
+          {{ backup_service_dirs | reject('match', '^(' ~ (offsite_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
       ansible.builtin.debug:
         msg: >-
           Not in the offsite backup: {{ not_offsite }}. Add the ones you want to restic_cloud_extra_rules

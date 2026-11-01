@@ -18,8 +18,11 @@
 #   # Remove everything from one host
 #   ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass
 #
-#   # Remove specific services only
-#   ansible-playbook teardown.yml --limit pi4 --tags copyparty,garage --vault-password-file .vault-pass
+#   # Remove specific services only (the keys in group_vars/all/services.yml)
+#   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
+#
+#   # Remove only the backup scripts, only the network config, or only the USB rule
+#   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
 #   ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass
@@ -30,6 +33,9 @@
 
   vars:
     remove_data: false   # override with -e remove_data=true to also delete data dirs
+    # Comma-separated service keys (-e only=copyparty,garage) to remove just those; empty removes everything.
+    only: ""
+    only_keys: "{{ only.split(',') if only | length > 0 else services | map(attribute='key') | list }}"
 
   tasks:
 
@@ -40,201 +46,117 @@
         quiet: true
       tags: [always]
 
-    # ── Per-service teardown ───────────────────────────────────────────────
+    # ── Services ───────────────────────────────────────────────────────────
 
-    # data_paths lists every directory teardown deletes. roles/backup/tasks/check_coverage.yml lists the directories
-    # the backup must cover, which is shorter on purpose (it leaves out what the backup excludes: Immich's raw
-    # database, Copyparty's hist). When a service gets a new data directory, change both.
-    - name: Stop and remove Immich
-      tags: [immich]
-      ansible.builtin.import_tasks: teardown_service.yml
+    # Every entry of `services` (group_vars/all/services.yml) with a compose directory, or only those named in
+    # `only`. include_tasks, not import_tasks, because a loop needs it (a kept exception, as in site.yml's pics and
+    # tailscale), so these tasks have no tags: select services with -e only=a,b.
+    - name: Check every name in only is a service
+      ansible.builtin.assert:
+        that: only_keys | difference(services | map(attribute='key')) | length == 0
+        fail_msg: >-
+          only names {{ only_keys | difference(services | map(attribute='key')) }}, which are not services.
+          The services are: {{ services | map(attribute='key') | join(', ') }}
+        quiet: true
+
+    - name: Stop and remove the services
+      ansible.builtin.include_tasks: teardown_service.yml
+      loop: "{{ services | selectattr('compose', 'defined') | selectattr('key', 'in', only_keys) | list }}"
+      loop_control:
+        label: "{{ item.key }}"
       vars:
-        service: immich
-        data_paths:
-          - "{{ immich_upload_location }}"
-          - "{{ immich_db_data_location }}"
+        service: "{{ item.compose }}"
+        data_paths: "{{ ((item.data | default([])) + (item.no_backup | default([]))) | select | list }}"
 
-    - name: Stop and remove Copyparty
-      tags: [copyparty]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: copyparty
-        data_paths: >-
-          {{ [copyparty_files_dir, copyparty_config_dir, copyparty_hist_dir]
-             + ([copyparty_collab_dir] if copyparty_collab_enabled | bool else [])
-             + ([copyparty_fast_dir] if copyparty_fast_enabled | bool else []) }}
-
-    - name: Stop and remove Gitea
-      tags: [gitea]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: gitea
-        data_paths:
-          - "{{ gitea_data_dir }}"
-          - "{{ gitea_runner_data_dir }}"
-
-    - name: Stop and remove ntfy
-      tags: [ntfy]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: ntfy
-        data_paths:
-          - "{{ ntfy_data_dir }}"
-
-    - name: Stop and remove pics
-      tags: [pics]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: pics
-        data_paths:
-          - "{{ pics_data_dir }}"
-
-    - name: Stop and remove Homebridge
-      tags: [homebridge]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: homebridge
-        data_paths:
-          - "{{ homebridge_config_dir }}"
-
-    - name: Stop and remove Garage
-      tags: [garage]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: garage
-        data_paths:
-          - "{{ garage_data_dir }}"
-
-    - name: Stop and remove Crafty
-      tags: [crafty]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: crafty
-        data_paths:
-          - "{{ crafty_data_dir }}"
-
-    # The stacks you created in Dockge are yours: this removes Dockge's own container, compose file
-    # and (with remove_data=true) its database, never dockge_stacks_dir.
-    - name: Stop and remove Dockge
-      tags: [dockge]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: dockge
-        data_paths:
-          - "{{ dockge_data_dir }}"
-
-    - name: Stop and remove Homepage
-      tags: [homepage]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: homepage
-
-    - name: Stop and remove Caddy
-      tags: [caddy]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: caddy
-        data_paths:
-          - "{{ caddy_data_dir }}"
-
-    # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
-    - name: Stop and remove Cloudflared
-      tags: [cloudflared]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: cloudflared
-
-    - name: Stop and remove backup-status
-      tags: [backup_status]
-      ansible.builtin.import_tasks: teardown_service.yml
-      vars:
-        service: backup-status
-
-    # ── Backups ────────────────────────────────────────────────────────────
-
-    - name: Remove backup cron jobs and scripts
-      tags: [backup]
+    # Everything below runs only when `only` is empty, so that -e only=copyparty removes Copyparty and nothing else.
+    - name: Remove the backups, drive rules and network config
+      when: only | length == 0
       block:
-        - name: Remove backup cron jobs
-          ansible.builtin.cron:
-            name: "{{ item }}"
-            user: "{{ ansible_user }}"
-            state: absent
-          loop:
-            - backup-local
-            - backup-cloud
-            - restic-check
+        # ── Backups ────────────────────────────────────────────────────────────
 
-        # Removes only the files the backup role installs (the lists in roles/backup/tasks/local.yml and cloud.yml;
-        # keep them in step). The dump scripts in dump.d belong to the service roles and go with their services; wiping
-        # the whole directory would leave --tags backup redeploys without them,
-        # so backups would "succeed" with no database dump.
-        - name: Remove backup scripts
-          ansible.builtin.file:
-            path: "{{ scripts_dir }}/{{ item }}"
-            state: absent
-          loop:
-            - backup-restic-local.sh
-            - backup-restic-cloud.sh
-            - backup-services.sh
-            - restic-check.sh
-            - restore-services.sh
-            - backup-paths.txt
-            - restic-excludes-local.txt
-            - restic-excludes-cloud.txt
-            - alert.sh
+        - name: Remove backup cron jobs and scripts
+          tags: [backup]
+          block:
+            - name: Remove backup cron jobs
+              ansible.builtin.cron:
+                name: "{{ item }}"
+                user: "{{ ansible_user }}"
+                state: absent
+              loop:
+                - backup-local
+                - backup-cloud
+                - restic-check
 
-        - name: Remove the ntfy token file
-          ansible.builtin.file:
-            path: "{{ ntfy_token_file }}"
-            state: absent
+            # Removes only the files the backup role installs (the lists in roles/backup/tasks/local.yml and cloud.yml;
+            # keep them in step). The dump scripts in dump.d belong to the service roles and go with their services; wiping
+            # the whole directory would leave --tags backup redeploys without them,
+            # so backups would "succeed" with no database dump.
+            - name: Remove backup scripts
+              ansible.builtin.file:
+                path: "{{ scripts_dir }}/{{ item }}"
+                state: absent
+              loop:
+                - backup-restic-local.sh
+                - backup-restic-cloud.sh
+                - backup-services.sh
+                - restic-check.sh
+                - restore-services.sh
+                - backup-paths.txt
+                - restic-excludes-local.txt
+                - restic-excludes-cloud.txt
+                - alert.sh
 
-        # rmdir only succeeds when the directory is empty.
-        - name: Remove the dump.d and scripts directories (only if empty)
+            - name: Remove the ntfy token file
+              ansible.builtin.file:
+                path: "{{ ntfy_token_file }}"
+                state: absent
+
+            # rmdir only succeeds when the directory is empty.
+            - name: Remove the dump.d and scripts directories (only if empty)
+              ansible.builtin.command:
+                cmd: rmdir "{{ item }}"
+              loop:
+                - "{{ service_dump_scripts_dir }}"
+                - "{{ scripts_dir }}"
+              register: rmdir_scripts
+              changed_when: rmdir_scripts.rc == 0
+              failed_when: false   # a non-empty or missing directory is fine
+
+        # ── Drives and network ─────────────────────────────────────────────────
+
+        # Only the USB automount rule the storage role installs.
+        # Does NOT touch fstab entries, mount points, or drive ownership — those
+        # stay untouched so your data drives are never at risk here.
+        - name: Remove the USB automount udev rule
+          tags: [storage]
+          block:
+            - name: Remove the udev rule
+              ansible.builtin.file:
+                path: /etc/udev/rules.d/98-usb-automount.rules
+                state: absent
+
+            - name: Reload udev rules
+              ansible.builtin.command: udevadm control --reload-rules
+              changed_when: true
+
+        - name: Remove direct Ethernet link config
+          tags: [network]
+          ansible.builtin.import_tasks: roles/network/tasks/remove_direct_link.yml
+
+        # ── Shared infrastructure, last: the scripts directory above must be gone first ──
+
+        - name: Remove shared Docker network
+          tags: [network]
+          community.docker.docker_network:
+            name: "{{ docker_network }}"
+            state: absent
+            force: true
+          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
+
+        - name: Remove the base directory (only if empty)
+          tags: [always]
           ansible.builtin.command:
-            cmd: rmdir "{{ item }}"
-          loop:
-            - "{{ service_dump_scripts_dir }}"
-            - "{{ scripts_dir }}"
-          register: rmdir_scripts
-          changed_when: rmdir_scripts.rc == 0
-          failed_when: false   # a non-empty or missing directory is fine
-
-    # ── Drives and network ─────────────────────────────────────────────────
-
-    # Only the USB automount rule the storage role installs.
-    # Does NOT touch fstab entries, mount points, or drive ownership — those
-    # stay untouched so your data drives are never at risk here.
-    - name: Remove the USB automount udev rule
-      tags: [storage]
-      block:
-        - name: Remove the udev rule
-          ansible.builtin.file:
-            path: /etc/udev/rules.d/98-usb-automount.rules
-            state: absent
-
-        - name: Reload udev rules
-          ansible.builtin.command: udevadm control --reload-rules
-          changed_when: true
-
-    - name: Remove direct Ethernet link config
-      tags: [network]
-      ansible.builtin.import_tasks: roles/network/tasks/remove_direct_link.yml
-
-    # ── Shared infrastructure, last: the scripts directory above must be gone first ──
-
-    - name: Remove shared Docker network
-      tags: [network]
-      community.docker.docker_network:
-        name: "{{ docker_network }}"
-        state: absent
-        force: true
-      ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
-
-    - name: Remove the base directory (only if empty)
-      tags: [always]
-      ansible.builtin.command:
-        cmd: rmdir "{{ services_dir }}"
-      register: rmdir_result
-      changed_when: rmdir_result.rc == 0
-      failed_when: false   # a non-empty directory is fine: some service remains
+            cmd: rmdir "{{ services_dir }}"
+          register: rmdir_result
+          changed_when: rmdir_result.rc == 0
+          failed_when: false   # a non-empty directory is fine: some service remains
