@@ -38,14 +38,14 @@ A one-drive NAS (the same trade-off applies):
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7, roles: [fast, primary, backup] }
+  - { uuid: "...", mount: /mnt/data, roles: [fast, primary, backup] }
 ```
 
 An SSD for apps and files plus a separate backup drive. The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed:
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     roles: [fast, primary] }
+  - { uuid: "...", mount: /mnt/data,     roles: [fast, primary] }
   - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
@@ -53,8 +53,8 @@ A three-drive NAS (fast SSD, slow bulk drive, backup target):
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     roles: [fast] }
-  - { uuid: "...", mount: /mnt/p10,    roles: [primary] }
+  - { uuid: "...", mount: /mnt/data,     roles: [fast] }
+  - { uuid: "...", mount: /mnt/bulk,    roles: [primary] }
   - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
@@ -66,8 +66,8 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's
 - **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting.
 - **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
 - **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
-- **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
-- **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
+- **In `systemctl status`:** `mnt-data.automount` is `active (waiting)` and `mnt-data.mount` is inactive until something opens the path. `df` shows the drive only after that.
+- **Remount by hand:** `sudo systemctl restart mnt-data.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
 - **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after up to 30 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
 
 ## Using the root drive for fast or primary
@@ -123,7 +123,7 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 ### Put it on a drive
 
 1. Add the drive to `drives` in the host's `host_vars` and deploy it (`just deploy storage`).
-2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
+2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/data/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
 3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change):
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service
@@ -146,7 +146,7 @@ Stop the services by hand: Ansible restarts a service only when a task reports a
 
 ### Detach a drive
 
-An unmount is undone by the next access to the path. Stop the automount first, then the mount: `sudo systemctl stop mnt-t7.automount mnt-t7.mount` (the unit name is the path with `/` as `-`). Remove the drive's `drives` entry and its fstab line before it is attached to another host.
+An unmount is undone by the next access to the path. Stop the automount first, then the mount: `sudo systemctl stop mnt-data.automount mnt-data.mount` (the unit name is the path with `/` as `-`). Remove the drive's `drives` entry and its fstab line before it is attached to another host.
 
 ### Gitea runner registration
 

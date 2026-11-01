@@ -5,7 +5,7 @@
 - name: Check every encrypted folder is an absolute path
   ansible.builtin.assert:
     that: item is match('/')
-    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/primary/immich."
+    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/primary/photos."
     quiet: true
   loop: "{{ encrypted_folders }}"
 

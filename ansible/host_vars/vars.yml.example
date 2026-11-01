@@ -25,7 +25,7 @@
 # --- Encryption ---
 # Folders stored encrypted with gocryptfs; unlock by hand after each boot (docs/encryption.md).
 # encrypted_folders:
-#   - /mnt/data/immich
+#   - /mnt/data/photos
 
 # --- Offsite backup ---
 # backup_cloud_enabled turns on the weekly offsite copy for this host. It uploads only the base directory and

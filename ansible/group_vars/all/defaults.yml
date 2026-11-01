@@ -51,7 +51,7 @@ backup_cloud_enabled: false
 backup_status_enabled: false
 
 # Folders stored encrypted with gocryptfs: absolute paths, each the folder a service already uses, for example
-# `- /mnt/primary/immich`. Listing a folder is what switches encryption on (docs/encryption.md). After every boot
+# `- /mnt/primary/photos`. Listing a folder is what switches encryption on (docs/encryption.md). After every boot
 # run sudo unlock.sh; all folders share one passphrase. Not docker_data_root.
 encrypted_folders: []
 
@@ -80,7 +80,7 @@ docker_log_opts:
 
 # Where Docker and containerd keep images, layers and anonymous volumes. Empty keeps their default
 # (/var/lib/docker and /var/lib/containerd, on the root drive). Set it per host in
-# host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/t7/docker-root".
+# host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/data/docker-root".
 # With the drive missing, Docker fails to start (the mount point is an automount, docs/storage.md), so it
 # cannot fill the root drive. The procedure and tests: docs/storage.md.
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.

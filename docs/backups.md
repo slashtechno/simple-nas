@@ -41,7 +41,7 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 - Snapshot retention is `restic_local_retention` and `restic_cloud_retention`.
 - The local backup refuses to start when the backup drive is 95% full or more: `restic forget --prune` needs free room to rewrite packs, so a full drive cannot clean itself up. The failure reaches the alert, and the log says how full the drive is.
 
-Paths below use `/mnt/backup` for the backup drive and `/mnt/t7` for the fast and primary drive. Use the mounts from your `drives`.
+Paths below use `/mnt/backup` for the backup drive and `/mnt/data` for the fast and primary drive (your mount points will differ). Use the mounts from your `drives`.
 
 ## What is backed up where
 
@@ -79,7 +79,7 @@ Worked example, in `host_vars/<host>/vars.yml`. Add a folder, leave out a kind o
 restic_local_extra_rules:
   - /home/user/notes                     # add a folder to the default
   - "- **/*.iso"                         # leave out every .iso file
-  - "- !/mnt/t7/downloads/keep.iso"      # but keep this one
+  - "- !/mnt/data/downloads/keep.iso"      # but keep this one
 ```
 
 - Quote the `- ` lines in YAML, as above.
@@ -214,11 +214,11 @@ restic dump <snapshot-id> <path-in-snapshot> > recovered-file   # extract one fi
 
 ## Restore: files
 
-`--target` needs real free space. `/tmp` is in RAM and `/` is small, so use a path on a data drive such as `/mnt/t7` or `/mnt/backup`.
+`--target` needs real free space. `/tmp` is in RAM and `/` is small, so use a path on a data drive such as `/mnt/data` or `/mnt/backup`.
 
 ```bash
 # Restore into a scratch path to inspect first (safe: doesn't touch originals)
-restic restore latest --include /mnt/t7/files --target /mnt/t7/restore-scratch
+restic restore latest --include /mnt/data/files --target /mnt/data/restore-scratch
 
 # Restore everything to original paths (replaces current files)
 restic restore latest --target /
