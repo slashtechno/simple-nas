@@ -131,16 +131,17 @@
         that: data_drive_mounts == ['/mnt/fast', '/mnt/primary']
         quiet: true
 
-    - name: Find every host's vars.yml
+    # A copy of the repo with no vars.yml of its own has none to check.
+    - name: Find every vars.yml (shared and per host)
       ansible.builtin.find:
-        paths: "{{ repo }}/host_vars"
+        paths: ["{{ repo }}/group_vars", "{{ repo }}/host_vars"]
         patterns: ["vars.yml"]
         recurse: true
       register: host_vars_found
 
     - name: Every key in each vars.yml must also be in its example
       ansible.builtin.include_tasks: check_keys.yml
-      loop: "{{ [repo + '/group_vars/all/vars.yml'] + (host_vars_found.files | map(attribute='path') | list) }}"
+      loop: "{{ host_vars_found.files | map(attribute='path') | list }}"
       loop_control:
         loop_var: real_file
 
