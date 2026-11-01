@@ -21,7 +21,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
   echo "=== Integrity Check: $(date) ==="
   # A restic killed mid-run (reboot, power loss) leaves a lock behind. `unlock` removes only stale locks.
   restic unlock
-  restic check
+  # Checks the repository structure and reads a 5% sample of the stored data.
+  restic check --read-data-subset=5%
   check_rc=$?
   if [ "$check_rc" -eq 0 ]; then
     echo "=== Complete: $(date) ==="

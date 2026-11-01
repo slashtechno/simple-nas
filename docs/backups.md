@@ -30,7 +30,7 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 |---|---|---|
 | `backup-local` | Daily 02:00 | Runs the service dumps, then backs up to the local repository |
 | `backup-cloud` | Sunday 04:00 | Runs the service dumps, then backs up to the cloud repository |
-| `restic-check` | Wednesday 03:00 | Runs `restic check` on the local repository |
+| `restic-check` | Saturday 05:00 | Runs `restic check` on the local repository, reading a 5% sample of the data |
 
 - Jobs only exist for the flags that are on. Turning one flag off removes its jobs and scripts on the next deploy. Turning both off skips the role, so remove the jobs with `ansible-playbook teardown.yml --tags backup --limit <host> --vault-password-file .vault-pass`.
 - Dumps: `service_dumps_dir`, the last 3 of each type kept.
