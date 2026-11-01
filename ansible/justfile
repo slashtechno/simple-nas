@@ -67,6 +67,11 @@ status limit='servers' *flags:
 os-upgrade limit='servers' *flags:
     ansible {{ limit }} --vault-password-file .vault-pass --become -m ansible.builtin.apt -a "update_cache=yes upgrade=safe" {{ flags }}
 
+# First-run setup for a host (its name in inventory/hosts.yml): creates .vault-pass and host_vars/<host>/vars.yml, and
+# fills the random secrets in both vault files. Safe to run again: it only adds what is missing.
+setup host:
+    python3 tools/setup.py {{ host }}
+
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags:
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}

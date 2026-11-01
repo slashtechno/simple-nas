@@ -54,13 +54,15 @@ A vault file is a YAML file encrypted with `ansible-vault`. Ansible decrypts it 
 
 Secrets live in `vault_*` variables inside a vault file. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
 
+`just setup <host>` does the first-time work: it creates `.vault-pass` with a random password, creates `host_vars/<host>/vars.yml` from the example, and writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password). It encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists the secrets only you can supply (Cloudflare, GitHub, Google Drive, account names). Copy `.vault-pass` into your password manager: the restic backups cannot be read without it.
+
 ```bash
-printf '%s\n' 'your-vault-password' > .vault-pass && chmod 600 .vault-pass   # once, in ansible/
-mkdir -p host_vars/<host>                                    # once per host
-cp host_vars/vault.yml.example host_vars/<host>/vault.yml   # keep only the keys your services use
-ansible-vault encrypt --vault-password-file .vault-pass host_vars/<host>/vault.yml   # first time
-ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml      # later changes
+just setup <host>
+ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml      # add the secrets it listed, or change one later
+ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml
 ```
+
+By hand instead: put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_vars/<host>/vault.yml` (and `group_vars/all/vault.yml.example` to `group_vars/all/vault.yml`), keep the keys your services use, and run `ansible-vault encrypt --vault-password-file .vault-pass <file>`.
 
 A vault file you forget to encrypt still deploys, with its secrets in plain text on your computer: check that it starts with `$ANSIBLE_VAULT`.
 
@@ -80,8 +82,8 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian 12 or newer, Ubuntu; Debian 11 ships restic 0.11, too old for the `- !` backup rules) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the SD card or drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
-3. Run `mkdir -p host_vars/<host>`, then create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
-4. Create `host_vars/<host>/vault.yml` from `host_vars/vault.yml.example`, keep the keys the enabled services use, and encrypt it. Shared secrets (Cloudflare, restic) go in `group_vars/all/vault.yml`.
+3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
+4. `just setup` also wrote `host_vars/<host>/vault.yml` and `group_vars/all/vault.yml` (the shared secrets: Cloudflare, restic). Add the secrets it listed for the services you enabled ([Vault](#vault-secrets)).
 5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once: the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
@@ -115,6 +117,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
 | `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
+| `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just status [host]` | `docker ps` on every server, or on one host |
 | `just os-upgrade [host]` | `apt upgrade` on every server, or on one host ([software that is not a Docker image](#update-software-that-is-not-a-docker-image)) |
