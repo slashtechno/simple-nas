@@ -11,7 +11,7 @@ The services are listed, with what each one is and needs, in [docs/services.md](
 ```
 A host
 ├─ root drive      (OS)
-├─ fast drive      (Docker data, databases, configs)
+├─ fast drive      (databases, configs)
 ├─ primary drive   (photos, files)     the fast and primary roles can share one drive
 └─ backup drive    (restic repo, dumps, logs)
 

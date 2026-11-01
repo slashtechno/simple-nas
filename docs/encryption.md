@@ -17,11 +17,11 @@ Quantum computers weaken but do not break the 256-bit symmetric encryption gocry
 
 ## How it works
 
-In `host_vars/<host>/vars.yml`, list absolute paths of folders on any drive, such as the data folder of one service:
+In `host_vars/<host>/vars.yml`, list absolute paths of folders on any drive, such as the folder a service already uses (Immich's `immich_upload_location` is `<primary_drive>/photos`). A path no service uses encrypts nothing, and the deploy does not warn:
 
 ```yaml
 encrypted_folders:
-  - /mnt/primary/immich
+  - /mnt/primary/photos
   - /mnt/backup/service-dumps
 ```
 
@@ -29,8 +29,8 @@ Each listed folder is two folders on the drive:
 
 | Path | What it is |
 |---|---|
-| `/mnt/primary/immich` | The decrypted view, mounted by `unlock.sh`. Services and backups use this path, so no other setting changes. |
-| `/mnt/primary/.immich.gocryptfs` | The encrypted files, next to it. |
+| `/mnt/primary/photos` | The decrypted view, mounted by `unlock.sh`. Services and backups use this path, so no other setting changes. |
+| `/mnt/primary/.photos.gocryptfs` | The encrypted files, next to it. |
 
 Folders you do not list stay plain. While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
 
@@ -38,14 +38,16 @@ Containers do not wait for the unlock. Those with data in a plain folder start a
 
 ## Set up a folder
 
+On a host you are setting up, do this before the service first starts, or it writes plain files into the folder: deploy with `--tags storage,common,encryption`, do steps 3 and 4 with an empty folder, then deploy everything.
+
 Back up first and check the backup restores; the move in step 4 deletes the source files as it goes.
 
 1. Add the path to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. That installs gocryptfs and two scripts, and teaches the backups to refuse a locked folder and to skip the encrypted files (they would be stored twice).
 2. Stop the service that uses the folder, and keep it stopped until step 5 is done. Rename a folder that already holds data, and create an empty one:
 
 ```bash
-sudo mv /mnt/primary/immich /mnt/primary/immich.plain      # skip if the folder is new
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/immich
+sudo mv /mnt/primary/photos /mnt/primary/photos.plain      # skip if the folder does not exist yet
+sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/photos
 sudo /opt/services/scripts/unlock.sh
 ```
 
@@ -53,15 +55,15 @@ sudo /opt/services/scripts/unlock.sh
 4. Move the data in, file by file:
 
 ```bash
-cd /mnt/primary/immich.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt
-sudo rsync -aHAX --remove-source-files /mnt/primary/immich.plain/ /mnt/primary/immich/
-cd /mnt/primary/immich && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
+cd /mnt/primary/photos.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt
+sudo rsync -aHAX --remove-source-files /mnt/primary/photos.plain/ /mnt/primary/photos/
+cd /mnt/primary/photos && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
 diff /tmp/before.txt /tmp/after.txt && echo identical
 ```
 
 `--remove-source-files` deletes each file once it is copied, so the drive needs room for roughly the largest file plus about 1% overhead, not a second copy. (A sparse file takes its full size.) Take a backup and check that it restores first ([backups.md](./backups.md)): a power cut at the wrong moment can lose the file being moved. If the move stops half way, run the same `rsync` again.
 
-5. When the lists are identical, remove the leftover empty folders (`sudo rm -r /mnt/primary/immich.plain`) and start the service. Finish before 02:00, or the nightly backup also stores the half-moved folder.
+5. When the lists are identical, remove the leftover empty folders (`sudo rm -r /mnt/primary/photos.plain`) and start the service. Finish before 02:00, or the nightly backup also stores the half-moved folder.
 
 Deleting files does not erase them from the drive. A drive that held plain data may still hold it: re-format it before it leaves your hands. A new, empty drive needs none of this: set the folders up first, then copy the old data in.
 

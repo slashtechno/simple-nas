@@ -3,7 +3,7 @@ all:
     servers:       # every machine Ansible manages; site.yml and teardown.yml run on this group
       hosts:       # each host's settings go in host_vars/<nickname>/vars.yml
         pi:        # nickname shown in Ansible output (not a hostname or DNS name); also names host_vars/<nickname>/
-          ansible_host: 192.0.2.10   # a Tailscale (MagicDNS) name works from any network
+          ansible_host: 192.0.2.10   # use the LAN name or address for the first deploy, then the Tailscale (MagicDNS) name, which works from any network
           ansible_user: user
           ansible_ssh_private_key_file: ~/.ssh/id_rsa
         # pinas:

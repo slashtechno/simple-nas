@@ -35,7 +35,7 @@ All commands below run from `ansible/`.
 | File | In git | Holds | Create it |
 |---|---|---|---|
 | `inventory/hosts.yml` | no (addresses) | The hosts under `servers`, with SSH address, user and key | Copy `hosts.yml.example` |
-| `group_vars/all/defaults.yml` | yes | Every shared setting with its default; all `<name>_enabled` flags, all false except `storage_enabled` | Already there; not edited |
+| `group_vars/all/defaults.yml` | yes | Every shared setting with its default; all `<name>_enabled` flags, all false except `storage_enabled` and `tailscale_enabled` | Already there; not edited |
 | `group_vars/all/vars.yml` | yes | Your values that apply to every host (timezone, SSH keys, Cloudflare zones, Gitea and pics URLs) | Copy `vars.yml.example` |
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
@@ -55,6 +55,7 @@ Secrets live in `vault_*` variables inside a vault file. Templates and defaults 
 
 ```bash
 printf '%s\n' 'your-vault-password' > .vault-pass && chmod 600 .vault-pass   # once, in ansible/
+mkdir -p host_vars/<host>                                    # once per host
 cp host_vars/vault.yml.example host_vars/<host>/vault.yml   # keep only the keys your services use
 ansible-vault encrypt --vault-password-file .vault-pass host_vars/<host>/vault.yml   # first time
 ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml      # later changes
@@ -78,7 +79,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian, Ubuntu) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the SD card or drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
-3. Create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
+3. Run `mkdir -p host_vars/<host>`, then create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. Create `host_vars/<host>/vault.yml` from `host_vars/vault.yml.example`, keep the keys the enabled services use, and encrypt it. Shared secrets (Cloudflare, restic) go in `group_vars/all/vault.yml`.
 5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once: the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
@@ -97,7 +98,7 @@ To add your own service as a fork, follow [Add a new service](#add-a-new-service
 
 The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs), kept in git so the owner's setup is reproducible. Anyone else who copies the repo replaces them:
 
-1. Overwrite `group_vars/all/vars.yml` with `vars.yml.example` and delete the existing `host_vars/<host>/` directories.
+1. Copy `vars.yml.example` over `group_vars/all/vars.yml` (create it if the file is missing) and delete any existing `host_vars/<host>/` directories.
 2. Replace at least `ssh_authorized_keys` (the owner's key would otherwise be added to your hosts), `timezone`, the Gitea and Cloudflare values, and `restic_cloud_repository`.
 3. Create `inventory/hosts.yml`, the vaults and your own `host_vars/<host>/` files as in the table.
 

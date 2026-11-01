@@ -229,7 +229,7 @@ immich_subdomain: immich
 # Copyparty's name.
 copyparty_subdomain: copyparty
 # Gitea builds its links from gitea_root_url, a single address, so it has no name by default. To give it one,
-# set gitea_root_url to the same address (and the name is then also what the Homepage links to).
+# set gitea_root_url to that address and gitea_subdomain to its first label (the Homepage then links to it).
 gitea_subdomain: ""
 # pics' owner pages.
 pics_subdomain: pics

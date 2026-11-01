@@ -4,7 +4,7 @@ Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists no
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data (Docker, Immich database, configs) and caches (restic cache, Copyparty `hist`) |
+| `fast` | Random-IO data (Docker stacks, Immich database, configs) and caches (restic cache, Copyparty `hist`) |
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
