@@ -417,6 +417,22 @@
               ansible.builtin.assert:
                 that: "'/not-backed-up/photos' in ansible_failed_result.msg"
 
+        - name: An encrypted folder outside every backed-up path is refused
+          when: backup_local_enabled | bool
+          block:
+            - name: Encrypt a folder on a drive the backup does not cover
+              ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
+              vars:
+                encrypted_pairs: [{mount: /not-backed-up/vault, cipher: /not-backed-up/.vault.gocryptfs}]
+                encrypted_folders: [/not-backed-up/vault]
+            - name: The coverage check must have failed
+              ansible.builtin.fail:
+                msg: check_coverage.yml accepted an encrypted folder outside restic_local_rules
+          rescue:
+            - name: Only the coverage check may fail here
+              ansible.builtin.assert:
+                that: "'/not-backed-up/vault' in ansible_failed_result.msg"
+
         - name: Add a "- <directory>" rule for a directory left out on purpose
           ansible.builtin.set_fact:
             rules_with_opt_out: "{{ restic_local_rules + ['- /not-backed-up/photos'] }}"

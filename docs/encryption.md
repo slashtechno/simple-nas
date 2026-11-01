@@ -22,7 +22,6 @@ In `host_vars/<host>/vars.yml`, list absolute paths of folders on any drive, suc
 ```yaml
 encrypted_folders:
   - /mnt/primary/photos
-  - /mnt/backup/service-dumps
 ```
 
 Each listed folder is two folders on the drive:
@@ -97,4 +96,4 @@ Unlocking works from any device that can SSH to the host. A borrowed device may 
 Two ways back:
 
 - **Master key:** make an empty folder, run `gocryptfs -init -masterkey <key> <empty folder>` with the same options the folder was created with, and copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere. `init-encrypted-folder.sh` adds `-xchacha` on a CPU with no AES (a Raspberry Pi 4); add it too. With the wrong options the mount succeeds but every read fails with an input/output error.
-- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. A folder of your own that is not in `restic_local_rules` has no such backup.
+- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. The deploy fails if an encrypted folder is outside every path in `restic_local_rules`, so a folder always has such a backup.

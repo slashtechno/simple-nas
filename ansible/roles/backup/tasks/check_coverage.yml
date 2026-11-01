@@ -1,26 +1,12 @@
 ---
 # A service whose data directory is outside every path the local backup copies would be missing from it, silently.
-# One line per service: add a line when a service gets a new data directory. Immich's raw database directory is
-# not listed: it is excluded on purpose and reaches the backup through its dump. Copyparty's hist directory is
-# not listed either: restic-excludes-services.txt.j2 leaves it out because it can be rebuilt.
-# teardown.yml reads the same directories; keep the two lists in step.
+# The list is backup_service_data (roles/backup/defaults/main.yml): add a line there when a service gets a new
+# data directory. Folders in encrypted_folders are checked too.
+# teardown.yml lists the directories it deletes; keep that list in step.
 # To leave a directory out on purpose, add "- <that directory>" to restic_local_extra_rules: it then counts as decided.
 - name: Check every enabled service's data is inside a locally backed-up path
   vars:
-    service_data:
-      - {enabled: "{{ immich_enabled }}", dirs: ["{{ immich_upload_location }}"]}
-      - {enabled: "{{ copyparty_enabled }}", dirs: ["{{ copyparty_files_dir }}", "{{ copyparty_config_dir }}"]}
-      - {enabled: "{{ copyparty_enabled and copyparty_collab_enabled }}", dirs: ["{{ copyparty_collab_dir }}"]}
-      - {enabled: "{{ copyparty_enabled and copyparty_fast_enabled }}", dirs: ["{{ copyparty_fast_dir }}"]}
-      - {enabled: "{{ gitea_enabled }}", dirs: ["{{ gitea_data_dir }}", "{{ gitea_runner_data_dir }}"]}
-      - {enabled: "{{ pics_enabled }}", dirs: ["{{ pics_data_dir }}"]}
-      - {enabled: "{{ homebridge_enabled }}", dirs: ["{{ homebridge_config_dir }}"]}
-      - {enabled: "{{ garage_enabled }}", dirs: ["{{ garage_data_dir }}"]}
-      - {enabled: "{{ crafty_enabled }}", dirs: ["{{ crafty_data_dir }}"]}
-      - {enabled: "{{ ntfy_enabled }}", dirs: ["{{ ntfy_data_dir }}"]}
-      - {enabled: "{{ dockge_enabled }}", dirs: ["{{ dockge_stacks_dir }}", "{{ dockge_data_dir }}"]}
-      - {enabled: "{{ caddy_enabled }}", dirs: ["{{ caddy_data_dir }}"]}
-    backup_service_dirs: "{{ service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
+    backup_service_dirs: "{{ backup_service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
     # The paths the backup copies: the plain lines of restic_local_rules, then the "- /path" lines (a path the
     # owner decided to leave out), each without a trailing slash.
     backup_local_paths: >-

@@ -48,6 +48,20 @@
 
     # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
     # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
+    # The offsite list is short on purpose (photos and files are large), so say what it leaves out instead of letting
+    # the owner assume everything is offsite. Read-only: it also runs under --check.
+    - name: Say which service data the offsite backup does not include
+      vars:
+        offsite_paths: "{{ (restic_cloud_rules | reject('match', '^- ') | list) | map('regex_replace', '/$', '') | list }}"
+        service_dirs: "{{ backup_service_data | selectattr('enabled') | map(attribute='dirs') | flatten }}"
+        not_offsite: >-
+          {{ service_dirs | reject('match', '^(' ~ (offsite_paths | map('regex_escape') | join('|')) ~ ')(/|$)') | list }}
+      ansible.builtin.debug:
+        msg: >-
+          Not in the offsite backup: {{ not_offsite }}. Add the ones you want to restic_cloud_extra_rules
+          (docs/backups.md); they stay in the local backup either way.
+      when: not_offsite | length > 0
+
     - name: Initialize cloud restic repository (idempotent)
       ansible.builtin.command:
         cmd: >-
