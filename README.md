@@ -41,7 +41,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 
 ## Backups
 
-Fully automated once enabled: daily local, weekly cloud, weekly integrity check, plus a read-only status dashboard. Schedules, what is covered and restore steps are in [docs/backups.md](./docs/backups.md).
+Fully automated once enabled: daily local, weekly cloud (configs and dumps; photos only if you add them), weekly integrity check, plus a read-only status dashboard. Schedules, what is covered and restore steps are in [docs/backups.md](./docs/backups.md).
 
 ## Docs
 

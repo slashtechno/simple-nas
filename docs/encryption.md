@@ -38,6 +38,8 @@ Containers do not wait for the unlock. Those with data in a plain folder start a
 
 ## Set up a folder
 
+Back up first and check the backup restores; the move in step 4 deletes the source files as it goes.
+
 1. Add the path to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. That installs gocryptfs and two scripts, and teaches the backups to refuse a locked folder and to skip the encrypted files (they would be stored twice).
 2. Stop the service that uses the folder, and keep it stopped until step 5 is done. Rename a folder that already holds data, and create an empty one:
 

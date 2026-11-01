@@ -44,7 +44,8 @@ homepage_enabled: false
 caddy_enabled: false
 # Daily backup to the drive with the `backup` role, plus a weekly integrity check.
 backup_local_enabled: false
-# Weekly backup to restic_cloud_repository.
+# Weekly backup to restic_cloud_repository. It copies only the base directory, Copyparty's config and the service
+# dumps; photos and files go offsite only if you add them to restic_cloud_extra_rules (docs/backups.md).
 backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false

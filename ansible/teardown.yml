@@ -42,8 +42,9 @@
 
     # ── Per-service teardown ───────────────────────────────────────────────
 
-    # data_paths lists each service's data directories from group_vars/all/defaults.yml. The same list is kept in
-    # roles/backup/tasks/check_coverage.yml; when a service gets a new data directory, change both.
+    # data_paths lists every directory teardown deletes. roles/backup/tasks/check_coverage.yml lists the directories
+    # the backup must cover, which is shorter on purpose (it leaves out what the backup excludes: Immich's raw
+    # database, Copyparty's hist). When a service gets a new data directory, change both.
     - name: Stop and remove Immich
       tags: [immich]
       ansible.builtin.import_tasks: teardown_service.yml
