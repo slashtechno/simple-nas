@@ -52,7 +52,7 @@ backup_status_enabled: false
 
 # Folders stored encrypted with gocryptfs: absolute paths, each the folder a service already uses, for example
 # `- /mnt/primary/photos`. Listing a folder is what switches encryption on (docs/encryption.md). After every boot
-# run sudo unlock.sh; all folders share one passphrase. Not docker_data_root.
+# run sudo <scripts_dir>/unlock.sh; all folders share one passphrase. Not docker_data_root.
 encrypted_folders: []
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.

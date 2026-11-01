@@ -3,11 +3,9 @@
 - name: Check the backup role can run on this host
   ansible.builtin.assert:
     that:
-      - backup_local_enabled | bool or backup_cloud_enabled | bool
       - vault_restic_password is defined
     fail_msg: >-
-      The backup role is on for {{ inventory_hostname }} but neither backup_local_enabled nor
-      backup_cloud_enabled is true, or vault_restic_password is missing from group_vars/all/vault.yml.
+      vault_restic_password is missing from group_vars/all/vault.yml (see group_vars/all/vault.yml.example).
     quiet: true
 
 - name: Check the local backup has a drive
@@ -90,7 +88,7 @@
     path: "{{ service_dump_scripts_dir }}/{{ item }}.sh"
   register: backup_dump_scripts
   loop: "{{ services_with_dump | selectattr('enabled') | map(attribute='name') | list }}"
-  when: not ansible_check_mode
+  check_mode: false
 
 - name: Check those dump scripts are installed
   ansible.builtin.assert:
@@ -102,4 +100,3 @@
   loop: "{{ backup_dump_scripts.results | default([]) }}"
   loop_control:
     label: "{{ item.item }}"
-  when: not ansible_check_mode

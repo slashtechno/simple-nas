@@ -38,7 +38,7 @@ Containers do not wait for the unlock. Those with data in a plain folder start a
 
 ## Set up a folder
 
-On a host you are setting up, do this before the service first starts, or it writes plain files into the folder: deploy with `--tags storage,common,encryption`, do steps 3 and 4 with an empty folder, then deploy everything.
+On a host you are setting up, do this before the service first starts, or it writes plain files into the folder: deploy with `--tags storage,common,encryption`, run the commands in step 2 (and step 4 only if the folder already holds data), then deploy everything.
 
 Back up first and check the backup restores; the move in step 4 deletes the source files as it goes.
 
@@ -63,7 +63,7 @@ diff /tmp/before.txt /tmp/after.txt && echo identical
 
 `--remove-source-files` deletes each file once it is copied, so the drive needs room for roughly the largest file plus about 1% overhead, not a second copy. (A sparse file takes its full size.) Take a backup and check that it restores first ([backups.md](./backups.md)): a power cut at the wrong moment can lose the file being moved. If the move stops half way, run the same `rsync` again.
 
-5. When the lists are identical, remove the leftover empty folders (`sudo rm -r /mnt/primary/photos.plain`) and start the service. Finish before 02:00, or the nightly backup also stores the half-moved folder.
+5. When the lists are identical, remove the leftover empty folders (`sudo rm -r /mnt/primary/photos.plain`) and start the service. From step 1 until `unlock.sh` has mounted the folder, every backup (local and cloud) refuses to run and stores nothing, dumps included, so do steps 1 to 5 in one sitting.
 
 Deleting files does not erase them from the drive. A drive that held plain data may still hold it: re-format it before it leaves your hands. A new, empty drive needs none of this: set the folders up first, then copy the old data in.
 
@@ -80,7 +80,7 @@ ssh <host>
 sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
-It mounts each folder that is locked and restarts Docker, so containers see the files; containers started without a restart policy are not started again. A wrong passphrase stops it before Docker restarts, and it says which folder it was unlocking. It never uses `-nonempty`, and it stops if a locked folder is not empty (move the files away first) instead of hiding them. Run on an unlocked host it does nothing.
+It mounts each folder that is locked and restarts Docker, so containers see the files; containers started without a restart policy are not started again. A wrong passphrase stops it at that folder, and it says which one; Docker is restarted if an earlier folder had already been mounted. It never uses `-nonempty`, and it stops if a locked folder is not empty (move the files away first) instead of hiding them. Run on an unlocked host it does nothing.
 
 After a reboot, services with encrypted data stay down until someone unlocks, and the backups of every drive refuse to run while any listed folder is locked. A failed backup pushes an alert only if `ntfy_alert_url` is set, and an ntfy server on this host is down when Docker is; point it at one elsewhere (or ntfy.sh) to hear about a locked host. Otherwise the failure is only in the log (`logger -t backup`). The restart stops every container for up to 10 seconds, including ones with plain data.
 

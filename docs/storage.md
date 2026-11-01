@@ -133,7 +133,7 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 6. `just deploy '' --limit <host>`, so compose pulls the images and recreates the containers.
 7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the root drive.
 
-To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space.
+To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space, and its root-owned files make the backup exit with errors until you delete it (`sudo rm -r <old docker_data_root>`) or add `- <old docker_data_root>` to `restic_local_extra_rules`.
 
 Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
 

@@ -10,8 +10,13 @@ MOUNTED=0
 # Asked at the first locked folder, so an unlocked host never prompts.
 ask_passphrase() {
   if [ -z "$PASS" ]; then
-    read -rsp "gocryptfs passphrase: " PASS || [ -n "$PASS" ] || { echo "ERROR: no passphrase given." >&2; exit 1; }
+    # Input from a pipe without a final newline still sets PASS, but read returns failure.
+    read -rsp "gocryptfs passphrase: " PASS || true
     echo
+    if [ -z "$PASS" ]; then
+      echo "ERROR: no passphrase given." >&2
+      exit 1
+    fi
   fi
 }
 

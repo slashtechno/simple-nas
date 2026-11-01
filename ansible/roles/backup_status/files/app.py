@@ -267,7 +267,7 @@ def build_snapshots():
     # per snapshot on the HDD.
     mounted = repo_mounted()
     local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"])) if mounted else []
-    cloud_snapshots = read_cloud_snapshots_cache()
+    cloud_snapshots = read_cloud_snapshots_cache() if HOST_CONFIG["cloudEnabled"] else []
 
     result = [_snapshot_row(s, "local") for s in local_snapshots]
     result += [_snapshot_row(s, "cloud") for s in cloud_snapshots]
