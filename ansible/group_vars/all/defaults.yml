@@ -13,7 +13,7 @@ scripts_dir: "{{ services_dir }}/scripts"
 # --- Which services run on a host ---
 # Tailscale is installed by default; set false on a host that reaches the network another way.
 tailscale_enabled: true
-# Every service is off until a host sets `<name>_enabled: true` in host_vars/<host>/vars.yml (ansible/README.md).
+# Every service is off until a host sets `<name>_enabled: true` (ansible/README.md).
 # Setting it false again stops deploying it but keeps it running; remove it with
 # `ansible-playbook teardown.yml --limit <host> --tags <name>`.
 # What each service needs (drive roles, vault entries) is in docs/services.md.
@@ -214,7 +214,8 @@ pics_port: 8100
 dockge_port: 5001
 # ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
 ntfy_port: 8090
-# The read-only backup dashboard. It has no login.
+# The read-only backup dashboard. CAUTION: it has no login and listens on the LAN, so anyone on your network can
+# read backup status and file paths. Keep it off untrusted networks.
 backup_status_port: 8091
 # Crafty's panel (HTTPS); the container always listens on 8443.
 crafty_port: 28443

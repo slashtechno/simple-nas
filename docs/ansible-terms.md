@@ -37,7 +37,7 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 ```
 
 - **`tags`**: run a subset, e.g. `--tags immich` or `--tags backup,storage`.
-- **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false, so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
+- **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false (the base switches `storage_enabled` and `tailscale_enabled` default to true), so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
 - **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS and that Docker is not a snap; they carry `tags: [always]`.
 - **`teardown.yml`** is one play of tasks, one entry per service with its own `tags:`, mostly through `teardown_service.yml`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.

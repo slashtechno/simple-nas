@@ -4,7 +4,7 @@ Each service is a role with its own Docker Compose project at `/opt/services/<se
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag defaults to false (`storage_enabled`, which mounts the drives, defaults to true). Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag defaults to false; the two switches for base parts, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -82,7 +82,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 ## Pick what you use
 
-Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. Docker, the base packages and the shared Docker network are always installed. Three example hosts:
+Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs: it gives the Ansible user passwordless sudo, installs the base packages, Docker and the terminal tools, sets the timezone and the Docker data directory, adds your SSH keys, and masks suspend and hibernate. The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
