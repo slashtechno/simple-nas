@@ -111,12 +111,12 @@ Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudfla
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
 1. Make the secrets: a login password and a token (`docker run --rm binwiederhier/ntfy token generate`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password; no hash is stored.
-2. Set `ntfy_enabled: true` and `ntfy_alert_url: "http://localhost:8090/alerts"` (topic `alerts`) in the host's `vars.yml`; `just deploy ntfy,backup --limit <host>`.
+2. On the host that runs ntfy, set `ntfy_enabled: true` and `ntfy_server: <that host's inventory name>` in its `vars.yml`; `just deploy ntfy,backup --limit <host>`.
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but the `alerts` user and its token, so the published port asks for a login even on the LAN. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
-- Another host sends alerts to the same server by setting `ntfy_alert_url` to `http://<ntfy-host-tailscale-name>:8090/alerts` in its `host_vars`; it needs `vault_ntfy_token` (`group_vars/all/vault.yml`).
+- One ntfy server serves the whole homelab. Another host sends its alerts there by setting only `ntfy_server: <the ntfy host's inventory name>` (and no `ntfy_enabled`); it needs `vault_ntfy_token` from `group_vars/all/vault.yml`. A host with neither setting sends nothing. A server this repo does not run, such as ntfy.sh, is `ntfy_alert_url`.
 - `alert.sh` (backup role) runs when a cron job fails: it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.

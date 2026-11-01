@@ -454,6 +454,35 @@
               - "'/.config/rclone' in (local_excludes_file.content | b64decode)"
           when: backup_local_enabled | bool
 
+        # ntfy_server builds ntfy_alert_url from the named host: this host's own ntfy is localhost, another host's is
+        # its ansible_host. ntfy_alert_url is still the lazy default loaded from the backup role's defaults here.
+        - name: Point alerts at the peer host's ntfy
+          ansible.builtin.set_fact:
+            ntfy_server: render-peer
+
+        - name: Alerts go to the peer host's address and ntfy port
+          ansible.builtin.assert:
+            that: ntfy_alert_url == 'http://peer.example.test:' ~ ntfy_port ~ '/alerts'
+            quiet: true
+
+        - name: Point alerts at this host's own ntfy
+          ansible.builtin.set_fact:
+            ntfy_server: "{{ inventory_hostname }}"
+
+        - name: Alerts to this host go to localhost
+          ansible.builtin.assert:
+            that: ntfy_alert_url == 'http://localhost:' ~ ntfy_port ~ '/alerts'
+            quiet: true
+
+        - name: Send nothing without ntfy_server
+          ansible.builtin.set_fact:
+            ntfy_server: ""
+
+        - name: No ntfy_server means no alert URL
+          ansible.builtin.assert:
+            that: ntfy_alert_url == ''
+            quiet: true
+
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
         # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.

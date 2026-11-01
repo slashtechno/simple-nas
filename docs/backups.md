@@ -187,7 +187,7 @@ restic -r /mnt/offline/restic-repo copy \
 
 ## Checking backup status
 
-A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
+A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_server` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 ```bash
 restic snapshots                                  # add --tag daily or --tag weekly to filter
