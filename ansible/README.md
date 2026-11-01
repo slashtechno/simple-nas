@@ -19,6 +19,7 @@ All commands below run from `ansible/`.
 | Look up a setting, its default and every override | nothing | `grep -rn "^<name>:" group_vars host_vars roles/*/defaults` |
 | Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
+| Update the OS, Docker Engine or Tailscale | nothing to edit | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Add a drive or move data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
 | Give services `https://` names, or change a port or name | `caddy_private_domains` (each service with a web UI then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server or a redirect, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
@@ -77,7 +78,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 ## Add a host
 
-1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian, Ubuntu) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
+1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian 12 or newer, Ubuntu; Debian 11 ships restic 0.11, too old for the `- !` backup rules) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the SD card or drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Run `mkdir -p host_vars/<host>`, then create `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example`. Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. Create `host_vars/<host>/vault.yml` from `host_vars/vault.yml.example`, keep the keys the enabled services use, and encrypt it. Shared secrets (Cloudflare, restic) go in `group_vars/all/vault.yml`.
@@ -116,6 +117,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just status [host]` | `docker ps` on every server, or on one host |
+| `just os-upgrade [host]` | `apt upgrade` on every server, or on one host ([software that is not a Docker image](#update-software-that-is-not-a-docker-image)) |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |
@@ -161,6 +163,19 @@ ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-pass
 ```
 
 Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Caddy, Copyparty, pics and backup-status build on the host and always rebuild, so `docker_pull_policy` doesn't apply to them.
+
+## Update software that is not a Docker image
+
+| What | How |
+|---|---|
+| Operating system packages: Docker Engine, Tailscale, restic, rclone, gocryptfs, the kernel, a Raspberry Pi's firmware | `just os-upgrade` (all hosts) or `just os-upgrade pinas`; add `-K` if the host asks for the sudo password. Deploys never upgrade these, so they change only when you run this |
+| Reboot after a kernel or firmware upgrade | `sudo reboot` on the host. A host with `encrypted_folders` then needs `sudo unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
+| Zellij | Its version and checksum in `group_vars/all/versions.yml`, then `just deploy common` |
+| Docker images | [Update service images](#update-service-images) |
+| Stacks you run in Dockge | Dockge's own pull and update buttons; Ansible does not manage them |
+| This repo's tools (collections, roles) | `just deps`; the linter versions are pinned at the top of `justfile` |
+
+Do the upgrade at a quiet time: a Docker Engine upgrade restarts the containers. Tailscale keeps its login across upgrades.
 
 ## Disable or remove a service
 

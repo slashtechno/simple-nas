@@ -18,5 +18,5 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 ## Waiting for hardware or a decision
 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md).
-- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: try a real deploy, test Postgres on a gocryptfs mount, and run this drill on a scratch folder: init, mount, write files, unmount, `gocryptfs -fsck`; delete `gocryptfs.conf` and recreate it from the master key; change the passphrase with `-passwd`; open the folder on a Mac; run a backup script while locked (it must refuse); restore a restic snapshot to a clean folder and compare checksums.
+- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: try a real deploy of the role, change the passphrase with `-passwd`, open the folder on a Mac, and run a backup script while locked on the host (it must refuse).
 - A pics `archive_dir` option belongs in the pics repository, with its path under a drive that has a role so the backup covers it.

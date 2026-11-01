@@ -1,11 +1,18 @@
 #!/bin/bash
 # Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh
-# Asks for the passphrase once and mounts each encrypted folder. Restarts Docker if it mounted any.
+# Asks for the passphrase once (only if a folder is locked) and mounts each encrypted folder. Restarts Docker if it mounted any.
 set -euo pipefail
 
-read -rsp "gocryptfs passphrase: " PASS
-echo
+PASS=""
 MOUNTED=0
+
+# Asked at the first locked folder, so an unlocked host never prompts.
+ask_passphrase() {
+  if [ -z "$PASS" ]; then
+    read -rsp "gocryptfs passphrase: " PASS
+    echo
+  fi
+}
 
 # A container that started while a folder was locked still sees the empty folder; a restart shows the files.
 # This runs when the script ends, even when a later folder fails, so folders mounted before the failure are not
@@ -21,6 +28,7 @@ trap restart_docker_if_mounted EXIT
 {% for folder in encrypted_pairs %}
 # --- {{ folder.mount }} ---
 if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
+  ask_passphrase
   echo "Unlocking {{ folder.mount }}"
   # The folder must be empty: files left in it would be hidden by the mount. Move them away first (docs/encryption.md).
   if [ -n "$(ls -A {{ folder.mount | quote }})" ]; then

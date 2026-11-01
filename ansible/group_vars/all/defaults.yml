@@ -189,7 +189,7 @@ cloudflared_ingress: []
 # A cable straight from this host to a laptop: a static address on the host, no gateway, and a dnsmasq that hands the
 # laptop its address on that port only. The port must be idle, not the one the host is managed over.
 direct_link_enabled: false
-# The host's network port for the cable (`ip link` lists them). A Raspberry Pi's wired port is eth0; on an x86-64
+# The host's network port for the cable (`ip link` lists them). A Raspberry Pi's wired port is eth0; on an x64
 # machine it is named like enp3s0, so set it there.
 direct_link_iface: eth0
 # The host's address on the link.

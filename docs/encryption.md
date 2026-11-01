@@ -51,7 +51,7 @@ sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/photos
 sudo /opt/services/scripts/unlock.sh
 ```
 
-3. `init-encrypted-folder.sh` prints a **master key** once. Put it in your password manager, and copy `gocryptfs.conf` from the `.gocryptfs` folder off the host. Without that file the data cannot be opened. The script picks the cipher for this CPU and it cannot be changed later. On a host without AES instructions (Raspberry Pi 4) that is XChaCha20, which needs gocryptfs 2.2 or later on any other machine that opens the folder, such as a Mac (`brew install gocryptfs macfuse`). Use the same passphrase for every folder; `unlock.sh` asks once.
+3. `init-encrypted-folder.sh` prints a **master key** once, and only when it runs in a terminal (`ssh -t <host> sudo ...`). Put it in your password manager, and copy `gocryptfs.conf` from the `.gocryptfs` folder off the host. Without that file the data cannot be opened. The script picks the cipher for this CPU and it cannot be changed later. On a host without AES instructions (Raspberry Pi 4) that is XChaCha20, which needs gocryptfs 2.2 or later on any other machine that opens the folder, such as a Mac (`brew install gocryptfs macfuse`). Use the same passphrase for every folder; `unlock.sh` asks once.
 4. Move the data in, file by file:
 
 ```bash
@@ -92,8 +92,7 @@ Unlocking works from any device that can SSH to the host. A borrowed device may 
 
 ## If gocryptfs.conf is lost
 
-The backups hold the decrypted files and exclude the `.gocryptfs` folders, so the way back is: create a new encrypted folder, restore the files from restic into it ([backups.md](./backups.md)). The master key can recreate the file (gocryptfs wiki, "Recreate gocryptfs.conf using masterkey") only with the same options the folder was created with, which `init-encrypted-folder.sh` does not record. A folder of your own that is not in `restic_local_rules` has no such backup.
+Two ways back:
 
-## Status
-
-Tested on a Pi 4 with a scratch drive: unlock, a wrong passphrase, a locked folder rejecting writes, containers reading the files, a 300 MB move into a nearly full drive, SQLite surviving `kill -9`. Not tested: Postgres on a gocryptfs mount (so keep Immich's database folder out of the list for now), a real deploy of the role, and the recovery drill in [TODO.md](../TODO.md).
+- **Master key:** make an empty folder, run `gocryptfs -init -masterkey <key> <empty folder>` with the same options the folder was created with, and copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere. `init-encrypted-folder.sh` adds `-xchacha` on a CPU with no AES (a Raspberry Pi 4); add it too. With the wrong options the mount succeeds but every read fails with an input/output error.
+- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. A folder of your own that is not in `restic_local_rules` has no such backup.

@@ -16,7 +16,7 @@
 # join a new host once by hand with `sudo tailscale up` (add flags such as --advertise-exit-node
 # there; Tailscale remembers them). No auth key is stored anywhere in this repo.
 # state: present installs Tailscale if missing but never upgrades it during a deploy; the role's
-# default, latest, would. Upgrade by hand with `sudo apt upgrade tailscale`.
+# default, latest, would. Upgrade it with `just os-upgrade`.
 # include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of the collection role.
 # Skipped under --check: the collection reads `tailscale status --json` with a plain command task, which
 # --check skips, so its next task then fails parsing the empty output. A preview therefore does not show

@@ -62,6 +62,11 @@ deploy tags='' *flags:
 status limit='servers' *flags:
     ansible {{ limit }} --vault-password-file .vault-pass --become -a "docker ps" {{ flags }}
 
+# Upgrade the operating system's packages on every server (or `just os-upgrade pinas` for one): Docker, Tailscale,
+# restic, rclone, gocryptfs, the kernel and a Raspberry Pi's firmware. Reboot afterwards if the kernel or firmware changed.
+os-upgrade limit='servers' *flags:
+    ansible {{ limit }} --vault-password-file .vault-pass --become -m ansible.builtin.apt -a "update_cache=yes upgrade=safe" {{ flags }}
+
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags:
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
