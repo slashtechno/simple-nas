@@ -88,6 +88,8 @@ To lock again: stop the containers that use the folder, then `sudo umount <folde
 
 ### Unlocking from another device
 
+`unlock.sh` also reads the passphrase from standard input (`printf %s "$PASSPHRASE" | sudo unlock.sh`), so anything that can run a command on the host can unlock it, not only a person at a terminal. That is the hook for the unlock page in [TODO.md](../TODO.md).
+
 Unlocking works from any device that can SSH to the host. A borrowed device may record what you type. Afterwards change the passphrase with `sudo gocryptfs -passwd <the .gocryptfs folder>`. That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`. Full protection means a new gocryptfs folder and a copy of the files into it.
 
 ## If gocryptfs.conf is lost
