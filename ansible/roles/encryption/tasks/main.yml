@@ -40,6 +40,15 @@
   loop: [unlock.sh, init-encrypted-folder.sh]
   when: encrypted_folders | length > 0
 
+- name: Create the directory for your own after-unlock scripts
+  ansible.builtin.file:
+    path: "{{ encryption_hooks_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: encrypted_folders | length > 0
+
 - name: Remove the encryption scripts
   ansible.builtin.file:
     path: "{{ scripts_dir }}/{{ item }}"

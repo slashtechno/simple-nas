@@ -301,6 +301,7 @@
           - "'.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
           - "'-xchacha' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
           - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'/after-unlock.d' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'chattr +i /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'gocryptfs -allow_other /mnt/primary/.immich.gocryptfs /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"

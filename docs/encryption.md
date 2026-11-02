@@ -35,7 +35,7 @@ Folders you do not list stay plain. While a folder is locked it is an empty fold
 
 Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
 
-`unlock.sh` restarts only Docker: start a service that runs on the host (a systemd unit) yourself after unlocking.
+After mounting, `unlock.sh` restarts Docker and then runs every `<name>.sh` in `after-unlock.d` next to it (in `scripts_dir`) as root, so software this repo does not manage (a systemd service, a supervisor program) starts with its files in place: put its start command there, for example `systemctl start myapp`, and do not enable it at boot, because a service that starts on a locked folder sees it empty.
 
 ## Set up a folder
 

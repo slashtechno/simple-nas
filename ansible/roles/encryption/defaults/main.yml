@@ -1,0 +1,5 @@
+---
+# Scripts in this directory (`<name>.sh`, run by root in name order) start the software this repo does not manage,
+# such as a systemd service, after unlock.sh has mounted the folders. The deploy creates the directory and never
+# touches the scripts in it; docs/encryption.md.
+encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
