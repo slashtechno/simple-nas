@@ -482,7 +482,7 @@
             that:
               - >-
                 offsite_script | regex_findall('if ! mountpoint -q \\S+/\\.; then') | length
-                == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0)
+                == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0) + encrypted_folders | length
               - "not offsite_paths is search('(?m)^- ')"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
 
