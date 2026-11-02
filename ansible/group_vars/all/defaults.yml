@@ -165,10 +165,6 @@ garage_data_dir: "{{ fast_drive }}/docker/garage"
 # Crafty's servers and configuration (fast drive).
 crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 
-# --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
-# File on the host holding vault_ntfy_token, read by alert.sh.
-ntfy_token_file: "{{ services_dir }}/ntfy-token"
-
 # --- Cloudflare account (roles/cloudflared and roles/caddy; teardown does not read it) ---
 # API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
 cloudflare_api_token: "{{ vault_cloudflared_api_token }}"

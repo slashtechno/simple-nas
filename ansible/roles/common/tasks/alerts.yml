@@ -1,0 +1,36 @@
+---
+# alert.sh is run by the backup cron jobs and the connectivity watchdog, so it lives here: both work with the other off.
+- name: Check ntfy_server names a host that runs ntfy
+  ansible.builtin.import_tasks: check_ntfy_server.yml
+
+- name: Check the ntfy token is in the vault
+  ansible.builtin.assert:
+    that: vault_ntfy_token is defined
+    fail_msg: "Alerts to ntfy are on (ntfy_server or ntfy_alert_url) but vault_ntfy_token is not in group_vars/all/vault.yml (see vault.yml.example)."
+    quiet: true
+  when: ntfy_alert_url | length > 0
+
+- name: Render the alert script
+  ansible.builtin.template:
+    src: alert.sh.j2
+    dest: "{{ scripts_dir }}/alert.sh"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+# alert.sh reads the token from this file; with no ntfy_alert_url the file is removed.
+- name: Write the ntfy token file
+  ansible.builtin.copy:
+    content: "{{ vault_ntfy_token }}"
+    dest: "{{ ntfy_token_file }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  no_log: true
+  when: ntfy_alert_url | length > 0
+
+- name: Remove the ntfy token file when alerts are off
+  ansible.builtin.file:
+    path: "{{ ntfy_token_file }}"
+    state: absent
+  when: ntfy_alert_url | length == 0

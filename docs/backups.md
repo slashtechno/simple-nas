@@ -1,6 +1,6 @@
 # Backups
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache, alerts) or `ansible/group_vars/all/defaults.yml` (repositories, retention, logs).
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup`. Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) or `ansible/group_vars/all/defaults.yml` (repositories, retention, logs).
 
 ## Switching backups on
 

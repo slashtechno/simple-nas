@@ -69,16 +69,6 @@
     quiet: true
   when: backup_local_enabled | bool
 
-- name: Check ntfy_server names a host that runs ntfy
-  ansible.builtin.import_tasks: check_ntfy_server.yml
-
-- name: Check the ntfy token is in the vault
-  ansible.builtin.assert:
-    that: vault_ntfy_token is defined
-    fail_msg: "Alerts to ntfy are on (ntfy_server or ntfy_alert_url) but vault_ntfy_token is not in group_vars/all/vault.yml (see vault.yml.example)."
-    quiet: true
-  when: ntfy_alert_url | length > 0
-
 # The backup leaves out Immich's and Garage's live database directories (restic-excludes-services.txt.j2); the
 # dump their roles install is the only copy. Without the dump script the backup would run without errors and
 # hold no database. The roles run before this one in site.yml.

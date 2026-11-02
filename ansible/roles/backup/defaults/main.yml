@@ -1,17 +1,4 @@
 ---
-# A failed backup job always goes to the system log (`journalctl -t backup`). To also send it to your phone, set
-# this to the inventory name of the host that runs ntfy (it needs ntfy_enabled: true). Any host can name it,
-# itself or another one, because a homelab needs one ntfy server. "" sends nothing. The login token is
-# vault_ntfy_token. A host that is down or unreachable cannot alert. The URL is http:// to the host's
-# ansible_host, so the token is encrypted only when that address is on the tailnet (Tailscale encrypts it); for
-# a host reached over a plain LAN, set ntfy_alert_url to an https:// Caddy name instead.
-ntfy_server: ""
-# The topic URL alerts are posted to. The default is built from ntfy_server. Set it yourself only for a server this
-# repo does not run, such as "https://ntfy.sh/<your-topic>".
-ntfy_alert_url: >-
-  {{ '' if ntfy_server == ''
-     else 'http://' ~ ('localhost' if ntfy_server == inventory_hostname else hostvars[ntfy_server].ansible_host | default(ntfy_server))
-          ~ ':' ~ hostvars[ntfy_server].ntfy_port ~ '/alerts' }}
 # What the local (daily) backup copies and skips, one rule per line: "/path" backs a path up, "- pattern" leaves
 # something out, "- !pattern" puts it back. The service dumps dir is always added and caches and live database
 # directories are always skipped (roles/backup/templates/restic-excludes-*.txt.j2).

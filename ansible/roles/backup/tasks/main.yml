@@ -30,7 +30,6 @@
     mode: "0755"
   loop:
     - backup-services.sh
-    - alert.sh
 
 - name: Deploy backup scripts with no deployment-specific paths
   ansible.builtin.copy:
@@ -50,23 +49,6 @@
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true   # the password would show in --diff
-
-# alert.sh reads the token from this file; with no ntfy_alert_url the file is removed.
-- name: Write the ntfy token file
-  ansible.builtin.copy:
-    content: "{{ vault_ntfy_token }}"
-    dest: "{{ ntfy_token_file }}"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0600"
-  no_log: true
-  when: ntfy_alert_url | length > 0
-
-- name: Remove the ntfy token file when alerts are off
-  ansible.builtin.file:
-    path: "{{ ntfy_token_file }}"
-    state: absent
-  when: ntfy_alert_url | length == 0
 
 - name: Set up or remove the local backup
   ansible.builtin.import_tasks: local.yml

@@ -105,12 +105,6 @@
                 - backup-paths.txt
                 - restic-excludes-local.txt
                 - restic-excludes-cloud.txt
-                - alert.sh
-
-            - name: Remove the ntfy token file
-              ansible.builtin.file:
-                path: "{{ ntfy_token_file }}"
-                state: absent
 
             # rmdir only succeeds when the directory is empty.
             - name: Remove the dump.d and scripts directories (only if empty)

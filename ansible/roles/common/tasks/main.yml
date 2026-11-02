@@ -60,6 +60,9 @@
     key: "{{ item }}"
   loop: "{{ ssh_authorized_keys }}"
 
+- name: Set up failure alerts
+  ansible.builtin.import_tasks: alerts.yml
+
 - name: Install the terminal tools
   ansible.builtin.import_tasks: terminal.yml
   when: terminal_tools_enabled | bool

@@ -384,11 +384,12 @@
     repo: "{{ playbook_dir }}/.."
     ansible_user: pi
   tasks:
-    - name: Load the all/ examples and the Backup and Copyparty defaults
+    - name: Load the all/ examples and the Backup, Common and Copyparty defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop:
         - "{{ repo }}/roles/backup/defaults/main.yml"
+        - "{{ repo }}/roles/common/defaults/main.yml"
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
         - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
@@ -589,7 +590,7 @@
           when: backup_local_enabled | bool
 
         # ntfy_server builds ntfy_alert_url from the named host: this host's own ntfy is localhost, another host's is
-        # its ansible_host. ntfy_alert_url is still the lazy default loaded from the backup role's defaults here.
+        # its ansible_host. ntfy_alert_url is still the lazy default loaded from the common role's defaults here.
         - name: Point alerts at the peer host's ntfy
           ansible.builtin.set_fact:
             ntfy_server: render-peer
@@ -615,7 +616,7 @@
         - name: That fails the ntfy_server check
           block:
             - name: Run the check
-              ansible.builtin.import_tasks: "{{ repo }}/roles/backup/tasks/check_ntfy_server.yml"
+              ansible.builtin.import_tasks: "{{ repo }}/roles/common/tasks/check_ntfy_server.yml"
             - name: The check must have failed
               ansible.builtin.fail:
                 msg: check_ntfy_server.yml accepted a host that is not in the inventory
@@ -637,13 +638,21 @@
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
         # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
+        - name: Render alert.sh with no ntfy topic
+          ansible.builtin.template:
+            src: "{{ repo }}/roles/common/templates/alert.sh.j2"
+            dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert.sh"
+            mode: "0644"
+          vars:
+            ntfy_alert_url: ""
+
         - name: Turn on ntfy alerts for this host
           ansible.builtin.set_fact:
             ntfy_alert_url: http://localhost:8090/alerts
 
         - name: Render alert.sh with an ntfy topic set
           ansible.builtin.template:
-            src: "{{ repo }}/roles/backup/templates/alert.sh.j2"
+            src: "{{ repo }}/roles/common/templates/alert.sh.j2"
             dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert-with-ntfy.sh"
             mode: "0644"
 
@@ -660,3 +669,4 @@
               - "'curl' in (alert_scripts.results[1].content | b64decode)"
               - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
               - "'|| true' in (alert_scripts.results[1].content | b64decode)"
+              - "'logger -t \"${2:-backup}\"' in (alert_scripts.results[0].content | b64decode)"
