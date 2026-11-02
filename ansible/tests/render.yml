@@ -404,6 +404,10 @@
         restic_local_rules: "{{ restic_local_rules + expect.rules }}"
       when: expect.rules is defined
 
+    - name: Encrypt the fixture's folders
+      ansible.builtin.set_fact:
+        encrypted_folders: "{{ expect.encrypted | default([]) }}"
+
     - name: Enable the fixture's services
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true

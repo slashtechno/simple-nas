@@ -54,6 +54,8 @@ all:
             cache_dir: /mnt/data/restic-cache
             unclaimed: []
             rules: ["- /mnt/data/tmp/*", "- !/mnt/data/tmp/keep"]
+            # No service on: the host only encrypts a folder and backs up, for software this repo does not run.
+            encrypted: [/mnt/data/private]
         # Three drives, one per role.
         three-drives:
           fixture_drives:

@@ -96,7 +96,7 @@ Consequences of changing the lists:
 - To keep Crafty's `backups/` archives, add `- !<crafty_data_dir>/backups` (the full path) to the list. Crafty worlds are copied while the server runs, so a world written mid-backup can be inconsistent.
 - `teardown.yml -e remove_data=true` deletes the whole of `crafty_data_dir`, archives included.
 
-To give a new service a database dump, add `files/dump.sh` to its role and install it into `service_dump_scripts_dir` as `<service>.sh` (copy the Gitea role). Its dump files must start with `<service>-`. `teardown_service.yml` removes the script again.
+To give a new service a database dump, add `files/dump.sh` to its role and install it into `service_dump_scripts_dir` as `<service>.sh` (copy the Gitea role). Its dump files must start with `<service>-`. `teardown_service.yml` removes the script again. For software this repo does not run, put an executable `<name>.sh` in `service_dump_scripts_dir` by hand; the backup runs every `*.sh` there.
 
 ### Checking the cloud repo (manual)
 
