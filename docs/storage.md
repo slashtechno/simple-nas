@@ -146,7 +146,14 @@ Stop the services by hand: Ansible restarts a service only when a task reports a
 
 ### Detach a drive
 
-An unmount is undone by the next access to the path. Stop the automount first, then the mount: `sudo systemctl stop mnt-data.automount mnt-data.mount` (the unit name is the path with `/` as `-`). Remove the drive's `drives` entry and its fstab line before it is attached to another host.
+The unit name is the mount path with `/` as `-` (`/mnt/backup` is `mnt-backup`). Replace `sdX` with the device from `lsblk`.
+
+1. Stop whatever uses the drive: running backups (`pgrep -a restic`) and the containers that bind it (`docker compose down` in each project under `/opt/services` that uses it, including `backup-status`). A container keeps its own copy of the mount, which `findmnt` on the host does not show.
+2. Stop the automount, then the mount, because the next access to the path undoes an unmount: `sudo systemctl stop mnt-backup.automount mnt-backup.mount`.
+3. Check nothing holds it: `findmnt /mnt/backup` and `grep -l sdX1 /proc/*/mountinfo` print nothing. If either prints something, `sudo lsof /dev/sdX1` names the holder.
+4. `sync`, then `sudo udisksctl power-off -b /dev/sdX`. Unplug it once the activity light stops.
+
+To mount it again, plug it in and run `sudo systemctl start mnt-backup.automount`, then open the path (`ls /mnt/backup/.`). Recreate the containers that bind it (step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)). To attach it to another host, remove its `drives` entry and its fstab line first.
 
 ### Gitea runner registration
 
