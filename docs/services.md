@@ -60,7 +60,7 @@ Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_s
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
-`copyparty_sftp_enabled: true` opens an SFTP listener on `copyparty_sftp_port` for the pocketpi sync. Its account is `vault_pocketpi_sftp_user` and `vault_pocketpi_sftp_pass` from the vault, with read, write, move and delete on `/files`.
+`copyparty_sftp_enabled: true` opens an SFTP listener on `copyparty_sftp_port` for a sync client. Its account is `copyparty_sftp_user` with the password `vault_copyparty_sftp_pass` from the vault, with read, write, move and delete on `/files`.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).
 

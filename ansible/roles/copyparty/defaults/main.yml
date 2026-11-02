@@ -1,7 +1,9 @@
 ---
-# Copyparty's SFTP listener, used by the pocketpi project's sync through its own
-# account (vault_pocketpi_sftp_user / _pass, rwmd on /files). WebDAV lacks the modtimes rclone needs; SFTP has them.
+# Copyparty's SFTP listener, for a sync client (rclone, a phone app) that logs in with its own account: read, write,
+# move and delete on /files. WebDAV lacks the modtimes rclone needs; SFTP has them.
 copyparty_sftp_enabled: false
+# The SFTP account's name. Its password is vault_copyparty_sftp_pass.
+copyparty_sftp_user: sftp
 # Host port of the SFTP listener.
 copyparty_sftp_port: 3922
 # The Copyparty admin login, from the vault.
