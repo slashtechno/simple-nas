@@ -194,7 +194,7 @@
     # relative path would make the backup coverage check and teardown act on the wrong place.
     - name: Every data directory of every service is an absolute path
       vars:
-        dirs: "{{ ((item.data | default([])) + (item.no_backup | default([])) + (item.keep | default([]))) | select | list }}"
+        dirs: "{{ ((item.data | default([])) + (item.no_backup | default([])) + (item.keep | default([]))) | map('extract', vars) | list }}"
       ansible.builtin.assert:
         that: dirs | reject('match', '^/') | list | length == 0
         fail_msg: "{{ item.key }} has data directories that are not absolute paths: {{ dirs }}"
@@ -208,7 +208,7 @@
     - name: Teardown deletes the right directories
       vars:
         by_key: "{{ dict(services | map(attribute='key') | zip(services)) }}"
-        deleted: "{{ ((by_key[item.key].data | default([])) + (by_key[item.key].no_backup | default([]))) | select | list }}"
+        deleted: "{{ ((by_key[item.key].data | default([])) + (by_key[item.key].no_backup | default([]))) | map('extract', vars) | list }}"
       ansible.builtin.assert:
         that:
           - item.key != 'dockge' or deleted == [dockge_data_dir]
@@ -371,6 +371,16 @@
     - name: Give the host its fixture drives
       ansible.builtin.set_fact:
         drives: "{{ fixture_drives }}"
+
+    # Every host loops over whole entries (site.yml's web check, Caddy, Homepage, teardown), so an entry must not need a
+    # drive role to render: a host with no fast or primary drive still has to get through them.
+    - name: Looping over every service entry needs no drive role
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+        verbosity: 4
+      loop: "{{ services + web_services }}"
+      loop_control:
+        label: "{{ item.key }}"
 
     # The flags follow the fixture: local when it claims a backup drive, cloud when it says so.
     - name: Turn the backups on as the fixture says

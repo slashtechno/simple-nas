@@ -6,11 +6,13 @@
 #   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
 #              <key>_subdomain its name under the private domain. The role is roles/<key>.
 #   compose    the service's directory under services_dir (also its compose project). Teardown removes it.
-#   data       directories that hold the service's data. The local backup must cover them (the deploy fails
-#              otherwise), the offsite notice names them, and teardown deletes them with remove_data=true. An empty
-#              string is skipped, so "{{ x if x_enabled | bool else '' }}" makes a directory conditional.
-#   no_backup  directories teardown deletes but the backup leaves out on purpose (restic-excludes-services.txt.j2)
-#   keep       directories the backup must cover but teardown never deletes (they hold the owner's files)
+#   data       names of the settings that hold the service's data directories (not the paths: a path needs the host's
+#              drives, and a host without them still reads this list). The local backup must cover them (the deploy
+#              fails otherwise), the offsite notice names them, and teardown deletes them with remove_data=true.
+#              Consumers turn the names into paths with map('extract', vars).
+#   no_backup  setting names of directories teardown deletes but the backup leaves out on purpose
+#              (restic-excludes-services.txt.j2)
+#   keep       setting names of directories the backup must cover but teardown never deletes (the owner's files)
 #   dump_required
 #              true when the backup leaves out the live database; the dump script the role installs is then the
 #              only copy, so the deploy fails if it is missing
@@ -23,33 +25,32 @@
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
   - {name: Immich, key: immich, compose: immich, dump_required: true,
-     data: ["{{ immich_upload_location }}"], no_backup: ["{{ immich_db_data_location }}"],
+     data: [immich_upload_location], no_backup: [immich_db_data_location],
      container: immich_server, container_port: 2283, icon: immich, description: Photos}
   - {name: Copyparty, key: copyparty, compose: copyparty,
-     data: ["{{ copyparty_files_dir }}", "{{ copyparty_config_dir }}",
-            "{{ copyparty_collab_dir if copyparty_collab_enabled | bool else '' }}",
-            "{{ copyparty_fast_dir if copyparty_fast_enabled | bool else '' }}"],
-     no_backup: ["{{ copyparty_hist_dir }}"],
+     data: [copyparty_files_dir, copyparty_config_dir,
+            copyparty_collab_dir, copyparty_fast_dir],
+     no_backup: [copyparty_hist_dir],
      container: copyparty, container_port: 3923, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea,
-     data: ["{{ gitea_data_dir }}", "{{ gitea_runner_data_dir }}"],
+     data: [gitea_data_dir, gitea_runner_data_dir],
      container: gitea, container_port: 3000, icon: gitea, description: Git}
-  - {name: pics, key: pics, compose: pics, data: ["{{ pics_data_dir }}"],
+  - {name: pics, key: pics, compose: pics, data: [pics_data_dir],
      container: pics, container_port: 8000, icon: mdi-image-multiple, description: Photo culling and sharing}
-  - {name: Homebridge, key: homebridge, compose: homebridge, data: ["{{ homebridge_config_dir }}"],
+  - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
      port: 8581, icon: homebridge, description: HomeKit}
-  - {name: Crafty, key: crafty, compose: crafty, data: ["{{ crafty_data_dir }}"],
+  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
      container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
   # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
-  - {name: Dockge, key: dockge, compose: dockge, data: ["{{ dockge_data_dir }}"], keep: ["{{ dockge_stacks_dir }}"],
+  - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
-  - {name: ntfy, key: ntfy, compose: ntfy, data: ["{{ ntfy_data_dir }}"],
+  - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
      container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   # No web UI, so no tile and no Caddy name.
-  - {name: Garage, key: garage, compose: garage, dump_required: true, data: ["{{ garage_data_dir }}"]}
-  - {name: Caddy, key: caddy, compose: caddy, data: ["{{ caddy_data_dir }}"]}
+  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir]}
+  - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
   - {name: Homepage, key: homepage, compose: homepage}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
   - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}
