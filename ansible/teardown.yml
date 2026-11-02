@@ -67,7 +67,7 @@
       vars:
         service: "{{ item.compose }}"
         # The names become paths only when remove_data is true: a host without the drives never reads them otherwise.
-        data_paths: "{{ ((item.data | default([])) + (item.no_backup | default([]))) | map('extract', vars) | list }}"
+        data_paths: "{{ query('ansible.builtin.vars', *((item.data | default([]) + item.no_backup | default([])) | select | list)) }}"
 
     # Everything below runs only when `only` is empty, so that -e only=copyparty removes Copyparty and nothing else.
     - name: Remove the backups, drive rules and network config

@@ -9,7 +9,8 @@
 #   data       names of the settings that hold the service's data directories (not the paths: a path needs the host's
 #              drives, and a host without them still reads this list). The local backup must cover them (the deploy
 #              fails otherwise), the offsite notice names them, and teardown deletes them with remove_data=true.
-#              Consumers turn the names into paths with map('extract', vars).
+#              Consumers turn the names into paths with query('ansible.builtin.vars', ...). An empty string is
+#              skipped, so "{{ 'x_dir' if x_enabled | bool else '' }}" makes a directory conditional.
 #   no_backup  setting names of directories teardown deletes but the backup leaves out on purpose
 #              (restic-excludes-services.txt.j2)
 #   keep       setting names of directories the backup must cover but teardown never deletes (the owner's files)
@@ -29,7 +30,8 @@ services:
      container: immich_server, container_port: 2283, icon: immich, description: Photos}
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir,
-            copyparty_collab_dir, copyparty_fast_dir],
+            "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",
+            "{{ 'copyparty_fast_dir' if copyparty_fast_enabled | bool else '' }}"],
      no_backup: [copyparty_hist_dir],
      container: copyparty, container_port: 3923, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea,

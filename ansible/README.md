@@ -54,7 +54,7 @@ A vault file is a YAML file encrypted with `ansible-vault`. Ansible decrypts it 
 
 Secrets live in `vault_*` variables inside a vault file. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
 
-`just setup <host>` does the first-time work: it creates `.vault-pass` with a random password, creates `host_vars/<host>/vars.yml` from the example, and writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password). It encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists the secrets only you can supply (Cloudflare, GitHub, Google Drive, account names). Copy `.vault-pass` into your password manager: the restic backups cannot be read without it.
+`just setup <host>` does the first-time work: it creates `.vault-pass` with a random password, creates `host_vars/<host>/vars.yml` from the example, and writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password). It encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists every other secret in the examples (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`); add the ones your services use. Copy `.vault-pass` into your password manager: the restic backups cannot be read without it.
 
 ```bash
 just setup <host>

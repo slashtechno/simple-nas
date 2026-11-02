@@ -93,7 +93,7 @@
 # hold no database. The roles run before this one in site.yml.
 - name: Look for the dump scripts of the services whose live database is left out
   vars:
-    services_with_dump: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'defined') | list }}"
+    services_with_dump: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'equalto', true) | list }}"
   ansible.builtin.stat:
     path: "{{ service_dump_scripts_dir }}/{{ item }}.sh"
   register: backup_dump_scripts

@@ -6,9 +6,11 @@
   - fills the secrets that are random strings (letters and digits, or hex where the example says hex) (database passwords, tokens, the restic password) in the two vault
     files, creating them if needed and adding only the names that are missing, never changing one that exists.
 
-It does not touch the host and never prints a secret. Secrets that are yours to supply (Cloudflare, GitHub, Google
-Drive) are listed at the end; add them with `ansible-vault edit`.
+It does not touch the host and never prints a secret. Every other secret in the examples (account names, Cloudflare,
+GitHub, Google Drive, optional and list-valued ones) is listed at the end; add the ones your services use with
+`ansible-vault edit`.
 """
+import os
 import re
 import secrets
 import shutil
@@ -45,13 +47,12 @@ def fill(vault_file, example):
     wanted, manual = {}, []
     for line in example.read_text().splitlines():
         match = LINE.match(line)
-        if not match:
-            continue
-        name, value = match.groups()
-        if PLACEHOLDER.search(value):
-            wanted[name] = random_value(value)
-        elif value:
-            manual.append(name)
+        if match and PLACEHOLDER.search(match.group(2)):
+            wanted[match.group(1)] = random_value(match.group(2))
+        else:
+            name = re.match(r"^(vault_[a-z0-9_]+):", line)
+            if name:
+                manual.append(name.group(1))
 
     if vault_file.exists():
         text = vault("view", str(vault_file))
@@ -73,16 +74,16 @@ def main():
     if len(sys.argv) != 2:
         sys.exit("usage: just setup <host>   (the host's name in inventory/hosts.yml)")
     host = sys.argv[1]
-    if not re.fullmatch(r"[A-Za-z0-9_.-]+", host):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", host):
         sys.exit(f"{host!r} is not a host name")
 
     if not VAULT_PASS.exists():
-        existing = [path for path in (GROUP_VAULT[0], ANSIBLE / "host_vars" / host / "vault.yml") if path.exists()]
+        existing = sorted(ANSIBLE.glob("group_vars/*/vault.yml")) + sorted(ANSIBLE.glob("host_vars/*/vault.yml"))
         if existing:
             sys.exit(f"{existing[0].relative_to(ANSIBLE)} exists but .vault-pass does not: put the existing vault "
                      "password in .vault-pass (a new one could not open it).")
-        VAULT_PASS.write_text(secrets.token_urlsafe(32) + "\n")
-        VAULT_PASS.chmod(0o600)
+        with open(os.open(VAULT_PASS, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as f:
+            f.write(secrets.token_urlsafe(32) + "\n")
         print(f"Created {VAULT_PASS.relative_to(ANSIBLE)}. Copy it into your password manager now: every vault file")
         print("needs it, and the restic backups cannot be read without the vault.")
 

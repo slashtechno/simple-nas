@@ -176,6 +176,16 @@ cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
 cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
 # Domain -> zone ID. Zone IDs aren't secret. Set them in group_vars/all/vars.yml (shape in vars.yml.example).
 cloudflare_zones: {}
+# The zone IDs of the cloudflare_zones domains that zone_name equals or ends with after a dot (not any domain that merely
+# appears inside it: example.com must not match ample.com). Set zone_name where you read this; exactly one ID is a match.
+cloudflare_zone_ids_of_name: >-
+  {%- set ids = [] -%}
+  {%- for zone in cloudflare_zones | dict2items -%}
+  {%- if zone_name == zone.key or zone_name.endswith('.' ~ zone.key) -%}
+  {%- set _ = ids.append(zone.value) -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {{ ids }}
 # Cloudflare's API. Not a setting to change.
 cloudflare_api_url: https://api.cloudflare.com/client/v4
 

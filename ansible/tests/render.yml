@@ -24,6 +24,30 @@
         dockge_enabled: true
         ntfy_enabled: true
 
+# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (defaults.yml). This host
+# renders nothing else, so it can have its own zones.
+- name: Check zone matching
+  hosts: render-peer
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Give the host test zones
+      ansible.builtin.set_fact:
+        cloudflare_zones: {example.com: id-1, ample.com: id-2, me.com: id-3}
+
+    - name: A hostname matches only a zone it equals or ends with after a dot
+      vars:
+        zone_name: "{{ item.name }}"
+      ansible.builtin.assert:
+        that: cloudflare_zone_ids_of_name == item.zones
+        quiet: true
+      loop:
+        - {name: x.example.com, zones: [id-1]}
+        - {name: example.com, zones: [id-1]}
+        - {name: a.b.ample.com, zones: [id-2]}
+        - {name: notexample.com, zones: []}
+        - {name: home.com, zones: []}
+
 - name: Render all role templates against the example vars
   hosts: render-full
   become: false
@@ -194,10 +218,11 @@
     # relative path would make the backup coverage check and teardown act on the wrong place.
     - name: Every data directory of every service is an absolute path
       vars:
-        dirs: "{{ ((item.data | default([])) + (item.no_backup | default([])) + (item.keep | default([]))) | map('extract', vars) | list }}"
+        dirs: "{{ ((item.data | default([])) + (item.no_backup | default([])) + (item.keep | default([]))) | select | list }}"
+        paths: "{{ query('ansible.builtin.vars', *dirs) }}"
       ansible.builtin.assert:
-        that: dirs | reject('match', '^/') | list | length == 0
-        fail_msg: "{{ item.key }} has data directories that are not absolute paths: {{ dirs }}"
+        that: paths | reject('match', '^/') | list | length == 0
+        fail_msg: "{{ item.key }} has data directories that are not absolute paths: {{ paths }}"
         quiet: true
       loop: "{{ services }}"
       loop_control:
@@ -208,7 +233,8 @@
     - name: Teardown deletes the right directories
       vars:
         by_key: "{{ dict(services | map(attribute='key') | zip(services)) }}"
-        deleted: "{{ ((by_key[item.key].data | default([])) + (by_key[item.key].no_backup | default([]))) | map('extract', vars) | list }}"
+        names: "{{ ((by_key[item.key].data | default([])) + (by_key[item.key].no_backup | default([]))) | select | list }}"
+        deleted: "{{ query('ansible.builtin.vars', *names) }}"
       ansible.builtin.assert:
         that:
           - item.key != 'dockge' or deleted == [dockge_data_dir]
@@ -236,22 +262,6 @@
 
     - name: Work out which services Caddy names
       ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
-
-    # The roles pair a hostname with its Cloudflare zone by comparing the zone with the hostname's tails
-    # (x.example.com, example.com, com). This checks that the expression keeps working on the installed ansible-core.
-    - name: A hostname matches only a zone it equals or ends with after a dot
-      vars:
-        zones: {example.com: id-1, ample.com: id-2, me.com: id-3}
-        tails: "{{ item.name | regex_findall('(?=(?:^|[.])(.+))') }}"
-        matched: "{{ zones | dict2items | selectattr('key', 'in', tails) | map(attribute='value') | list }}"
-      ansible.builtin.assert:
-        that: matched == item.zones
-      loop:
-        - {name: x.example.com, zones: [id-1]}
-        - {name: example.com, zones: [id-1]}
-        - {name: a.b.ample.com, zones: [id-2]}
-        - {name: notexample.com, zones: []}
-        - {name: home.com, zones: []}
 
     - name: Create one output directory per role
       ansible.builtin.file:

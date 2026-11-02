@@ -49,7 +49,7 @@ rclone_config_dir: "/home/{{ ansible_user }}/.config/rclone"
 # the `no_backup` ones are left out on purpose), plus the folders in encrypted_folders, which can be anywhere.
 # Used by roles/backup/tasks/check_coverage.yml and the offsite notice in cloud.yml.
 backup_service_dirs: >-
-  {{ ((services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten
-       + services | selectattr('key', 'in', enabled_service_keys) | map(attribute='keep', default=[]) | flatten)
-      | map('extract', vars) | list)
+  {{ query('ansible.builtin.vars',
+           *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten | select | list
+             + services | selectattr('key', 'in', enabled_service_keys) | map(attribute='keep', default=[]) | flatten | select | list))
      + encrypted_pairs | map(attribute='mount') | list }}

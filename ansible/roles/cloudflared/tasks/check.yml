@@ -25,20 +25,13 @@
   ansible.builtin.set_fact:
     cloudflared_hostnames: []
 
-# A hostname belongs to the cloudflare_zones domain it equals or ends with after a dot (not any domain
-# that merely appears inside it: example.com must not match ample.com). zone_ids collects the zone of each match.
+# zone_ids: the cloudflare_zones domains the hostname belongs to (cloudflare_zone_ids_of_name, defaults.yml).
 - name: Pair each hostname with its zone
   ansible.builtin.set_fact:
     cloudflared_hostnames: "{{ cloudflared_hostnames + [{'hostname': item.hostname, 'zone_ids': zone_ids}] }}"
   vars:
-    zone_ids: >-
-      {%- set ids = [] -%}
-      {%- for zone in cloudflare_zones | dict2items -%}
-      {%- if item.hostname == zone.key or item.hostname.endswith('.' ~ zone.key) -%}
-      {%- set _ = ids.append(zone.value) -%}
-      {%- endif -%}
-      {%- endfor -%}
-      {{ ids }}
+    zone_name: "{{ item.hostname }}"
+    zone_ids: "{{ cloudflare_zone_ids_of_name }}"
   loop: "{{ cloudflared_ingress }}"
   loop_control:
     label: "{{ item.hostname }}"
