@@ -1,7 +1,8 @@
 #!/bin/bash
 # Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh
 # Asks for the passphrase once (only if a folder is locked) and mounts each encrypted folder. If it mounted any, it
-# restarts Docker, then runs your own start commands: every *.sh in {{ encryption_hooks_dir }} (docs/encryption.md).
+# runs every *.sh in {{ encryption_hooks_dir }}, in name order (docs/encryption.md). The deploy installs 00-docker.sh
+# there; your own start commands go beside it.
 # The passphrase can also arrive on stdin (`printf %s "$PASS" | sudo unlock.sh`), so another program can run this script.
 set -euo pipefail
 
@@ -21,17 +22,13 @@ ask_passphrase() {
   fi
 }
 
-# A container that started while a folder was locked still sees the empty folder; a restart shows the files.
-# This runs when the script ends, even when a later folder fails, so folders mounted before the failure are not
-# left with stale containers. Containers without a restart policy are not started again.
-# Then it runs your own start commands for software this repo does not manage: they cannot wait for a mount that
-# appears by hand. A loop over *.sh, not run-parts, for the reason in backup-services.sh. A script that fails does
-# not stop the others, and the unlock then exits with an error.
+# Software that started while a folder was locked still sees it empty. After mounting, the scripts restart it.
+# This runs when the script ends, even when a later folder fails, so folders mounted before the failure do not
+# leave stale software behind. A loop over *.sh, not run-parts, for the reason in backup-services.sh. A script that
+# fails does not stop the others, and the unlock then exits with an error.
 finish() {
   local status=$?
   if [ "$MOUNTED" = 1 ]; then
-    systemctl restart docker
-    echo "Docker restarted."
     shopt -s nullglob
     for script in {{ encryption_hooks_dir | quote }}/*.sh; do
       echo "Running $(basename "$script")"

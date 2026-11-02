@@ -33,9 +33,9 @@ Each listed folder is two folders on the drive:
 
 Folders you do not list stay plain. While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
 
-Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
+Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker (its `00-docker.sh` script). Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
 
-After mounting, `unlock.sh` restarts Docker and then runs every `<name>.sh` in `after-unlock.d` next to it (in `scripts_dir`) as root, so software this repo does not manage (a systemd service, a supervisor program) starts with its files in place: put its start command there, for example `systemctl start myapp`, and do not enable it at boot, because a service that starts on a locked folder sees it empty.
+After mounting, `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (in `scripts_dir`) as root, in name order. The deploy installs `00-docker.sh` there; for any other software that uses the folder (a systemd service, a supervisor program, a cron job) add a script with its restart command, for example `systemctl restart myapp`.
 
 ## Set up a folder
 
@@ -43,7 +43,7 @@ On a host you are setting up, do this before the service first starts, or it wri
 
 Back up first and check the backup restores; the move in step 4 deletes the source files as it goes.
 
-1. Add the path to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. That installs gocryptfs and two scripts, and teaches the backups to refuse a locked folder and to skip the encrypted files (they would be stored twice).
+1. Add the path to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. That installs gocryptfs and the scripts, and teaches the backups to refuse a locked folder and to skip the encrypted files (they would be stored twice).
 2. Stop the service that uses the folder, and keep it stopped until step 5 is done. Rename a folder that already holds data, and create an empty one:
 
 ```bash
@@ -70,7 +70,7 @@ Deleting files does not erase them from the drive. A drive that held plain data 
 
 ### Turning it off
 
-Unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, deploy `encryption,backup`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the two scripts; gocryptfs stays installed.
+Unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, deploy `encryption,backup`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts it installed; gocryptfs stays installed.
 
 ## Unlocking
 
@@ -81,7 +81,7 @@ ssh <host>
 sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
-It mounts each folder that is locked and restarts Docker, so containers see the files; containers started without a restart policy are not started again. A wrong passphrase stops it at that folder, and it says which one; Docker is restarted if an earlier folder had already been mounted. It never uses `-nonempty`, and it stops if a locked folder is not empty (move the files away first) instead of hiding them. Run on an unlocked host it does nothing.
+It mounts each folder that is locked, then runs the scripts in `after-unlock.d`; containers started without a restart policy are not started again. A wrong passphrase stops it at that folder, and it says which one; The scripts run if an earlier folder had already been mounted. It never uses `-nonempty`, and it stops if a locked folder is not empty (move the files away first) instead of hiding them. Run on an unlocked host it does nothing.
 
 After a reboot, services with encrypted data stay down until someone unlocks, and the backups of every drive refuse to run while any listed folder is locked. A failed backup pushes an alert only if `ntfy_server` is set, and an ntfy server on this host is down when Docker is; point `ntfy_server` at another host (or `ntfy_alert_url` at ntfy.sh) to hear about a locked host. Otherwise the failure is only in the log (`logger -t backup`). The restart stops every container for up to 10 seconds, including ones with plain data.
 
