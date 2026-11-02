@@ -19,12 +19,12 @@
 {% if gitea_enabled | bool %}
 {{ gitea_data_dir }}/ssh
 {% endif %}
-{% if immich_enabled | bool %}
-{{ immich_db_data_location }}
-{% endif %}
+# The directories each enabled service lists as no_backup in group_vars/all/services.yml.
+{% for path in query('ansible.builtin.vars', *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='no_backup', default=[]) | flatten | select | list)) %}
+{{ path }}
+{% endfor %}
 {% if copyparty_enabled | bool %}
 {{ copyparty_config_dir }}/copyparty
-{{ copyparty_hist_dir }}
 {% endif %}
 {% if garage_enabled | bool %}
 # Root-owned and a live database: the backup user cannot read it, and Garage's dump (garage.sh) carries a
