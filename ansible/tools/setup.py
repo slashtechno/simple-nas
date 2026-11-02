@@ -3,7 +3,7 @@
 
   - creates .vault-pass (a random password) if it is missing,
   - creates host_vars/<host>/vars.yml from the example if it is missing,
-  - fills the secrets that are random strings (database passwords, tokens, the restic password) in the two vault
+  - fills the secrets that are random strings (letters and digits, or hex where the example says hex) (database passwords, tokens, the restic password) in the two vault
     files, creating them if needed and adding only the names that are missing, never changing one that exists.
 
 It does not touch the host and never prints a secret. Secrets that are yours to supply (Cloudflare, GitHub, Google
@@ -29,7 +29,10 @@ PLACEHOLDER = re.compile(r"change-?me", re.I)
 def random_value(example):
     if example.startswith("tk_"):   # an ntfy token: "tk_" and 29 letters or digits
         return "tk_" + "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(29))
-    return secrets.token_urlsafe(36)
+    hex_bytes = re.search(r"hex-(\d+)", example)   # "...openssl-rand-hex-32": 32 bytes as hex (Garage needs this)
+    if hex_bytes:
+        return secrets.token_hex(int(hex_bytes.group(1)))
+    return "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(40))
 
 
 def vault(*args, stdin=None):
@@ -74,6 +77,10 @@ def main():
         sys.exit(f"{host!r} is not a host name")
 
     if not VAULT_PASS.exists():
+        existing = [path for path in (GROUP_VAULT[0], ANSIBLE / "host_vars" / host / "vault.yml") if path.exists()]
+        if existing:
+            sys.exit(f"{existing[0].relative_to(ANSIBLE)} exists but .vault-pass does not: put the existing vault "
+                     "password in .vault-pass (a new one could not open it).")
         VAULT_PASS.write_text(secrets.token_urlsafe(32) + "\n")
         VAULT_PASS.chmod(0o600)
         print(f"Created {VAULT_PASS.relative_to(ANSIBLE)}. Copy it into your password manager now: every vault file")
