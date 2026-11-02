@@ -584,6 +584,23 @@
             that: ntfy_alert_url == 'http://localhost:' ~ ntfy_port ~ '/alerts'
             quiet: true
 
+        - name: Point alerts at a host that is not in the inventory
+          ansible.builtin.set_fact:
+            ntfy_server: no-such-host
+
+        - name: That fails the ntfy_server check
+          block:
+            - name: Run the check
+              ansible.builtin.import_tasks: "{{ repo }}/roles/backup/tasks/check_ntfy_server.yml"
+            - name: The check must have failed
+              ansible.builtin.fail:
+                msg: check_ntfy_server.yml accepted a host that is not in the inventory
+          rescue:
+            - name: Only the ntfy_server check may fail here
+              ansible.builtin.assert:
+                that: "'ntfy_server is \"no-such-host\"' in ansible_failed_result.msg"
+                quiet: true
+
         - name: Send nothing without ntfy_server
           ansible.builtin.set_fact:
             ntfy_server: ""

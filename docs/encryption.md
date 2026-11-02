@@ -13,7 +13,7 @@ Does not protect against:
 - the root drive. A headless host cannot take a passphrase at boot, so the root drive holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the local and the cloud backups, though not an encrypted folder;
 - a passphrase typed on a device that records it (see [Unlocking from another device](#unlocking-from-another-device)).
 
-Quantum computers weaken but do not break the 256-bit symmetric encryption gocryptfs and restic use. The weak point is the passphrase: use a long random one from a password manager.
+Quantum computers weaken but do not break the 256-bit symmetric encryption gocryptfs and restic use. The weak point is the passphrase: use a long random one from a password manager. Unlocking over SSH uses OpenSSH's default key exchange from version 9.0, which is hybrid post-quantum (`sntrup761x25519`), so a recorded session is not readable later by a quantum computer; an older OpenSSH on either end falls back to a classical exchange.
 
 ## How it works
 
@@ -34,6 +34,10 @@ Each listed folder is two folders on the drive:
 Folders you do not list stay plain. While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
 
 Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. Docker's own storage (`docker_data_root`) cannot be in an encrypted folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
+
+A service that runs on the host instead of in Docker (a systemd unit, a service this repo does not manage) is not restarted by `unlock.sh`. Start it after unlocking, or order it after the unlock by hand; a folder it uses must be listed in `encrypted_folders` like any other. Containers this repo does not manage (for example Dockge stacks) are covered the same way as the ones it does: `unlock.sh` restarts Docker, and the folders they use can be listed in `encrypted_folders` and backed up like the rest.
+
+Postgres (the Immich image) running on a gocryptfs mount recovers from `kill -9` of the database; tested on a Pi 4 with the `-xchacha` cipher.
 
 ## Set up a folder
 

@@ -1,0 +1,12 @@
+---
+- name: Check ntfy_server names a host that runs ntfy
+  ansible.builtin.assert:
+    that:
+      - ntfy_server in groups['servers']
+      - hostvars[ntfy_server].ntfy_enabled | bool
+      - hostvars[ntfy_server].ntfy_port | string | length > 0
+    fail_msg: >-
+      ntfy_server is "{{ ntfy_server }}", which must be a host in inventory/hosts.yml with ntfy_enabled: true and
+      an ntfy_port. Set ntfy_enabled on that host (docs/services.md#ntfy-failure-alerts), or set ntfy_server to "".
+    quiet: true
+  when: ntfy_server | length > 0
