@@ -68,3 +68,9 @@ enabled_service_keys: >-
   {%- set _ = on.append(service.key) -%}
   {%- endfor -%}
   {{ on }}
+
+# The keys of the enabled entries marked dump_required: their live database is left out of the backup, so the deploy
+# checks their dump script is installed (roles/backup/tasks/checks.yml).
+dump_service_keys: >-
+  {{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'defined')
+     | selectattr('dump_required') | map(attribute='key') | list }}

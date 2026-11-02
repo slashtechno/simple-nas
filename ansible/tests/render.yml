@@ -205,6 +205,12 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # Most entries have no dump_required field; the real deploy failed on that once, so the list is built here from the real file.
+    - name: Only the enabled services that need a dump are in dump_service_keys
+      ansible.builtin.assert:
+        that: dump_service_keys | sort == (['garage', 'immich'] | select('in', enabled_service_keys) | list | sort)
+        quiet: true
+
     - name: Every service has a row in docs/services.md
       ansible.builtin.assert:
         that: "('roles/' ~ item.key) in lookup('ansible.builtin.file', repo + '/../docs/services.md')"
