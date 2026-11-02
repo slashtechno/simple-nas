@@ -291,6 +291,16 @@
         {{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename')
         | product(['environment', 'volumes', 'labels', 'ports']) | list }}
 
+    # Caddy numbers its sites by their position in the list, so the checks find a site by its address, not its number.
+    - name: Read Caddy's labels, and the label number of each site address
+      ansible.builtin.set_fact:
+        caddy_labels: "{{ (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.labels }}"
+    - name: Look up each site address
+      vars:
+        sites: "{{ caddy_labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
+      ansible.builtin.set_fact:
+        caddy_site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
+
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered
       ansible.builtin.assert:
@@ -311,12 +321,11 @@
           - "'/mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(services_dir ~ '/cloudflared/token') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - "'/mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
-          - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_8: \"gh.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_8.redir: \"https://github.com{uri}\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_9: \"http://render-full\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "caddy_labels[caddy_site['home.caddy.example.test'] ~ '.reverse_proxy'] == 'homepage:3000'"
+          - "'immich.caddy.example.test immich.second.example.test' in caddy_site"
+          - "(caddy_site['crafty.caddy.example.test crafty.second.example.test'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
+          - "caddy_labels[caddy_site['gh.caddy.example.test'] ~ '.redir'] == 'https://github.com{uri}'"
+          - "'http://render-full' in caddy_site"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
@@ -340,7 +349,8 @@
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml | map('dict2items') | map('first') | map(attribute='key') | list)
             == ['render-full', 'render-peer', 'Links']
           - >-
-            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | length == 9
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full']
+            | length == (web_services | map(attribute='key') | select('in', enabled_service_keys) | list | length)
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
             | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
@@ -488,6 +498,7 @@
                 == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0) + encrypted_folders | length
               - "not offsite_paths is search('(?m)^- ')"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
+              - "'copyparty' not in expect.services | default([]) or copyparty_hist_dir in offsite_excludes"
 
         - name: Read the local exclude list
           ansible.builtin.slurp:
