@@ -62,6 +62,7 @@
 
 - name: Install the terminal tools
   ansible.builtin.import_tasks: terminal.yml
+  when: terminal_tools_enabled | bool
 
 - name: Set where Docker keeps its data
   ansible.builtin.import_tasks: docker_data_root.yml
