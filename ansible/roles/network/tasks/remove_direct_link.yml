@@ -35,14 +35,6 @@
             conn_name: direct-link
             state: absent
 
-        - name: Re-enable auto-connect on the default eth0 DHCP profile
-          community.general.nmcli:
-            type: ethernet
-            conn_name: "Wired connection 1"
-            ifname: "{{ direct_link_iface }}"
-            autoconnect: true
-            state: present
-
     - name: Remove direct-link dnsmasq config
       ansible.builtin.file:
         path: /etc/dnsmasq.d/direct-link.conf
