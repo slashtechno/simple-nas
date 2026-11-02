@@ -19,6 +19,7 @@ Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run o
 - [x] The 500 GB drive is out and the 6 TB IronWolf is in.
 - [ ] Read the IronWolf's long SMART test when it finishes (`smartctl -a`).
 - [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
+- [ ] Connectivity watchdog (opt-in). pi4 once stayed on wifi with a valid address and working ping while every TCP and DNS lookup failed, so it dropped off Tailscale until `nmcli con down` and `up` on the wifi connection fixed it (2026-11-02, cause unknown). Detect "link up, TCP or DNS dead" and reconnect; design from a Pi review, built only as small as that review allows. Build after Phase 0, test on pi4.
 - Drive detach and mount stay documented in `docs/storage.md`; a script only if the manual steps turn out to be a frequent task.
 
 ## Phase 2: a proper backup status page
@@ -50,6 +51,6 @@ Wanted: "proper" login in front of everything that can take it, from Gitea to an
 - [ ] Scrutiny and Dozzle: opt-in roles added behind Tinyauth, if wanted after smartd.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 
-## Open question
+## Decided
 
-Cron or systemd timers for the backup jobs: decided by a Pi review (long-term maintainability while staying readable). Record the outcome here.
+- Backup schedules stay on cron. Both Pi reviews: a job is one readable task with its alert text inline; timers need six unit files, a handler and a generic `OnFailure` alert, for one gain (catching up a missed run) that the status page already shows as stale. If a missed offsite backup ever costs something, add a timer for the cloud job only.
