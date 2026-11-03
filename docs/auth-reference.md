@@ -1,10 +1,10 @@
 # Login (Tinyauth) reference
 
-Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. An app that reads a proxy's user header takes the signed-in name from `Remote-User`; Copyparty's browser name does with `copyparty_sso_enabled` ([Copyparty accounts and volumes](./services.md#copyparty-accounts-and-volumes)). Tinyauth's own settings below are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
+Tinyauth is the login in front of the web services: what it does and how a service joins it is in [services.md](./services.md#tinyauth-login). This page is how to use it: users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale and sessions. Its own settings are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`).
 
 ## Users and passwords
 
-`vault_tinyauth_users` is a list of logins, each with a `name` and a `password`, in plain text because the vault is already encrypted; the deploy hashes the passwords for Tinyauth. Shape: [vault.yml.example](../ansible/group_vars/all/vault.yml.example). Put it in `group_vars/all/vault.yml` and every host with Tinyauth accepts the same logins; put it in a host's `vault.yml` for users of that host only (the host's value wins). Each host runs its own Tinyauth, so a login on one host does not sign you in on another. To change a password, edit the vault and `just deploy tinyauth --limit <host>`.
+`vault_tinyauth_users` in `group_vars/all/vault.yml` gives every host's own Tinyauth the same logins; a host that wants different users sets `vault_tinyauth_users` in its own host vault, which wins. Each host runs its own Tinyauth, so a login on one host does not sign you in on another. To add a user or change a password, edit the vault and `just deploy tinyauth --limit <host>`.
 
 ## Two-factor codes (TOTP)
 
@@ -19,7 +19,7 @@ A user with a `totp` key is asked for a six-digit code after the password. The p
        password: "..."
        totp: "THE32LETTERSECRET"
    ```
-3. `just deploy tinyauth --limit <host>`, then add the account in an authenticator app by choosing "enter a setup key" and pasting the secret (time-based, 6 digits, 30 seconds are the defaults).
+3. Deploy, then add the account in an authenticator app by choosing "enter a setup key" and pasting the secret (time-based, 6 digits, 30 seconds are the defaults).
 
 - **Lost phone:** there are no recovery codes. The vault is the recovery: delete that user's `totp` line, deploy, and enrol again with a new secret. Keep the vault password somewhere other than the phone.
 - Two-factor applies to password logins only. A login through OAuth, LDAP or Tailscale skips it, so restrict who may use those (below).
@@ -47,7 +47,7 @@ tinyauth_environment:
 OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are; the app never sees your password. Gitea and Immich can do this, so one Tinyauth login opens them, and each keeps its own accounts and permissions.
 
 - Turn it on for an app on the host: `gitea_sso_enabled: true` or `immich_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
-- Put the client secret in the vault: `vault_gitea_oidc_secret` or `vault_immich_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich --limit <host>`. On a host that does not run Tinyauth yet, deploy it first (`just deploy tinyauth --limit <host>`): Gitea fetches Tinyauth's settings as the deploy writes its login source.
+- Put the client secret in the vault: `vault_gitea_oidc_secret` or `vault_immich_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich --limit <host>`. On a host that does not run Tinyauth yet, deploy Tinyauth first: Gitea fetches its settings as the deploy writes Gitea's login source.
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
 - First login: Gitea shows its link page once, to attach the Tinyauth login to an existing Gitea account. Immich matches you by email, and Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching account gets a new one on first login.
 - Every user in `vault_tinyauth_users` can sign in to both apps: Tinyauth cannot restrict a client to some of its users.
@@ -63,8 +63,3 @@ Two routes, neither used by the deploy by default and neither tested here:
 ## Session length
 
 `TINYAUTH_AUTH_SESSIONEXPIRY` is seconds, default one day, and it slides while you use the site. `TINYAUTH_AUTH_SESSIONMAXLIFETIME` caps the total age (default none). Sessions are stored in `tinyauth_data_dir`, so a redeploy keeps them.
-
-## Several hosts
-
-- **Separate logins (what the deploy does):** one Tinyauth per host, each at its own address, so a host's logins and sessions are its own and one host being down never locks out another. Shared users are the group vault entry above.
-- **One shared instance:** not built. The session cookie is set for the parent of Tinyauth's own address and there is no setting to change that, so one instance can only protect names under that parent. For two hosts that means an address above both, such as `auth.example.com`, and every protected name under `example.com`. The reasons not to, and the design if it is wanted, are in [research/shared-tinyauth.md](./research/shared-tinyauth.md).

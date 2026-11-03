@@ -15,3 +15,6 @@
     name: compose_service
   vars:
     compose_service_name: dockge
+
+- name: Let Tinyauth be Dockge's only login
+  ansible.builtin.import_tasks: own_login.yml

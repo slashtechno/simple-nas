@@ -404,6 +404,9 @@
           - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          # Dockge's port is empty here, which makes Tinyauth its only login; the role writes that switch into
+          # Dockge's database at run time (roles/dockge/tasks/own_login.yml), where no template test reaches.
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dockge/docker-compose.yml')"
           - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"

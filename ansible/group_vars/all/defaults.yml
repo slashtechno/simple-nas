@@ -253,7 +253,8 @@ copyparty_port: 3923
 gitea_port: 3000
 # pics' owner pages (the guest pages never use a host port).
 pics_port: 8100
-# Dockge; it asks you to create an account on first visit.
+# Dockge; it asks you to create an account on first visit. The published port skips Caddy and Tinyauth, so Dockge
+# keeps its own login while one is set: set it to "" to make the Tinyauth login its only one.
 dockge_port: 5001
 # ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
 ntfy_port: 8090

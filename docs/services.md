@@ -68,7 +68,7 @@ Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_s
 
 `copyparty_sftp_enabled: true` opens an SFTP listener on `copyparty_sftp_port` for a sync client. Its account is `copyparty_sftp_user` with the password `vault_copyparty_sftp_pass` from the vault, with read, write, move and delete on `/files`.
 
-`copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login and makes Copyparty take the signed-in user from its `Remote-User` header, so one login opens it.
+`copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it.
 
 - It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` (the name of a header only Caddy sends; `openssl rand -hex 24`) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. Tinyauth sends groups only for LDAP and OAuth logins, so Copyparty gets names, not Tinyauth groups.
 - The browser name is the only lane behind the login. The published port, the Cloudflare tunnel hostname and SFTP keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
@@ -135,10 +135,10 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 ## Tinyauth: login
 
-[Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy sends each request for a protected service to it first, so the service needs no login of its own. Its docs say it is for homelabs and sharing with family and friends, not for setups that need roles and fine-grained permissions.
+[Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy asks it about every request to a protected name, so the service needs no login of its own: a browser with a session passes, one without it is redirected (302) to the login page at `https://auth.<first private domain>`, and any other client gets a 401, so scripts and apps fail instead of following a redirect. Its docs say it is for homelabs and sharing with family and friends, not for setups that need roles and fine-grained permissions. Tinyauth and the protected services must run on the same host.
 
-1. Make a login: add `name` and `password` to the list `vault_tinyauth_users` in `group_vars/all/vault.yml` (shape in `group_vars/all/vault.yml.example`; the deploy hashes the password, so the vault holds it in plain text). A second user is another list entry.
-2. On the host, set `tinyauth_enabled: true` in `vars.yml`. Tinyauth needs Caddy with a private domain: its page is `https://auth.<first private domain>`.
+1. Make a login: add `name` and `password` to the list `vault_tinyauth_users` in `group_vars/all/vault.yml` (shape in `group_vars/all/vault.yml.example`; the deploy hashes the password, so the vault holds it in plain text). A second user is another list entry. Two-factor codes, sign in with GitHub or Google, Tailscale, session length: [auth-reference.md](./auth-reference.md).
+2. On the host, set `tinyauth_enabled: true` in `vars.yml`. It needs Caddy with a private domain: the page only has that https name.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
 - With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
@@ -160,17 +160,21 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
   ```
 
   The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. A name in `caddy_sites` opts in the same way: `{import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}`.
-- How an app joins depends on what it supports; the label above is the way in for every case, and the app decides how much more it can do:
-  - It has OpenID Connect login (Gitea, Immich): Tinyauth is its OIDC provider when `gitea_sso_enabled` or `immich_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
-  - It trusts a proxy's user header (Dozzle, Copyparty): the app takes the name from `Remote-User`, with its own setting for it.
-  - It has only its own username and password (qBittorrent's web UI, for example): the label still puts the Tinyauth login in front, so nobody reaches the page without it, but the app then shows its own login as well, or you switch that off in the app if it allows. Publish no host port for it, because a published port skips Caddy and the login.
-- Without a session, a browser is redirected (302) to the login page and any other client gets a 401, so scripts and apps fail instead of following a redirect.
-- Two-factor codes, sign in with GitHub or Google, Tailscale, session length and running it on several hosts: [auth-reference.md](./auth-reference.md).
-- Tinyauth and the protected services must run on the same host.
+
+### How an app joins
+
+The label above is the way in for every app; what the app can do next removes the second login. Try these in order:
+
+1. **It speaks OpenID Connect (Gitea, Immich):** Tinyauth is its OIDC provider when `gitea_sso_enabled` or `immich_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
+2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
+3. **It has an off switch, written by the role (Dockge):** the deploy sets `disableAuth` in Dockge's database and opens Dockge straight into the account it already has, so Dockge never asks. Every Dockge account collapses into that one ([Ad-hoc app platform](#ad-hoc-app-platform)).
+4. **Otherwise its own login stays** (`own_login: true`, so Tinyauth is not put in front of it at all). Crafty is not there: it has no off switch and no header trust, and upstream [issue 762](https://gitlab.com/crafty-controller/crafty-4/-/work_items/762) asks for OIDC, so it shows its own login behind Tinyauth and you sign in twice.
+
+The rule: an app's own login is switched off only when Tinyauth is in front of it and the app publishes no host port, because the port skips Caddy and the login. The role sets that setting in both directions on every deploy, so turning Tinyauth off, or publishing a port again, brings the app's own login back.
 
 ## Dozzle: container logs
 
-[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows the logs of every container on the host in a browser. It has no login of its own: it trusts the user Tinyauth names in a header, so it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://logs.<private domain>`.
+[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows the logs of every container on the host in a browser. It has no login of its own: it takes the user Tinyauth names from a header ([Tinyauth](#tinyauth-login)), so it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://logs.<private domain>`.
 
 1. On the host, set `dozzle_enabled: true` and run `just deploy dozzle --limit <host>`.
 2. `dozzle_port` is empty by default; setting it publishes the page without a login, which Dozzle's docs warn against in forward-proxy mode.
@@ -230,7 +234,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 ## Ad-hoc app platform
 
-**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Set `dockge_port: ""` to make the Tinyauth login its only one: the published port skips Caddy and Tinyauth, so Dockge keeps its own login while the port is set ([Tinyauth](#tinyauth-login)). The deploy needs that first account before it can switch Dockge's login off, so create it and deploy again. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 
