@@ -1,8 +1,8 @@
 #!/bin/bash
 # Run by cron every 2 minutes as root (roles/connectivity_watchdog). A connected network port can have a valid
 # address and answer ping while TCP stops working. Nothing reports that, so this checks it: connect to port 443 on
-# a few IP addresses. After {{ connectivity_failures_before_action }} failures in a row it reconnects the connection that carries the default
-# route, at most once per {{ connectivity_cooldown_minutes }} minutes and {{ connectivity_max_reconnects }} times per outage. It never reboots. When the check works again
+# a few IP addresses. After 3 failures in a row it reconnects the connection that carries the default
+# route, at most once per 30 minutes and 6 times per outage. It never reboots. When the check works again
 # after an outage it sends one alert. Every step is in the system log: journalctl -t connectivity
 PATH=/usr/sbin:/usr/bin:/sbin:/bin
 
@@ -22,7 +22,7 @@ for address in {{ connectivity_probe_addresses | map('quote') | join(' ') }}; do
 done
 
 if $online; then
-  if [ "$fails" -ge {{ connectivity_failures_before_action }} ]; then
+  if [ "$fails" -ge 3 ]; then
     {{ (scripts_dir ~ '/alert.sh') | quote }} "Back online after $fails failed checks and $reconnects reconnects." connectivity "connectivity restored"
   fi
   rm -rf "$state"
@@ -32,10 +32,10 @@ fi
 fails=$((fails + 1))
 echo "$fails" > "$state/fails"
 logger -t connectivity "No TCP connection to any probe address (check $fails in a row)"
-[ "$fails" -ge {{ connectivity_failures_before_action }} ] || exit 0
+[ "$fails" -ge 3 ] || exit 0
 
 now=$(date +%s)
-if [ "$reconnects" -ge {{ connectivity_max_reconnects }} ] || [ $((now - last_reconnect)) -lt $(({{ connectivity_cooldown_minutes }} * 60)) ]; then
+if [ "$reconnects" -ge 6 ] || [ $((now - last_reconnect)) -lt $((30 * 60)) ]; then
   exit 0
 fi
 

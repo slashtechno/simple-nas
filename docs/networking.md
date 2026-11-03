@@ -45,7 +45,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 A host can stay on wifi with a valid address and working ping while every TCP connection and DNS lookup fails; nothing reports it and the host drops off Tailscale. `connectivity_watchdog_enabled: true` (default off) runs `connectivity-watchdog.sh` from root's `cron` every 2 minutes:
 
-- It tries a TCP connection to port 443 of each address in `connectivity_probe_addresses`; the host is online if any connects. The tuning settings and their defaults are in `ansible/roles/connectivity_watchdog/defaults/main.yml`.
+- It tries a TCP connection to port 443 of each address in `connectivity_probe_addresses`; the host is online if any connects. The thresholds are at the top of the script template.
 - After 3 failed checks in a row it runs `nmcli connection down` and `up` on the connection that carries the default route (wifi or Ethernet, never the direct link, which has no gateway). It waits 30 minutes between reconnects and stops after 6 per outage, so a real internet outage does not loop. It never reboots. A host without NetworkManager only logs.
 - Every step is in the system log (`journalctl -t connectivity`). When the check works again after an outage, one alert goes through `alert.sh` ([ntfy](./services.md#ntfy-failure-alerts)).
 

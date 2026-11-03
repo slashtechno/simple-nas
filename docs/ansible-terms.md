@@ -6,14 +6,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 
 ## 1. Files that make Ansible work
 
-| File | Role |
-|---|---|
-| `ansible.cfg` | Project settings, read automatically from this directory |
-| `inventory/hosts.yml` | Who to run against |
-| `group_vars/all/`, `host_vars/<host>/` | What values to run with: every host (`defaults.yml`, `vars.yml`, `versions.yml`, `services.yml`, `vault.yml`), or one host (`vars.yml`, `vault.yml`) |
-| `requirements.yml` | Collections and roles to install first (`just deps`) |
-| `site.yml`, `teardown.yml` | The playbooks |
-| `roles/*/` | How to deploy each piece |
+The file map is in [ansible/README.md](../ansible/README.md#which-files-hold-what).
 
 `ansible.cfg` carries a comment on each key that needs one.
 
@@ -116,20 +109,7 @@ Keywords any task can carry:
 
 ## 6. Variables and vault
 
-Config comes from these sources, lowest precedence first:
-
-1. `roles/*/defaults/main.yml`: a role's own settings, such as `gitea_ssh_port`.
-2. `group_vars/all/defaults.yml`: settings several roles share, each with a default, including every `<name>_enabled` flag (all false except `storage_enabled` and `tailscale_enabled`). Not edited per host.
-3. `group_vars/all/vars.yml`: your values that apply to every host (timezone, SSH keys, Cloudflare zones). `versions.yml` holds every image and tool version, `vault.yml` the secrets hosts share (Cloudflare token and account, restic password, rclone token, ntfy token).
-4. `host_vars/<host>/vars.yml`: one host's settings, such as its flags, `drives` and the direct link. Beats everything above. `host_vars/<host>/vault.yml` holds that host's service secrets.
-
-Every shared setting and its default is in `ansible/group_vars/all/defaults.yml`; a setting only one role uses is in that role's `defaults/main.yml`. Vault names are in the two `vault.yml.example` files.
-
-`vault.yml` is encrypted with `ansible-vault` (AES256) and decrypted in memory with the password read from the file named by `--vault-password-file` (`ansible/.vault-pass`, gitignored). A host loads `group_vars/all/vault.yml` and its own `host_vars/<host>/vault.yml`. A key defined in both takes the host's value.
-
-Settings refer to secrets by passthrough, e.g. `copyparty_pass: "{{ vault_copyparty_pass }}"` in `roles/copyparty/defaults/main.yml`. This is a convention, not an Ansible rule. Templates use `{{ copyparty_pass }}` without knowing it is secret, and the committed files stay safe because the values exist only in the encrypted file.
-
-Edit a vault with `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`). Nothing can read or change it without the vault password.
+Which file wins, and how secrets are stored and read: [ansible/README.md](../ansible/README.md#change-a-setting) and [Vault](../ansible/README.md#vault-secrets).
 
 ## 7. Jinja: the less common expressions
 
