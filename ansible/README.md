@@ -119,6 +119,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
+| `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
 | `just status [host]` | `docker ps` on every server, or on one host |
 | `just os-upgrade [host]` | `apt upgrade` on every server, or on one host ([software that is not a Docker image](#update-software-that-is-not-a-docker-image)) |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
@@ -192,16 +193,16 @@ ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass     
 ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
 
-Drive mounts, the restic password and Tailscale state are never touched.
+Drive mounts, the restic password and Tailscale state are never touched. Also left: Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A service's Caddy name goes with its container. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
 
 ## Add a new service
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
-2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`.
+2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`, one line such as `myservice_image: owner/myservice:1.2.3` (pin a version, or a digest if upstream has no versioned tag). Give the container a `container_name` (Caddy and `cloudflared_ingress` use it), `restart: unless-stopped`, and check the image has arm64 and x64 builds (`just platforms`).
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/defaults.yml`: `myservice_enabled: false`, the data directory settings and, for a web UI, `myservice_port` and `myservice_subdomain`, each with a comment. Values with no sensible default go in `vars.yml.example`.
-6. `group_vars/all/services.yml`: one entry. It lists the data directories (the backup must cover them, and teardown deletes them with `remove_data=true`) and, for a web UI, the Homepage tile and Caddy container. The comment at the top of the file describes each field.
+6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}` (a service with no data directories leaves `data` out). It lists the data directories (the backup must cover them, and teardown deletes them with `remove_data=true`) and, for a web UI, the Homepage tile and Caddy container. The comment at the top of the file describes each field.
 7. `site.yml`: an `import_role` task with the tag `myservice` and `when: myservice_enabled | bool`.
 8. Its secrets go in the matching `vault.yml.example`, and a row naming `roles/myservice` in the table in [../docs/services.md](../docs/services.md).
 9. Optional: a public hostname needs a `cloudflared_ingress` rule; a live database needs `files/dump.sh` installed into `service_dump_scripts_dir` and `dump_required: true` in its entry (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)); data outside the offsite backup goes in `restic_cloud_extra_rules`.

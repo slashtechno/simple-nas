@@ -62,7 +62,7 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
 - A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name; a service reached only through the Cloudflare Tunnel keeps its port.
 - Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
 - A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
-- The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.
+- The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. `just deploy caddy` runs only the Caddy role, so the `network` role (it creates the `services` network) must have run on the host once. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.
 
 #### Names of your own
 

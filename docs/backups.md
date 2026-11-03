@@ -32,6 +32,8 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 | `backup-cloud` | Sunday 04:00 | Runs the service dumps, then backs up to the cloud repository |
 | `restic-check` | Saturday 05:00 | Runs `restic check` on the local repository, reading a 5% sample of the data |
 
+- The times are the `hour`, `minute` and `weekday` lines of the cron tasks in `ansible/roles/backup/tasks/local.yml` and `cloud.yml`, not settings. Edit one and `just deploy backup`: a job is matched by its name, so the old time is replaced. Cron uses the host's `timezone`. The jobs are independent; keep the check away from the backup so they do not run together.
+- The local repository is `restic_repo_path`, `<backup drive mount>/restic-repo` unless you set it.
 - Jobs only exist for the flags that are on. Turning one flag off removes its jobs and scripts on the next deploy. Turning both off skips the role, so remove the jobs with `ansible-playbook teardown.yml --tags backup --limit <host> --vault-password-file .vault-pass`.
 - Dumps: `service_dumps_dir`, the last 3 of each type kept.
 - Logs: `backup_logs_dir`, one file per job per day, plus `backup-cron.log`.

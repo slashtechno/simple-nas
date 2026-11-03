@@ -59,6 +59,10 @@ deploy tags='' *flags:
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
 # What is running on every server (or `just status pinas` for one): the containers and how long they have been up.
+# Remove services from a host (teardown.yml refuses to run without a host): `just teardown pi4 -e only=garage`
+teardown host *flags:
+    ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
+
 status limit='servers' *flags:
     ansible {{ limit }} --vault-password-file .vault-pass --become -a "docker ps" {{ flags }}
 
