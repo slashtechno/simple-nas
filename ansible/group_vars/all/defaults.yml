@@ -174,6 +174,7 @@ cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
 cloudflare_zones: {}
 # The zone IDs of the cloudflare_zones domains that zone_name equals or ends with after a dot (not any domain that merely
 # appears inside it: example.com must not match ample.com). Set zone_name where you read this; exactly one ID is a match.
+# Example: cloudflare_zones {example.com: abc123} and zone_name git.example.com give [abc123]; zone_name notexample.com gives [].
 cloudflare_zone_ids_of_name: >-
   {%- set ids = [] -%}
   {%- for zone in cloudflare_zones | dict2items -%}
@@ -287,6 +288,7 @@ docker_daemon_options: >-
 # fast_drive / primary_drive / backup_drive, which fail with a message naming the missing role.
 # Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
 # `subelements` pairs every drive with each of its roles; the dict is role -> mount point of that drive.
+# Example: drives with roles [fast] on /mnt/fast and [primary, backup] on /mnt/big give {fast: /mnt/fast, primary: /mnt/big, backup: /mnt/big}.
 drive_mounts: >-
   {%- set mounts = {} -%}
   {%- for drive in drives -%}
@@ -300,6 +302,7 @@ mounted_drives: "{{ drives | selectattr('uuid', 'defined') | list }}"
 # The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
 # The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
 # A drive with only the backup role is not listed: the scripts check it on their own.
+# Example: the same drives give [/mnt/fast, /mnt/big].
 data_drive_mounts: >-
   {%- set mounts = [] -%}
   {%- for drive in mounted_drives -%}
@@ -309,6 +312,7 @@ data_drive_mounts: >-
   {%- endfor -%}
   {{ mounts }}
 # Each encrypted folder with the hidden folder next to it that holds its encrypted files.
+# Example: encrypted_folders [/mnt/primary/photos/] gives [{mount: /mnt/primary/photos, cipher: /mnt/primary/.photos.gocryptfs}].
 encrypted_pairs: >-
   {%- set pairs = [] -%}
   {%- for folder in encrypted_folders -%}
