@@ -49,10 +49,6 @@ platforms:
 # Everything CI runs. Run this before committing.
 check: lint syntax vars links test
 
-# List tags of one image to pick a version, e.g. `just tags copyparty/iv '^1\.'` (newest `count` shown)
-tags image filter='.' count='30':
-    docker run --rm gcr.io/go-containerregistry/crane:v0.22.1 ls {{ image }} | grep -E -- '{{ filter }}' | sort -V | tail -n {{ count }}
-
 # Deploy: `just deploy` for everything, `just deploy crafty` for one service.
 # Extra ansible-playbook flags go after the tags: `just deploy '' --limit pinas -K` (all roles, one host, ask for the sudo password).
 deploy tags='' *flags:
@@ -61,11 +57,6 @@ deploy tags='' *flags:
 # Remove services from a host (teardown.yml refuses to run without a host): `just teardown pi4 -e only=garage`
 teardown host *flags:
     ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
-
-# What is running on every server (or `just status pinas` for one): the containers and how long they have been up.
-
-status limit='servers' *flags:
-    ansible {{ limit }} --vault-password-file .vault-pass --become -a "docker ps" {{ flags }}
 
 # Upgrade the operating system's packages on every server (or `just os-upgrade pinas` for one): Docker, Tailscale,
 # restic, rclone, gocryptfs, the kernel and a Raspberry Pi's firmware. Reboot afterwards if the kernel or firmware changed.

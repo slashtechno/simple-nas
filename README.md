@@ -35,7 +35,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 
 - **Find everything:** with `homepage_enabled` on one host, its page lists every service with a host port or a Caddy name, on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
 - **Choose what the server opens to:** `caddy_private_domains` gives each web service with a subdomain its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/caddy-reference.md](./docs/caddy-reference.md#web-addresses-and-https)).
-- **See what runs:** `just status` in `ansible/` lists the containers on every server.
+- **See what runs:** open the Homepage, or `ssh <host> docker ps`.
 - **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
 - **Change something:** edit the host's `vars.yml`, then `just preview` and `just deploy` ([ansible/README.md](./ansible/README.md#commands)).
 

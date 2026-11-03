@@ -23,7 +23,7 @@ All commands below run from `ansible/`.
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Add a drive or move one service's data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` for a drive; `just deploy <service> --limit <host>` for a move |
 | Give services `https://` names, or change a port or name | `caddy_private_domains` (each web service with a subdomain then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server or a redirect, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
-| See what is running | nothing | `just status`, or open the Homepage |
+| See what is running | nothing | open the Homepage, or `ssh <host> docker ps` |
 | Add a public hostname | `cloudflared_ingress` in `host_vars/<host>/vars.yml` ([services](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview without changing anything | nothing | `just preview <tag> --limit <host>` |
@@ -71,7 +71,7 @@ A vault file you forget to encrypt still deploys, with its secrets in plain text
 ## First-time setup
 
 ```bash
-brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just tags` and `just platforms`. The ansible package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords
+brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just platforms`. The ansible package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords
 cd ansible/
 just deps
 ```
@@ -120,10 +120,8 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
-| `just status [host]` | `docker ps` on every server, or on one host |
 | `just os-upgrade [host]` | `apt upgrade` on every server, or on one host ([software that is not a Docker image](#update-software-that-is-not-a-docker-image)) |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
-| `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
 | `just platforms` | Checks every image in `versions.yml` has arm64 and x64 builds; needs Docker and network, not part of `check` |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |
 
@@ -158,7 +156,7 @@ Service setup and gotchas are in [../docs/services.md](../docs/services.md); dri
 Every image and version is a line in `group_vars/all/versions.yml`; most have their release-notes link above them. To update one:
 
 1. Read the release notes.
-2. Edit that line (`just tags <image>` lists the tags that exist).
+2. Edit that line (the registry's tags page lists the tags that exist).
 3. `just preview <service>`, then `just deploy <service>`.
 
 A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, because `docker_pull_policy` defaults to `missing`:
