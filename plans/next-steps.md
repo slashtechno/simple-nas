@@ -10,7 +10,7 @@ Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run o
 
 - [x] `just preview --limit pi4` passes (8 changes: Dockge and Caddy compose, backup scripts and exclude list, the check job moves to Saturday 5 AM). It found a real bug the render test missed (the dump-script check failed on entries without `dump_required`); fixed and tested.
 - [x] pi4: common, backup, tinyauth, caddy, dozzle and the watchdog deployed one tag at a time (storage, network and encryption not run: no change in the preview). Deploying showed that the Caddy deploy rebuilds the image and takes 20+ minutes on a loaded Pi 4.
-- [ ] pi4: the first manual `backup-restic-local.sh` run (started 2026-11-02 18:32) copies 13.7 GiB over USB 2 and has a 2-hour cap; read `restic-local.status.json` and the card when it ends.
+- [ ] pi4: the first manual `backup-restic-local.sh` run (2026-11-02 18:32) hit the old 2-hour cap after 13.7 GiB scanned over USB 2 (exit 124, status failed). The cap is now 23 hours and deployed; rerun it in the background (`nohup`) and read `restic-local.status.json`.
 - [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` not run there: its `drives` still name the old 500 GB backup drive; the 6 TB drive gets its role once the owner decides about it.
 - [ ] dietvostro last (real containers, never restart Docker there).
 - [ ] Test the ntfy alert with a deliberate failure (no host runs ntfy yet; `alert.sh` logging to the journal is checked on pi4).
@@ -61,7 +61,10 @@ Verified: Tinyauth's About page says it is for homelabs and sharing with family 
   - Tinyauth sends `Remote-Groups` only for LDAP and OAuth logins, so Copyparty groups do not work with local Tinyauth users; give each Tinyauth user a matching Copyparty account name in `accs`.
   - The public tunnel on a host that sends a Cloudflare hostname straight to Copyparty bypasses Caddy, so SSO protects nothing there.
   - Built (`copyparty_sso_enabled`, default off), not deployed: deploy to pinas only when no upload is running.
-- [ ] Gitea and Immich have their own OIDC login: use Tinyauth as the provider, with clients created by `tinyauth oidc create <name>` and rendered from the vault. Needs the provider's HTTPS name and persistent keys in `/data`. Not built.
+- [x] Gitea and Immich sign in through Tinyauth's OIDC server (`gitea_sso_enabled`, `immich_sso_enabled`, default off; client secrets in the vault). Caddy gives the login name a network alias so containers reach it without leaving Docker. Built and render-tested, not deployed: deploy to pinas (Gitea and Immich restart) after the Copyparty upload ends, and check the first login of each by hand.
+- [x] One login: Dockge's own login is switched off in its database when Tinyauth is in front and `dockge_port` is `""` (written with the container stopped, back on when Tinyauth is off). Not deployed. Crafty has no off switch or header trust (upstream issue 762 asks for OIDC), so it keeps a second login; revisit when upstream ships OIDC.
+- Decided: each host runs its own Tinyauth; the same `vault_tinyauth_users` in the group vault gives every host the same logins, and a host vault overrides it. A shared single Tinyauth instance is not built.
+- [ ] Open: file ownership inside gocryptfs mounts is probably root, which could break services or restic running as other uids; test before recommending encryption for a service's data folder.
 - [x] Dozzle (behind Tinyauth, no published port) and Scrutiny (devices read from `smartctl --scan` at deploy time) are roles, deployed on pinas; Dozzle also on pi4. Scrutiny on pinas sees the T7 and the Exos (57 °C during the read scan). Scrutiny on pi4 not deployed: no `smartmontools` there and its USB sticks are unlikely to report SMART.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 
