@@ -58,7 +58,7 @@ Git hosting with an optional Actions runner.
 - Config: rendered from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
 - Admin account: `copyparty_user` / `copyparty_pass`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends listed in `vault_copyparty_collab_users`; the admin has access too. With it off there is no folder and no friend accounts.
 
-Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_pass`, and their own volumes at `/<app>/<name>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
+Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_pass`, and their own volumes at `/<app>/<folder>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
 
 - The volumes are not part of `copyparty_files_dir`, so the admin's file listing and the SFTP account do not show them. The admin has full access to them at their own addresses.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.

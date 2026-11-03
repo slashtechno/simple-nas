@@ -18,9 +18,9 @@
 #              true when the backup's file copy of the live database is not the copy to restore (it is left out, or it
 #              is copied torn while running). The dump script the role installs is then the only copy, so the deploy
 #              fails if it is missing
-#   copyparty  for an app that stores files in Copyparty: volumes, each {name, dir, perms}. The app gets a Copyparty
+#   copyparty  for an app that stores files in Copyparty: volumes, each {folder, dir, perms}. The app gets a Copyparty
 #              account named after its key, with the password vault_<key>_copyparty_pass, and each volume is served
-#              at /<key>/<name> from the directory the setting <dir> names. The admin has full access to it too. Put
+#              at /<key>/<folder> (also its path inside the container), from the directory the setting <dir> names. The admin has full access to it too. Put
 #              no delete (d) in perms where the app must not destroy files: Copyparty then renames instead of overwriting.
 #   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them.
 #              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
@@ -56,7 +56,7 @@ services:
      container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git,
      oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
-     copyparty: {volumes: [{name: photos, dir: pics_photos_dir, perms: rwm}, {name: trash, dir: pics_trash_dir, perms: rwmd}]},
+     copyparty: {volumes: [{folder: photos, dir: pics_photos_dir, perms: rwm}, {folder: trash, dir: pics_trash_dir, perms: rwmd}]},
      container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
      oidc: ["https://{{ pics_subdomain }}.{{ caddy_private_domains[0] | default('') }}/api/auth/oidc/callback"]}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],

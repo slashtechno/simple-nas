@@ -27,7 +27,7 @@ services:
 {% endif %}
 {% for app in copyparty_clients %}
 {% for v in app.copyparty.volumes %}
-      - {{ lookup('ansible.builtin.vars', v.dir) }}:/svc/{{ app.key }}/{{ v.name }}:rw
+      - {{ lookup('ansible.builtin.vars', v.dir) }}:/{{ app.key }}/{{ v.folder }}:rw
 {% endfor %}
 {% endfor %}
     environment:
