@@ -111,12 +111,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 | Command | Does |
 |---|---|
-| `just check` | `lint`, `syntax`, `vars`, `links` and `test`; run before committing (CI runs it too) |
-| `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
-| `just syntax` | Both playbooks parse |
-| `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
-| `just links` | Fails if a `file.md#anchor` reference or an in-page anchor points at a heading that does not exist, in any doc, code comment or message |
-| `just test` | Renders every template with the example vars, runs the dashboard test and shellchecks the scripts. Fails on an undefined variable, a key in a `vars.yml` that no example or role default declares, or a service missing from `defaults.yml`, `site.yml`, `services.yml` or `docs/services.md` |
+| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from `defaults.yml`, `site.yml`, `services.yml` or `docs/services.md`) |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |

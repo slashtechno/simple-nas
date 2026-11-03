@@ -14,18 +14,19 @@ deps:
     ansible-galaxy collection install -r requirements.yml
     ansible-galaxy role install -r requirements.yml
 
+# (Steps of `check`; private, run one with e.g. `just _lint`.)
 # Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the dashboard
-lint:
+_lint:
     uvx {{ ansible_lint }}
     uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
     uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files
 
 # Both playbooks parse
-syntax:
+_syntax:
     ansible-playbook --syntax-check site.yml teardown.yml
 
 # Render every template with the example vars, then shellcheck the rendered scripts
-test:
+_test:
     #!/usr/bin/env bash
     set -euo pipefail
     out="$(mktemp -d)"
@@ -35,22 +36,21 @@ test:
     echo "Rendered templates are in $out"
 
 # Fail if a vault name or a setting with no default is missing from its example file
-vars:
+_vars:
     python3 tools/check_vars.py
 
 # Fail if a `file.md#anchor` reference names a heading that does not exist
-links:
+_links:
     python3 tools/check_links.py
 
-# Check that every pinned image has arm64 and amd64 builds (needs docker and network; not part of `check`)
+# Check that every pinned image has arm64 and x64 builds (needs docker and network; not part of `check`)
 platforms:
     python3 tools/check_platforms.py
 
 # Everything CI runs. Run this before committing.
-check: lint syntax vars links test
+check: _lint _syntax _vars _links _test
 
-# Deploy: `just deploy` for everything, `just deploy crafty` for one service.
-# Extra ansible-playbook flags go after the tags: `just deploy '' --limit pinas -K` (all roles, one host, ask for the sudo password).
+# Deploy everything, or one service: `just deploy crafty`. Extra flags go after: `just deploy '' --limit pinas -K`
 deploy tags='' *flags:
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
@@ -58,13 +58,11 @@ deploy tags='' *flags:
 teardown host *flags:
     ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
 
-# Upgrade the operating system's packages on every server (or `just os-upgrade pinas` for one): Docker, Tailscale,
-# restic, rclone, gocryptfs, the kernel and a Raspberry Pi's firmware. Reboot afterwards if the kernel or firmware changed.
+# apt upgrade on every server, or one: `just os-upgrade pinas`. Reboot afterwards if the kernel or firmware changed.
 os-upgrade limit='servers' *flags:
     ansible {{ limit }} --vault-password-file .vault-pass --become -m ansible.builtin.apt -a "update_cache=yes upgrade=safe" {{ flags }}
 
-# First-run setup for a host (its name in inventory/hosts.yml): creates .vault-pass and host_vars/<host>/vars.yml, and
-# fills the random secrets in both vault files. Safe to run again: it only adds what is missing.
+# First-run setup for a host: .vault-pass, host_vars/<host>/vars.yml, random vault secrets. Safe to rerun.
 setup host:
     python3 tools/setup.py {{ host }}
 

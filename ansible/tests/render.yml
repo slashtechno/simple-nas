@@ -1,6 +1,6 @@
 ---
 # Renders every role template against the example vars and checks the result.
-# Runs on your machine only (no Pi, no vault): `just test` runs this, then
+# Runs on your machine only (no Pi, no vault): `just _test` runs this, then
 # shellchecks the rendered scripts. It catches:
 #   - a template using a variable that isn't defined in defaults.yml, vars.yml.example,
 #     vault.yml.example, versions.yml, services.yml or the role's defaults/
