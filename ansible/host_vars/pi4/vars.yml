@@ -11,6 +11,8 @@ caddy_private_domains: [pi4.slashtechno.com]
 # The root of the server: https://pi4.slashtechno.com opens Dockge.
 caddy_sites: {pi4.slashtechno.com: {reverse_proxy: "dockge:5001"}}
 backup_local_enabled: true   # daily backup to the `backup` drive
+# A login in front of the web services (Dockge, the backup dashboard); https://auth.pi4.slashtechno.com (docs/services.md#tinyauth-login).
+tinyauth_enabled: true
 
 # --- Drives ---
 drives:
