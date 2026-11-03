@@ -12,7 +12,8 @@
   vars:
     subdomain: "{{ lookup('vars', item.key ~ '_subdomain') }}"
     # Tinyauth's cookie covers one parent domain, so a protected service is served under the first private domain only.
-    protected: "{{ tinyauth_enabled | bool and item.key in tinyauth_protected_services }}"
+    # Services with own_login: true (services.yml) are never protected.
+    protected: "{{ tinyauth_enabled | bool and not item.own_login | default(false) }}"
     site:
       hosts: "{{ (caddy_private_domains[:1] if protected | bool else caddy_private_domains) | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}"
       protected: "{{ protected }}"

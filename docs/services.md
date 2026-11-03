@@ -128,10 +128,10 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 [Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy sends each request for a protected service to it first, so the service needs no login of its own. Its docs say it is for homelabs and sharing with family and friends, not for setups that need roles and fine-grained permissions.
 
 1. Make a user: `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 user create --interactive`. Put the `name:hash` line in `vault_tinyauth_users` (`host_vars/<host>/vault.yml`, shape in `host_vars/vault.yml.example`); a second user is a comma and another entry.
-2. On the host, set `tinyauth_enabled: true` and `tinyauth_protected_services: [dockge, backup_status]` (keys from `group_vars/all/services.yml`) in `vars.yml`. Tinyauth needs Caddy with a private domain: its page is `https://auth.<first private domain>`.
+2. On the host, set `tinyauth_enabled: true` in `vars.yml`. Tinyauth needs Caddy with a private domain: its page is `https://auth.<first private domain>`.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
-- Use it only for services opened in a browser (Dockge, the backup dashboard, Crafty). Git, WebDAV, mobile apps, S3 and ntfy clients cannot log in through a web page, so never protect Gitea, Immich, Copyparty, Garage or ntfy this way.
+- With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([caddy-reference.md](./caddy-reference.md#label-syntax)).
 - Tinyauth and the protected services must run on the same host.

@@ -23,20 +23,22 @@
 #   container, container_port
 #              what Caddy proxies to on the services network
 #   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
+#   own_login  true when the service has a login or clients of its own (apps, git, WebDAV, push): Tinyauth never sits in
+#              front of its Caddy name. Every other web service is behind Tinyauth on a host that has tinyauth_enabled.
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_upload_location], no_backup: [immich_db_data_location],
-     container: immich_server, container_port: 2283, icon: immich, description: Photos}
+     container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos}
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir,
             "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",
             "{{ 'copyparty_fast_dir' if copyparty_fast_enabled | bool else '' }}"],
      no_backup: [copyparty_hist_dir],
-     container: copyparty, container_port: 3923, icon: copyparty, description: Files}
+     container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea,
      data: [gitea_data_dir, gitea_runner_data_dir],
-     container: gitea, container_port: 3000, icon: gitea, description: Git}
+     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git}
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir],
      container: pics, container_port: 8000, icon: mdi-image-multiple, description: Photo culling and sharing}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
@@ -47,9 +49,9 @@ services:
   - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
   - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
-     container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
+     container: ntfy, container_port: 80, own_login: true, icon: ntfy, description: Alerts}
   - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir],
-     container: tinyauth, container_port: 3000, icon: mdi-shield-account, description: Login}
+     container: tinyauth, container_port: 3000, own_login: true, icon: mdi-shield-account, description: Login}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   # No web UI, so no tile and no Caddy name.

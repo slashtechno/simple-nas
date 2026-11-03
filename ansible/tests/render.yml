@@ -119,7 +119,6 @@
         caddy_sites:
           home.caddy.example.test: {reverse_proxy: "homepage:3000"}
           "gh.caddy.example.test": {redir: "https://github.com{uri}"}
-        tinyauth_protected_services: [dockge]
         immich_port: ""
         copyparty_port: ""
         dockge_port: ""
@@ -345,12 +344,13 @@
           - "'/mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - "caddy_labels[caddy_site['home.caddy.example.test'] ~ '.reverse_proxy'] == 'homepage:3000'"
           - "'immich.caddy.example.test immich.second.example.test' in caddy_site"
-          - "(caddy_site['crafty.caddy.example.test crafty.second.example.test'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
+          - "(caddy_site['crafty.caddy.example.test'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
           - "caddy_labels[caddy_site['gh.caddy.example.test'] ~ '.redir'] == 'https://github.com{uri}'"
           - "'http://render-full' in caddy_site"
           - "caddy_labels[caddy_site['dockge.caddy.example.test'] ~ '.import'] == 'tinyauth_forwarder'"
           - "'dockge.second.example.test' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.caddy.example.test immich.second.example.test'] ~ '.import') not in caddy_labels"
+          - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
           - "'TINYAUTH_APPURL: \"https://auth.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
