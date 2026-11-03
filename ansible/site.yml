@@ -54,6 +54,25 @@
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
       tags: [always]
 
+    # An app that signs in through Tinyauth needs the login page's name (Tinyauth with Caddy and a private domain) and
+    # the client secret Tinyauth checks (oidc in services.yml, docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+    - name: Check every app that signs in through Tinyauth has what it needs
+      ansible.builtin.assert:
+        that:
+          - tinyauth_enabled | bool
+          - caddy_enabled | bool
+          - caddy_private_domains | length > 0
+          - lookup('ansible.builtin.vars', 'vault_' ~ item.key ~ '_oidc_secret', default='') != ''
+        fail_msg: >-
+          Signing {{ item.name }} in through Tinyauth needs tinyauth and caddy switched on with a caddy_private_domains
+          entry, and vault_{{ item.key }}_oidc_secret in the vault that applies to {{ inventory_hostname }}
+          (vault.yml.example says how to make it).
+        quiet: true
+      loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [always]
+
   tasks:
     # Drives first: docker_data_root (common) may sit on one.
     - name: Mount the drives

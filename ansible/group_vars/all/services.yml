@@ -18,6 +18,10 @@
 #              true when the backup's file copy of the live database is not the copy to restore (it is left out, or it
 #              is copied torn while running). The dump script the role installs is then the only copy, so the deploy
 #              fails if it is missing
+#   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them.
+#              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
+#              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
+#              of the account id the app stores, so changing it orphans every linked account.
 #   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
 #   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
 #              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
@@ -29,9 +33,13 @@
 #              service is behind Tinyauth on a host that has tinyauth_enabled.
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
+  # Immich's oidc: its web login, its "link OAuth" page in the user settings, and the phone apps' fixed callback.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_upload_location], no_backup: [immich_db_data_location],
-     container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos}
+     container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
+     oidc: ["https://{{ immich_subdomain }}.{{ caddy_private_domains[0] | default('') }}/auth/login",
+            "https://{{ immich_subdomain }}.{{ caddy_private_domains[0] | default('') }}/user-settings",
+            "app.immich:///oauth-callback"]}
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir,
             "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",
@@ -40,9 +48,11 @@ services:
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
      data: [gitea_data_dir, gitea_runner_data_dir],
-     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git}
+     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git,
+     oidc: ["https://{{ gitea_domain | default('') }}/user/oauth2/tinyauth/callback"]}
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir],
-     container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing}
+     container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
+     oidc: ["https://{{ pics_subdomain }}.{{ caddy_private_domains[0] | default('') }}/api/auth/oidc/callback"]}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
      port: 8581, icon: homebridge, description: HomeKit}
   - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
@@ -88,3 +98,14 @@ enabled_service_keys: >-
 dump_service_keys: >-
   {{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'defined')
      | selectattr('dump_required') | map(attribute='key') | list }}
+
+# The keys of the enabled entries with oidc whose <key>_sso_enabled is true: the apps Tinyauth is an OpenID Connect
+# provider for on this host.
+# Example: [gitea, immich] on a host with both switched on and signing in through Tinyauth.
+oidc_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if service.oidc is defined and lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool
+      and lookup('ansible.builtin.vars', service.key ~ '_sso_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}

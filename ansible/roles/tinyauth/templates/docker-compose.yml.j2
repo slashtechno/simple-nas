@@ -31,30 +31,16 @@ services:
 {% for name, value in tinyauth_environment.items() %}
       {{ name }}: {{ (value | string | replace('$', '$$')) | to_json }}
 {% endfor %}
-{% if gitea_sso_enabled | bool or immich_sso_enabled | bool or pics_sso_enabled | bool %}
+{% if oidc_service_keys | length > 0 %}
       # The apps that sign in through Tinyauth instead of only their own login
       # (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Declaring a client here is what starts Tinyauth's OpenID
-      # Connect server. The redirect URIs must match the app's exactly, and the client id is part of the account id the
-      # app stores, so changing it orphans every linked account.
-{% endif %}
-{% if gitea_sso_enabled | bool %}
-      TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTID: "gitea"
-      TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTSECRET: '{{ vault_gitea_oidc_secret | replace("$", "$$") }}'
-      TINYAUTH_OIDC_CLIENTS_GITEA_TRUSTEDREDIRECTURIS: "https://{{ gitea_domain }}/user/oauth2/tinyauth/callback"
-      TINYAUTH_OIDC_CLIENTS_GITEA_NAME: "Gitea"
-{% endif %}
-{% if immich_sso_enabled | bool %}
-      TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTID: "immich"
-      TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: '{{ vault_immich_oidc_secret | replace("$", "$$") }}'
-      # Immich's web login, its "link OAuth" page in the user settings, and the phone apps' fixed callback.
-      TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://{{ immich_subdomain }}.{{ caddy_private_domains[0] }}/auth/login,https://{{ immich_subdomain }}.{{ caddy_private_domains[0] }}/user-settings,app.immich:///oauth-callback"
-      TINYAUTH_OIDC_CLIENTS_IMMICH_NAME: "Immich"
-{% endif %}
-{% if pics_sso_enabled | bool %}
-      TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: "pics"
-      TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: '{{ vault_pics_oidc_secret | replace("$", "$$") }}'
-      TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: "https://{{ pics_subdomain }}.{{ caddy_private_domains[0] }}/api/auth/oidc/callback"
-      TINYAUTH_OIDC_CLIENTS_PICS_NAME: "pics"
+      # Connect server. The redirect URIs must match the app's exactly (oidc in services.yml).
+{% for app in services | selectattr('key', 'in', oidc_service_keys) %}
+      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_CLIENTID: "{{ app.key }}"
+      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_CLIENTSECRET: '{{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_oidc_secret') | replace("$", "$$") }}'
+      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_TRUSTEDREDIRECTURIS: "{{ app.oidc | join(',') }}"
+      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_NAME: "{{ app.name }}"
+{% endfor %}
 {% endif %}
     networks:
       - {{ docker_network }}
