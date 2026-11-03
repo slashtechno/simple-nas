@@ -9,9 +9,11 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run on a host.
 
 - [x] `just preview --limit pi4` passes (8 changes: Dockge and Caddy compose, backup scripts and exclude list, the check job moves to Saturday 5 AM). It found a real bug the render test missed (the dump-script check failed on entries without `dump_required`); fixed and tested.
-- [ ] Deploy one part at a time to pi4: common, network, storage, caddy, homepage, backup (encryption only if used). Fix what it shows, each fix a small commit with a render-test line that would have caught it.
-- [ ] Same on pinas; dietvostro last (real containers, never restart Docker there).
-- [ ] Test the ntfy alert with a deliberate failure.
+- [x] pi4: common, backup, tinyauth, caddy, dozzle and the watchdog deployed one tag at a time (storage, network and encryption not run: no change in the preview). Deploying showed that the Caddy deploy rebuilds the image and takes 20+ minutes on a loaded Pi 4.
+- [ ] pi4: the first manual `backup-restic-local.sh` run (started 2026-11-02 18:32) copies 13.7 GiB over USB 2 and has a 2-hour cap; read `restic-local.status.json` and the card when it ends.
+- [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` not run there: its `drives` still name the old 500 GB backup drive; the 6 TB drive gets its role once the owner decides about it.
+- [ ] dietvostro last (real containers, never restart Docker there).
+- [ ] Test the ntfy alert with a deliberate failure (no host runs ntfy yet; `alert.sh` logging to the journal is checked on pi4).
 - [ ] Merge the stack into `main` only after pi4 is good.
 
 ## Phase 1: drives
@@ -26,13 +28,13 @@ Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run o
   - Run it from `cron` like the backups (one scheduling mechanism in the repo), every 2 minutes as root, with its counters in `/run` so a reboot resets them. The reviews proposed a systemd timer; cron keeps one readable task and no unit files.
   - Needs `alert.sh` and `ntfy_server`/`ntfy_alert_url` outside the backup role, because the watchdog must work with backups off: move `alert.sh` to `common` and the ntfy settings to `group_vars/all/defaults.yml` (cross-role settings live there), as one small commit before the watchdog. `alert.sh` gets an optional tag/title argument, default `backup`.
   - Render test: both probe addresses present, no `reboot`, no hard-coded interface name, the alert default still renders as before.
-  - Built (role `connectivity_watchdog`, docs/networking.md); deploy to pi4 after Phase 0, with a manual dry run of the `nmcli` commands first.
+  - Deployed on pi4 (2026-11-02). The manual `nmcli connection down` and `up` of `netplan-wlan0-...` took 7 seconds and kept the route, Tailscale and all containers; the healthy run is silent. A real outage has not occurred, so the reconnect branch is untested in the field.
 - Drive detach and mount stay documented in `docs/storage.md`; a script only if the manual steps turn out to be a frequent task.
 
 ## Phase 2: a proper backup status page
 
 - [x] Built, not deployed: each backup script writes `<backup_logs_dir>/restic-<local|cloud|check>.status.json` when a run starts (`failed`, no finish time) and when it exits (the real result, from an `EXIT` trap), via the macro `roles/backup/templates/status-report.j2`. The page reads only those files; a missing, malformed or too old file is an error, never ok, and a fresh unfinished file shows "running". Logs are for people. The test (`tests/test_backup_status.py`) covers missing, stale, malformed, failed, running and unmounted; the macro was run in bash for exit 0, a failing exit, a failing pipeline and a killed run.
-- Known limit: the local card no longer checks that a `daily` snapshot exists, and a failure before the status setup (a mount guard) leaves the previous file, which turns stale within 36 hours (9 days for the weekly jobs).
+- Checked on pinas hardware? No: the card needs the backup role on a host with `backup_status_enabled`; pinas waits on its backup drive. Known limit: the local card no longer checks that a `daily` snapshot exists, and a failure before the status setup (a mount guard) leaves the previous file, which turns stale within 36 hours (9 days for the weekly jobs).
 - [ ] On pi4: run `backup-restic-local.sh` once after deploy and look at the card.
 
 ## Phase 3: make the code teachable
@@ -52,15 +54,15 @@ Wanted: "proper" login in front of everything that can take it. Authentik was ju
 
 Verified: Tinyauth's About page says it is for homelabs and sharing with family and friends, not for production needing roles and fine-grained permissions. v5.2.0 (2026-09-07); the docs use the floating `v5` tag, we pin the patch. It is an OpenID-certified provider since v5.1.0 (Core and Discovery only). The session cookie covers one parent domain, so it protects names under one private domain.
 
-- [x] Role `tinyauth` (default off, built and render-tested, not deployed): browser-only services in `tinyauth_protected_services` get `import tinyauth_forwarder`, a Caddy snippet with `forward_auth tinyauth:3000` on `/api/auth/caddy`; protected names are served under the first private domain only; apps in Dockge opt in with one label.
-- [ ] Check on a host: the Caddyfile caddy-docker-proxy writes from the `forward_auth` labels (`/config/caddy/Caddyfile.autosave`), `TINYAUTH_LABELPROVIDER: none` and `TINYAUTH_ANALYTICS_ENABLED` as env values, whether forwarded headers are trusted without `TINYAUTH_AUTH_TRUSTEDPROXIES`, and the login redirect.
+- [x] Role `tinyauth`, deployed on pi4 and pinas: every web service with a Caddy name is behind the login unless its `services.yml` entry has `own_login: true` (Immich, Gitea, Copyparty, ntfy, Tinyauth); protected names are served under the first private domain only; apps in Dockge opt in with one label; `tinyauth_environment` takes any other `TINYAUTH_*` setting; users are shared through the group vault. Checked on pi4: anonymous browser 302 to the login, other clients 401, a session passes with `Remote-User/Name/Email`, the generated Caddyfile has the snippet and the import, a throwaway whoami stack opted in with the one label.
+- [ ] Still unchecked: forwarded headers without `TINYAUTH_AUTH_TRUSTEDPROXIES` (only IP rules and the Tailscale login need it); several `caddy_private_domains` with Tinyauth; the 2FA enrolment and a GitHub OAuth login ([auth-reference.md](../docs/auth-reference.md) is written from the docs and source, not tested).
 - [ ] Copyparty. It has no OIDC, only header login: `idp-h-usr: remote-user`, `idp-h-grp: remote-groups`, plus `idp-h-key` (a header name that must be present, so the published port cannot forge identity). Design from the research:
   - Three lanes: the browser name behind Tinyauth (Caddy adds the secret header there only); share links on a second name with no forward-auth (`shr-site`); WebDAV, rclone, mobile and SFTP on the published port with Copyparty's own passwords (`auth-ord: idp,pw`).
   - Tinyauth sends `Remote-Groups` only for LDAP and OAuth logins, so Copyparty groups do not work with local Tinyauth users; give each Tinyauth user a matching Copyparty account name in `accs`.
   - The public tunnel on a host that sends a Cloudflare hostname straight to Copyparty bypasses Caddy, so SSO protects nothing there.
   - Built (`copyparty_sso_enabled`, default off), not deployed: deploy to pinas only when no upload is running.
 - [ ] Gitea and Immich have their own OIDC login: use Tinyauth as the provider, with clients created by `tinyauth oidc create <name>` and rendered from the vault. Needs the provider's HTTPS name and persistent keys in `/data`. Not built.
-- [ ] Scrutiny and Dozzle: opt-in roles added behind Tinyauth, if wanted after smartd.
+- [x] Dozzle (behind Tinyauth, no published port) and Scrutiny (devices read from `smartctl --scan` at deploy time) are roles, deployed on pinas; Dozzle also on pi4. Scrutiny on pinas sees the T7 and the Exos (57 °C during the read scan). Scrutiny on pi4 not deployed: no `smartmontools` there and its USB sticks are unlikely to report SMART.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 
 ## Decided
