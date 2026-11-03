@@ -31,11 +31,9 @@ Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run o
 
 ## Phase 2: a proper backup status page
 
-The page keeps both halves: job status and snapshot browsing. The job-status half currently reads our log text (`=== Complete:`), so rewording an echo line breaks it silently.
-
-- Option A (chosen direction, to be confirmed against the code): each backup script also writes a small status file (job, start, end, result, snapshot count), and the page reads that file. The log stays for humans. A test renders the scripts and checks they write every field the page reads.
-- Option C would leave the log scraping as it is.
-- Decide the status file's location and format before building; the page shows an error, never "ok", when the file is missing or malformed.
+- [x] Built, not deployed: each backup script writes `<backup_logs_dir>/restic-<local|cloud|check>.status.json` when a run starts (`failed`, no finish time) and when it exits (the real result, from an `EXIT` trap), via the macro `roles/backup/templates/status-report.j2`. The page reads only those files; a missing, malformed or too old file is an error, never ok, and a fresh unfinished file shows "running". Logs are for people. The test (`tests/test_backup_status.py`) covers missing, stale, malformed, failed, running and unmounted; the macro was run in bash for exit 0, a failing exit, a failing pipeline and a killed run.
+- Known limit: the local card no longer checks that a `daily` snapshot exists, and a failure before the status setup (a mount guard) leaves the previous file, which turns stale within 36 hours (9 days for the weekly jobs).
+- [ ] On pi4: run `backup-restic-local.sh` once after deploy and look at the card.
 
 ## Phase 3: make the code teachable
 

@@ -610,6 +610,34 @@
               - "'/.config/rclone' in (local_excludes_file.content | b64decode)"
           when: backup_local_enabled | bool
 
+        # The dashboard reads one status file per job; each script writes it at the start and on exit.
+        - name: The scripts write the status files the dashboard reads
+          vars:
+            out: "{{ out_dir }}/layouts/{{ inventory_hostname }}"
+            app: "{{ lookup('ansible.builtin.file', repo ~ '/roles/backup_status/files/app.py') }}"
+            cloud_script: "{{ lookup('ansible.builtin.file', out ~ '/backup-restic-cloud.sh') }}"
+          ansible.builtin.assert:
+            that:
+              - "(backup_logs_dir ~ '/restic-cloud.status.json') in cloud_script"
+              - "'restic-cloud.status.json' in app"
+              - "'trap ' in cloud_script and 'write_status failed null null' in cloud_script"
+              - "'=== Complete' not in app"
+            quiet: true
+
+        - name: The local and check scripts write their status files too
+          vars:
+            out: "{{ out_dir }}/layouts/{{ inventory_hostname }}"
+            app: "{{ lookup('ansible.builtin.file', repo ~ '/roles/backup_status/files/app.py') }}"
+          ansible.builtin.assert:
+            that:
+              - "(backup_logs_dir ~ '/restic-local.status.json') in lookup('ansible.builtin.file', out ~ '/backup-restic-local.sh')"
+              - "(backup_logs_dir ~ '/restic-check.status.json') in lookup('ansible.builtin.file', out ~ '/restic-check.sh')"
+              - "'restic-local.status.json' in app and 'restic-check.status.json' in app"
+              # The dashboard reads the logs directory through this read-only mount.
+              - "(backup_logs_dir ~ ':/data/logs:ro') in lookup('ansible.builtin.file', out_dir ~ '/backup_status/docker-compose.yml')"
+            quiet: true
+          when: backup_local_enabled | bool
+
         # ntfy_server builds ntfy_alert_url from the named host: this host's own ntfy is localhost, another host's is
         # its ansible_host. ntfy_alert_url is still the lazy default loaded from the common role's defaults here.
         - name: Point alerts at the peer host's ntfy

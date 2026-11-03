@@ -289,9 +289,9 @@
     ];
     const cards = jobs.filter(([key]) => key in data.jobs).map(([key, label]) => {
       const j = data.jobs[key] || {};
-      const pill = !j.last_run_human ? 'no data' : (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed'));
+      const pill = j.running ? 'running' : (!j.last_run_human ? 'no data' : (j.stale ? 'stale' : (j.ok ? 'ok' : 'failed')));
       return `<article>
-        <span class="pill ${pillClass(j.stale ? null : j.ok)}">${pill}</span>
+        <span class="pill ${j.running ? 'warn' : pillClass(j.stale ? null : j.ok)}">${pill}</span>
         <small>${label}</small>
         <p><strong>${j.last_run_human || '—'}</strong></p>
         <small>${j.detail_human || ''}</small>

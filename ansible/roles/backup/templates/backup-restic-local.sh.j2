@@ -1,5 +1,6 @@
 #!/bin/bash
 {% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
 set -o pipefail
 
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: restic would write the
@@ -7,6 +8,8 @@ set -o pipefail
 {{ guards.require_mounted(backup_drive, 'refusing to back up onto root') }}
 
 {{ guards.require_data_drives() }}
+
+{{ job_status.setup('local') }}
 
 # The password-file path is set at deploy time; the environment variable overrides it for a manual run.
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"

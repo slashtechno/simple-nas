@@ -1,0 +1,27 @@
+{# Shared by the backup scripts. Use: {% import 'status-report.j2' as job_status with context %}, then
+   job_status.setup('local') (or 'cloud', 'check') right after the mount guards. #}
+{% macro setup(job) -%}
+# The status file the backup-status dashboard reads; it never parses the log. It is written twice: as "failed" with
+# no finish time when the run starts, so a run killed by a reboot cannot leave the previous run's "ok", and with the
+# real result when the script exits. Each write goes to a temporary file that is renamed over the old one, so the
+# dashboard never reads half a file. A failed write is only reported: it must not fail the backup.
+STATUS_FILE="{{ backup_logs_dir }}/restic-{{ job }}.status.json"
+STARTED_AT="$(date -Iseconds)"
+mkdir -p "$(dirname "$STATUS_FILE")"
+# $1 result, $2 exit code (or null), $3 finish time in quotes (or null)
+write_status() {
+  printf '{"job":"{{ job }}","started":"%s","finished":%s,"result":"%s","exit_code":%s}\n' "$STARTED_AT" "$3" "$1" "$2" > "$STATUS_FILE.tmp" \
+    && mv -f "$STATUS_FILE.tmp" "$STATUS_FILE" \
+    || echo "Warning: could not write $STATUS_FILE" >&2
+}
+# The exit code is that of the whole script, including the `| tee` pipeline (pipefail).
+status_on_exit() {
+  if [ "$1" -eq 0 ]; then
+    write_status ok 0 "\"$(date -Iseconds)\""
+  else
+    write_status failed "$1" "\"$(date -Iseconds)\""
+  fi
+}
+write_status failed null null
+trap 'status_on_exit $?' EXIT
+{%- endmacro %}

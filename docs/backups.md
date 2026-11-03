@@ -189,6 +189,8 @@ restic -r /mnt/offline/restic-repo copy \
 
 ## Checking backup status
 
+The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and again when it ends. A missing, unreadable or too old file shows as an error, never as ok; the `.log` files are for reading. `cat /mnt/backup/logs/restic-local.status.json` shows what the last run did.
+
 A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_server` set, sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 ```bash

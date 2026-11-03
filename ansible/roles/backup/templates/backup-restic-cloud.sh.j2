@@ -1,5 +1,6 @@
 #!/bin/bash
 {% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
 set -o pipefail
 
 {% if backup_local_enabled | bool %}
@@ -9,6 +10,8 @@ set -o pipefail
 
 {% endif %}
 {{ guards.require_data_drives() }}
+
+{{ job_status.setup('cloud') }}
 
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"

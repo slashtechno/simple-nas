@@ -1,8 +1,11 @@
 #!/bin/bash
 {% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
 set -o pipefail
 
 {{ guards.require_mounted(backup_drive, 'skipping integrity check') }}
+
+{{ job_status.setup('check') }}
 
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ restic_repo_path }}"
