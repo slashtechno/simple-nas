@@ -23,7 +23,7 @@ Internet → Cloudflare Tunnel (hostnames come from cloudflared_ingress)
 <details>
 <summary>Only two drives? That works: one for data, one for backups.</summary>
 
-A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
+A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role and its data to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
 
 The one-, two- and three-drive layouts are written out in [docs/storage.md](./docs/storage.md#examples).
 

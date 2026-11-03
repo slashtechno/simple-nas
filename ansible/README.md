@@ -1,6 +1,6 @@
 # Ansible playbooks
 
-Each service is a role with its own Docker Compose project at `/opt/services/<service>/` on the host, all on the shared Docker network `services` except Homebridge, which runs on the host network for HomeKit discovery. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
+Each service is a role with its own Docker Compose project at `/opt/services/<compose dir>/` on the host, all on the shared Docker network `services` except Homebridge, which runs on the host network for HomeKit discovery. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
 
@@ -44,7 +44,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
-Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files ([Commands](#commands)).
+Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` only verifies that a vault name or a setting with no default appears in its example file ([Commands](#commands)).
 
 A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml`, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
 
@@ -161,7 +161,7 @@ Every image and version is a line in `group_vars/all/versions.yml`; most have th
 2. Edit that line (`just tags <image>` lists the tags that exist).
 3. `just preview <service>`, then `just deploy <service>`.
 
-A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, because deploys use `pull: missing`:
+A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, because `docker_pull_policy` defaults to `missing`:
 
 ```bash
 ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-password-file .vault-pass
@@ -211,4 +211,4 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 9. Optional: a public hostname needs a `cloudflared_ingress` rule; a live database needs `files/dump.sh` installed into `service_dump_scripts_dir` and `dump_required: true` in its entry (copy `roles/gitea`; see [../docs/backups.md](../docs/backups.md)); data outside the offsite backup goes in `restic_cloud_extra_rules`.
 10. `just check` fails with the exact missing line if steps 5 to 8 are incomplete. Then `just deploy myservice`.
 
-Teardown (`teardown.yml -e only=myservice`), backup coverage, the Homepage tile and the Caddy name come from the entry in step 6 and need nothing else.
+Teardown (`teardown.yml -e only=myservice`), backup coverage, the Homepage tile and the Caddy name come from that entry; the port and subdomain in step 5 give the tile its link, and the subdomain gives the service its Caddy name under `caddy_private_domains`.
