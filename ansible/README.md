@@ -2,7 +2,7 @@
 
 Each service is a role with its own Docker Compose project at `/opt/services/<service>/` on the host, all on the shared Docker network `services`. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
-Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone. Restarting a container by hand is fine.
+Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
 
 Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag defaults to false; the two switches for base parts, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
@@ -84,7 +84,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the SD card or drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. `just setup` also wrote `host_vars/<host>/vault.yml` and `group_vars/all/vault.yml` (the shared secrets: Cloudflare, restic). Add the secrets it listed for the services you enabled ([Vault](#vault-secrets)).
-5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once: the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
+5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once (`sudo reboot`): the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
 ## Pick what you use
@@ -124,19 +124,20 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just os-upgrade [host]` | `apt upgrade` on every server, or on one host ([software that is not a Docker image](#update-software-that-is-not-a-docker-image)) |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just tags <image> [filter] [count]` | Lists an image's tags, e.g. `just tags dxflrs/garage '^v2\.'`. Needs Docker running on your Mac. Optional: the registry's tags page shows the same list |
+| `just platforms` | Checks every image in `versions.yml` has arm64 and x64 builds; needs Docker and network, not part of `check` |
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |
 
 `--check` does not create directories, so on a first deploy a later step can fail with "not a directory". That is a preview limit, not a bug.
 
 ### Tags, `--limit` and `-K`
 
-- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name; `ansible-playbook site.yml --list-tags` lists them. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. A tag that matches no role (a typo, or `backup-status` for `backup_status`) runs nothing and still exits successfully. A tag only selects a role; a role whose flag is false on the host is still skipped.
+- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name; `ansible-playbook site.yml --list-tags` lists them. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. A tag that matches no role (a typo, or `backup-status` for `backup_status`) runs no role (the checks at the top of the play still run) and still exits successfully. A tag only selects a role; a role whose flag is false on the host is still skipped.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host in `servers`.
 - **`-K`** (`--ask-become-pass`) asks for the host's sudo password. It is needed only for a host's first deploy.
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared (new token), containerd, the direct-link dnsmasq and storage (udev rules).
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (udev, the Linux device-event daemon, rules).
 
 | Setting | File |
 |---|---|
@@ -154,7 +155,7 @@ Service setup and gotchas are in [../docs/services.md](../docs/services.md); dri
 
 ## Update service images
 
-Every image and version is a line in `group_vars/all/versions.yml`, with its release-notes link above it. To update one:
+Every image and version is a line in `group_vars/all/versions.yml`; most have their release-notes link above them. To update one:
 
 1. Read the release notes.
 2. Edit that line (`just tags <image>` lists the tags that exist).
@@ -166,7 +167,7 @@ A floating tag (`latest`, `release`, `nightly`) doesn't move until you ask, beca
 ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-password-file .vault-pass
 ```
 
-Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Caddy, Copyparty, pics and backup-status build on the host and always rebuild, so `docker_pull_policy` doesn't apply to them.
+Pin a floating tag to the version running on the host once it works: `docker inspect <container>` shows `org.opencontainers.image.version`, or ask the app (`docker exec gitea gitea --version`). Moving Immich to a newer version can run database migrations, so read its notes first. Its Postgres and Valkey are pinned by digest; change them only when Immich's notes say to. Caddy, Copyparty and backup-status build on the host and always rebuild; pics rebuilds only when its repository's commit changed, so `docker_pull_policy` doesn't apply to them.
 
 ## Update software that is not a Docker image
 

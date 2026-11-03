@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `roles:`, `fstype` (default `ext4`) and `options` (default `defaults`) (a root-drive entry has only `mount` and `roles`, see [below](#using-the-root-drive-for-fast-or-primary)), the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `roles:`, `fstype` (default `ext4`) and `options` (default `defaults`), and may set `roles:`, the roles it fills. A root-drive entry has only `mount` and `roles` ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
 
 | Role | Holds |
 |---|---|
@@ -97,7 +97,7 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 
 To add or replace a drive:
 1. Format a new drive as ext4 (`sudo mkfs.ext4 /dev/sdX1`; find the device with `lsblk`; formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted), then add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
-2. `just deploy storage`.
+2. `just deploy storage --limit <host>`.
 3. Copy the data over, for example `rsync -aHAX`.
 4. Recreate the containers that bind the drive: a container keeps the old mount until it is recreated, and a deploy does not recreate one whose compose file is unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
 
@@ -112,7 +112,7 @@ Each service's data directory is one variable (the list is in `ansible/group_var
 1. Set its variable in `host_vars/<host>/vars.yml` to a path under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.
 3. Copy the data: `rsync -aHAX <old path>/ <new path>/`.
-4. `just deploy <service>`, then check it works. Delete the old copy by hand.
+4. `just deploy <service> --limit <host>`, then check it works. Delete the old copy by hand.
 
 ## Docker's own storage
 

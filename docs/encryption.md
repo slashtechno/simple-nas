@@ -39,7 +39,7 @@ After mounting, `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (in `scri
 
 ## Set up a folder
 
-On a host you are setting up, do this before the service first starts, or it writes plain files into the folder: deploy with `--tags storage,common,encryption`, run the commands in step 2 (and step 4 only if the folder already holds data), then deploy everything.
+On a host you are setting up, do this before the service first starts, or it writes plain files into the folder: run `just deploy storage,common,encryption --limit <host>`, run the commands in step 2 (and step 4 only if the folder already holds data), then deploy everything.
 
 Back up first and check the backup restores; the move in step 4 deletes the source files as it goes.
 
@@ -70,7 +70,7 @@ Deleting files does not erase them from the drive. A drive that held plain data 
 
 ### Turning it off
 
-Unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, deploy `encryption,backup`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts it installed; gocryptfs stays installed.
+Unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts it installed; gocryptfs stays installed.
 
 ## Unlocking
 
@@ -98,4 +98,4 @@ Unlocking works from any device that can SSH to the host. A borrowed device may 
 Two ways back:
 
 - **Master key:** make an empty folder, run `gocryptfs -init -masterkey <key> <empty folder>` with the same options the folder was created with, and copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere. `init-encrypted-folder.sh` adds `-xchacha` on a CPU with no AES (a Raspberry Pi 4); add it too. With the wrong options the mount succeeds but every read fails with an input/output error.
-- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. The deploy fails if an encrypted folder is outside every path in `restic_local_rules`, so a folder always has such a backup.
+- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. With a local backup, the deploy fails if an encrypted folder is outside every path in `restic_local_rules`, so a folder always has such a backup; a cloud-only host is not checked.

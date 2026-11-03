@@ -4,7 +4,7 @@ Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a
 
 Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every pinned image has both builds: `just platforms` in `ansible/` checks that after a version change.
 
-Every server gets Docker, Tailscale, the drive mounts and the base packages. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
+Every server gets Docker and the base packages; Tailscale and the drive mounts are on by default. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
 The services are listed, with what each one is and needs, in [docs/services.md](./docs/services.md#services). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
 
@@ -33,7 +33,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 
 ## Daily use
 
-- **Find everything:** with `homepage_enabled` on one host, its page lists every service on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
+- **Find everything:** with `homepage_enabled` on one host, its page lists every service with a host port or a Caddy name, on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
 - **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/caddy-reference.md](./docs/caddy-reference.md#web-addresses-and-https)).
 - **See what runs:** `just status` in `ansible/` lists the containers on every server.
 - **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
@@ -49,7 +49,7 @@ Fully automated once enabled: daily local, weekly cloud (configs and dumps; phot
 |---|---|
 | [ansible/README.md](./ansible/README.md) | Task index, which files hold what, setup, adding a host, `just` commands, vault, updating images, adding a service |
 | [TODO.md](./TODO.md) | The owner's list: work that waits for time or hardware |
-| `ansible/roles/` | One role per service |
+| `ansible/roles/` | One role per service, plus the base and shared task roles |
 | `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml`), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
