@@ -26,8 +26,8 @@ vault_copyparty_sftp_pass: "change-me-generate-with-openssl-rand-base64-32"
 # name, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.
 vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
-# One per entry in copyparty_service_accounts (vars.yml):
-vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
+# pics' Copyparty account password (the copyparty field of pics in services.yml):
+vault_pics_copyparty_pass: "change-me-generate-with-openssl-rand-base64-32"
 # Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).
 # Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
 # "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.

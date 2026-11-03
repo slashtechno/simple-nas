@@ -50,8 +50,8 @@
 {% if copyparty_sftp_enabled | bool %}
   {{ copyparty_sftp_user }}: {{ vault_copyparty_sftp_pass }}
 {% endif %}
-{% for s in copyparty_service_accounts %}
-  {{ s.user }}: {{ s.pass }}
+{% for app in copyparty_clients %}
+  {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_pass') }}
 {% endfor %}
 
 [/]
@@ -65,14 +65,14 @@
     rwmd: {{ copyparty_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
 
-{# One volume per service-account folder, a subfolder of /files. #}
-{% for s in copyparty_service_accounts %}
-{% for v in s.volumes %}
-[/{{ v.folder }}]
-  /files/{{ v.folder }}
+{# One volume per app volume, mounted at /svc/<key>/<name> in the container. #}
+{% for app in copyparty_clients %}
+{% for v in app.copyparty.volumes %}
+[/{{ app.key }}/{{ v.name }}]
+  /svc/{{ app.key }}/{{ v.name }}
   accs:
     A: {{ copyparty_user }}
-    {{ v.perms }}: {{ s.user }}
+    {{ v.perms }}: {{ app.key }}
 
 {% endfor %}
 {% endfor %}

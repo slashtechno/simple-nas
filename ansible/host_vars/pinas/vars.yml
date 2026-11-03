@@ -10,6 +10,9 @@ gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
+# pics' photos are still in the Copyparty files folder; plans/pics-volumes.md moves them to the defaults.
+pics_photos_dir: "{{ copyparty_files_dir }}/photos"
+pics_trash_dir: "{{ copyparty_files_dir }}/photos-trash"
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 backup_local_enabled: true   # daily backup to the `backup` drive

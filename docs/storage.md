@@ -17,7 +17,7 @@ Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked
 The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it, and only on a host that enables the service that needs it.
 
 - `fast`: Dockge's stacks and data, Caddy's data, and the config and database directories of Immich, Copyparty (config and `hist`), Gitea, pics, Homebridge, Garage, Crafty, ntfy, Tinyauth, Dozzle and Scrutiny.
-- `primary`: Immich's photos and Copyparty's files and collab folder.
+- `primary`: Immich's photos, pics' photos and trash, and Copyparty's files and collab folder.
 - `backup`: needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
 
 Docker's own storage (images, layers) is separate: it stays on the root drive unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).

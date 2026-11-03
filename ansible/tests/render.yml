@@ -375,6 +375,13 @@
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # Admin access to /, /collab and /fast, the volumes that exist in this render.
           - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 3"
+          # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
+          - >-
+            '[/pics/photos]\n  /svc/pics/photos\n  accs:\n    A: yourusername\n    rwm: pics\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'/mnt/primary/pics/photos:/svc/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "\"COPYPARTY_ROOT='/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.test' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.caddy.example.test immich.second.example.test'] ~ '.import') not in caddy_labels"
           - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
