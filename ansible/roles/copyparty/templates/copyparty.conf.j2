@@ -65,11 +65,11 @@
     rwmd: {{ copyparty_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
 
-{# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /<key>/<folder>. #}
+{# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /apps/<key>/<folder>. #}
 {% for app in copyparty_clients %}
 {% for v in app.copyparty.volumes %}
-[/{{ app.key }}/{{ v.folder }}]
-  /{{ app.key }}/{{ v.folder }}
+[/apps/{{ app.key }}/{{ v.folder }}]
+  /apps/{{ app.key }}/{{ v.folder }}
   accs:
     A: {{ copyparty_user }}
     {{ v.perms }}: {{ app.key }}

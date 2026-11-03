@@ -191,9 +191,9 @@ ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"
 # pics' data directory (fast drive).
 pics_data_dir: "{{ fast_drive }}/docker/pics"
 # Where pics keeps its photos and its trash (primary drive). Copyparty serves them to pics only, as the volumes
-# /pics/photos and /pics/trash, so they are not part of copyparty_files_dir and the admin's file listing.
-pics_photos_dir: "{{ primary_drive }}/pics/photos"
-pics_trash_dir: "{{ primary_drive }}/pics/trash"
+# /apps/pics/photos and /apps/pics/trash, so they are not part of copyparty_files_dir and the admin's file listing.
+pics_photos_dir: "{{ primary_drive }}/apps/pics/photos"
+pics_trash_dir: "{{ primary_drive }}/apps/pics/trash"
 # Homebridge's configuration and pairings (fast drive).
 homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
 # Garage's metadata and data (fast drive).
