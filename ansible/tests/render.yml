@@ -692,8 +692,6 @@
             src: "{{ repo }}/roles/common/templates/alert.sh.j2"
             dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert.sh"
             mode: "0644"
-          vars:
-            ntfy_alert_url: ""
 
         - name: Turn on ntfy alerts for this host
           ansible.builtin.set_fact:

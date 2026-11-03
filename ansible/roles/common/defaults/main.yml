@@ -17,5 +17,3 @@ ntfy_alert_url: >-
   {{ '' if ntfy_server == ''
      else 'http://' ~ ('localhost' if ntfy_server == inventory_hostname else hostvars[ntfy_server].ansible_host | default(ntfy_server))
           ~ ':' ~ hostvars[ntfy_server].ntfy_port ~ '/alerts' }}
-# File on the host holding vault_ntfy_token, read by alert.sh.
-ntfy_token_file: "{{ services_dir }}/ntfy-token"

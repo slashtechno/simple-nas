@@ -21,7 +21,7 @@
 #   # Remove specific services only (the keys in group_vars/all/services.yml)
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
-#   # Remove only the backup scripts, only the network config, or only the USB rule
+#   # Remove only the backup scripts, the connectivity watchdog, the network config, or the USB rule
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
@@ -73,6 +73,17 @@
     - name: Remove the backups, drive rules and network config
       when: only | length == 0
       block:
+        - name: Remove the alert script and the ntfy token
+          tags: [alerts]
+          block:
+            - name: Remove alert.sh and the token file
+              ansible.builtin.file:
+                path: "{{ item }}"
+                state: absent
+              loop:
+                - "{{ scripts_dir }}/alert.sh"
+                - "{{ ntfy_token_file }}"
+
         - name: Remove the connectivity watchdog
           tags: [connectivity_watchdog]
           block:

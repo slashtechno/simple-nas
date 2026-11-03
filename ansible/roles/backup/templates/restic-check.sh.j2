@@ -14,9 +14,8 @@ export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 # A hung check must end as a failed run, not hold the repository lock.
 restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
-# One log file per day; every run appends a "=== Integrity Check" header, and the dashboard
-# judges only the text after the last header. 2>&1 matters: restic prints its "error:" lines on
-# stderr, and the dashboard counts them in this log.
+# One log file per day; every run appends a "=== Integrity Check" header. 2>&1 matters: restic prints its
+# "error:" lines on stderr, and this log is where you read them.
 LOG_FILE="{{ backup_logs_dir }}/restic-check-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 

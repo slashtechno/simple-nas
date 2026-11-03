@@ -194,7 +194,7 @@ ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass     
 ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
 
-Drive mounts, the restic password and Tailscale state are never touched. Also left: Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A service's Caddy name goes with its container. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
+Drive mounts, the restic password and Tailscale state are never touched. Also left: Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A repo service's Caddy name goes when its flag is false and `just deploy caddy --limit <host>` has run; an app you run in Dockge carries its own labels. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
 
 ## Add a new service
 

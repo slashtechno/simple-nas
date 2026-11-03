@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `roles:`, `fstype` (default `ext4`) and `options` (default `defaults`), and may set `roles:`, the roles it fills. A root-drive entry has only `mount` and `roles` ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `fstype` (default `ext4`), `options` (default `defaults`) and `roles:`, the roles it fills. A root-drive entry has only `mount` and `roles` ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
 
 | Role | Holds |
 |---|---|

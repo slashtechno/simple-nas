@@ -1,6 +1,6 @@
 ---
 # One entry per service this repo deploys; the roles that are not a service (common, storage, tailscale, network,
-# encryption, backup, compose_service, github_clone) are not listed. To add a service, add an entry here; README's
+# connectivity_watchdog, encryption, backup, compose_service, github_clone) are not listed. To add a service, add an entry here; README's
 # "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
 # the data directories in defaults.yml): a list is replaced whole by a host, so keep values out of it.
 #   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and

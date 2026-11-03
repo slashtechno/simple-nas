@@ -21,7 +21,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
-| Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
+| Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Homepage | Start page with a tile for each enabled service on every host in the inventory | `roles/homepage` | none | [Homepage](#homepage) |
@@ -118,8 +118,8 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but the `alerts` user and its token, so the published port asks for a login even on the LAN. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
-- One ntfy server serves the whole homelab. Another host sends its alerts there by setting only `ntfy_server: <the ntfy host's inventory name>` (and no `ntfy_enabled`); it needs `vault_ntfy_token` from `group_vars/all/vault.yml`. A host with neither setting sends nothing. A server this repo does not run, such as ntfy.sh, is `ntfy_alert_url`.
-- `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers; the log tag is the one passed to it (default `backup`): it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
+- One ntfy server serves the whole homelab. Another host sends its alerts there by setting only `ntfy_server: <the ntfy host's inventory name>` (and no `ntfy_enabled`); it needs `vault_ntfy_token` from `group_vars/all/vault.yml`, and `just deploy common --limit <host>` after setting `ntfy_server`. A host with neither setting sends nothing. A server this repo does not run, such as ntfy.sh, is `ntfy_alert_url`.
+- `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers; it writes to the system log under the tag it is given (`journalctl -t backup` for the backup jobs, `-t connectivity` for the watchdog) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
 

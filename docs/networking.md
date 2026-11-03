@@ -49,7 +49,7 @@ A host can stay on wifi with a valid address and working ping while every TCP co
 - After 3 failed checks in a row it runs `nmcli connection down` and `up` on the connection that carries the default route (wifi or Ethernet, never the direct link, which has no gateway). It waits 30 minutes between reconnects and stops after 6 per outage, so a real internet outage does not loop. It never reboots. A host without NetworkManager only logs.
 - Every step is in the system log (`journalctl -t connectivity`). When the check works again after an outage, one alert goes through `alert.sh` ([ntfy](./services.md#ntfy-failure-alerts)).
 
-Deploy it with `just deploy connectivity_watchdog --limit <host>`; `just deploy common` first if alerts are new.
+Deploy it with `just deploy connectivity_watchdog --limit <host>`; `just deploy common` first if alerts are new. Setting the flag to false does not remove the cron job: run `ansible-playbook teardown.yml --tags connectivity_watchdog --limit <host> --vault-password-file .vault-pass`.
 
 ## Direct Ethernet link
 
