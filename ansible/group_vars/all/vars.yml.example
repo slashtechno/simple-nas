@@ -15,3 +15,5 @@ gitea_root_url: "https://gitea.example.com/"
 # pics (pics_enabled): the private GitHub repo it builds from and its public guest URL.
 pics_repo: owner/lab
 pics_public_url: "https://photos.example.com"
+# With pics_sso_enabled: the one Tinyauth user name or email address that may open pics' owner pages.
+pics_oidc_owner: you@example.com

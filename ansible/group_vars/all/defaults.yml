@@ -40,6 +40,10 @@ gitea_sso_enabled: false
 homebridge_enabled: false
 # pics, the photo sharing app.
 pics_enabled: false
+# Let pics' owner login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; pics' password
+# login and the importer's token stay (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled,
+# caddy_enabled, pics_oidc_owner and vault_pics_oidc_secret.
+pics_sso_enabled: false
 # Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
 garage_enabled: false
 # Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).

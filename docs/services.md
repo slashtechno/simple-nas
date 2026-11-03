@@ -92,6 +92,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
    - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
 2. In the host's vault add `vault_pics_password` (12+ characters) and `vault_pics_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `photos` account and its volumes first.
+4. Optional: sign in with Tinyauth instead of the password (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay. pics' Caddy name is not behind Tinyauth: pics has its own login and the sign-in goes through it.
 
 The database is in `pics_data_dir`, covered by the daily backup; the app also writes its own daily snapshots there. `teardown.yml -e only=pics` keeps that data unless `-e remove_data=true`.
 
@@ -142,7 +143,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 2. On the host, set `tinyauth_enabled: true` in `vars.yml`. It needs Caddy with a private domain: the page only has that https name.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
-- With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
+- With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)); a name in `caddy_sites` opts in with the same import. The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. [SilverBullet](https://silverbullet.md/), for example, has no single sign-on of its own, and [its docs](https://edge.silverbullet.md/Authentication) say to put it behind an authentication proxy, which Tinyauth is, so leave its `SB_USER` unset.
 

@@ -130,6 +130,9 @@
         # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
         gitea_sso_enabled: true
         immich_sso_enabled: true
+        pics_sso_enabled: true
+        pics_oidc_owner: owner@example.test
+        vault_pics_oidc_secret: "pics$secret"
         vault_gitea_oidc_secret: "gitea$secret"
         vault_immich_oidc_secret: "immich$secret"
         dockge_port: ""
@@ -391,6 +394,13 @@
             ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.caddy.example.test/auth/login,'
             ~ 'https://immich.caddy.example.test/user-settings,app.immich:///oauth-callback"')
             in tinyauth_compose
+          - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: \"https://pics.caddy.example.test/api/auth/oidc/callback\"' in tinyauth_compose"
+          - "\"HUB_OIDC_ISSUER='https://auth.caddy.example.test'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_REDIRECT_URL='https://pics.caddy.example.test/api/auth/oidc/callback'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_OWNER='owner@example.test'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_CLIENT_SECRET='pics$secret'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.networks.services.aliases
@@ -510,12 +520,13 @@
         path: "{{ out_dir }}/oidc-off/{{ item }}"
         state: directory
         mode: "0755"
-      loop: [tinyauth, caddy, gitea, immich]
+      loop: [tinyauth, caddy, gitea, immich, pics]
 
     - name: Turn the two OIDC logins off
       ansible.builtin.set_fact:
         gitea_sso_enabled: false
         immich_sso_enabled: false
+        pics_sso_enabled: false
 
     - name: Render the four templates that carry them
       ansible.builtin.template:
@@ -523,6 +534,12 @@
         dest: "{{ out_dir }}/oidc-off/{{ item }}/docker-compose.yml"
         mode: "0644"
       loop: [tinyauth, caddy, gitea, immich]
+
+    - name: Render pics' settings file without its OIDC login
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/pics/templates/pics.env.j2"
+        dest: "{{ out_dir }}/oidc-off/pics/pics.env"
+        mode: "0644"
 
     - name: Without them, nothing asks Tinyauth for a login or Immich for its config file
       vars:
@@ -534,6 +551,7 @@
         that:
           - "'TINYAUTH_OIDC_CLIENTS' not in tinyauth_compose"
           - "'GITEA__oauth2_client__' not in gitea_compose"
+          - "'HUB_OIDC' not in lookup('ansible.builtin.file', out_dir ~ '/oidc-off/pics/pics.env')"
           - "'IMMICH_CONFIG_FILE' not in immich_compose"
           - "'immich-config.json' not in immich_compose"
           # The login page keeps its name inside the network whatever apps sign in through it.

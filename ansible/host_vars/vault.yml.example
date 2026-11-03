@@ -47,6 +47,9 @@ vault_gitea_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 # Only used if immich_sso_enabled is true (vars.yml): the client secret Tinyauth checks for Immich's OpenID Connect
 # login. Any long random string; `openssl rand -hex 24`.
 vault_immich_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
+# Only used if pics_sso_enabled is true (vars.yml): the client secret Tinyauth checks for pics' OpenID Connect login.
+# Any long random string; `openssl rand -hex 24`.
+vault_pics_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 # Shared secret for Garage's node-to-node RPC.
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 # Token for Garage's admin API.

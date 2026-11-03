@@ -31,7 +31,7 @@ services:
 {% for name, value in tinyauth_environment.items() %}
       {{ name }}: {{ (value | string | replace('$', '$$')) | to_json }}
 {% endfor %}
-{% if gitea_sso_enabled | bool or immich_sso_enabled | bool %}
+{% if gitea_sso_enabled | bool or immich_sso_enabled | bool or pics_sso_enabled | bool %}
       # The apps that sign in through Tinyauth instead of only their own login
       # (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Declaring a client here is what starts Tinyauth's OpenID
       # Connect server. The redirect URIs must match the app's exactly, and the client id is part of the account id the
@@ -49,6 +49,12 @@ services:
       # Immich's web login, its "link OAuth" page in the user settings, and the phone apps' fixed callback.
       TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://{{ immich_subdomain }}.{{ caddy_private_domains[0] }}/auth/login,https://{{ immich_subdomain }}.{{ caddy_private_domains[0] }}/user-settings,app.immich:///oauth-callback"
       TINYAUTH_OIDC_CLIENTS_IMMICH_NAME: "Immich"
+{% endif %}
+{% if pics_sso_enabled | bool %}
+      TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: "pics"
+      TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: '{{ vault_pics_oidc_secret | replace("$", "$$") }}'
+      TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: "https://{{ pics_subdomain }}.{{ caddy_private_domains[0] }}/api/auth/oidc/callback"
+      TINYAUTH_OIDC_CLIENTS_PICS_NAME: "pics"
 {% endif %}
     networks:
       - {{ docker_network }}

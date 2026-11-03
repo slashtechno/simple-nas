@@ -12,6 +12,21 @@
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
+- name: Check pics' sign-in through Tinyauth is set up
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+      - pics_subdomain != ''
+      - vault_pics_oidc_secret is defined
+    fail_msg: >-
+      pics_sso_enabled needs tinyauth_enabled and caddy_enabled with a caddy_private_domains entry, a pics_subdomain
+      (the address pics returns to after the login), and vault_pics_oidc_secret in the vault that applies to
+      {{ inventory_hostname }} (vault.yml.example says how to make it).
+    quiet: true
+  when: pics_sso_enabled | bool
+
 # pics reaches Copyparty by container name on the Docker network, as the "photos" service account.
 - name: Check Copyparty runs on this host with a photos account
   ansible.builtin.assert:
