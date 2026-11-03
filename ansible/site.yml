@@ -83,6 +83,12 @@
         name: network
       tags: [network]
 
+    - name: Deploy the connectivity watchdog
+      ansible.builtin.import_role:
+        name: connectivity_watchdog
+      tags: [connectivity_watchdog]
+      when: connectivity_watchdog_enabled | bool
+
     # Docker restarts here, before any service container exists.
     - name: Apply the base roles' handlers
       ansible.builtin.meta: flush_handlers

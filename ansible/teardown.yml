@@ -73,6 +73,20 @@
     - name: Remove the backups, drive rules and network config
       when: only | length == 0
       block:
+        - name: Remove the connectivity watchdog
+          tags: [connectivity_watchdog]
+          block:
+            - name: Remove the watchdog cron job
+              ansible.builtin.cron:
+                name: connectivity-watchdog
+                user: root
+                state: absent
+
+            - name: Remove the watchdog script
+              ansible.builtin.file:
+                path: "{{ scripts_dir }}/connectivity-watchdog.sh"
+                state: absent
+
         # ── Backups ────────────────────────────────────────────────────────────
 
         - name: Remove backup cron jobs and scripts

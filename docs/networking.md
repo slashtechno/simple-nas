@@ -41,6 +41,16 @@ nmcli device wifi list         # networks the Pi can see right now
 - The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, with a higher autoconnect priority than the installer's profile, so NetworkManager picks it for the port. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
 - The Ubuntu Server installer writes its own netplan file and a cloud-init file that already disables cloud-init's network config; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init at first boot. Either way the file `roles/network` writes makes cloud-init leave the network alone afterwards.
 
+## Connectivity watchdog
+
+A host can stay on wifi with a valid address and working ping while every TCP connection and DNS lookup fails; nothing reports it and the host drops off Tailscale. `connectivity_watchdog_enabled: true` (default off) runs `connectivity-watchdog.sh` from root's `cron` every 2 minutes:
+
+- It tries a TCP connection to port 443 of each address in `connectivity_probe_addresses`; the host is online if any connects. The tuning settings and their defaults are in `ansible/roles/connectivity_watchdog/defaults/main.yml`.
+- After 3 failed checks in a row it runs `nmcli connection down` and `up` on the connection that carries the default route (wifi or Ethernet, never the direct link, which has no gateway). It waits 30 minutes between reconnects and stops after 6 per outage, so a real internet outage does not loop. It never reboots. A host without NetworkManager only logs.
+- Every step is in the system log (`journalctl -t connectivity`). When the check works again after an outage, one alert goes through `alert.sh` ([ntfy](./services.md#ntfy-failure-alerts)).
+
+Deploy it with `just deploy connectivity_watchdog --limit <host>`; `just deploy common` first if alerts are new.
+
 ## Direct Ethernet link
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.

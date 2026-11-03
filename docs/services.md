@@ -26,6 +26,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Homepage | Start page with a tile for each enabled service on the host | `roles/homepage` | none | [Homepage](#homepage) |
 | Dockge, Caddy | Web UI for your own compose stacks; names for apps, routed by container label | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Backups | Daily local and weekly cloud backups, a weekly integrity check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) | [backups.md](./backups.md) |
+| Connectivity watchdog | Reconnects the network when TCP stops working | `roles/connectivity_watchdog` | NetworkManager to reconnect | [networking.md](./networking.md#connectivity-watchdog) |
 | Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | `roles/network` | none | [networking.md](./networking.md#direct-ethernet-link) |
 
 ## Immich

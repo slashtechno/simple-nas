@@ -166,7 +166,7 @@
 
     - name: Every role is a service in services.yml or a role that is not a service
       vars:
-        not_services: [backup, common, compose_service, encryption, github_clone, network, storage, tailscale]
+        not_services: [backup, common, compose_service, connectivity_watchdog, encryption, github_clone, network, storage, tailscale]
         role_dir_names: "{{ role_dirs.files | map(attribute='path') | map('basename') | list }}"
         unlisted: "{{ role_dir_names | difference(services | map(attribute='key') | list) | difference(not_services) }}"
       ansible.builtin.assert:
@@ -296,6 +296,21 @@
       loop: >-
         {{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename')
         | product(['environment', 'volumes', 'labels', 'ports']) | list }}
+
+    # The watchdog must probe every configured address, never reboot or name a network port, and alert with its own tag.
+    - name: The connectivity watchdog script probes, reconnects and alerts as designed
+      vars:
+        watchdog: "{{ lookup('ansible.builtin.file', out_dir ~ '/connectivity_watchdog/connectivity-watchdog.sh') }}"
+      ansible.builtin.assert:
+        that:
+          - connectivity_probe_addresses | length > 0
+          - connectivity_probe_addresses | reject('in', watchdog) | list | length == 0
+          - "'/dev/tcp/' in watchdog"
+          - "'nmcli connection down' in watchdog and 'nmcli connection up' in watchdog"
+          - "'connectivity restored' in watchdog and 'alert.sh' in watchdog"
+          - "'systemctl' not in watchdog and 'shutdown' not in watchdog and '/sbin/reboot' not in watchdog"
+          - "'wlan0' not in watchdog and 'eth0' not in watchdog"
+        quiet: true
 
     # Caddy numbers its sites by their position in the list, so the checks find a site by its address, not its number.
     - name: Read Caddy's labels, and the label number of each site address

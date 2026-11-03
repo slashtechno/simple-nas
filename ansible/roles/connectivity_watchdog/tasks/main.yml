@@ -1,0 +1,16 @@
+---
+- name: Install the connectivity watchdog script
+  ansible.builtin.template:
+    src: connectivity-watchdog.sh.j2
+    dest: "{{ scripts_dir }}/connectivity-watchdog.sh"
+    owner: root
+    group: root
+    mode: "0755"
+
+# Root, because it reconnects the network.
+- name: Schedule the connectivity check (every 2 minutes)
+  ansible.builtin.cron:
+    name: connectivity-watchdog
+    user: root
+    minute: "*/2"
+    job: /bin/bash {{ (scripts_dir ~ '/connectivity-watchdog.sh') | quote }}

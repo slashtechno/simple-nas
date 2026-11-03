@@ -205,6 +205,10 @@ direct_link_peer_ip: 10.10.20.2
 # Prefix length; 30 leaves room for just these two addresses.
 direct_link_prefix: 30
 
+# Check every 2 minutes that the host can open TCP connections to the internet, and reconnect its network connection
+# when it cannot (docs/networking.md#connectivity-watchdog). Needs NetworkManager to reconnect.
+connectivity_watchdog_enabled: false
+
 # --- Host ports of the web UIs ---
 # Set here because the Homepage links to them. Each listens on every interface: http://<host-tailscale-name>:<port>
 # (HTTPS: docs/caddy-reference.md). Set one to "" to publish no host port; the service is then
