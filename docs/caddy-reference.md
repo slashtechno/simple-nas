@@ -8,7 +8,7 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 ## What `roles/caddy` deploys
 
-Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet. The image is built on the host from `roles/caddy/files/Dockerfile`: Caddy, caddy-docker-proxy and the Cloudflare DNS plugin, each pinned in `versions.yml` (`caddy_version`, `caddy_docker_proxy_version`, `caddy_cloudflare_dns_version`). The first build compiles Caddy and takes a few minutes on a Pi.
+Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet. The image is built on the host from `roles/caddy/files/Dockerfile`: Caddy, caddy-docker-proxy and the Cloudflare DNS plugin, each pinned in `versions.yml` (`caddy_version`, `caddy_docker_proxy_version`, `caddy_cloudflare_dns_version`). The first build compiles Caddy and takes 20+ minutes on a Pi.
 
 Caddy listens on ports 80 and 443 of the host; `caddy_data_dir` is in `ansible/group_vars/all/defaults.yml`. Losing `caddy_data_dir` means certificates are issued again.
 
@@ -41,7 +41,7 @@ caddy_private_domains: [pi4.example.com]
 
 #### Service names
 
-On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon` and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
+On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon`, no fixed `port`, and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
 
 - The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
@@ -59,7 +59,7 @@ ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<po
 dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
 ```
 
-- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name; a service reached only through the Cloudflare Tunnel keeps its port.
+- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name. The Cloudflare Tunnel is no exception: even a service the tunnel serves on its own keeps a host port.
 - Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
 - A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
 - The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. `just deploy caddy` runs only the Caddy role, so the `network` role (it creates the `services` network) must have run on the host once. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.

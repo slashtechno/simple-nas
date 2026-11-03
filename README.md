@@ -34,7 +34,7 @@ To set up and deploy, start with [ansible/README.md](./ansible/README.md).
 ## Daily use
 
 - **Find everything:** with `homepage_enabled` on one host, its page lists every service with a host port or a Caddy name, on every host, with a dot for whether each answers ([docs/services.md](./docs/services.md#homepage)).
-- **Choose what the server opens to:** `caddy_private_domains` gives each service with a web UI its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/caddy-reference.md](./docs/caddy-reference.md#web-addresses-and-https)).
+- **Choose what the server opens to:** `caddy_private_domains` gives each web service with a subdomain its own `https://` name with a real certificate; `caddy_sites` adds sites: the root of the server (the Homepage, Copyparty, Dockge) or a redirect ([docs/caddy-reference.md](./docs/caddy-reference.md#web-addresses-and-https)).
 - **See what runs:** `just status` in `ansible/` lists the containers on every server.
 - **Backups:** the Backups tile and the ntfy alerts; [docs/backups.md](./docs/backups.md).
 - **Change something:** edit the host's `vars.yml`, then `just preview` and `just deploy` ([ansible/README.md](./ansible/README.md#commands)).
@@ -52,13 +52,14 @@ Fully automated once enabled: daily local, weekly cloud (configs and dumps; phot
 | `ansible/roles/` | One role per service, plus the base and shared task roles |
 | `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml`), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
-| [docs/ansible-terms.md](./docs/ansible-terms.md) | Every Ansible concept and config key this repo uses |
+| [docs/ansible-terms.md](./docs/ansible-terms.md) | The Ansible terms and files this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
+| [docs/encryption.md](./docs/encryption.md) | Folders stored encrypted with gocryptfs: what they protect, first setup, unlocking after a boot, backups while locked |
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | The optional Caddy reverse proxy: names, ports, HTTPS and label syntax |
 | [docs/auth-reference.md](./docs/auth-reference.md) | The optional Tinyauth login: users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale, sessions |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-The owner's to-do list is `TODO.md`. The active plan is in `plans/` and research notes go in `docs/research/` (created when there is one). Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works.
+Active plans are in `plans/` and research notes go in `docs/research/` (created when there is one). Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works.

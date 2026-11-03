@@ -18,7 +18,7 @@ A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 - Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_extra_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.
 
-The backups run as the ansible user. Files only root can read (`/etc`, data owned by a container's user) are skipped, and restic reports them as `error:` lines. The snapshot is saved without them, the old snapshots are still pruned, and then the run fails so the alert fires. A stack whose containers write as root needs its data dumped or its owner changed.
+The backups run as the ansible user. Files only root can read (data owned by a container's user, a file nobody else can open) are skipped, and restic reports them as `error:` lines. The snapshot is saved without them, the old snapshots are still pruned, and then the run fails so the alert fires. A stack whose containers write as root needs its data dumped or its owner changed.
 
 Each backup and check run starts with `restic unlock`, which removes only stale locks. Without it a restic killed by a reboot leaves a lock that makes every later prune fail with "repository is already locked", and old snapshots then pile up.
 
@@ -47,7 +47,7 @@ Paths below use `/mnt/backup` for the backup drive and `/mnt/data` for the fast 
 
 ## What is backed up where
 
-What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/roles/backup/defaults/main.yml`. To add to a default, put lines in `restic_local_extra_rules` or `restic_cloud_extra_rules`; setting the main list replaces the default. With the defaults on a NAS:
+What a host backs up is set by two rules lists: `restic_local_rules` for the daily backup and `restic_cloud_rules` for the weekly one. Their defaults are in `ansible/roles/backup/defaults/main.yml`: the local one lists the mounted `primary` and `fast` drives (the ansible user's home on a host with neither), the cloud one lists the host's base directory (`services_dir`) and, if Copyparty runs, Copyparty's config. To add to a default, put lines in `restic_local_extra_rules` or `restic_cloud_extra_rules`; setting the main list replaces the default. With the defaults on a NAS:
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
@@ -62,7 +62,7 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 - The restic password is not in any backup. It is in `vault_restic_password` (`group_vars/all/vault.yml`) and in `restic_password_file` on the host, and the vault password is in your password manager ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
 - Both repositories always include `service_dumps_dir` as well.
 - With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_extra_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). Encrypted folders are checked the same way. The offsite list is short on purpose and is not enforced; with the cloud backup on, each deploy prints the enabled services' data it leaves out.
-- Always excluded: `restic_cache_dir`, the restic repository itself, `**/.cache` folders and `lost+found` on every drive that holds data, Docker's own storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
+- Always excluded: `restic_cache_dir`, the restic repository itself, the `**/.cache` folders, the data drives' `lost+found`, the restic password file and the rclone config (both hold logins), Cloudflare's tunnel token (`services_dir/cloudflared/token`, written from the vault on each deploy), Docker's own storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory and the `copyparty` folder inside its config directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`, `roles/garage/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 ## Choosing what is backed up
@@ -137,7 +137,7 @@ Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the h
 
 ## Web dashboard (read-only)
 
-The `backup_status` role deploys a read-only dashboard with job status, drive mount state and the snapshot list for both repositories. It needs `backup_local_enabled`.
+The `backup_status` role deploys a read-only dashboard with job status, the drive's mount state, a warning when a restic lock is left on the repository, and the snapshot list for both repositories. It needs `backup_local_enabled`.
 
 It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and a host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network. The deploy stops if the host has neither, so the dashboard never comes up without a login or a port you chose.
 
@@ -267,6 +267,7 @@ Garage's metadata (which objects and buckets exist, and the node key) is root-ow
 
 ```bash
 cd /opt/services/garage && docker compose stop garage
+mkdir -p /tmp/garage-restore
 tar -xzf /mnt/backup/service-dumps/garage-meta-<timestamp>.tar.gz -C /tmp/garage-restore
 # the newest snapshot is a single LMDB file: it becomes data.mdb of the db.lmdb directory
 sudo mv <garage_data_dir>/meta/db.lmdb <garage_data_dir>/meta/db.lmdb.old

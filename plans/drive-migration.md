@@ -2,7 +2,7 @@
 
 > **Status: active plan. Delete this file when the migration is done; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Waiting on the drive purchases. The steps run on pinas.
+Waiting on the owner's steps. The drives are bought (the IronWolf; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` still names the old 500 GB drive. The steps run on pinas.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../docs/storage.md)):
 
@@ -39,9 +39,9 @@ smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
 
 - [ ] Format the P10 as ext4. In `drives`, add `mount: /mnt/main`, `roles: [primary]` and change the T7 to `roles: [fast]`.
 - [ ] `just deploy storage --limit <host>` mounts `/mnt/main`. The `photos`, `files` and `collab` folders come from the rsync below and from the service roles.
-- [ ] Stop the services that write to `photos`, `files` and `collab` (`cd /opt/services/<service> && docker compose down` for Immich, Copyparty and Gitea).
+- [ ] Stop the services that write to `photos`, `files` and `collab` (`cd /opt/services/<service> && docker compose down` for Immich and Copyparty; their only data on the T7 is what is copied).
 - [ ] Copy: `rsync -aHAX /mnt/t7/photos/ /mnt/main/photos/`, the same for `files` and `collab`. Databases, Docker and config directories stay on the T7.
-- [ ] `just deploy`, then check Immich, Gitea and Copyparty. Copyparty re-scans its index on the first start (its `hist` database starts empty); that is expected.
+- [ ] `just deploy`, then check Immich. Copyparty re-scans its index on the first start; that is expected.
 
 ## 3. Backup follow-up after the split
 

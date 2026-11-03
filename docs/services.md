@@ -40,14 +40,14 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 - With it on, Immich reads its whole configuration from `/opt/services/immich/immich-config.json`, and its admin settings page is read-only: a setting the template does not write gets Immich's default, not the value the page saved. A setting you need goes into `roles/immich/templates/immich-config.json.j2` (Administration > Settings shows the key and value to copy).
 - Postgres is dumped before each backup by `roles/immich/files/dump.sh`, so the database is backed up consistently ([backups.md](./backups.md)).
-- To move `immich_upload_location` to another drive, copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
+- To move `immich_upload_location` to another drive ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
 - Moving Immich to a newer image can run database migrations: read its release notes first ([ansible/README.md](../ansible/README.md#update-service-images)).
 
 ## Gitea
 
 Git hosting with an optional Actions runner.
 
-- Set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. `gitea_domain` and `gitea_ssh_domain` default to its host name; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
+- Set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. `gitea_domain` and `gitea_ssh_domain` default to the host name in `gitea_root_url`; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
 - `gitea_sso_enabled: true` lets a Tinyauth login open Gitea ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
@@ -63,7 +63,7 @@ Service accounts (for apps that talk to Copyparty): add an entry to `copyparty_s
 - Each volume is mounted at `/<folder>` and stored in `copyparty_files_dir/<folder>`, owned by the admin. Those folders then vanish for other accounts that have `/`, such as the SFTP account (see `copyparty_sftp_enabled` below).
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
-`/drives` shows USB drives and cards plugged into the host (`usb_automount_enabled`), read-only unless `usb_automount_writable`. Drives listed in `drives` are never shown. See [storage.md](./storage.md#plugged-in-usb-drives-drives).
+`/drives` shows the USB drives and cards plugged into the host when `usb_automount_enabled: true`, read-only unless `usb_automount_writable` ([storage.md](./storage.md#plugged-in-usb-drives-drives)).
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
@@ -91,7 +91,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
    - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
 2. In the host's vault add `vault_pics_password` (12+ characters) and `vault_pics_secret_key` (`openssl rand -base64 48`). Use values without single quotes.
-3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `photos` account and its two volumes first.
+3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `photos` account and its volumes first.
 
 The database is in `pics_data_dir`, covered by the daily backup; the app also writes its own daily snapshots there. `teardown.yml -e only=pics` keeps that data unless `-e remove_data=true`.
 
@@ -123,7 +123,7 @@ Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudfla
 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
-1. Make the secrets: a login password and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password; no hash is stored.
+1. Make the secrets: a login password and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
 2. On the host that runs ntfy, set `ntfy_enabled: true` and `ntfy_server: <that host's inventory name>` in its `vars.yml`; `just deploy ntfy,common --limit <host>`.
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
@@ -160,7 +160,7 @@ The rule: an app's own login is switched off only when Tinyauth is in front of i
 
 ## Dozzle: container logs
 
-[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows the logs of every container on the host in a browser. It has no login of its own: it takes the user Tinyauth names from a header ([Tinyauth](#tinyauth-login)), so it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://logs.<private domain>`.
+[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows the logs of every container on the host in a browser. It has no login of its own: it takes the user Tinyauth names from a header ([Tinyauth](#tinyauth-login)), so it needs `tinyauth_enabled` and Caddy with a `caddy_private_domains` entry, and is served at `https://logs.<private domain>`.
 
 1. On the host, set `dozzle_enabled: true` and run `just deploy dozzle --limit <host>`.
 2. `dozzle_port` is empty by default; setting it publishes the page without a login, which Dozzle's docs warn against in forward-proxy mode.
@@ -169,10 +169,10 @@ The socket is mounted read-only because Dozzle only reads, not because that limi
 
 ## Scrutiny: drive health
 
-[Scrutiny](https://github.com/AnalogJ/scrutiny) (`scrutiny_enabled`) is a dashboard of every drive's SMART health and history. It has no login of its own: it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://disks.<private domain>`.
+[Scrutiny](https://github.com/AnalogJ/scrutiny) (`scrutiny_enabled`) is a dashboard of every drive's SMART health and history. It has no login of its own: it needs `tinyauth_enabled` and Caddy with a `caddy_private_domains` entry, and is served at `https://disks.<private domain>`.
 
 1. On the host, set `scrutiny_enabled: true` and run `just deploy scrutiny --limit <host>`.
-2. The role reads the drive list from `smartctl --scan` at deploy time. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".
+2. The role reads the drive list from `smartctl --scan` at deploy time; set `scrutiny_devices` to a list of device paths when that list is wrong for the host. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".
 3. After plugging in or unplugging a drive, run `just deploy scrutiny --limit <host>` again so the container gets the new list.
 
 The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scrutiny_config_dir` is covered.
@@ -191,7 +191,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_adm
 
 One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
 
-- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `docker logs crafty` or `<crafty_data_dir>/config/default-creds.txt`. Change it in the panel, then delete that file.
+- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Change it in the panel, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
 - `crafty_memory_limit` (default 3g) caps all servers combined. On a 4 GB Pi it competes with Immich if both run on the host.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
@@ -210,12 +210,12 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all your servers. Run it on one host: it shows a group of tiles for every host in the inventory, one tile per service that host has switched on and that has a host port or a Caddy name, each with a green or red dot for whether the page answers. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
 
-- Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name and on the address Ansible reaches the host at. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
+- Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name); the page also answers on the inventory name. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
 - The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: they have no entry in `web_services` (no icon). Garage's web UI is reached through its `cloudflared_ingress` entry instead. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
-- The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.
+- The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up.
 - Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app ([widgets](https://gethomepage.dev/widgets/)).
 
 ## Ad-hoc app platform

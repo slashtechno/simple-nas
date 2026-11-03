@@ -1,10 +1,10 @@
 # Ansible playbooks
 
-Each service is a role with its own Docker Compose project at `/opt/services/<service>/` on the host, all on the shared Docker network `services`. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
+Each service is a role with its own Docker Compose project at `/opt/services/<service>/` on the host, all on the shared Docker network `services` except Homebridge, which runs on the host network for HomeKit discovery. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag defaults to false; the two switches for base parts, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults.yml` defaults to false; the two switches for base parts there, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -21,8 +21,8 @@ All commands below run from `ansible/`.
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Update the OS, Docker Engine or Tailscale | nothing to edit | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
-| Add a drive or move data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
-| Give services `https://` names, or change a port or name | `caddy_private_domains` (each service with a web UI then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server or a redirect, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
+| Add a drive or move one service's data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` for a drive; `just deploy <service> --limit <host>` for a move |
+| Give services `https://` names, or change a port or name | `caddy_private_domains` (each web service with a subdomain then gets a name), `<name>_subdomain`, `<name>_port`, and `caddy_sites` for the root of the server or a redirect, in `host_vars/<host>/vars.yml` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>`, plus the service's tag |
 | See what is running | nothing | `just status`, or open the Homepage |
 | Add a public hostname | `cloudflared_ingress` in `host_vars/<host>/vars.yml` ([services](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
@@ -44,7 +44,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
-Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files.
+Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. `just check` only verifies that vault names and settings with no default appear in the example files ([Commands](#commands)).
 
 A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml`, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
 
@@ -71,7 +71,7 @@ A vault file you forget to encrypt still deploys, with its secrets in plain text
 ## First-time setup
 
 ```bash
-brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just tags`. The ansible package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords
+brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just tags` and `just platforms`. The ansible package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords
 cd ansible/
 just deps
 ```
@@ -81,15 +81,15 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 ## Add a host
 
 1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian 12 or newer, Ubuntu; Debian 11 ships restic 0.11, too old for the `- !` backup rules) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
-2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the SD card or drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
+2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the root drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. `just setup` also wrote `host_vars/<host>/vault.yml` and `group_vars/all/vault.yml` (the shared secrets: Cloudflare, restic). Add the secrets it listed for the services you enabled ([Vault](#vault-secrets)).
-5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up` ([docs/networking.md](../docs/networking.md)). If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once (`sudo reboot`): the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
+5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up`. If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once (`sudo reboot`): the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
 ## Pick what you use
 
-Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs: it gives the Ansible user passwordless sudo, installs the base packages, Docker and the terminal tools (`terminal_tools_enabled: false` skips them), sets the timezone and the Docker data directory, adds your SSH keys, and masks suspend and hibernate. The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
+Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs: it gives the Ansible user passwordless sudo, installs the base packages, Docker and the terminal tools (`terminal_tools_enabled: false` leaves out zellij and the Ghostty terminfo), sets the timezone and the Docker data directory, adds your SSH keys, and masks suspend and hibernate. The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
@@ -101,8 +101,8 @@ To add your own service as a fork, follow [Add a new service](#add-a-new-service
 
 The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs), kept in git so the owner's setup is reproducible. Anyone else who copies the repo replaces them:
 
-1. Copy `vars.yml.example` over `group_vars/all/vars.yml` (create it if the file is missing) and delete any existing `host_vars/<host>/` directories.
-2. Replace at least `ssh_authorized_keys` (the owner's key would otherwise be added to your hosts), `timezone`, the Gitea and Cloudflare values, and `restic_cloud_repository`.
+1. Copy `group_vars/all/vars.yml.example` over `group_vars/all/vars.yml` (create it if the file is missing) and delete any existing `host_vars/<host>/` directories.
+2. Replace at least `ssh_authorized_keys` (the owner's key would otherwise be added to your hosts), `timezone`, and the Cloudflare, Gitea and pics values; set `restic_cloud_repository` in the `vars.yml` of each host that turns the offsite backup on.
 3. Create `inventory/hosts.yml`, the vaults and your own `host_vars/<host>/` files as in the table.
 
 ## Commands
@@ -115,8 +115,8 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just lint` | ansible-lint, shellcheck on shipped scripts, ruff on the dashboard. Skipped rules and their reasons: `.ansible-lint` |
 | `just syntax` | Both playbooks parse |
 | `just vars` | Fails if a vault name or a setting with no default is missing from its example file |
-| `just links` | Fails if a `file.md#anchor` link or an in-page anchor in the docs points nowhere |
-| `just test` | Renders every template with the example vars and shellchecks the scripts. Fails on an undefined variable or a key in a `vars.yml` that no example or role default declares |
+| `just links` | Fails if a `file.md#anchor` reference or an in-page anchor points at a heading that does not exist, in any doc, code comment or message |
+| `just test` | Renders every template with the example vars, runs the dashboard test and shellchecks the scripts. Fails on an undefined variable, a key in a `vars.yml` that no example or role default declares, or a service missing from `defaults.yml`, `site.yml`, `services.yml` or `docs/services.md` |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
@@ -137,7 +137,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (udev, the Linux device-event daemon, rules).
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (the fstab change and the USB udev rule).
 
 | Setting | File |
 |---|---|
@@ -149,7 +149,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | Image versions | `group_vars/all/versions.yml` |
 | Computed from the above (`fast_drive`, `drive_mounts`, ...) | the last section of `group_vars/all/defaults.yml`; not edited |
 
-Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. Options private to a role start with the role name (`ssh_authorized_keys` is the exception, listed in `group_vars/all/vars.yml.example`).
+Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. A role's options are named after the role or the tool it drives (`backup`'s are `restic_*`, `service_dumps_dir` and `rclone_config_dir`), and `ssh_authorized_keys` is listed in `group_vars/all/vars.yml.example` because nearly every owner changes it.
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 
@@ -201,7 +201,7 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 ## Add a new service
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
-2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`, one line such as `myservice_image: owner/myservice:1.2.3` (pin a version, or a digest if upstream has no versioned tag). Give the container a `container_name` (Caddy and `cloudflared_ingress` use it), `restart: unless-stopped`, and check the image has arm64 and x64 builds (`just platforms`).
+2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`, one line such as `myservice_image: owner/myservice:1.2.3` (pin a version, or a digest if upstream has no versioned tag). Give the container a `container_name` and use that name for `container` in its `services.yml` entry and for a `cloudflared_ingress` service; set `restart: unless-stopped`; check the image has arm64 and x64 builds (`just platforms`).
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/defaults.yml`: `myservice_enabled: false`, the data directory settings and, for a web UI, `myservice_port` and `myservice_subdomain`, each with a comment. Values with no sensible default go in `vars.yml.example`.

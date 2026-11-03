@@ -12,7 +12,7 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 
 ## Clean-up after a deploy
 
-- Delete the stale `pi-nas-runner` entry in Gitea.
+- Delete the stale `pi-nas-runner` entry in Gitea. Waiting for: a few minutes in Gitea's admin page.
 - After the next Sunday offsite backup: `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
 
 ## Waiting for hardware or a decision

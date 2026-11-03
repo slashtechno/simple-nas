@@ -1,6 +1,8 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid` and `mount`, and optionally `fstype` (default `ext4`), `options` (default `defaults`) and `roles:`, the roles it fills. A root-drive entry has only `mount` and `roles` ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. The `storage` role mounts them: it runs everywhere and `storage_enabled: false` skips it on a host whose drives are mounted another way.
+
+Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext4`), `options` (default `defaults`) and `roles:`, the roles it fills. An entry without a `uuid` is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
 
 | Role | Holds |
 |---|---|
@@ -107,9 +109,9 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 
 ## Move one service's data
 
-Each service's data directory is one variable (the list is in `ansible/group_vars/all/defaults.yml`, under "Data directories"). To move a service to another drive:
+Each service's data directories are settings listed in `ansible/group_vars/all/defaults.yml`, under "Data directories". To move a service to another drive:
 
-1. Set its variable in `host_vars/<host>/vars.yml` to a path under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
+1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.
 3. Copy the data: `rsync -aHAX <old path>/ <new path>/`.
 4. `just deploy <service> --limit <host>`, then check it works. Delete the old copy by hand.
@@ -124,18 +126,16 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 
 1. Add the drive to `drives` in the host's `host_vars` and deploy it (`just deploy storage`).
 2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/data/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
-3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change):
+3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change). A deploy restarts them only when it writes their config, so a run that failed after writing it leaves them running the old settings until you restart them:
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service
    ```
-4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`. With the drive missing, Docker and containerd fail to start instead of creating their directories on the root drive.
+4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json` and `root = ".../containerd"` into `/etc/containerd/config.toml`. With the drive missing, Docker and containerd fail to start instead of creating their directories on the root drive.
 5. `sudo systemctl start containerd.service docker.service`.
 6. `just deploy '' --limit <host>`, so compose pulls the images and recreates the containers.
 7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the root drive.
 
 To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space, and its root-owned files make the backup exit with errors until you delete it (`sudo rm -r <old docker_data_root>`) or add `- <old docker_data_root>` to `restic_local_extra_rules`.
-
-Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
 
 ### With a drive missing
 
@@ -150,7 +150,7 @@ The unit name is the mount path with `/` as `-` (`/mnt/backup` is `mnt-backup`).
 
 1. Stop whatever uses the drive: running backups (`pgrep -a restic`) and the containers that bind it (`docker compose down` in each project under `/opt/services` that uses it, including `backup-status`). A container keeps its own copy of the mount, which `findmnt` on the host does not show.
 2. Stop the automount, then the mount, because the next access to the path undoes an unmount: `sudo systemctl stop mnt-backup.automount mnt-backup.mount`.
-3. Check nothing holds it: `findmnt /mnt/backup` and `grep -l sdX1 /proc/*/mountinfo` print nothing. If either prints something, `sudo lsof /dev/sdX1` names the holder.
+3. Check nothing holds it: `findmnt /mnt/backup` and `sudo grep -l sdX1 /proc/*/mountinfo` print nothing. If either prints something, `sudo lsof /dev/sdX1` names the holder.
 4. `sync`, then `sudo udisksctl power-off -b /dev/sdX`. Unplug it once the activity light stops.
 
 To mount it again, plug it in and run `sudo systemctl start mnt-backup.automount`, then open the path (`ls /mnt/backup/.`). Recreate the containers that bind it (step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)). To attach it to another host, remove its `drives` entry and its fstab line first.

@@ -15,7 +15,7 @@ This lists what the repo uses. For operating the repo, see [ansible/README.md](.
 | `site.yml`, `teardown.yml` | The playbooks |
 | `roles/*/` | How to deploy each piece |
 
-`ansible.cfg` explains each of its keys in comments.
+`ansible.cfg` carries a comment on each key that needs one.
 
 The inventory is `groups → hosts → connection vars`. This repo has one group, `servers`, and both playbooks run on it. The group carries no settings; what a host runs is set in its own `host_vars/<host>/vars.yml`. A host key (`pi4`) is a nickname that also names its `host_vars/pi4/` directory. `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file` tell Ansible how to SSH in.
 
@@ -40,8 +40,8 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 - **tailnet**: the private network Tailscale builds between your devices; **MagicDNS** is Tailscale's DNS for it (`pi4.<tailnet>.ts.net`).
 - **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false (the base switches `storage_enabled` and `tailscale_enabled` default to true), so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
-- **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS and that Docker is not a snap; they carry `tags: [always]`.
-- **`teardown.yml`** is one play of tasks. One looped `include_tasks` of `teardown_service.yml` removes every entry of `services` (`-e only=a,b` picks some); the backup, network and storage blocks have their own `tags:`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
+- **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS, that Docker is not a snap and that every web service has a port or a name; they carry `tags: [always]`.
+- **`teardown.yml`** is one play of tasks. One looped `include_tasks` of `teardown_service.yml` removes every entry of `services` (`-e only=a,b` picks some); the alerts, connectivity watchdog, backup, network and storage blocks have their own `tags:`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
 
 ## 3. Role anatomy
 
@@ -86,7 +86,7 @@ Docker:
 - `docker_compose_v2`: `docker compose up`/`down` for a `project_src:` directory
 
 Flow and escape hatches:
-- `uri`: call an HTTP API (the cloudflared role calls Cloudflare's)
+- `uri`: call an HTTP API (the cloudflared and caddy roles call Cloudflare's)
 - `assert`: fail early with a message (the storage role's drive checks)
 - `set_fact`: set a variable mid-play
 - `debug`: print a message during the run (the cloudflared role lists leftover DNS records)
