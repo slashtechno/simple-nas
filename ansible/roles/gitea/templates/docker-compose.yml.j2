@@ -22,6 +22,14 @@ services:
       GITEA__database__DB_TYPE: sqlite3
       GITEA__database__PATH: /data/gitea/gitea.db
       GITEA__service__DISABLE_REGISTRATION: "true"
+{% if gitea_sso_enabled | bool %}
+      # Signing in through the Tinyauth login source, which the deploy adds to the database once this container runs.
+      # With auto-registration off, a first login goes to Gitea's link page, where the user attaches it to their
+      # existing account; the password form stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The scopes are
+      # needed for the email claim: without them Gitea asks only for "openid" and Tinyauth sends no address.
+      GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
+      GITEA__oauth2_client__OPENID_CONNECT_SCOPES: "openid email profile"
+{% endif %}
 {% if vault_gitea_runner_token | default("") %}
       GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
 {% endif %}

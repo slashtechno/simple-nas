@@ -127,6 +127,11 @@
         copyparty_sso_enabled: true
         copyparty_sso_admins: [sso-admin]
         vault_copyparty_idp_key: "idp$key"
+        # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
+        gitea_sso_enabled: true
+        immich_sso_enabled: true
+        vault_gitea_oidc_secret: "gitea$secret"
+        vault_immich_oidc_secret: "immich$secret"
         dockge_port: ""
         scrutiny_devices: [/dev/sdb]   # the render test replaces the host's smartctl scan
         cloudflare_api_token: render-test-token
@@ -331,6 +336,8 @@
 
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered
+      vars:
+        tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml') }}"
       ansible.builtin.assert:
         that:
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
@@ -372,6 +379,28 @@
           - "'pass$word' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'TINYAUTH_APPURL: \"https://auth.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: \"s$$ecret\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          # A client per app that signs in through Tinyauth, with the app's own redirect URIs and the secret escaped.
+          - "'TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTID: \"gitea\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTSECRET: 'gitea$$secret'\" in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_GITEA_TRUSTEDREDIRECTURIS: \"https://gitea.example.com/user/oauth2/tinyauth/callback\"' in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTID: \"immich\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: 'immich$$secret'\" in tinyauth_compose"
+          - >-
+            ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.caddy.example.test/auth/login,'
+            ~ 'https://immich.caddy.example.test/user-settings,app.immich:///oauth-callback"')
+            in tinyauth_compose
+          # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.networks.services.aliases
+            == ['auth.caddy.example.test', 'auth.second.example.test']
+          - "'GITEA__oauth2_client__OPENID_CONNECT_SCOPES: \"openid email profile\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "'GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: \"false\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.clientSecret == 'immich$secret'"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.caddy.example.test'"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).passwordLogin.enabled"
+          - "'IMMICH_CONFIG_FILE: /immich-config.json' in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
+          - "(services_dir ~ '/immich/immich-config.json:/immich-config.json:ro') in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
@@ -466,6 +495,66 @@
           - "copyparty_hosts in site"
           - "(site[copyparty_hosts] ~ '.import') not in labels"
           - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
+        quiet: true
+
+    # The two OIDC logins off: no client at Tinyauth, no login source settings for Gitea and no config file for Immich.
+    # The login page keeps its name inside the network, because that follows tinyauth_enabled, not these two.
+    - name: Make a directory for the render without the two OIDC logins
+      ansible.builtin.file:
+        path: "{{ out_dir }}/oidc-off/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [tinyauth, caddy, gitea, immich]
+
+    - name: Turn the two OIDC logins off
+      ansible.builtin.set_fact:
+        gitea_sso_enabled: false
+        immich_sso_enabled: false
+
+    - name: Render the four templates that carry them
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}/templates/docker-compose.yml.j2"
+        dest: "{{ out_dir }}/oidc-off/{{ item }}/docker-compose.yml"
+        mode: "0644"
+      loop: [tinyauth, caddy, gitea, immich]
+
+    - name: Without them, nothing asks Tinyauth for a login or Immich for its config file
+      vars:
+        tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/tinyauth/docker-compose.yml') }}"
+        caddy_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/caddy/docker-compose.yml') }}"
+        gitea_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/gitea/docker-compose.yml') }}"
+        immich_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/immich/docker-compose.yml') }}"
+      ansible.builtin.assert:
+        that:
+          - "'TINYAUTH_OIDC_CLIENTS' not in tinyauth_compose"
+          - "'GITEA__oauth2_client__' not in gitea_compose"
+          - "'IMMICH_CONFIG_FILE' not in immich_compose"
+          - "'immich-config.json' not in immich_compose"
+          # The login page keeps its name inside the network whatever apps sign in through it.
+          - "'auth.caddy.example.test' in caddy_compose"
+        quiet: true
+
+    # Without Tinyauth there is no login page for the network to resolve and nothing to sign in through it.
+    - name: Turn Tinyauth off too
+      ansible.builtin.set_fact:
+        tinyauth_enabled: false
+
+    - name: Work out which services Caddy names without Tinyauth
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
+
+    - name: Render Caddy's compose without Tinyauth
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/caddy/templates/docker-compose.yml.j2"
+        dest: "{{ out_dir }}/oidc-off/caddy/docker-compose.yml"
+        mode: "0644"
+
+    - name: Without Tinyauth, Caddy has no name inside the network
+      vars:
+        caddy_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/caddy/docker-compose.yml') }}"
+      ansible.builtin.assert:
+        that:
+          - "'aliases:' not in caddy_compose"
+          - "'auth.caddy.example.test' not in caddy_compose"
         quiet: true
 
 # One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.

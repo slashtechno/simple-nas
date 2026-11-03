@@ -20,6 +20,10 @@ tailscale_enabled: true
 
 # Immich photo library with machine learning.
 immich_enabled: false
+# Let Immich's own login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; Immich's
+# password login stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled, caddy_enabled and
+# vault_immich_oidc_secret.
+immich_sso_enabled: false
 # Copyparty file server (web UI, WebDAV, optional SFTP).
 copyparty_enabled: false
 # Put Copyparty's browser name behind the Tinyauth login and take the signed-in user from Tinyauth's header, so one
@@ -28,6 +32,10 @@ copyparty_enabled: false
 copyparty_sso_enabled: false
 # Gitea git hosting and its Actions runner.
 gitea_enabled: false
+# Let Gitea's own login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; Gitea's
+# password login stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled, caddy_enabled and
+# vault_gitea_oidc_secret.
+gitea_sso_enabled: false
 # Homebridge, a HomeKit bridge.
 homebridge_enabled: false
 # pics, the photo sharing app.

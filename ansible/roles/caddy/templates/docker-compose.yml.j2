@@ -75,4 +75,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ caddy_data_dir }}:/data
     networks:
-      - {{ docker_network }}
+      {{ docker_network }}:
+{% if tinyauth_enabled | bool and caddy_private_domains | length > 0 %}
+        # The login page's names, which Docker's DNS resolves to this container for every other container on the
+        # network. Gitea and Immich read Tinyauth's settings from inside their own containers
+        # (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+        aliases:
+{% for domain in caddy_private_domains %}
+          - "{{ tinyauth_subdomain }}.{{ domain }}"
+{% endfor %}
+{% endif %}

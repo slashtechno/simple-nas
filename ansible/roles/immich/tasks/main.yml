@@ -9,6 +9,20 @@
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
+- name: Check Immich's sign-in through Tinyauth is set up
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+      - vault_immich_oidc_secret is defined
+    fail_msg: >-
+      immich_sso_enabled needs tinyauth_enabled and caddy_enabled with a caddy_private_domains entry, and
+      vault_immich_oidc_secret in the vault that applies to {{ inventory_hostname }} (vault.yml.example says how to
+      make it).
+    quiet: true
+  when: immich_sso_enabled | bool
+
 - name: Create Immich upload directory
   ansible.builtin.file:
     path: "{{ immich_upload_location }}"
@@ -24,6 +38,27 @@
     owner: "999"
     group: "999"
     mode: "0700"
+
+- name: Create Immich's compose directory for its config file
+  ansible.builtin.file:
+    path: "{{ services_dir }}/immich"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: immich_sso_enabled | bool
+
+# Holds the OAuth client secret, and Immich refuses to save settings from its web UI while it is set: every setting the
+# owner wants has to be in the file.
+- name: Render Immich's config file
+  ansible.builtin.template:
+    src: immich-config.json.j2
+    dest: "{{ services_dir }}/immich/immich-config.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  diff: false   # the client secret would show in --diff
+  when: immich_sso_enabled | bool
 
 - name: Deploy immich
   ansible.builtin.import_role:

@@ -10,12 +10,30 @@
     - "{{ gitea_data_dir }}"
     - "{{ gitea_runner_data_dir }}"
 
+- name: Check Gitea's sign-in through Tinyauth is set up
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+      - vault_gitea_oidc_secret is defined
+    fail_msg: >-
+      gitea_sso_enabled needs tinyauth_enabled and caddy_enabled with a caddy_private_domains entry, and
+      vault_gitea_oidc_secret in the vault that applies to {{ inventory_hostname }} (vault.yml.example says how to
+      make it).
+    quiet: true
+  when: gitea_sso_enabled | bool
+
 - name: Deploy gitea
   ansible.builtin.import_role:
     name: compose_service
   vars:
     compose_service_name: gitea
     compose_service_has_secrets: true
+
+- name: Add Gitea's Tinyauth login source
+  ansible.builtin.import_tasks: sso.yml
+  when: gitea_sso_enabled | bool
 
 # Gitea has a live database, so the backup runs this dump script first
 # (see backup-services.sh). teardown_service.yml removes it again.

@@ -1,0 +1,26 @@
+{# Immich reads its whole system configuration from this file when IMMICH_CONFIG_FILE is set, and refuses to save settings
+   from its web UI while it is set. A key left out gets Immich's default, not the value the UI saved, so the file carries
+   only the OAuth client and the password login; every other setting stays Immich's default. Immich matches a Tinyauth
+   login to an existing user by email (docs/auth-reference.md#sign-in-with-tinyauth-oidc). #}
+{
+  "oauth": {
+    "enabled": true,
+    "issuerUrl": "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}",
+    "clientId": "immich",
+    "clientSecret": {{ vault_immich_oidc_secret | to_json }},
+    "scope": "openid email profile",
+    "signingAlgorithm": "RS256",
+    "profileSigningAlgorithm": "none",
+    "tokenEndpointAuthMethod": "client_secret_post",
+    "storageLabelClaim": "preferred_username",
+    "buttonText": "Sign in with Tinyauth",
+    "autoRegister": true,
+    "autoLaunch": false,
+    "mobileOverrideEnabled": false,
+    "mobileRedirectUri": "",
+    "endSessionEndpoint": ""
+  },
+  "passwordLogin": {
+    "enabled": true
+  }
+}

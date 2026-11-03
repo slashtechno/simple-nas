@@ -1,6 +1,6 @@
 # Login (Tinyauth) reference
 
-Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. An app that reads a proxy's user header takes the signed-in name from `Remote-User`; Copyparty's browser name does with `copyparty_sso_enabled` ([Copyparty accounts and volumes](./services.md#copyparty-accounts-and-volumes)). Every setting below is a `TINYAUTH_*` environment variable ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
+Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. An app that reads a proxy's user header takes the signed-in name from `Remote-User`; Copyparty's browser name does with `copyparty_sso_enabled` ([Copyparty accounts and volumes](./services.md#copyparty-accounts-and-volumes)). Tinyauth's own settings below are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
 
 ## Users and passwords
 
@@ -41,6 +41,17 @@ tinyauth_environment:
 - `google` is the same with `GOOGLE` in the names. Another provider (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` in the same pattern ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 - Password logins stay available next to the provider: the role needs `vault_tinyauth_users`.
 - Only a custom provider's groups reach the app as `Remote-Groups`; GitHub and Google send none.
+
+## Sign in with Tinyauth (OIDC)
+
+OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are; the app never sees your password. Gitea and Immich can do this, so one Tinyauth login opens them, and each keeps its own accounts and permissions.
+
+- Turn it on for an app on the host: `gitea_sso_enabled: true` or `immich_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
+- Put the client secret in the vault: `vault_gitea_oidc_secret` or `vault_immich_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich --limit <host>`. On a host that does not run Tinyauth yet, deploy it first (`just deploy tinyauth --limit <host>`): Gitea fetches Tinyauth's settings as the deploy writes its login source.
+- The app's own password login stays, so a Tinyauth problem does not lock you out.
+- First login: Gitea shows its link page once, to attach the Tinyauth login to an existing Gitea account. Immich matches you by email, and Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching account gets a new one on first login.
+- Every user in `vault_tinyauth_users` can sign in to both apps: Tinyauth cannot restrict a client to some of its users.
+- With `immich_sso_enabled`, Immich reads its settings from a file the deploy writes and refuses to save changes from its settings page. The file carries the login settings from the vault, and every other setting is Immich's default.
 
 ## Tailscale
 

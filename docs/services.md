@@ -37,6 +37,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 Photo library with a machine-learning container. Photos are stored in `immich_upload_location` (primary drive) and its Postgres data in `immich_db_data_location` (fast drive).
 
 - Public access is a `cloudflared_ingress` entry pointing at `http://immich_server:2283`.
+- `immich_sso_enabled: true` lets a Tinyauth login open Immich ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 - Postgres is dumped before each backup by `roles/immich/files/dump.sh`, so the database is backed up consistently ([backups.md](./backups.md)).
 - To move `immich_upload_location` to another drive, copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
 - Moving Immich to a newer image can run database migrations: read its release notes first ([ansible/README.md](../ansible/README.md#update-service-images)).
@@ -48,6 +49,7 @@ Git hosting with an optional Actions runner.
 - Set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. `gitea_domain` and `gitea_ssh_domain` default to its host name; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
+- `gitea_sso_enabled: true` lets a Tinyauth login open Gitea ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 - The database is dumped before each backup by `roles/gitea/files/dump.sh`.
 
 ## Copyparty accounts and volumes
@@ -159,7 +161,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
   The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. A name in `caddy_sites` opts in the same way: `{import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}`.
 - How an app joins depends on what it supports; the label above is the way in for every case, and the app decides how much more it can do:
-  - It has OpenID Connect login (Gitea, Immich): Tinyauth can be its OIDC provider instead, so the app knows who signed in and keeps its own accounts and permissions ([Tinyauth's OIDC server](https://tinyauth.app/docs/guides/oidc/); not wired up in this repo yet, so those two keep their own login and carry `own_login`).
+  - It has OpenID Connect login (Gitea, Immich): Tinyauth is its OIDC provider when `gitea_sso_enabled` or `immich_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
   - It trusts a proxy's user header (Dozzle, Copyparty): the app takes the name from `Remote-User`, with its own setting for it.
   - It has only its own username and password (qBittorrent's web UI, for example): the label still puts the Tinyauth login in front, so nobody reaches the page without it, but the app then shows its own login as well, or you switch that off in the app if it allows. Publish no host port for it, because a published port skips Caddy and the login.
 - Without a session, a browser is redirected (302) to the login page and any other client gets a 401, so scripts and apps fail instead of following a redirect.

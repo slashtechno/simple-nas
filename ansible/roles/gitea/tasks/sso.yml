@@ -1,0 +1,49 @@
+---
+# Gitea keeps its authentication sources in its database, so the Tinyauth login source cannot come from app.ini: the
+# admin CLI in the running container adds it (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Call this after the
+# container is up.
+
+- name: Wait for Gitea's admin CLI to answer
+  ansible.builtin.command:
+    cmd: docker exec -u git gitea gitea admin auth list
+  register: gitea_auth_list
+  until: gitea_auth_list.rc == 0
+  retries: 30
+  delay: 5
+  changed_when: false
+
+# auth list prints a table of ID, name, type and enabled; the name is the only stable handle on a source, because the
+# ID is a database sequence. An empty result means the source does not exist yet.
+- name: Find the login source named tinyauth
+  ansible.builtin.set_fact:
+    gitea_sso_source_id: >-
+      {%- set ids = [] -%}
+      {%- for line in gitea_auth_list.stdout_lines -%}
+      {%- set fields = line.split() -%}
+      {%- if fields | length > 1 and fields[1] == 'tinyauth' -%}
+      {%- set _ = ids.append(fields[0]) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ ids[0] if ids else '' }}
+
+# Gitea fetches Tinyauth's discovery document as it registers the source, so Tinyauth has to be running and reachable
+# from this container by then; site.yml deploys it after Gitea, so on a host that has not run Tinyauth yet, deploy
+# Tinyauth first (`just deploy tinyauth,caddy --limit <host>`). The retries cover a deploy that starts both. Only a new
+# source counts as a change: update-oauth writes the same settings again on every deploy.
+- name: Add or update the Tinyauth login source
+  ansible.builtin.command:
+    cmd: >-
+      docker exec -u git gitea gitea admin auth
+      {{ 'update-oauth --id ' ~ gitea_sso_source_id if gitea_sso_source_id else 'add-oauth' }}
+      --name tinyauth
+      --provider openidConnect
+      --key gitea
+      --secret {{ vault_gitea_oidc_secret }}
+      --auto-discover-url https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}/.well-known/openid-configuration
+      --scopes openid --scopes email --scopes profile
+  register: gitea_sso_source
+  until: gitea_sso_source.rc == 0
+  retries: 20
+  delay: 15
+  changed_when: gitea_sso_source_id == ''
+  no_log: true
