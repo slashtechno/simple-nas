@@ -191,7 +191,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_adm
 
 One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
 
-- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Change it in the panel, then delete that file.
+- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Crafty makes this password itself and has no setting for it. Behind Tinyauth it is the second login, so change it in the panel to something short, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
 - `crafty_memory_limit` (default 3g) caps all servers combined. On a 4 GB Pi it competes with Immich if both run on the host.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
@@ -210,12 +210,12 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all your servers. Run it on one host: it shows a group of tiles for every host in the inventory, one tile per service that host has switched on and that has a host port or a Caddy name, each with a green or red dot for whether the page answers. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
 
-- Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name); the page also answers on the inventory name. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
+- With `tinyauth_enabled` and `caddy_private_domains` it is at `https://<homepage_subdomain>.<first private domain>` behind the login, and publishes no port. Without Tinyauth, set `homepage_port` (for example 3001) and open `http://<homepage_host>:<homepage_port>`; anyone on the network can then open it. `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name); the page also answers on the inventory name. Any other address gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
 - The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: they have no entry in `web_services` (no icon). Garage's web UI is reached through its `cloudflared_ingress` entry instead. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
-- The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up.
+- The page has no login of its own and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up, because Tinyauth is the login.
 - Widgets (live numbers from Immich, Gitea and others) are not set up. Each needs an API key from the app ([widgets](https://gethomepage.dev/widgets/)).
 
 ## Ad-hoc app platform

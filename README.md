@@ -2,7 +2,7 @@
 
 Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a home server running Docker services, with their data on the drives plugged into it.
 
-Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every pinned image has both builds: `just platforms` in `ansible/` checks that after a version change.
+Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every image pinned in `versions.yml` has both builds (Caddy is built on the host from the official multi-arch `caddy` images): `just platforms` in `ansible/` checks that after a version change.
 
 Every server gets Docker and the base packages; Tailscale and the drive mounts are on by default. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
