@@ -208,6 +208,25 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # Names built from a service's key cannot be found by a text search, so check them here.
+    - name: A service with oidc or copyparty has its switch and its vault lines in the example files
+      vars:
+        shared_defaults: "{{ lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml }}"
+        vault_example: "{{ lookup('ansible.builtin.file', repo + '/host_vars/vault.yml.example') | from_yaml }}"
+        needed: >-
+          {{ ([item.key ~ '_sso_enabled'] if item.oidc is defined else [])
+             + (['vault_' ~ item.key ~ '_oidc_secret'] if item.oidc is defined else [])
+             + (['vault_' ~ item.key ~ '_copyparty_pass'] if item.copyparty is defined else []) }}
+      ansible.builtin.assert:
+        that: needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) | length == 0
+        fail_msg: >-
+          {{ item.key }} needs {{ needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) }}
+          in defaults.yml or vault.yml.example.
+        quiet: true
+      loop: "{{ services | selectattr('oidc', 'defined') | list + services | selectattr('copyparty', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
     - name: Every service has its flag, and a web service its port and subdomain, in defaults.yml
       vars:
         shared_defaults: "{{ lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml }}"

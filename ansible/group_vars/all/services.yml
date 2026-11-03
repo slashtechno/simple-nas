@@ -25,7 +25,8 @@
 #   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them.
 #              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
 #              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
-#              of the account id the app stores, so changing it orphans every linked account.
+#              of the account id the app stores, so changing it orphans every linked account. The app's own side
+#              repeats the id and the URI (pics' env file, Immich's config file): change both together.
 #   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
 #   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
 #              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
@@ -53,7 +54,7 @@ services:
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
      data: [gitea_data_dir, gitea_runner_data_dir],
      container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git,
-     oidc: ["https://{{ gitea_domain | default('') }}/user/oauth2/tinyauth/callback"]}
+     oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
      copyparty: {volumes: [{name: photos, dir: pics_photos_dir, perms: rwm}, {name: trash, dir: pics_trash_dir, perms: rwmd}]},
      container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
