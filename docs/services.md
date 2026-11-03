@@ -135,7 +135,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 - With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
-- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)). For example [SilverBullet](https://silverbullet.md/) as a Dockge stack, whose name is then under the first private domain, with SilverBullet's own login left off:
+- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)). For example [SilverBullet](https://silverbullet.md/) as a Dockge stack, whose name is then under the first private domain. SilverBullet has no single sign-on of its own: [its docs](https://edge.silverbullet.md/Authentication) say to put it behind an authentication proxy, which Tinyauth is, so leave its `SB_USER` unset:
 
   ```yaml
   services:
@@ -152,6 +152,10 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
   ```
 
   The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. A name in `caddy_sites` opts in the same way: `{import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}`.
+- How an app joins depends on what it supports; the label above is the way in for every case, and the app decides how much more it can do:
+  - It has OpenID Connect login (Gitea, Immich): Tinyauth can be its OIDC provider instead, so the app knows who signed in and keeps its own accounts and permissions ([Tinyauth's OIDC server](https://tinyauth.app/docs/guides/oidc/); not wired up in this repo yet, so those two keep their own login and carry `own_login`).
+  - It trusts a proxy's user header (Dozzle, Copyparty): the app takes the name from `Remote-User`, with its own setting for it.
+  - It has only its own username and password (qBittorrent's web UI, for example): the label still puts the Tinyauth login in front, so nobody reaches the page without it, but the app then shows its own login as well, or you switch that off in the app if it allows. Publish no host port for it, because a published port skips Caddy and the login.
 - Without a session, a browser is redirected (302) to the login page and any other client gets a 401, so scripts and apps fail instead of following a redirect.
 - Tinyauth and the protected services must run on the same host.
 
