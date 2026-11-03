@@ -6,8 +6,6 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 ## Phase 0: prove what exists
 
-Nothing from `audit-cleanup` → `service-registry` → `setup-recipe` has run on a host.
-
 - [x] `just preview --limit pi4` passes (8 changes: Dockge and Caddy compose, backup scripts and exclude list, the check job moves to Saturday 5 AM). It found a real bug the render test missed (the dump-script check failed on entries without `dump_required`); fixed and tested.
 - [x] pi4: common, backup, tinyauth, caddy, dozzle and the watchdog deployed one tag at a time (storage, network and encryption not run: no change in the preview). Deploying showed that the Caddy deploy rebuilds the image and takes 20+ minutes on a loaded Pi 4.
 - [ ] pi4: the first manual `backup-restic-local.sh` run (2026-11-02 18:32) hit the old 2-hour cap after 13.7 GiB scanned over USB 2 (exit 124, status failed). The cap is now 23 hours and deployed; rerun it in the background (`nohup`) and read `restic-local.status.json`.
@@ -45,7 +43,6 @@ A fresh agent is not a newcomer: it explores the repo and guesses. The check giv
 - [x] Every doc audited against the code by a second reader; stale claims, missing commands and undefined terms fixed.
 - [x] Computed settings have example values. Settings used once and never overridden were reviewed (`crafty_mc_ports`, `crafty_memory_limit`, `direct_link_peer_ip`, `docker_log_opts`) and kept: each is a knob an owner may reasonably turn.
 - [ ] Open: the reader could not tell which message comes from which file ("the offsite notice"); a short "message I see → file that prints it" list is worth adding if a real owner asks.
-- [ ] Open: the same label example appears twice in `docs/caddy-reference.md` and the restic export pair twice in `docs/backups.md`.
 - A human who has never used Ansible should still read the docs once and report where they stalled.
 
 ## Phase 4: single sign-on with Tinyauth
@@ -63,10 +60,9 @@ Verified: Tinyauth's About page says it is for homelabs and sharing with family 
   - Built (`copyparty_sso_enabled`, default off), not deployed: deploy to pinas only when no upload is running.
 - [x] Gitea and Immich sign in through Tinyauth's OIDC server (`gitea_sso_enabled`, `immich_sso_enabled`, default off; client secrets in the vault). Caddy gives the login name a network alias so containers reach it without leaving Docker. Built and render-tested, not deployed: deploy to pinas (Gitea and Immich restart) after the Copyparty upload ends, and check the first login of each by hand.
 - [x] One login: Dockge's own login is switched off in its database when Tinyauth is in front and `dockge_port` is `""` (written with the container stopped, back on when Tinyauth is off). Not deployed. Crafty has no off switch or header trust (upstream issue 762 asks for OIDC), so it keeps a second login; revisit when upstream ships OIDC.
-- [ ] Closed by default: `backup_status_port` is `""` (the dashboard has no login; an assert stops a host with neither Tinyauth nor a port). Other ports stay published on purpose: apps, git, WebDAV, push and game clients need them, and a derived "no port when Caddy is on" would silently unplug them. Tinyauth stays opt-in so Caddy works without it. pi4 sets `dockge_port: ""`; not deployed. Unverified: the `Authorization` header Caddy now copies from Tinyauth for basic-auth apps (webtop, qBittorrent) was checked on plain Caddy only, not on a host.
+- [ ] Closed by default: `backup_status_port` is `""` (the dashboard has no login; an assert stops a host with neither Tinyauth nor a port). Other ports stay published on purpose: apps, git, WebDAV, push and game clients need them, and a derived "no port when Caddy is on" would silently unplug them. Tinyauth stays opt-in so Caddy works without it. pi4 sets `dockge_port: ""`; not deployed.
 - [ ] Crafty: the owner decides between staying behind Tinyauth with a second, easy-to-type Crafty password (today) or `own_login: true` (one login, Crafty's own). Revisit when upstream OIDC (issue 762) ships.
 - Decided: each host runs its own Tinyauth; the same `vault_tinyauth_users` in the group vault gives every host the same logins, and a host vault overrides it. A shared single Tinyauth instance is not built.
-- [ ] Open: file ownership inside gocryptfs mounts is probably root, which could break services or restic running as other uids; test before recommending encryption for a service's data folder.
 - [x] Dozzle (behind Tinyauth, no published port) and Scrutiny (devices read from `smartctl --scan` at deploy time) are roles, deployed on pinas; Dozzle also on pi4. Scrutiny on pinas sees the T7 and the Exos (57 °C during the read scan). Scrutiny on pi4 not deployed: no `smartmontools` there and its USB sticks are unlikely to report SMART.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 

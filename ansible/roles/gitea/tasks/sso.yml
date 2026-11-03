@@ -27,9 +27,8 @@
       {{ ids[0] if ids else '' }}
 
 # Gitea fetches Tinyauth's discovery document as it registers the source, so Tinyauth has to be running and reachable
-# from this container by then; site.yml deploys it after Gitea, so on a host that has not run Tinyauth yet, deploy
-# Tinyauth first (`just deploy tinyauth,caddy --limit <host>`). The retries cover a deploy that starts both. Only a new
-# source counts as a change: update-oauth writes the same settings again on every deploy.
+# from this container by then. site.yml deploys it before Gitea, so the retries only cover the seconds its container
+# needs to start. Only a new source counts as a change: update-oauth writes the same settings again on every deploy.
 - name: Add or update the Tinyauth login source
   ansible.builtin.command:
     cmd: >-
@@ -43,7 +42,7 @@
       --scopes openid --scopes email --scopes profile
   register: gitea_sso_source
   until: gitea_sso_source.rc == 0
-  retries: 20
-  delay: 15
+  retries: 5
+  delay: 5
   changed_when: gitea_sso_source_id == ''
   no_log: true

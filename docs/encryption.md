@@ -9,7 +9,8 @@ Protects the listed folders against a drive that is lost, stolen, sold or sent b
 Does not protect against:
 
 - someone with the host while it is running and unlocked;
-- file names, sizes and modification times, which gocryptfs shows;
+- what the ciphertext's shape shows: how many files and folders there are, how deep they sit, roughly how long each name is, and every file's size and modification time (the names themselves are encrypted);
+- the backup logs on the backup drive, which list every backed-up path by name in plain text ([Dumps and backups](#dumps-and-backups));
 - the root drive. A headless host cannot take a passphrase at boot, so the root drive holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the local and the cloud backups, though not a listed folder;
 - the service dumps, which are plaintext on the drive that holds them until the folder is listed ([below](#dumps-and-backups));
 - a passphrase typed on a device that records it (see [Unlocking from another device](#unlocking-from-another-device)).
@@ -27,7 +28,7 @@ Each entry is an absolute path of one folder. gocryptfs keeps the ciphertext in 
 
 A listed folder is an ordinary directory on a filesystem: next to another folder on the same drive, or the folder a service already uses (Immich's `immich_upload_location` is `<primary drive>/photos`). Folders you do not list stay plain, and the deploy does not warn.
 
-While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
+While a folder is locked it is an empty folder marked immutable (`chattr +i`), so nothing can be created in it: a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. `unlock.sh` sets the mark just before it mounts, so the folder is protected only after its first unlock, and only on a filesystem that supports the mark (ext4, xfs, btrfs); on another one `unlock.sh` warns and mounts anyway. A file that was already inside stays writable, and root can remove the flag, so this is a safety net against mistakes, not a security boundary.
 
 Containers do not wait for the unlock. Those with data in a plain folder start at boot as usual. A container with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker (its `00-docker.sh` script). Docker's own storage (`docker_data_root`) cannot be in a listed folder: overlay2 does not run on a FUSE filesystem, and a deploy fails if it is. `sshd` and Tailscale run on the host, not in Docker, so you can reach the host to unlock it.
 
@@ -102,6 +103,8 @@ sudo mv /mnt/data/photos /mnt/data/photos.plain      # skip if the folder does n
 sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/data/photos
 sudo /opt/services/scripts/unlock.sh
 ```
+
+The mounted folder's top directory takes the owner and mode of that empty folder, while everything inside keeps its own owner, so the folder a role created (owned by the deploy user) stays writable by it. A service running as another user id needs the top directory chowned while the folder is unlocked; a chown while it is locked lands on the hidden folder and changes nothing.
 
 3. `init-encrypted-folder.sh` prints a **master key** once, and only when it runs in a terminal (`ssh -t <host> sudo ...`). Put it in your password manager, and copy `gocryptfs.conf` from the `.gocryptfs` folder off the host; each folder has its own key and file, and without them its data cannot be opened. The script picks the cipher for this CPU and it cannot be changed later. On a host without AES instructions (Raspberry Pi 4) that is XChaCha20, which needs gocryptfs 2.2 or later on any other machine that opens the folder, such as a Mac (`brew install gocryptfs macfuse`).
 4. Move the data in, file by file:

@@ -83,15 +83,28 @@
         name: network
       tags: [network]
 
-    - name: Deploy the connectivity watchdog
+    - name: Deploy or remove the connectivity watchdog
       ansible.builtin.import_role:
         name: connectivity_watchdog
       tags: [connectivity_watchdog]
-      when: connectivity_watchdog_enabled | bool
 
     # Docker restarts here, before any service container exists.
     - name: Apply the base roles' handlers
       ansible.builtin.meta: flush_handlers
+
+    # Before the services: an app that signs in through Tinyauth fetches the login page's settings as it starts
+    # (roles/gitea/tasks/sso.yml), and Caddy's first build takes 20+ minutes on a Pi.
+    - name: Deploy caddy
+      ansible.builtin.import_role:
+        name: caddy
+      tags: [caddy]
+      when: caddy_enabled | bool
+
+    - name: Deploy tinyauth
+      ansible.builtin.import_role:
+        name: tinyauth
+      tags: [tinyauth]
+      when: tinyauth_enabled | bool
 
     - name: Deploy immich
       ansible.builtin.import_role:
@@ -141,12 +154,6 @@
       tags: [homepage]
       when: homepage_enabled | bool
 
-    - name: Deploy caddy
-      ansible.builtin.import_role:
-        name: caddy
-      tags: [caddy]
-      when: caddy_enabled | bool
-
     - name: Deploy cloudflared
       ansible.builtin.import_role:
         name: cloudflared
@@ -164,12 +171,6 @@
         name: backup
       tags: [backup]
       when: backup_local_enabled | bool or backup_cloud_enabled | bool
-
-    - name: Deploy tinyauth
-      ansible.builtin.import_role:
-        name: tinyauth
-      tags: [tinyauth]
-      when: tinyauth_enabled | bool
 
     - name: Deploy dozzle
       ansible.builtin.import_role:

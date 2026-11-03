@@ -102,10 +102,9 @@ To give a new service a database dump, add `files/dump.sh` to its role and insta
 
 ### Checking the cloud repo (manual)
 
-No schedule checks the cloud repository: a full check reads all of it over the network. Run it now and then, as the ansible user on the host:
+No schedule checks the cloud repository: a full check reads all of it over the network. Run it now and then, as the ansible user on the host, with the cloud repository from [Connecting](#connecting):
 
 ```bash
-export RESTIC_PASSWORD_FILE=<restic_password_file> RESTIC_REPOSITORY=<restic_cloud_repository>
 restic -o rclone.args="serve restic --stdio --tpslimit=10" check
 ```
 
@@ -140,7 +139,7 @@ Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the h
 
 The `backup_status` role deploys a read-only dashboard with job status, drive mount state and the snapshot list for both repositories. It needs `backup_local_enabled`.
 
-It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and the deploy stops if `tinyauth_enabled` is off. A host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network.
+It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and a host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network. The deploy stops if the host has neither, so the dashboard never comes up without a login or a port you chose.
 
 - The container mounts the repository, logs and password file read-only, so it cannot write to or delete a backup.
 - Each action shows the exact SSH command to copy and run yourself.
@@ -290,10 +289,8 @@ Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl sta
 ## Disaster recovery (all drives fail)
 
 1. Get the vault password from your password manager first; without it nothing below works. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and that password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
-2. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)), then pull from the cloud repository. With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)), so those come back only from an [offline copy](#offline-copy-on-a-second-drive). It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
+2. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)), then pull from the cloud repository, with the cloud repository set as in [Connecting](#connecting). With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)), so those come back only from an [offline copy](#offline-copy-on-a-second-drive). It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
-   export RESTIC_PASSWORD_FILE=~/.restic-password
-   export RESTIC_REPOSITORY="<your restic_cloud_repository>"
    restic -o rclone.args="serve restic --stdio --tpslimit=10" snapshots --group-by path
    restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
    ```

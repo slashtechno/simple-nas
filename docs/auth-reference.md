@@ -37,7 +37,7 @@ tinyauth_environment:
   TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
 ```
 
-- **Always set the whitelist.** It lists the allowed email addresses, each exact or a regex wrapped in slashes (`/@example\.com$/`). A login through a public provider is only as restrictive as this list.
+- **Always set the whitelist.** The deploy stops if a provider is set without it. It is either one regex for the whole value, wrapped in slashes (`/@example\.com$/`), or a comma-separated list of exact addresses; a value that mixes the two matches no regex and only the exact entries. A login through a public provider is only as restrictive as this list.
 - `google` is the same with `GOOGLE` in the names. Another provider (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` in the same pattern ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 - Password logins stay available next to the provider: the role needs `vault_tinyauth_users`.
 - Only a custom provider's groups reach the app as `Remote-Groups`; GitHub and Google send none.
@@ -47,7 +47,7 @@ tinyauth_environment:
 OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are; the app never sees your password. Gitea and Immich can do this, so one Tinyauth login opens them, and each keeps its own accounts and permissions.
 
 - Turn it on for an app on the host: `gitea_sso_enabled: true` or `immich_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
-- Put the client secret in the vault: `vault_gitea_oidc_secret` or `vault_immich_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich --limit <host>`. On a host that does not run Tinyauth yet, deploy Tinyauth first: Gitea fetches its settings as the deploy writes Gitea's login source.
+- Put the client secret in the vault: `vault_gitea_oidc_secret` or `vault_immich_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich --limit <host>`.
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
 - First login: Gitea shows its link page once, to attach the Tinyauth login to an existing Gitea account. Immich matches you by email, and Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching account gets a new one on first login.
 - Every user in `vault_tinyauth_users` can sign in to both apps: Tinyauth cannot restrict a client to some of its users.

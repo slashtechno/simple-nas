@@ -220,7 +220,7 @@
     # Most entries have no dump_required field; the real deploy failed on that once, so the list is built here from the real file.
     - name: Only the enabled services that need a dump are in dump_service_keys
       ansible.builtin.assert:
-        that: dump_service_keys | sort == (['garage', 'immich'] | select('in', enabled_service_keys) | list | sort)
+        that: dump_service_keys | sort == (['garage', 'gitea', 'immich'] | select('in', enabled_service_keys) | list | sort)
         quiet: true
 
     - name: Every service has a row in docs/services.md
@@ -344,12 +344,14 @@
           # Encryption: unlock.sh makes the locked folder immutable, mounts with -allow_other and never -nonempty;
           # the backups refuse a locked folder and skip its encrypted copy.
           - "'.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'chown --reference=\"$FOLDER\" \"$CIPHER\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
           - "'-xchacha' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
           - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'/after-unlock.d' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'systemctl' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'systemctl restart docker' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-docker.sh')"
           - "'chattr +i /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'does not support the immutable flag' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'gocryptfs -allow_other /mnt/primary/.immich.gocryptfs /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
           - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
@@ -559,6 +561,28 @@
           - "'aliases:' not in caddy_compose"
           - "'auth.caddy.example.test' not in caddy_compose"
         quiet: true
+
+    # With the snippet gone, a site that imports it would make Caddy reject its whole config, and the deploy would
+    # still report success. The role's check must stop that and name both settings.
+    - name: Give the host a site that imports Tinyauth's snippet
+      ansible.builtin.set_fact:
+        caddy_sites:
+          app.caddy.example.test: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
+
+    - name: That site without Tinyauth fails the Caddy check
+      block:
+        - name: Run the Caddy check
+          ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/check_sites.yml"
+        - name: The check must have failed
+          ansible.builtin.fail:
+            msg: the Caddy check accepted a tinyauth_forwarder import while tinyauth_enabled is false
+      rescue:
+        - name: The message names both settings the snippet needs
+          ansible.builtin.assert:
+            that:
+              - "'tinyauth_enabled' in ansible_failed_result | to_json"
+              - "'caddy_private_domains' in ansible_failed_result | to_json"
+            quiet: true
 
 # One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.
 - name: Check each drive layout

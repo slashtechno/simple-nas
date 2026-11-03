@@ -26,6 +26,11 @@
 - name: Work out which services get a name
   ansible.builtin.import_tasks: web_sites.yml
 
+# The sites this repo writes get their import from tinyauth_enabled, so only caddy_sites can ask for a snippet that is
+# not there. Before the render: the failure is in the rendered config, not in a task.
+- name: Check the sites that import Tinyauth's snippet
+  ansible.builtin.import_tasks: check_sites.yml
+
 # Holds the Cloudflare token when caddy_private_domains is set, so the file stays out of --diff.
 - name: Render Caddy docker-compose.yml
   ansible.builtin.template:

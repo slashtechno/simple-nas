@@ -31,6 +31,10 @@ else
 fi
 
 mkdir "$CIPHER"
+# The mounted folder's top directory shows the cipher folder's owner and mode, so copy them from the mount point: that is
+# what gives the decrypted folder the owner the deploy or the owner gave this folder (docs/encryption.md).
+chown --reference="$FOLDER" "$CIPHER"
+chmod --reference="$FOLDER" "$CIPHER"
 # shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
 gocryptfs -init $CIPHER_OPTION "$CIPHER"
 echo "Created $CIPHER. Next: save the master key above, copy $CIPHER/gocryptfs.conf off this host, run unlock.sh."

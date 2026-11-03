@@ -55,7 +55,10 @@ if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
   # While locked, the empty folder is immutable: nothing can be created in it, so a container or a deploy that
   # runs before the unlock fails with "Operation not permitted" instead of filling the drive underneath.
   # The flag stays on the folder across reboots (to remove it: chattr -i) and does not touch the decrypted files.
-  chattr +i {{ folder.mount | quote }}
+  # Not every filesystem supports it (it needs ext4, xfs or btrfs), so warn rather than refuse to mount the folder.
+  if ! chattr +i {{ folder.mount | quote }}; then
+    echo "WARNING: {{ folder.mount }} does not support the immutable flag, so nothing stops plain files being written into it while it is locked (docs/encryption.md)." >&2
+  fi
   # -allow_other lets containers, which run as other user ids, read the files. Never -nonempty.
   gocryptfs -allow_other {{ folder.cipher | quote }} {{ folder.mount | quote }} <<<"$PASS" >/dev/null
   MOUNTED=1

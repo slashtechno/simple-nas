@@ -1,16 +1,33 @@
 ---
-- name: Install the connectivity watchdog script
-  ansible.builtin.template:
-    src: connectivity-watchdog.sh.j2
-    dest: "{{ scripts_dir }}/connectivity-watchdog.sh"
-    owner: root
-    group: root
-    mode: "0755"
+- name: Set up the connectivity watchdog
+  when: connectivity_watchdog_enabled | bool
+  block:
+    - name: Install the connectivity watchdog script
+      ansible.builtin.template:
+        src: connectivity-watchdog.sh.j2
+        dest: "{{ scripts_dir }}/connectivity-watchdog.sh"
+        owner: root
+        group: root
+        mode: "0755"
 
-# Root, because it reconnects the network.
-- name: Schedule the connectivity check (every 2 minutes)
-  ansible.builtin.cron:
-    name: connectivity-watchdog
-    user: root
-    minute: "*/2"
-    job: /bin/bash {{ (scripts_dir ~ '/connectivity-watchdog.sh') | quote }}
+    # Root, because it reconnects the network.
+    - name: Schedule the connectivity check (every 2 minutes)
+      ansible.builtin.cron:
+        name: connectivity-watchdog
+        user: root
+        minute: "*/2"
+        job: /bin/bash {{ (scripts_dir ~ '/connectivity-watchdog.sh') | quote }}
+
+- name: Remove the connectivity watchdog when it is off
+  when: not connectivity_watchdog_enabled | bool
+  block:
+    - name: Remove the connectivity watchdog cron job
+      ansible.builtin.cron:
+        name: connectivity-watchdog
+        user: root
+        state: absent
+
+    - name: Remove the connectivity watchdog script
+      ansible.builtin.file:
+        path: "{{ scripts_dir }}/connectivity-watchdog.sh"
+        state: absent

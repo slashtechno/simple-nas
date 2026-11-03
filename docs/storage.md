@@ -4,7 +4,7 @@ Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists no
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data (Docker stacks, Immich database, configs) and caches (restic cache, Copyparty `hist`) |
+| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the "Data directories" block of `group_vars/all/defaults.yml` |
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
@@ -14,7 +14,7 @@ Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked
 
 The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it, and only on a host that enables the service that needs it.
 
-- `fast`: Dockge's stacks and data, Caddy's data, and the data of Immich's database, Gitea, pics, Homebridge, Garage, Crafty and ntfy.
+- `fast`: Dockge's stacks and data, Caddy's data, and the config and database directories of Immich, Copyparty (config and `hist`), Gitea, pics, Homebridge, Garage, Crafty, ntfy, Tinyauth, Dozzle and Scrutiny.
 - `primary`: Immich's photos and Copyparty's files and collab folder.
 - `backup`: needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
 

@@ -21,9 +21,9 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
-| Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
-| Dozzle | Container logs in a browser | `roles/dozzle` | `fast` drive role; `tinyauth_enabled`; `caddy_private_domains` | [Dozzle: container logs](#dozzle-container-logs) |
-| Scrutiny | Drive health (SMART) dashboard | `roles/scrutiny` | `fast` drive role; `tinyauth_enabled`; `caddy_private_domains`; a drive that answers SMART | [Scrutiny: drive health](#scrutiny-drive-health) |
+| Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; `caddy_enabled` with `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
+| Dozzle | Container logs in a browser | `roles/dozzle` | `fast` drive role; `caddy_enabled` with `caddy_private_domains`; `tinyauth_enabled` | [Dozzle: container logs](#dozzle-container-logs) |
+| Scrutiny | Drive health (SMART) dashboard | `roles/scrutiny` | `fast` drive role; `caddy_enabled` with `caddy_private_domains`; `tinyauth_enabled`; a drive that answers SMART | [Scrutiny: drive health](#scrutiny-drive-health) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Homepage | Start page with a tile for each enabled service on every host in the inventory | `roles/homepage` | none | [Homepage](#homepage) |
@@ -38,6 +38,7 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 
 - Public access is a `cloudflared_ingress` entry pointing at `http://immich_server:2283`.
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
+- With it on, Immich reads its whole configuration from `/opt/services/immich/immich-config.json`, and its admin settings page is read-only: a setting the template does not write gets Immich's default, not the value the page saved. A setting you need goes into `roles/immich/templates/immich-config.json.j2` (Administration > Settings shows the key and value to copy).
 - Postgres is dumped before each backup by `roles/immich/files/dump.sh`, so the database is backed up consistently ([backups.md](./backups.md)).
 - To move `immich_upload_location` to another drive, copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
 - Moving Immich to a newer image can run database migrations: read its release notes first ([ansible/README.md](../ansible/README.md#update-service-images)).
@@ -143,23 +144,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 - With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
-- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)). For example [SilverBullet](https://silverbullet.md/) as a Dockge stack, whose name is then under the first private domain. SilverBullet has no single sign-on of its own: [its docs](https://edge.silverbullet.md/Authentication) say to put it behind an authentication proxy, which Tinyauth is, so leave its `SB_USER` unset:
-
-  ```yaml
-  services:
-    silverbullet:
-      image: ghcr.io/silverbulletmd/silverbullet
-      networks: [services]
-      labels:
-        caddy: notes.pi4.example.com
-        caddy.import: tinyauth_forwarder
-        caddy.reverse_proxy: "{{upstreams 3000}}"
-  networks:
-    services:
-      external: true
-  ```
-
-  The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. A name in `caddy_sites` opts in the same way: `{import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}`.
+- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)); a name in `caddy_sites` opts in with the same import. The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. [SilverBullet](https://silverbullet.md/), for example, has no single sign-on of its own, and [its docs](https://edge.silverbullet.md/Authentication) say to put it behind an authentication proxy, which Tinyauth is, so leave its `SB_USER` unset.
 
 ### How an app joins
 
@@ -227,7 +212,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 - Open it at `http://<homepage_host>:<homepage_port>` (port 3001). `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name and on the address Ansible reaches the host at. Any other address (a LAN IP, a Caddy name) gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
-- The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: none has a host port or a Caddy name of its own. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
+- The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Garage, Caddy and Cloudflare Tunnel have no tile: they have no entry in `web_services` (no icon). Garage's web UI is reached through its `cloudflared_ingress` entry instead. Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
 - Ansible writes every file Homepage reads (tiles, title, an empty bookmarks and widgets list, the colours), so a deploy resets edits to them. Change them in the repo.
 - The page has no login and holds only links; each service keeps its own. Homepage's optional password login ([security](https://gethomepage.dev/installation/#security-authentication)) is not set up; it matters only if the page is published.
@@ -235,7 +220,7 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 ## Ad-hoc app platform
 
-**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Set `dockge_port: ""` to make the Tinyauth login its only one: the published port skips Caddy and Tinyauth, so Dockge keeps its own login while the port is set ([Tinyauth](#tinyauth-login)). The deploy needs that first account before it can switch Dockge's login off, so create it and deploy again. With its login off, any container on the `services` network (your own stacks included) can reach Dockge, and so the Docker socket, without a password; only the published port and Caddy are guarded. Keep untrusted containers off that network, or leave `dockge_port` set to keep Dockge's own login. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Set `dockge_port: ""` to make the Tinyauth login its only one: the published port skips Caddy and Tinyauth, so Dockge keeps its own login while the port is set ([Tinyauth](#tinyauth-login)). The deploy needs that first account before it can switch Dockge's login off, so create it and deploy again. With `dockge_port: ""` Dockge has no login of its own, so every name that reaches it must import `tinyauth_forwarder`, including a name in `caddy_sites`. With its login off, any container on the `services` network (your own stacks included) can reach Dockge, and so the Docker socket, without a password; only the published port and Caddy are guarded. Keep untrusted containers off that network, or leave `dockge_port` set to keep Dockge's own login. If Tinyauth is down or removed, Dockge has no way in from a browser: set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` to get Dockge's own login back, and use ssh until then. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 

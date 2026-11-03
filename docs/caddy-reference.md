@@ -43,9 +43,9 @@ caddy_private_domains: [pi4.example.com]
 
 On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon` and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
 
-- The subdomains and container ports are in [services.yml](../ansible/group_vars/all/services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
+- The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
-- With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first.
+- With more than one domain in `caddy_private_domains`, a service with `own_login` (or with Tinyauth off) is served under every domain, and one behind the login under the first only, because the session cookie covers one parent domain ([Tinyauth](./services.md#tinyauth-login)). The Homepage links to the first.
 - Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
 
 #### Ports and names
@@ -76,8 +76,9 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
   ```
 
   - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
+  - `{import: tinyauth_forwarder}` as one of the directives puts that name behind the login ([Tinyauth](./services.md#tinyauth-login)).
   - Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
-- **An app of your own** takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` (see [Label syntax](#label-syntax)).
+- **An app of your own** takes a name with labels (see [Label syntax](#label-syntax)).
 
 ### Short name
 
@@ -99,6 +100,8 @@ services:
       caddy: whoami.example.com                    # site address
       caddy.reverse_proxy: "{{upstreams 80}}"      # port the app listens on inside the container
 ```
+
+A container of this repo carries no labels: its name comes from its `services.yml` entry or from `caddy_sites` ([above](#names-for-apps-caddy_private_domains)). For a name behind the login, add `caddy.import: tinyauth_forwarder` next to the other labels ([Tinyauth](./services.md#tinyauth-login)).
 
 | Label | Becomes |
 |---|---|

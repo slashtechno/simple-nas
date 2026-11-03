@@ -71,7 +71,7 @@ A vault file you forget to encrypt still deploys, with its secrets in plain text
 ## First-time setup
 
 ```bash
-brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just tags`. The ansible package includes passlib and bcrypt, which hash the ntfy and Garage passwords
+brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters; Docker is only needed for `just tags`. The ansible package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords
 cd ansible/
 just deps
 ```
@@ -93,7 +93,7 @@ Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is 
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
-- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, and a `drives` entry with the `fast` role (Dockge keeps its stacks there; add a `backup` drive for backups). You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, a `drives` entry with the `fast` role (Dockge keeps its stacks there) and `backup_local_enabled: true` with a drive whose roles include `backup`. You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
 
 To add your own service as a fork, follow [Add a new service](#add-a-new-service).
 
@@ -137,7 +137,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (udev, the Linux device-event daemon, rules).
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (udev, the Linux device-event daemon, rules).
 
 | Setting | File |
 |---|---|
@@ -194,7 +194,9 @@ ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass     
 ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
 
-Drive mounts, the restic password and Tailscale state are never touched. Also left: Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A repo service's Caddy name goes when its flag is false and `just deploy caddy --limit <host>` has run; an app you run in Dockge carries its own labels. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
+Drive mounts, the restic password and Tailscale state are never touched. Also left: the plaintext service dumps and job logs on the backup drive (`<backup drive>/service-dumps` and `<backup drive>/logs`, or `/var/lib/backup-work` on a host with only the offsite backup; they hold a full database dump and Garage's node key), Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A repo service's Caddy name goes when its flag is false and `just deploy caddy --limit <host>` has run; an app you run in Dockge carries its own labels. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
+
+Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, if `dockge_port` is `""`, Dockge without a login. To get Dockge's own login back, set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` ([services.md](../docs/services.md#ad-hoc-app-platform)).
 
 ## Add a new service
 

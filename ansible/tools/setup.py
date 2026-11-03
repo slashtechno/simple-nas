@@ -38,8 +38,15 @@ def random_value(example):
 
 
 def vault(*args, stdin=None):
-    return subprocess.run(["ansible-vault", *args, "--vault-password-file", str(VAULT_PASS)],
-                          input=stdin, check=True, capture_output=True, text=True).stdout
+    """Run ansible-vault. A failure is a plain message, like the rest of this script, not a traceback."""
+    result = subprocess.run(["ansible-vault", *args, "--vault-password-file", str(VAULT_PASS)],
+                            input=stdin, capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f"ansible-vault {args[0]} failed: {result.stderr.strip()}\n"
+                 "A vault file you forget to encrypt still deploys, with its secrets in plain text on your computer: "
+                 "check that it starts with $ANSIBLE_VAULT (ansible-vault encrypt --vault-password-file .vault-pass "
+                 "<file>).")
+    return result.stdout
 
 
 def fill(vault_file, example):

@@ -69,9 +69,26 @@
     quiet: true
   when: backup_local_enabled | bool
 
-# The backup leaves out Immich's and Garage's live database directories (restic-excludes-services.txt.j2); the
-# dump their roles install is the only copy. Without the dump script the backup would run without errors and
-# hold no database. The roles run before this one in site.yml.
+# The cron jobs in local.yml and cloud.yml send a failed run through alert.sh, which the common role installs. A deploy
+# of the backup role alone (the documented habit after a teardown) would otherwise leave jobs whose alerts go nowhere.
+- name: Look for the alert script the cron jobs call
+  ansible.builtin.stat:
+    path: "{{ scripts_dir }}/alert.sh"
+  register: backup_alert_script
+  when: backup_local_enabled | bool or backup_cloud_enabled | bool
+
+- name: Check that alert script is installed
+  ansible.builtin.assert:
+    that: backup_alert_script.stat.exists
+    fail_msg: >-
+      {{ scripts_dir }}/alert.sh is missing, so a failed backup would only reach the log file. Install it with
+      `just deploy common --limit {{ inventory_hostname }}`.
+    quiet: true
+  when: backup_local_enabled | bool or backup_cloud_enabled | bool
+
+# The backup leaves out Immich's, Gitea's and Garage's live database directories (restic-excludes-services.txt.j2), and
+# Gitea's is copied live; the dump their roles install is the only copy. Without the dump script the backup would run
+# without errors and hold no consistent database. The roles run before this one in site.yml.
 - name: Look for the dump scripts of the services whose live database is left out
   ansible.builtin.stat:
     path: "{{ service_dump_scripts_dir }}/{{ item }}.sh"

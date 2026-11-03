@@ -48,8 +48,8 @@
     mode: "0755"
   when: immich_sso_enabled | bool
 
-# Holds the OAuth client secret, and Immich refuses to save settings from its web UI while it is set: every setting the
-# owner wants has to be in the file.
+# Immich reads its whole configuration from this file when it is set, and refuses to save settings from its web UI while
+# it is set: a setting the template leaves out gets Immich's default, not the value the settings page saved.
 - name: Render Immich's config file
   ansible.builtin.template:
     src: immich-config.json.j2
@@ -58,6 +58,7 @@
     group: "{{ ansible_user }}"
     mode: "0640"
   diff: false   # the client secret would show in --diff
+  notify: Restart Immich
   when: immich_sso_enabled | bool
 
 - name: Deploy immich
