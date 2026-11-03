@@ -6,6 +6,7 @@
       - caddy_private_domains | length > 0
       - tinyauth_subdomain | length > 0
       - vault_tinyauth_users is defined
+      - vault_tinyauth_users | length > 0
     fail_msg: >-
       Tinyauth needs an https name: set caddy_enabled, a caddy_private_domains entry and a tinyauth_subdomain on this
       host, and vault_tinyauth_users in group_vars/all/vault.yml (or this host's vault.yml, for users of its own;

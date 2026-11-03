@@ -135,7 +135,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 [Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy sends each request for a protected service to it first, so the service needs no login of its own. Its docs say it is for homelabs and sharing with family and friends, not for setups that need roles and fine-grained permissions.
 
-1. Make a user: `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 user create --interactive`. Put the `name:hash` line in `vault_tinyauth_users` (`group_vars/all/vault.yml`, shape in `group_vars/all/vault.yml.example`); a second user is a comma and another entry.
+1. Make a login: add `name` and `password` to the list `vault_tinyauth_users` in `group_vars/all/vault.yml` (shape in `group_vars/all/vault.yml.example`; the deploy hashes the password, so the vault holds it in plain text). A second user is another list entry.
 2. On the host, set `tinyauth_enabled: true` in `vars.yml`. Tinyauth needs Caddy with a private domain: its page is `https://auth.<first private domain>`.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 

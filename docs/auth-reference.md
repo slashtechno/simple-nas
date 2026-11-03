@@ -4,18 +4,26 @@ Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in
 
 ## Users and passwords
 
-`vault_tinyauth_users` is a comma-separated list of `name:bcrypt-hash` entries. Put it in `group_vars/all/vault.yml` and every host with Tinyauth accepts the same logins; put it in a host's `vault.yml` for users of that host only (the host's value wins). Each host runs its own Tinyauth, so a login on one host does not sign you in on another.
+`vault_tinyauth_users` is a list of logins, each with a `name` and a `password`, in plain text because the vault is already encrypted; the deploy hashes the passwords for Tinyauth. Shape: [vault.yml.example](../ansible/group_vars/all/vault.yml.example). Put it in `group_vars/all/vault.yml` and every host with Tinyauth accepts the same logins; put it in a host's `vault.yml` for users of that host only (the host's value wins). Each host runs its own Tinyauth, so a login on one host does not sign you in on another. To change a password, edit the vault and `just deploy tinyauth --limit <host>`.
 
 ## Two-factor codes (TOTP)
 
-Per user, in the same string; there is no switch in the web page.
+A user with a `totp` key is asked for a six-digit code after the password. The password stays; the code is added to it.
 
-1. `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 totp generate --user 'name:hash'` (the hash as it is in the vault, with single `$`) prints a QR code and the secret. Scan it with an authenticator app.
-2. Replace that user's entry in the vault with the `name:hash:secret` line it prints, then deploy.
+1. Make a secret: `python3 -c "import base64, os; print(base64.b32encode(os.urandom(20)).decode())"`.
+2. Add it to that user in the vault:
 
-- **Lost phone:** there are no recovery codes. The vault is the recovery: delete the third field (`name:hash`), deploy, and enrol again. Keep the vault password somewhere other than the phone.
+   ```yaml
+   vault_tinyauth_users:
+     - name: you
+       password: "..."
+       totp: "THE32LETTERSECRET"
+   ```
+3. `just deploy tinyauth --limit <host>`, then add the account in an authenticator app by choosing "enter a setup key" and pasting the secret (time-based, 6 digits, 30 seconds are the defaults).
+
+- **Lost phone:** there are no recovery codes. The vault is the recovery: delete that user's `totp` line, deploy, and enrol again with a new secret. Keep the vault password somewhere other than the phone.
 - Two-factor applies to password logins only. A login through OAuth, LDAP or Tailscale skips it, so restrict who may use those (below).
-- Password-and-code users cannot use HTTP basic auth, so an app that sends a password from a script cannot go through Tinyauth.
+- A user with two-factor cannot use HTTP basic auth, so a script that sends a password cannot go through Tinyauth for that user.
 
 ## Sign in with GitHub, Google or another OpenID Connect provider
 

@@ -23,8 +23,9 @@ restic_cloud_rules: >-
 # Rules added after the default cloud rules. Same line format.
 restic_cloud_extra_rules: []
 # Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
-# rclone or network pipe cannot hold the repo lock indefinitely.
-restic_command_timeout: "2h"
+# rclone or network pipe cannot hold the repo lock past the next daily run. It is long on purpose: the first backup
+# into an empty repository, or one after a big change, can run for many hours on a slow USB drive.
+restic_command_timeout: "23h"
 # restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
 # off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
 # A host without a fast drive keeps it in the user's ~/.cache.

@@ -39,7 +39,7 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 - Logs: `backup_logs_dir`, one file per job per day, plus `backup-cron.log`.
 - With a local backup both live on the backup drive (`<backup drive>/service-dumps`, `<backup drive>/logs`). Without one they live in `/var/lib/backup-work`.
 - Every restic call has a timeout (`restic_command_timeout`), so a stalled network pipe fails the run instead of holding the repository lock.
-- The first backup into a new, empty repository, and the weekly `restic-check` once the repository is large, can take longer than `restic_command_timeout` (default 2 hours). The run is killed and alerts. Raise the timeout for that run: set `restic_command_timeout: "12h"` in `host_vars/<host>/vars.yml`, `just deploy backup`, run the job by hand ([Checking backup status](#checking-backup-status)), then remove the line and deploy again.
+- `restic_command_timeout` defaults to 23 hours, long enough for the first backup into an empty repository over a slow link or USB 2. A run that hits it is killed and alerts; raise it in `host_vars/<host>/vars.yml` and `just deploy backup` if a repository is larger still. The nightly runs finish far sooner, so the timeout only catches a stalled run.
 - Snapshot retention is `restic_local_retention` and `restic_cloud_retention`.
 - The local backup refuses to start when the backup drive is 95% full or more: `restic forget --prune` needs free room to rewrite packs, so a full drive cannot clean itself up. The failure reaches the alert, and the log says how full the drive is.
 
