@@ -22,6 +22,8 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
+| Dozzle | Container logs in a browser | `roles/dozzle` | `fast` drive role; `tinyauth_enabled`; `caddy_private_domains` | [Dozzle: container logs](#dozzle-container-logs) |
+| Scrutiny | Drive health (SMART) dashboard | `roles/scrutiny` | `fast` drive role; `tinyauth_enabled`; `caddy_private_domains`; a drive that answers SMART | [Scrutiny: drive health](#scrutiny-drive-health) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Homepage | Start page with a tile for each enabled service on every host in the inventory | `roles/homepage` | none | [Homepage](#homepage) |
@@ -135,6 +137,25 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([caddy-reference.md](./caddy-reference.md#label-syntax)).
 - Tinyauth and the protected services must run on the same host.
+
+## Dozzle: container logs
+
+[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows the logs of every container on the host in a browser. It has no login of its own: it trusts the user Tinyauth names in a header, so it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://logs.<private domain>`.
+
+1. On the host, set `dozzle_enabled: true` and run `just deploy dozzle --limit <host>`.
+2. `dozzle_port` is empty by default; setting it publishes the page without a login, which Dozzle's docs warn against in forward-proxy mode.
+
+The socket is mounted read-only because Dozzle only reads, not because that limits the Docker API. The view is read-only: no shell and no container actions. It shows every container's log, and Docker's log rotation (`docker_log_opts`, three files of 10m) bounds how much is kept. `dozzle_data_dir` holds per-user settings and is backed up.
+
+## Scrutiny: drive health
+
+[Scrutiny](https://github.com/AnalogJ/scrutiny) (`scrutiny_enabled`) is a dashboard of every drive's SMART health and history. It has no login of its own: it needs `tinyauth_enabled` and `caddy_private_domains` and is served at `https://disks.<private domain>`.
+
+1. On the host, set `scrutiny_enabled: true` and run `just deploy scrutiny --limit <host>`.
+2. The role reads the drive list from `smartctl --scan` at deploy time. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".
+3. After plugging in or unplugging a drive, run `just deploy scrutiny --limit <host>` again so the container gets the new list.
+
+The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scrutiny_config_dir` is covered.
 
 ## Garage (S3)
 

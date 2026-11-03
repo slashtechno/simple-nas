@@ -55,6 +55,12 @@ ntfy_image: binwiederhier/ntfy:v2.33.1
 # Tinyauth (login in front of the web services): https://github.com/tinyauthapp/tinyauth/releases
 tinyauth_image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
 
+# Dozzle (container logs): https://github.com/amir20/dozzle/releases
+dozzle_image: amir20/dozzle:v11.4.0
+
+# Scrutiny (disk SMART dashboard): https://github.com/AnalogJ/scrutiny/releases
+scrutiny_image: ghcr.io/analogj/scrutiny:v0.10.0-omnibus
+
 # pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
 pics_version: main
 

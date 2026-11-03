@@ -1,0 +1,28 @@
+# Ansible-managed — do not edit directly, edit the dozzle_* settings and re-deploy.
+# A read-only log viewer for every container on the host. It has no login of its own: in forward-proxy
+# mode it trusts the user Tinyauth names in a header, so it must stay behind Tinyauth and Caddy.
+networks:
+  {{ docker_network }}:
+    external: true
+
+services:
+  dozzle:
+    image: {{ dozzle_image }}
+    container_name: dozzle
+    restart: unless-stopped
+{% if dozzle_port != '' %}
+    ports:
+      - "{{ dozzle_port }}:8080"
+{% endif %}
+    volumes:
+      # Read-only because Dozzle only reads. `:ro` does not restrict the Docker API: the socket allows all of it.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Per-user settings; they are lost when the container is recreated without this volume.
+      - {{ dozzle_data_dir }}:/data
+    environment:
+      TZ: {{ timezone }}
+      # Takes the user from the Remote-User, Remote-Email and Remote-Name headers that Tinyauth sets.
+      DOZZLE_AUTH_PROVIDER: forward-proxy
+      DOZZLE_NO_ANALYTICS: "true"
+    networks:
+      - {{ docker_network }}

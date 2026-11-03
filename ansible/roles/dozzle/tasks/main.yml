@@ -1,0 +1,27 @@
+---
+# Dozzle in forward-proxy mode trusts the Remote-User, Remote-Email and Remote-Name headers on every
+# request, so a published port would let anyone in. It needs Tinyauth to set those headers and Caddy to
+# route to it.
+- name: Check Dozzle is behind Tinyauth and Caddy
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+    fail_msg: >-
+      Dozzle has no login of its own: switch on tinyauth_enabled (docs/services.md#tinyauth-login) and
+      caddy_enabled with a caddy_private_domains entry.
+    quiet: true
+
+- name: Create the Dozzle data directory
+  ansible.builtin.file:
+    path: "{{ dozzle_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy Dozzle
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: dozzle

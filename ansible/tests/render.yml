@@ -122,6 +122,7 @@
         immich_port: ""
         copyparty_port: ""
         dockge_port: ""
+        scrutiny_devices: [/dev/sdb]   # the render test replaces the host's smartctl scan
         cloudflare_api_token: render-test-token
         encrypted_folders: [/mnt/primary/immich/]   # the trailing slash is tolerated
 
@@ -353,6 +354,12 @@
           - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
           - "'TINYAUTH_APPURL: \"https://auth.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
+          - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
+          - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"

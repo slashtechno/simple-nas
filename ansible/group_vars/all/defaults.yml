@@ -39,6 +39,10 @@ cloudflared_enabled: false
 # Tinyauth, a login page that Caddy puts in front of every service with a Caddy name, except those marked own_login in
 # services.yml (docs/services.md#tinyauth-login). Here, not in the tinyauth role, because Caddy and Homepage read it.
 tinyauth_enabled: false
+# Dozzle, a read-only web view of the logs of every container on the host (docs/services.md#dozzle-container-logs).
+dozzle_enabled: false
+# Scrutiny, a web dashboard of each drive's SMART health (docs/services.md#scrutiny-drive-health).
+scrutiny_enabled: false
 # Dockge, a web UI for your own compose stacks.
 dockge_enabled: false
 # Homepage, a start page with a link to every enabled service (docs/services.md#homepage).
@@ -133,6 +137,12 @@ dockge_stacks_dir: "{{ fast_drive }}/stacks"
 dockge_data_dir: "{{ fast_drive }}/docker/dockge"
 # Tinyauth's sessions.
 tinyauth_data_dir: "{{ fast_drive }}/docker/tinyauth"
+# Dozzle's per-user settings; little is lost without them.
+dozzle_data_dir: "{{ fast_drive }}/docker/dozzle"
+# Scrutiny's collector and web UI configuration.
+scrutiny_config_dir: "{{ fast_drive }}/docker/scrutiny/config"
+# Scrutiny's SMART history; left out of the backup because the collector writes it again.
+scrutiny_influx_dir: "{{ fast_drive }}/docker/scrutiny/influxdb"
 # Caddy's certificates and state. Losing it means certificates are issued again.
 caddy_data_dir: "{{ fast_drive }}/docker/caddy"
 # Immich's photos (primary drive).
@@ -237,6 +247,11 @@ dockge_port: 5001
 ntfy_port: 8090
 # Tinyauth's login page. Its address is https, so it needs a Caddy name; "" publishes no host port.
 tinyauth_port: ""
+# Dozzle's web UI. "" publishes no host port. CAUTION: setting it publishes the page without a login: Dozzle
+# trusts the user Tinyauth names in a header, so anyone who can reach the port is let in.
+dozzle_port: ""
+# Scrutiny's web UI. "" publishes no host port.
+scrutiny_port: ""
 # The read-only backup dashboard. CAUTION: it has no login and listens on the LAN, so anyone on your network can
 # read backup status and file paths. Keep it off untrusted networks.
 backup_status_port: 8091
@@ -265,6 +280,10 @@ ntfy_subdomain: ntfy
 backup_status_subdomain: backups
 # Tinyauth's login page.
 tinyauth_subdomain: auth
+# Dozzle's name.
+dozzle_subdomain: logs
+# Scrutiny's name.
+scrutiny_subdomain: disks
 
 # This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
 # Here, not in the caddy role, because the Homepage on another host reads it to link to these names.

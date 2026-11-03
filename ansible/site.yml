@@ -171,6 +171,18 @@
       tags: [tinyauth]
       when: tinyauth_enabled | bool
 
+    - name: Deploy dozzle
+      ansible.builtin.import_role:
+        name: dozzle
+      tags: [dozzle]
+      when: dozzle_enabled | bool
+
+    - name: Deploy scrutiny
+      ansible.builtin.import_role:
+        name: scrutiny
+      tags: [scrutiny]
+      when: scrutiny_enabled | bool
+
     - name: Deploy ntfy
       ansible.builtin.import_role:
         name: ntfy

@@ -52,6 +52,11 @@ services:
      container: ntfy, container_port: 80, own_login: true, icon: ntfy, description: Alerts}
   - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir],
      container: tinyauth, container_port: 3000, own_login: true, icon: mdi-shield-account, description: Login}
+  - {name: Dozzle, key: dozzle, compose: dozzle, data: [dozzle_data_dir],
+     container: dozzle, container_port: 8080, icon: dozzle, description: Logs}
+  - {name: Scrutiny, key: scrutiny, compose: scrutiny,
+     data: [scrutiny_config_dir], no_backup: [scrutiny_influx_dir],
+     container: scrutiny, container_port: 8080, icon: scrutiny, description: Disk health}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   # No web UI, so no tile and no Caddy name.
