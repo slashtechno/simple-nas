@@ -8,7 +8,8 @@
       - vault_tinyauth_users is defined
     fail_msg: >-
       Tinyauth needs an https name: set caddy_enabled, a caddy_private_domains entry and a tinyauth_subdomain on this
-      host, and vault_tinyauth_users in host_vars/{{ inventory_hostname }}/vault.yml (host_vars/vault.yml.example says how to make it).
+      host, and vault_tinyauth_users in group_vars/all/vault.yml (or this host's vault.yml, for users of its own;
+      group_vars/all/vault.yml.example says how to make it).
     quiet: true
 
 - name: Create the Tinyauth data directory

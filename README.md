@@ -57,6 +57,7 @@ Fully automated once enabled: daily local, weekly cloud (configs and dumps; phot
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | The optional Caddy reverse proxy: names, ports, HTTPS and label syntax |
+| [docs/auth-reference.md](./docs/auth-reference.md) | The optional Tinyauth login: users, two-factor codes, sign in with GitHub or Google, Tailscale, several hosts |
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 

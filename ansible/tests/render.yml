@@ -119,6 +119,7 @@
         caddy_sites:
           home.caddy.example.test: {reverse_proxy: "homepage:3000"}
           "gh.caddy.example.test": {redir: "https://github.com{uri}"}
+        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.test"}
         immich_port: ""
         copyparty_port: ""
         dockge_port: ""
@@ -354,6 +355,7 @@
           - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
           - "'TINYAUTH_APPURL: \"https://auth.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: \"s$$ecret\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
@@ -419,6 +421,7 @@
         - "{{ repo }}/roles/backup/defaults/main.yml"
         - "{{ repo }}/roles/common/defaults/main.yml"
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
+        - "{{ repo }}/roles/tinyauth/defaults/main.yml"
         - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"

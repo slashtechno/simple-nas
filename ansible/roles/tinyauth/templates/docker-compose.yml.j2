@@ -28,5 +28,8 @@ services:
       # No Docker socket: per-app rules are not used, own_login in services.yml decides what is protected.
       TINYAUTH_LABELPROVIDER: none
       TINYAUTH_ANALYTICS_ENABLED: "false"
+{% for name, value in tinyauth_environment.items() %}
+      {{ name }}: {{ (value | string | replace('$', '$$')) | to_json }}
+{% endfor %}
     networks:
       - {{ docker_network }}

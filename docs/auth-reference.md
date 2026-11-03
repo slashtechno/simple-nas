@@ -1,0 +1,51 @@
+# Login (Tinyauth) reference
+
+Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. Every setting below is a `TINYAUTH_*` environment variable ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
+
+## Users and passwords
+
+`vault_tinyauth_users` is a comma-separated list of `name:bcrypt-hash` entries. Put it in `group_vars/all/vault.yml` and every host with Tinyauth accepts the same logins; put it in a host's `vault.yml` for users of that host only (the host's value wins). Each host runs its own Tinyauth, so a login on one host does not sign you in on another.
+
+## Two-factor codes (TOTP)
+
+Per user, in the same string; there is no switch in the web page.
+
+1. `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 totp generate --user 'name:hash'` (the hash as it is in the vault, with single `$`) prints a QR code and the secret. Scan it with an authenticator app.
+2. Replace that user's entry in the vault with the `name:hash:secret` line it prints, then deploy.
+
+- **Lost phone:** there are no recovery codes. The vault is the recovery: delete the third field (`name:hash`), deploy, and enrol again. Keep the vault password somewhere other than the phone.
+- Two-factor applies to password logins only. A login through OAuth, LDAP or Tailscale skips it, so restrict who may use those (below).
+- Password-and-code users cannot use HTTP basic auth, so an app that sends a password from a script cannot go through Tinyauth.
+
+## Sign in with GitHub, Google or another OpenID Connect provider
+
+Make an OAuth app at the provider with the callback URL `https://auth.<first private domain>/api/oauth/callback/<id>` (`github`, `google`, or the name you choose below). Then, in the host's `vars.yml`, with the secret in a vault:
+
+```yaml
+tinyauth_environment:
+  TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTID: "the client id"
+  TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "{{ vault_tinyauth_github_secret }}"
+  TINYAUTH_OAUTH_WHITELIST: "you@example.com"
+  TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
+```
+
+- **Always set the whitelist.** It lists the allowed email addresses, each exact or a regex wrapped in slashes (`/@example\.com$/`). A login through a public provider is only as restrictive as this list.
+- `google` is the same with `GOOGLE` in the names. Another provider (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` in the same pattern ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
+- Password logins stay available next to the provider: the role needs `vault_tinyauth_users`.
+- Only a custom provider's groups reach the app as `Remote-Groups`; GitHub and Google send none.
+
+## Tailscale
+
+Two routes, neither used by the deploy by default and neither tested here:
+
+- **Continue with Tailscale** is built into Tinyauth: `TINYAUTH_TAILSCALE_ENABLED: "true"`, `TINYAUTH_TAILSCALE_APITOKEN` (an API token from the Tailscale admin console, in the vault) and `TINYAUTH_TAILSCALE_TAILNET`. It works out who you are from the device your request comes from, so Tinyauth must see the real client IP: also set `TINYAUTH_AUTH_TRUSTEDPROXIES` to the `services` network's subnet (`docker network inspect services`). Tagged devices are not recognised.
+- **[tsidp](https://github.com/tailscale/tsidp)** is a separate small service that makes your tailnet an OpenID Connect provider; Tinyauth then uses it as another provider (the three URLs above, and `TINYAUTH_OAUTH_PROVIDERS_<ID>_CLAIMS_USERNAME: username`). Neither project documents the pair.
+
+## Session length
+
+`TINYAUTH_AUTH_SESSIONEXPIRY` is seconds, default one day, and it slides while you use the site. `TINYAUTH_AUTH_SESSIONMAXLIFETIME` caps the total age (default none). Sessions are stored in `tinyauth_data_dir`, so a redeploy keeps them.
+
+## Several hosts
+
+- **Separate logins (what the deploy does):** one Tinyauth per host, each at its own address, so a host's logins and sessions are its own and one host being down never locks out another. Shared users are the group vault entry above.
+- **One shared instance:** not built. The session cookie is set for the parent of Tinyauth's own address and there is no setting to change that, so one instance can only protect names under that parent. For two hosts that means an address above both, such as `auth.example.com`, and every protected name under `example.com`. The reasons not to, and the design if it is wanted, are in [research/shared-tinyauth.md](./research/shared-tinyauth.md).
