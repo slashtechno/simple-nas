@@ -135,7 +135,24 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 - With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
-- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([caddy-reference.md](./caddy-reference.md#label-syntax)).
+- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)). For example [SilverBullet](https://silverbullet.md/) as a Dockge stack, whose name is then under the first private domain, with SilverBullet's own login left off:
+
+  ```yaml
+  services:
+    silverbullet:
+      image: ghcr.io/silverbulletmd/silverbullet
+      networks: [services]
+      labels:
+        caddy: notes.pi4.example.com
+        caddy.import: tinyauth_forwarder
+        caddy.reverse_proxy: "{{upstreams 3000}}"
+  networks:
+    services:
+      external: true
+  ```
+
+  The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. A name in `caddy_sites` opts in the same way: `{import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}`.
+- Without a session, a browser is redirected (302) to the login page and any other client gets a 401, so scripts and apps fail instead of following a redirect.
 - Tinyauth and the protected services must run on the same host.
 
 ## Dozzle: container logs
