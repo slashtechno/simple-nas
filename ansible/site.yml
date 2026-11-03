@@ -165,6 +165,12 @@
       tags: [backup]
       when: backup_local_enabled | bool or backup_cloud_enabled | bool
 
+    - name: Deploy tinyauth
+      ansible.builtin.import_role:
+        name: tinyauth
+      tags: [tinyauth]
+      when: tinyauth_enabled | bool
+
     - name: Deploy ntfy
       ansible.builtin.import_role:
         name: ntfy

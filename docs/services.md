@@ -21,6 +21,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
+| Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `caddy_private_domains`; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
 | Cloudflare Tunnel | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`; `vault_cloudflared_api_token`, `vault_cloudflared_account_id` | [Public hostname](#cloudflare-add-a-public-hostname) |
 | Tailscale | Private remote access, installed on every host | `roles/tailscale` | Tailscale joined by hand | [Networking](./networking.md) |
 | Homepage | Start page with a tile for each enabled service on every host in the inventory | `roles/homepage` | none | [Homepage](#homepage) |
@@ -121,6 +122,19 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 - `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers; the log tag is the one passed to it (default `backup`): it always writes to the system log (`journalctl -t backup`) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
+
+## Tinyauth: login
+
+[Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy sends each request for a protected service to it first, so the service needs no login of its own. Its docs say it is for homelabs and sharing with family and friends, not for setups that need roles and fine-grained permissions.
+
+1. Make a user: `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 user create --interactive`. Put the `name:hash` line in `vault_tinyauth_users` (`host_vars/<host>/vault.yml`, shape in `host_vars/vault.yml.example`); a second user is a comma and another entry.
+2. On the host, set `tinyauth_enabled: true` and `tinyauth_protected_services: [dockge, backup_status]` (keys from `group_vars/all/services.yml`) in `vars.yml`. Tinyauth needs Caddy with a private domain: its page is `https://auth.<first private domain>`.
+3. `just deploy tinyauth,caddy,homepage --limit <host>`.
+
+- Use it only for services opened in a browser (Dockge, the backup dashboard, Crafty). Git, WebDAV, mobile apps, S3 and ntfy clients cannot log in through a web page, so never protect Gitea, Immich, Copyparty, Garage or ntfy this way.
+- A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
+- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([caddy-reference.md](./caddy-reference.md#label-syntax)).
+- Tinyauth and the protected services must run on the same host.
 
 ## Garage (S3)
 

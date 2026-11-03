@@ -10,8 +10,11 @@
     caddy_web_sites: "{{ caddy_web_sites + [site] }}"
   vars:
     subdomain: "{{ lookup('vars', item.key ~ '_subdomain') }}"
+    # Tinyauth's cookie covers one parent domain, so a protected service is served under the first private domain only.
+    protected: "{{ tinyauth_enabled | bool and item.key in tinyauth_protected_services }}"
     site:
-      hosts: "{{ caddy_private_domains | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}"
+      hosts: "{{ (caddy_private_domains[:1] if protected else caddy_private_domains) | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}"
+      protected: "{{ protected }}"
       container: "{{ item.container }}"
       container_port: "{{ item.container_port }}"
       scheme: "{{ item.scheme | default('http') }}"

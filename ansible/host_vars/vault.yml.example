@@ -7,6 +7,10 @@
 
 # The ntfy login password (the one you type into the ntfy app). The deploy hashes it.
 vault_ntfy_password: "change-me-generate-with-openssl-rand-base64-24"
+# Tinyauth users, "name:bcrypt-hash" separated by commas. Make one with
+# `docker run -i -t --rm ghcr.io/tinyauthapp/tinyauth:v5 user create --interactive` (choose the format for Docker only if you
+# paste it into a compose file yourself; the deploy escapes the dollar signs). Used with tinyauth_enabled.
+vault_tinyauth_users: "you:$2a$10$changemechangemechangemechangemechangemechangemechangeme"
 # Immich's Postgres password.
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 # Copyparty admin user name.

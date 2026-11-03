@@ -52,6 +52,9 @@ caddy_cloudflare_dns_version: 0.2.4
 # ntfy (failure alerts): https://github.com/binwiederhier/ntfy/releases
 ntfy_image: binwiederhier/ntfy:v2.33.1
 
+# Tinyauth (login for the services in tinyauth_protected_services): https://github.com/tinyauthapp/tinyauth/releases
+tinyauth_image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
+
 # pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
 pics_version: main
 

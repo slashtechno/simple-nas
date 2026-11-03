@@ -30,9 +30,21 @@ services:
 {% if caddy_private_domains | length > 0 %}
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
+{% if tinyauth_enabled | bool %}
+      # A snippet: a site that imports it sends each request to Tinyauth first and passes the user on as headers.
+      # Ad-hoc apps in Dockge opt in with one label: caddy.import: tinyauth_forwarder
+      caddy_{{ site.n }}: (tinyauth_forwarder)
+      caddy_{{ site.n }}.forward_auth: tinyauth:3000
+      caddy_{{ site.n }}.forward_auth.uri: /api/auth/caddy
+      caddy_{{ site.n }}.forward_auth.copy_headers: Remote-User Remote-Name Remote-Email Remote-Groups
+{% set site.n = site.n + 1 %}
+{% endif %}
       # One site per service this host runs (web_services, group_vars/all/services.yml), unless its subdomain is "".
 {% for web in caddy_web_sites %}
       caddy_{{ site.n }}: "{{ web.hosts }}"
+{% if web.protected | bool %}
+      caddy_{{ site.n }}.import: tinyauth_forwarder
+{% endif %}
       caddy_{{ site.n }}.reverse_proxy: "{{ web.scheme }}://{{ web.container }}:{{ web.container_port }}"
 {% if web.scheme == 'https' %}
       caddy_{{ site.n }}.reverse_proxy.transport: http

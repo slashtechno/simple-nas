@@ -48,6 +48,8 @@ services:
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
   - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
      container: ntfy, container_port: 80, icon: ntfy, description: Alerts}
+  - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir],
+     container: tinyauth, container_port: 3000, icon: mdi-shield-account, description: Login}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   # No web UI, so no tile and no Caddy name.

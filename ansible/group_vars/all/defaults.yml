@@ -36,6 +36,12 @@ crafty_enabled: false
 ntfy_enabled: false
 # Cloudflare Tunnel that publishes the hostnames in cloudflared_ingress.
 cloudflared_enabled: false
+# Tinyauth, a login page that Caddy puts in front of the services in tinyauth_protected_services (docs/services.md#tinyauth-login).
+tinyauth_enabled: false
+# Services whose Caddy name asks for a Tinyauth login first (their keys in services.yml, e.g. [dockge, backup_status]).
+# Only for services used in a browser: apps, mobile clients, git and WebDAV cannot log in through a web page. Here, not
+# in the tinyauth role, because Caddy reads it. Has an effect only on a host that has tinyauth_enabled.
+tinyauth_protected_services: []
 # Dockge, a web UI for your own compose stacks.
 dockge_enabled: false
 # Homepage, a start page with a link to every enabled service (docs/services.md#homepage).
@@ -128,6 +134,8 @@ restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 # Dockge's own database (users, settings).
 dockge_data_dir: "{{ fast_drive }}/docker/dockge"
+# Tinyauth's sessions.
+tinyauth_data_dir: "{{ fast_drive }}/docker/tinyauth"
 # Caddy's certificates and state. Losing it means certificates are issued again.
 caddy_data_dir: "{{ fast_drive }}/docker/caddy"
 # Immich's photos (primary drive).
@@ -226,6 +234,8 @@ pics_port: 8100
 dockge_port: 5001
 # ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
 ntfy_port: 8090
+# Tinyauth's login page. Its address is https, so it needs a Caddy name; "" publishes no host port.
+tinyauth_port: ""
 # The read-only backup dashboard. CAUTION: it has no login and listens on the LAN, so anyone on your network can
 # read backup status and file paths. Keep it off untrusted networks.
 backup_status_port: 8091
@@ -252,6 +262,8 @@ dockge_subdomain: dockge
 ntfy_subdomain: ntfy
 # The backup dashboard's name.
 backup_status_subdomain: backups
+# Tinyauth's login page.
+tinyauth_subdomain: auth
 
 # This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
 # Here, not in the caddy role, because the Homepage on another host reads it to link to these names.

@@ -1,0 +1,27 @@
+---
+- name: Check Tinyauth has a login name and users
+  ansible.builtin.assert:
+    that:
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+      - tinyauth_subdomain | length > 0
+      - vault_tinyauth_users is defined
+    fail_msg: >-
+      Tinyauth needs an https name: set caddy_enabled, a caddy_private_domains entry and a tinyauth_subdomain on this
+      host, and vault_tinyauth_users in host_vars/{{ inventory_hostname }}/vault.yml (host_vars/vault.yml.example says how to make it).
+    quiet: true
+
+- name: Create the Tinyauth data directory
+  ansible.builtin.file:
+    path: "{{ tinyauth_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy Tinyauth
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: tinyauth
+    compose_service_has_secrets: true

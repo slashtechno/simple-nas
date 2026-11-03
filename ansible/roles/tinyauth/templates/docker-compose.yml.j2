@@ -1,0 +1,32 @@
+# Ansible-managed — do not edit directly, edit the tinyauth_* settings and re-deploy.
+# The login page for the services in tinyauth_protected_services (docs/services.md#tinyauth-login). The compose file is
+# mode 0640 because it holds the users' password hashes; `$` is written `$$` because compose would read it as a variable.
+networks:
+  {{ docker_network }}:
+    external: true
+
+services:
+  tinyauth:
+    image: {{ tinyauth_image }}
+    container_name: tinyauth
+    restart: unless-stopped
+{% if tinyauth_port != '' %}
+    ports:
+      - "{{ tinyauth_port }}:3000"
+{% endif %}
+    volumes:
+      # The session database. Without it every container recreate logs everyone out.
+      - {{ tinyauth_data_dir }}:/data
+    environment:
+      TZ: {{ timezone }}
+      # The login page's own address. The session cookie is set for its parent domain, so every protected service
+      # must be a name under the same private domain.
+      TINYAUTH_APPURL: "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}"
+      TINYAUTH_DATABASE_PATH: /data/tinyauth.db
+      # name:bcrypt-hash, separated by commas.
+      TINYAUTH_AUTH_USERS: '{{ vault_tinyauth_users | replace('$', '$$') }}'
+      # No Docker socket: per-app rules are not used, the list in tinyauth_protected_services decides what is protected.
+      TINYAUTH_LABELPROVIDER: none
+      TINYAUTH_ANALYTICS_ENABLED: "false"
+    networks:
+      - {{ docker_network }}
