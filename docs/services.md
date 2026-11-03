@@ -151,7 +151,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 The label above is the way in for every app; what the app can do next removes the second login. Try these in order:
 
-1. **It speaks OpenID Connect (Gitea, Immich):** Tinyauth is its OIDC provider when `gitea_sso_enabled` or `immich_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
+1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
 3. **It has an off switch, written by the role (Dockge):** the deploy sets `disableAuth` in Dockge's database and opens Dockge straight into the account it already has, so Dockge never asks. Every Dockge account collapses into that one ([Ad-hoc app platform](#ad-hoc-app-platform)).
 4. **Its own login is optional (webtop, Homepage):** leave the app's login unset and Tinyauth is the only one. Check the app's docs for how, and keep its port unpublished, since the port skips Tinyauth.

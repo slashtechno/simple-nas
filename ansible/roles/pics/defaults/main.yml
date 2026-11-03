@@ -14,7 +14,7 @@ pics_public_url: "{{ undef(hint='Set pics_public_url (e.g. https://photos.exampl
 pics_public_port: 8001
 # With pics_sso_enabled: the one Tinyauth user name or email address that may open pics' owner pages. Tinyauth cannot
 # limit a client to some of its users, so without this check every user in vault_tinyauth_users would get in.
-pics_oidc_owner: "{{ undef(hint='Set pics_oidc_owner (the Tinyauth user name or email address that may open pics) in the host vars.yml') }}"
+pics_oidc_owner: "{{ undef(hint='Set pics_oidc_owner (the Tinyauth user name or email address that may open pics) in vars.yml') }}"
 # Written into the EXIF of public downloads.
 pics_artist: ""
 # For example "example.com"; watermarked and linked from the home page.

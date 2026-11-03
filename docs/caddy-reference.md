@@ -70,9 +70,9 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
 
   ```yaml
   caddy_sites:
-    home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+    pi4.example.com: {reverse_proxy: "homepage:3000"}
     gh.pi4.example.com: {redir: "https://github.com{uri}"}   # gh.pi4.example.com/owner/repo opens github.com/owner/repo
-  homepage_host: home.pi4.example.com   # Homepage refuses any other address
+  homepage_host: pi4.example.com   # Homepage refuses any other address
   ```
 
   - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
