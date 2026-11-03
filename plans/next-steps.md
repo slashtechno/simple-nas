@@ -39,22 +39,29 @@ The page keeps both halves: job status and snapshot browsing. The job-status hal
 
 ## Phase 3: make the code teachable
 
-A fresh agent is not a newcomer: it explores the repo and guesses. To get closer, give it only the `docs/` pages and the file tree (no search, no git history), and have it answer in writing which files it would open and what it would change, before it touches anything. Treat its confusion as a signal, not a verdict; the owner reads the same docs once.
+A fresh agent is not a newcomer: it explores the repo and guesses. The check gives it only the `docs/` pages and the file tree and has it write which files it would open and what it would change.
 
-- [ ] Write the task list: change the backup time; turn off one service and remove its data safely; add a service from a Docker image; remove one behaviour (the offsite notice); explain what `just deploy caddy` does.
-- [ ] Scrutinise every existing doc: wrong or stale statements, jargon without a one-line meaning (link `docs/ansible-terms.md`), steps that skip a command, and the same example repeated in several places.
-- [ ] Add a short `docs/how-it-works.md` only if the task list shows the gap (from `just deploy` to a changed host; how a setting flows from defaults to host variables).
-- [ ] Comment the Jinja a newcomer cannot read, with an example value: `enabled_service_keys`, `backup_service_dirs`, `ntfy_alert_url`, the conditional strings in `services.yml`. Replace with plain tasks wherever the clever form has no current need.
-- [ ] List every setting with its use count; inline the ones used once and never overridden (configuration fatigue).
-- Done when the task list completes with no question the docs cannot answer.
+- [x] Task list run through a constrained reader (change the backup time; turn off a service and remove its data; add a service; remove the offsite notice; explain `just deploy caddy`; detach the backup drive). Its unanswered questions are fixed in the docs: where the schedules live, `just teardown`, what teardown leaves behind, example registry entries, the Caddy prerequisite, the default repo path.
+- [x] Every doc audited against the code by a second reader; stale claims, missing commands and undefined terms fixed.
+- [x] Computed settings have example values. Settings used once and never overridden were reviewed (`crafty_mc_ports`, `crafty_memory_limit`, `direct_link_peer_ip`, `docker_log_opts`) and kept: each is a knob an owner may reasonably turn.
+- [ ] Open: the reader could not tell which message comes from which file ("the offsite notice"); a short "message I see → file that prints it" list is worth adding if a real owner asks.
+- [ ] Open: the same label example appears twice in `docs/caddy-reference.md` and the restic export pair twice in `docs/backups.md`.
+- A human who has never used Ansible should still read the docs once and report where they stalled.
 
 ## Phase 4: single sign-on with Tinyauth
 
-Wanted: "proper" login in front of everything that can take it, from Gitea to an ad-hoc app such as SilverBullet, and covering Scrutiny and Dozzle. Authentik was judged too heavy (Postgres, Redis, workers; about 1.2 GB RAM reported).
+Wanted: "proper" login in front of everything that can take it. Authentik was judged too heavy (Postgres, Redis, workers).
 
-- [ ] Verify before building: Tinyauth's docs say it is not for production (read that page), the Caddy label form with our numbered `caddy_N` labels, and behaviour with several `caddy_private_domains` (one cookie domain per instance).
-- [ ] Design with two modes per service in `services.yml`: browser-only apps behind forward-auth (`auth: true` becomes one Caddy label); apps that have their own OIDC login (Gitea, Immich) use Tinyauth as the OIDC provider, with clients rendered from the vault. Apps with non-browser clients (git, WebDAV, mobile apps, S3, ntfy tokens) never sit behind forward-auth.
-- [ ] Ad-hoc apps in Dockge opt in with one label.
+Verified: Tinyauth's About page says it is for homelabs and sharing with family and friends, not for production needing roles and fine-grained permissions. v5.2.0 (2026-09-07); the docs use the floating `v5` tag, we pin the patch. It is an OpenID-certified provider since v5.1.0 (Core and Discovery only). The session cookie covers one parent domain, so it protects names under one private domain.
+
+- [x] Role `tinyauth` (default off, built and render-tested, not deployed): browser-only services in `tinyauth_protected_services` get `import tinyauth_forwarder`, a Caddy snippet with `forward_auth tinyauth:3000` on `/api/auth/caddy`; protected names are served under the first private domain only; apps in Dockge opt in with one label.
+- [ ] Check on a host: the Caddyfile caddy-docker-proxy writes from the `forward_auth` labels (`/config/caddy/Caddyfile.autosave`), `TINYAUTH_LABELPROVIDER: none` and `TINYAUTH_ANALYTICS_ENABLED` as env values, whether forwarded headers are trusted without `TINYAUTH_AUTH_TRUSTEDPROXIES`, and the login redirect.
+- [ ] Copyparty. It has no OIDC, only header login: `idp-h-usr: remote-user`, `idp-h-grp: remote-groups`, plus `idp-h-key` (a header name that must be present, so the published port cannot forge identity). Design from the research:
+  - Three lanes: the browser name behind Tinyauth (Caddy adds the secret header there only); share links on a second name with no forward-auth (`shr-site`); WebDAV, rclone, mobile and SFTP on the published port with Copyparty's own passwords (`auth-ord: idp,pw`).
+  - Tinyauth sends `Remote-Groups` only for LDAP and OAuth logins, so Copyparty groups do not work with local Tinyauth users; give each Tinyauth user a matching Copyparty account name in `accs`.
+  - The public tunnel on a host that sends a Cloudflare hostname straight to Copyparty bypasses Caddy, so SSO protects nothing there.
+  - Build after the Tinyauth role is proven on pi4, as `copyparty_sso_enabled` (default off).
+- [ ] Gitea and Immich have their own OIDC login: use Tinyauth as the provider, with clients created by `tinyauth oidc create <name>` and rendered from the vault. Needs the provider's HTTPS name and persistent keys in `/data`. Not built.
 - [ ] Scrutiny and Dozzle: opt-in roles added behind Tinyauth, if wanted after smartd.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 
