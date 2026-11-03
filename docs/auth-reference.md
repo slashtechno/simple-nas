@@ -1,6 +1,6 @@
 # Login (Tinyauth) reference
 
-Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. Every setting below is a `TINYAUTH_*` environment variable ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
+Tinyauth is the login in front of the web services (`tinyauth_enabled`; setup in [services.md](./services.md#tinyauth-login)). Caddy asks it about every request to a protected name; a signed-in browser passes, a browser without a session is redirected to `https://auth.<first private domain>`, and any other client gets a 401. An app that reads a proxy's user header takes the signed-in name from `Remote-User`; Copyparty's browser name does with `copyparty_sso_enabled` ([Copyparty accounts and volumes](./services.md#copyparty-accounts-and-volumes)). Every setting below is a `TINYAUTH_*` environment variable ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`), and the deploy is `just deploy tinyauth --limit <host>`.
 
 ## Users and passwords
 

@@ -22,6 +22,10 @@ tailscale_enabled: true
 immich_enabled: false
 # Copyparty file server (web UI, WebDAV, optional SFTP).
 copyparty_enabled: false
+# Put Copyparty's browser name behind the Tinyauth login and take the signed-in user from Tinyauth's header, so one
+# login opens it (copyparty_sso_admins in the copyparty role). The published port, the tunnel hostname and the apps
+# keep Copyparty's own passwords. Needs tinyauth_enabled and caddy_enabled (docs/services.md#copyparty-accounts-and-volumes).
+copyparty_sso_enabled: false
 # Gitea git hosting and its Actions runner.
 gitea_enabled: false
 # Homebridge, a HomeKit bridge.

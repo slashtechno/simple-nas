@@ -122,6 +122,10 @@
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.test"}
         immich_port: ""
         copyparty_port: ""
+        # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
+        copyparty_sso_enabled: true
+        copyparty_sso_admins: [sso-admin]
+        vault_copyparty_idp_key: "idp$key"
         dockge_port: ""
         scrutiny_devices: [/dev/sdb]   # the render test replaces the host's smartctl scan
         cloudflare_api_token: render-test-token
@@ -350,6 +354,14 @@
           - "caddy_labels[caddy_site['gh.caddy.example.test'] ~ '.redir'] == 'https://github.com{uri}'"
           - "'http://render-full' in caddy_site"
           - "caddy_labels[caddy_site['dockge.caddy.example.test'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.caddy.example.test'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.caddy.example.test'] ~ '.reverse_proxy.header_up'] == 'idp$$key 1'"
+          - "'copyparty.second.example.test' not in (caddy_site.keys() | join(' '))"
+          - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          # Admin access to /, /collab and /fast, the volumes that exist in this render.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 3"
           - "'dockge.second.example.test' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.caddy.example.test immich.second.example.test'] ~ '.import') not in caddy_labels"
           - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
@@ -403,6 +415,53 @@
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+        quiet: true
+
+    # Copyparty's own login is the default: no IdP lines in its config and nothing in front of its Caddy name.
+    - name: Make a directory for the render without Copyparty's single sign-on
+      ansible.builtin.file:
+        path: "{{ out_dir }}/sso-off"
+        state: directory
+        mode: "0755"
+
+    - name: Turn Copyparty's single sign-on off
+      ansible.builtin.set_fact:
+        copyparty_sso_enabled: false
+
+    - name: Work out which services Caddy names without it
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
+
+    - name: Render Copyparty's config and Caddy's compose without it
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}"
+        dest: "{{ out_dir }}/sso-off/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop:
+        - copyparty/templates/copyparty.conf.j2
+        - caddy/templates/docker-compose.yml.j2
+
+    - name: Read the two renders
+      ansible.builtin.slurp:
+        src: "{{ out_dir }}/sso-off/{{ item }}"
+      loop: [copyparty.conf, docker-compose.yml]
+      register: sso_off
+
+    - name: Without it, Copyparty has no IdP lines and its Caddy name is not behind the login
+      vars:
+        conf: "{{ sso_off.results[0].content | b64decode }}"
+        labels: "{{ (sso_off.results[1].content | b64decode | from_yaml).services.caddy.labels }}"
+        sites: "{{ labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
+        site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
+        copyparty_hosts: "copyparty.caddy.example.test copyparty.second.example.test"
+      ansible.builtin.assert:
+        that:
+          - "'idp-h-usr' not in conf"
+          - "'idp-h-key' not in conf"
+          - "'auth-ord' not in conf"
+          - "'sso-admin' not in conf"
+          - "copyparty_hosts in site"
+          - "(site[copyparty_hosts] ~ '.import') not in labels"
+          - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
         quiet: true
 
 # One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.

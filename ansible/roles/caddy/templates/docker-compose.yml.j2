@@ -46,6 +46,10 @@ services:
       caddy_{{ site.n }}.import: tinyauth_forwarder
 {% endif %}
       caddy_{{ site.n }}.reverse_proxy: "{{ web.scheme }}://{{ web.container }}:{{ web.container_port }}"
+{% if web.idp_key | bool %}
+      # Copyparty's idp-h-key: the header's name is the secret and its value is ignored. Only Caddy sends it.
+      caddy_{{ site.n }}.reverse_proxy.header_up: "{{ vault_copyparty_idp_key | replace('$', '$$') }} 1"
+{% endif %}
 {% if web.scheme == 'https' %}
       caddy_{{ site.n }}.reverse_proxy.transport: http
       caddy_{{ site.n }}.reverse_proxy.transport.tls_insecure_skip_verify: ""

@@ -22,6 +22,10 @@ vault_copyparty_collab_users:
 # Only used if copyparty_sftp_enabled is true (vars.yml): the password of the SFTP account
 # copyparty_sftp_user, a sync client's login with read, write, move and delete on /files.
 vault_copyparty_sftp_pass: "change-me-generate-with-openssl-rand-base64-32"
+# Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty browser
+# name, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
+# base64's +, / and = are not allowed there: `openssl rand -hex 24`.
+vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
 # One per entry in copyparty_service_accounts (vars.yml):
 vault_copyparty_photos_pass: "change-me-generate-with-openssl-rand-base64-32"
 # Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).

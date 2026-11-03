@@ -9,6 +9,20 @@
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
+- name: Check Copyparty's single sign-on is set up
+  ansible.builtin.assert:
+    that:
+      - copyparty_sso_admins | length > 0
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+      - vault_copyparty_idp_key is defined
+    fail_msg: >-
+      copyparty_sso_enabled needs copyparty_sso_admins, a list of Tinyauth user names (roles/copyparty/defaults/main.yml),
+      tinyauth_enabled and caddy_enabled, and vault_copyparty_idp_key in the vault that applies to
+      {{ inventory_hostname }} (vault.yml.example says how to make it).
+    quiet: true
+  when: copyparty_sso_enabled | bool
+
 - name: Check the collab accounts are in the vault
   ansible.builtin.assert:
     that: vault_copyparty_collab_users | default([]) | length > 0

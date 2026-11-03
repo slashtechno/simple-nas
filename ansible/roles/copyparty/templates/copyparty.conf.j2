@@ -1,5 +1,6 @@
 # Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
+{% set sso_admins = copyparty_sso_admins if copyparty_sso_enabled | bool else [] %}
 [global]
   e2dsa
   e2ts
@@ -24,6 +25,15 @@
   xff-src: lan
   rproxy: -1
   shr: /shares
+{% if copyparty_sso_enabled | bool %}
+  # The user Tinyauth's login names in the Remote-User header is the Copyparty user, without a second login. Copyparty
+  # ignores that header unless the request also carries a header whose NAME is the secret below (idp-h-key), and Caddy
+  # sends it on the browser name only, so the published port and the tunnel cannot claim a user. auth-ord tries that
+  # header first and Copyparty's own passwords second, so WebDAV and apps keep their accounts.
+  idp-h-usr: remote-user
+  idp-h-key: {{ vault_copyparty_idp_key }}
+  auth-ord: idp,pw
+{% endif %}
 {% if copyparty_sftp_enabled | bool %}
   # sftp-pw reuses [accounts] below, no separate credential store.
   sftp: {{ copyparty_sftp_port }}
@@ -48,6 +58,9 @@
   /files
   accs:
     A: {{ copyparty_user }}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 {% if copyparty_sftp_enabled | bool %}
     rwmd: {{ copyparty_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
 {% endif %}
@@ -68,6 +81,9 @@
   /collab
   accs:
     A: {{ copyparty_user }}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 {% for u in vault_copyparty_collab_users %}
     A: {{ u.user }}
 {% endfor %}
@@ -78,6 +94,9 @@
   /fast
   accs:
     A: {{ copyparty_user }}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 
 {% endif %}
 {% if usb_automount_enabled | bool %}

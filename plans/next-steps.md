@@ -58,7 +58,7 @@ Verified: Tinyauth's About page says it is for homelabs and sharing with family 
   - Three lanes: the browser name behind Tinyauth (Caddy adds the secret header there only); share links on a second name with no forward-auth (`shr-site`); WebDAV, rclone, mobile and SFTP on the published port with Copyparty's own passwords (`auth-ord: idp,pw`).
   - Tinyauth sends `Remote-Groups` only for LDAP and OAuth logins, so Copyparty groups do not work with local Tinyauth users; give each Tinyauth user a matching Copyparty account name in `accs`.
   - The public tunnel on a host that sends a Cloudflare hostname straight to Copyparty bypasses Caddy, so SSO protects nothing there.
-  - Build after the Tinyauth role is proven on pi4, as `copyparty_sso_enabled` (default off).
+  - Built (`copyparty_sso_enabled`, default off), not deployed: deploy to pinas only when no upload is running.
 - [ ] Gitea and Immich have their own OIDC login: use Tinyauth as the provider, with clients created by `tinyauth oidc create <name>` and rendered from the vault. Needs the provider's HTTPS name and persistent keys in `/data`. Not built.
 - [ ] Scrutiny and Dozzle: opt-in roles added behind Tinyauth, if wanted after smartd.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.

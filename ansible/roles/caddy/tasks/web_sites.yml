@@ -12,11 +12,16 @@
   vars:
     subdomain: "{{ lookup('vars', item.key ~ '_subdomain') }}"
     # Tinyauth's cookie covers one parent domain, so a protected service is served under the first private domain only.
-    # Services with own_login: true (services.yml) are never protected.
-    protected: "{{ (tinyauth_enabled | bool) and not (item.own_login | default(false)) }}"
+    # Services with own_login: true (services.yml) are never protected, except Copyparty's browser name, which its own
+    # single sign-on puts behind the login.
+    protected: "{{ (tinyauth_enabled | bool) and (not (item.own_login | default(false)) or (item.key == 'copyparty' and copyparty_sso_enabled | bool)) }}"
+    # The header that proves to Copyparty that the user Tinyauth named came from Caddy (its idp-h-key setting). Only
+    # the site every request reaches through the login gets it, so the published port and the tunnel cannot claim one.
+    idp_key: "{{ protected | bool and item.key == 'copyparty' and copyparty_sso_enabled | bool }}"
     site:
       hosts: "{{ (caddy_private_domains[:1] if protected | bool else caddy_private_domains) | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}"
       protected: "{{ protected }}"
+      idp_key: "{{ idp_key }}"
       container: "{{ item.container }}"
       container_port: "{{ item.container_port }}"
       scheme: "{{ item.scheme | default('http') }}"
