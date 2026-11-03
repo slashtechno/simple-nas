@@ -61,10 +61,11 @@ services:
      container: scrutiny, container_port: 8080, icon: scrutiny, description: Disk health}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
+  - {name: Homepage, key: homepage, compose: homepage,
+     container: homepage, container_port: 3000, icon: homepage, description: Start page}
   # No web UI, so no tile and no Caddy name.
   - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir]}
   - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
-  - {name: Homepage, key: homepage, compose: homepage}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
   - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}
 

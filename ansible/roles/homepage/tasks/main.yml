@@ -1,4 +1,13 @@
 ---
+- name: Check the page has a login in front of it or a port set on purpose
+  ansible.builtin.assert:
+    that: (tinyauth_enabled | bool and caddy_enabled | bool) or homepage_port != ''
+    fail_msg: >-
+      Homepage has no login of its own. Switch on tinyauth_enabled and caddy_enabled (docs/services.md#tinyauth-login)
+      to serve it behind the login, or set homepage_port in host_vars/{{ inventory_hostname }}/vars.yml to publish it
+      open on the network.
+    quiet: true
+
 - name: Create the Homepage config directory
   ansible.builtin.file:
     path: "{{ services_dir }}/homepage/config"

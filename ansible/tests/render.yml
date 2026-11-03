@@ -429,7 +429,8 @@
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "(inventory_hostname ~ ':' ~ homepage_port) in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "'home.caddy.example.test,home.second.example.test,' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "(',' ~ homepage_host ~ '\"') in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml | map('dict2items') | map('first') | map(attribute='key') | list)

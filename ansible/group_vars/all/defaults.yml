@@ -270,6 +270,10 @@ scrutiny_port: ""
 # behind Tinyauth at its Caddy name. A host without Tinyauth must set a port (for example 8091) and accepts that
 # anyone on the network can read backup status and file paths.
 backup_status_port: ""
+# The Homepage start page. It has no login of its own, so by default it publishes no port and is served behind
+# Tinyauth at its Caddy name. A host without Tinyauth must set a port (for example 3001) and accepts that anyone
+# on the network can open the page.
+homepage_port: ""
 # Crafty's panel (HTTPS); the container always listens on 8443.
 crafty_port: 28443
 
@@ -299,6 +303,8 @@ tinyauth_subdomain: auth
 dozzle_subdomain: logs
 # Scrutiny's name.
 scrutiny_subdomain: disks
+# Homepage's name.
+homepage_subdomain: home
 
 # This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
 # Here, not in the caddy role, because the Homepage on another host reads it to link to these names.
