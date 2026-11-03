@@ -36,7 +36,7 @@ services:
       caddy_{{ site.n }}: (tinyauth_forwarder)
       caddy_{{ site.n }}.forward_auth: tinyauth:3000
       caddy_{{ site.n }}.forward_auth.uri: /api/auth/caddy
-      caddy_{{ site.n }}.forward_auth.copy_headers: Remote-User Remote-Name Remote-Email Remote-Groups
+      caddy_{{ site.n }}.forward_auth.copy_headers: Remote-User Remote-Name Remote-Email Remote-Groups Authorization
 {% set site.n = site.n + 1 %}
 {% endif %}
       # One site per service this host runs (web_services, group_vars/all/services.yml), unless its subdomain is "".

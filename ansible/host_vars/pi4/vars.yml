@@ -5,6 +5,8 @@
 # An ad-hoc app host: Dockge for compose stacks, Caddy for names. Stacks live on the fast drive. It backs up to its
 # own backup drive only: pinas owns the offsite repository, and two hosts must never back up into one.
 dockge_enabled: true
+# Dockge is reached only through Caddy and the Tinyauth login; the deploy then switches Dockge's own login off.
+dockge_port: ""
 caddy_enabled: true
 # Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).
 caddy_private_domains: [pi4.slashtechno.com]

@@ -140,14 +140,11 @@ Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the h
 
 The `backup_status` role deploys a read-only dashboard with job status, drive mount state and the snapshot list for both repositories. It needs `backup_local_enabled`.
 
-```
-http://<host-tailscale-name>:<backup_status_port>
-```
+It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and the deploy stops if `tinyauth_enabled` is off. A host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network.
 
-- Reachable from the LAN and the tailnet, with no login.
 - The container mounts the repository, logs and password file read-only, so it cannot write to or delete a backup.
 - Each action shows the exact SSH command to copy and run yourself.
-- Switch it on with `backup_status_enabled`; change the port with `backup_status_port`.
+- Switch it on with `backup_status_enabled`; `backup_status_port` publishes a port.
 
 ---
 

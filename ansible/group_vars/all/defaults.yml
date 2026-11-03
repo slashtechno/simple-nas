@@ -265,9 +265,10 @@ tinyauth_port: ""
 dozzle_port: ""
 # Scrutiny's web UI. "" publishes no host port.
 scrutiny_port: ""
-# The read-only backup dashboard. CAUTION: it has no login and listens on the LAN, so anyone on your network can
-# read backup status and file paths. Keep it off untrusted networks.
-backup_status_port: 8091
+# The read-only backup dashboard. It has no login of its own, so by default it publishes no port and is served
+# behind Tinyauth at its Caddy name. A host without Tinyauth must set a port (for example 8091) and accepts that
+# anyone on the network can read backup status and file paths.
+backup_status_port: ""
 # Crafty's panel (HTTPS); the container always listens on 8443.
 crafty_port: 28443
 
