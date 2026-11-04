@@ -45,8 +45,6 @@
       no_log: true   # the rendered file holds the OAuth token and would show in --diff
       when: vault_rclone_gdrive_token | default('') | length > 0
 
-    # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
-    # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
     # The offsite list is short on purpose (photos and files are large), so say what it leaves out instead of letting
     # the owner assume everything is offsite. Read-only: it also runs under --check.
     - name: Find the service data the offsite backup does not include
@@ -62,6 +60,8 @@
           (docs/backups.md); they stay in the local backup either way.
       when: backup_uncovered | length > 0
 
+    # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
+    # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
     - name: Initialize cloud restic repository (idempotent)
       ansible.builtin.command:
         cmd: >-

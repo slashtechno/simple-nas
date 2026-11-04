@@ -48,7 +48,6 @@
     - index.html
     - pico.min.css
     - Dockerfile
-  notify: Restart backup-status
 
 - name: Render backup-status docker-compose.yml
   ansible.builtin.template:
@@ -57,8 +56,9 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
-  notify: Restart backup-status
 
+# build: always rebuilds the image from the copied files and compose recreates the container when the image or
+# the compose file changed, so no separate restart is needed.
 - name: Build and start backup-status
   community.docker.docker_compose_v2:
     project_src: "{{ services_dir }}/backup-status"
