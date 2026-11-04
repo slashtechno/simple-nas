@@ -2,6 +2,25 @@
 
 Optional. List folders in `encrypted_folders` and their files are stored encrypted with [gocryptfs](https://nuetzlich.net/gocryptfs/). You unlock them by hand after each boot. Everything else, including containers with data in other folders, runs as before.
 
+## The concepts
+
+- **Plaintext and ciphertext.** Plaintext is your real file. Ciphertext is the same file after encryption: scrambled bytes that mean nothing without the key. The `.gocryptfs` folder holds ciphertext, and the listed folder is a live view of it that is decrypted as you read and encrypted as you write.
+- **The master key.** One random 32-byte key does all the encrypting. It is made once, when the folder is created, and never changes. You never type it.
+- **The passphrase.** What you type. It is short and guessable compared with 32 random bytes, so it is not the encryption key. It only locks the master key. That is why changing the passphrase is instant: the master key stays the same and is locked again under the new passphrase, so no file is re-encrypted.
+- **Salt and scrypt.** gocryptfs turns the passphrase into a lock key with scrypt, a function that is deliberately slow (a fraction of a second per try), so an attacker guessing passphrases pays that for every guess. The salt is a random value made at creation and stored in the conf; it is mixed into the passphrase first, so lock keys cannot be precomputed once and reused against every folder. gocryptfs does both by itself. They are not settings.
+- **`gocryptfs.conf`.** A small text file in each `.gocryptfs` folder holding the master key **locked** under the passphrase, the salt and scrypt settings, and the format (the cipher, and how names are encrypted). It is not secret on its own: without the passphrase the key inside stays locked. Without it, though, gocryptfs has no locked key to check your passphrase against and does not know the cipher. The backups keep a copy.
+- **The master key printout.** `init-encrypted-folder.sh` prints the same 32 bytes in plain form, once. It is not a second key. The conf holds the key locked; the printout is the key unlocked. Keep it in a password manager, like a password: anyone with it and the ciphertext can read the files without the passphrase.
+
+```
+passphrase + salt ──scrypt──▶ lock key
+gocryptfs.conf: locked master key ──lock key──▶ master key (kept in RAM only)
+.photos.gocryptfs (ciphertext) ◀──master key──▶ /mnt/data/photos (plaintext view)
+```
+
+**Unlocking** (`unlock.sh`) runs that diagram once: it asks for the passphrase, reads the conf, derives the lock key and unlocks the master key (a wrong passphrase fails at this step), then mounts the folder so reads decrypt and writes encrypt. **Locking** (`umount`, or a reboot) makes gocryptfs forget the master key from RAM; the disk holds only ciphertext and a conf that needs the passphrase.
+
+**Recovery** follows from this. Lost passphrase: nothing opens the conf, and only the master key printout still works. Lost conf: restore it from a backup, or make a new one from the master key printout, which writes a fresh conf holding the same key under a passphrase you choose ([If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost)).
+
 ## What it protects
 
 A drive that is lost, stolen, sold or sent back for repair, and a thief who has the whole host while it is off: file content is unreadable without the passphrase. Use a long random passphrase from a password manager; it is the weak point, not the 256-bit encryption.
