@@ -39,6 +39,10 @@ _test:
     find "$out" -name '*.sh' -print0 | xargs -0 uvx --from {{ shellcheck }} shellcheck --severity=warning
     echo "Rendered templates are in $out"
 
+# Load a copy of group_vars with Ansible itself and check which file wins: defaults, vars.yml, host_vars, versions.yml
+_precedence:
+    tests/precedence.sh
+
 # Fail if a vault name or a setting with no default is missing from its example file
 _vars:
     python3 tools/check_vars.py
@@ -52,7 +56,7 @@ platforms:
     python3 tools/check_platforms.py
 
 # Everything CI runs. Run this before committing.
-check: _lint _syntax _vars _links _test
+check: _lint _syntax _vars _links _precedence _test
 
 # Deploy everything, or one service: `just deploy crafty`. Extra flags go after: `just deploy '' --limit pinas -K`
 deploy tags='' *flags: (_tags tags)

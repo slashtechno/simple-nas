@@ -99,9 +99,9 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 
 ## Checking a drive over USB
 
-A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp` needs ATA data that bridges do not pass on) and from `hddtemp` (dead upstream, removed from Debian). `smartctl` can still ask through the bridge: `sudo smartctl -d sat -a /dev/sdX` (attribute 194 is the temperature; Seagate's own manuals name it for the drive's limit). A bridge whose pass-through is broken answers `unsupported field in scsi command`; the fix is a `usb-storage.quirks=<vendor>:<product>:u` kernel option and a replug. Scrutiny reads the same data ([services.md](./services.md)).
+A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`), so read it with `smartctl` through the bridge: `sudo smartctl -d sat -a /dev/sdX` (attribute 194 is the temperature). A bridge whose pass-through is broken answers `unsupported field in scsi command`; the fix is a `usb-storage.quirks=<vendor>:<product>:u` kernel option and a replug. Scrutiny reads the same data ([services.md](./services.md)).
 
-A Seagate Exos 7E8 operates at 5 to 60 °C as the drive reports it, and its 2 million hour MTBF assumes 40 °C or less, so a drive in a closed enclosure that sits near 55 °C needs air (a fan on the enclosure lowers it by 10 to 15 °C). Reading the temperature resets the drive's idle timer, so a spun-down drive wakes for it. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`, run it with `systemd-run --unit=<name>`); stopping the unit kills it.
+Check the drive maker's operating range; a hard drive in a closed enclosure can run near its limit, and a fan on the enclosure lowers it by 10 to 15 °C. Reading the temperature wakes a spun-down drive. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`; start it with `systemd-run --unit=<name>`); stopping the unit kills it.
 
 ## Move one service's data
 
