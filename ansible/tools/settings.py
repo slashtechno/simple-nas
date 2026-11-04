@@ -27,7 +27,7 @@ except ImportError:   # plain python3 without rich: the same lines, uncoloured
     Console = None
 
 ANSIBLE = Path(__file__).resolve().parent.parent
-# A longer default (a template) is cut off; read the file for the rest.
+# A longer literal value is cut off; a long template is labelled computed (read the file for either).
 MAX_VALUE = 70
 # vars.yml and vault.yml are the owner's; services.yml is the service list and derived.yml holds computed values, neither a setting.
 # vault.yml is never read: only the names of vault entries appear, as in a default of "{{ vault_x }}".
@@ -53,8 +53,7 @@ def top_level(path):
                 if not more.lstrip().startswith("#"):
                     parts.append(more.strip())
             value = " ".join(parts)
-            if not value.startswith(('"', "'")):
-                value = re.sub(r"\s+#.*$", "", value)   # a trailing YAML comment
+            value = re.sub(r"""^("[^"]*"|'[^']*')\s+#.*$""", r"\1", value) if value[:1] in "\"'" else re.sub(r"\s+#.*$", "", value)   # a trailing YAML comment
             yield match.group(1), value, comment
         comment = []
 

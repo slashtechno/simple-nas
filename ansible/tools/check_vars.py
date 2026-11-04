@@ -3,7 +3,7 @@
 
   - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example,
   - no setting is written in two of the files that hold defaults (the later file would silently win),
-  - no file in group_vars/all/ that loads after vars.yml sets a key the owner sets in vars.yml,
+  - every shared defaults file in group_vars/all/ sorts before vars.yml (the later file wins), and no version is set in vars.yml,
   - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example.
 """
 import re
@@ -35,16 +35,18 @@ for path in sources:
         problems.append(f"{name} is used in {path.relative_to(ANSIBLE)} but is in no vault.yml.example")
 
 example_keys = set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", VARS_EXAMPLE.read_text(), re.M))
-# Ansible loads group_vars/all/*.yml in name order and the later file wins, so a file sorting after vars.yml
-# would override the owner's values, and a key written in two files has no single answer.
+# Ansible loads group_vars/all/*.yml in name order and the later file wins. A shared defaults file sorting after
+# vars.yml would override the owner's values, so each must sort before it.
 GROUP_ALL = ANSIBLE / "group_vars/all"
-owner_keys = set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", VARS_EXAMPLE.read_text(), re.M))
+for path in SHARED:
+    if path.name > "vars.yml":
+        problems.append(f"{path.relative_to(ANSIBLE)} sorts after vars.yml, so its values would override yours; rename it to sort before vars.yml")
+# versions.yml sorts after vars.yml too, so a version set in vars.yml would be ignored.
+owner_keys = set(example_keys)
 if (GROUP_ALL / "vars.yml").exists():
     owner_keys |= set(re.findall(r"^([a-z][a-z0-9_]*):", (GROUP_ALL / "vars.yml").read_text(), re.M))
-for path in sorted(GROUP_ALL.glob("*.yml")):
-    if path.name > "vars.yml" and path.name != "vault.yml":
-        for name in sorted(owner_keys & set(re.findall(r"^([a-z][a-z0-9_]*):", path.read_text(), re.M))):
-            problems.append(f"{name} is in {path.relative_to(ANSIBLE)}, which loads after vars.yml and would override it; rename the file to sort before vars.yml")
+for name in sorted(owner_keys & set(re.findall(r"^([a-z][a-z0-9_]*):", (GROUP_ALL / "versions.yml").read_text(), re.M))):
+    problems.append(f"{name} is set in vars.yml but versions.yml loads after it and wins; change it in versions.yml")
 
 defined_in = {}
 for path in DEFAULTS + [GROUP_ALL / "derived.yml", GROUP_ALL / "versions.yml"]:

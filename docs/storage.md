@@ -91,7 +91,7 @@ To add or replace a drive:
 1. Format a new drive as ext4 (`sudo mkfs.ext4 /dev/sdX1`; find the device with `lsblk`; formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted), then add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
 2. `just deploy storage --limit <host>`.
 3. Copy the data over, for example `rsync -aHAX`.
-4. Recreate the containers that bind the drive: a container keeps the old mount until it is recreated, and a deploy does not recreate one whose compose file is unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
+4. Recreate the containers that bind the drive: a container keeps the old mount until it is recreated, and a deploy does not recreate one whose compose file and image are unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
 
 To retire a drive, delete its entry. The role adds or updates fstab lines and never removes one, so remove the old line from `/etc/fstab` by hand (and `sudo umount` it); nothing is unmounted or deleted for you.
 

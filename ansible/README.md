@@ -45,7 +45,7 @@ All commands below run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
-Every setting has a comment and its default in `group_vars/all/` (shared settings: `defaults.yml` and the topic files) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` only verifies that a vault name or a setting with no default appears in its example file ([Commands](#commands)).
+Every setting has a comment and its default in `group_vars/all/` (shared settings: `defaults.yml` and the topic files) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` verifies that a vault name or a setting with no default appears in its example file, that no setting has a default in two files, and that every shared defaults file sorts before `vars.yml` ([Commands](#commands)).
 
 A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml` and its topic files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
 
@@ -112,7 +112,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 | Command | Does |
 |---|---|
-| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`) |
+| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file, a setting with a default in two files, a shared defaults file sorting after `vars.yml`), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`) |
 | `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Uses `uv` for colour when installed (the script, `tools/settings.py`, declares its one dependency in its own header, and a recipe that outgrows a shell line is written the same way); without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
@@ -132,7 +132,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, backup-status, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (the fstab change and the USB udev rule).
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (the fstab change and the USB udev rule).
 
 | Setting | File |
 |---|---|
