@@ -67,7 +67,9 @@
     owner: root
     group: root
     mode: "0644"
-  notify: Reload udev rules
+  notify:
+    - Reload udev rules
+    - Apply udev rules to plugged-in drives
   when: usb_automount_enabled | bool
 
 # Switched off: remove what the task above installs. Drives already mounted stay mounted until unplugged or reboot.

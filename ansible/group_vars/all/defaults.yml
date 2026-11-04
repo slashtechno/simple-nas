@@ -93,6 +93,10 @@ docker_log_opts:
 docker_data_root: ""
 
 
+# unlock.sh runs every `<name>.sh` here as root, in name order, after mounting the encrypted folders. The deploy writes only
+# 00-docker.sh (restarts Docker); the scripts you add start any other software and are never touched (docs/encryption.md).
+encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
+
 # --- Backups (docs/backups.md) ---
 # The local backup needs a drive with the `backup` role; the cloud backup needs `restic_cloud_repository`.
 
@@ -181,6 +185,8 @@ garage_data_dir: "{{ fast_drive }}/docker/garage"
 crafty_data_dir: "{{ fast_drive }}/docker/crafty"
 
 # --- Failure alerts (roles/common/templates/alert.sh.j2; ntfy_server and ntfy_alert_url are in roles/common/defaults/main.yml) ---
+# The ntfy topic alerts go to. The access token is limited to it, so alert.sh and the ntfy server must agree.
+ntfy_topic: alerts
 # File on the host holding vault_ntfy_token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
 

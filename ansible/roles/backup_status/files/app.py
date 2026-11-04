@@ -37,6 +37,9 @@ CACHE_TTL_SECONDS = 30
 
 LOCAL_STALE_AFTER_SECONDS = 36 * 3600       # daily job — allow a missed run
 WEEKLY_STALE_AFTER_SECONDS = 9 * 24 * 3600  # weekly jobs — allow a missed week
+# A run that has not finished is still working until this long after it started: the local run makes three restic
+# calls, each allowed restic_command_timeout (23 hours by default), so a first backup can legitimately take days.
+RUNNING_STALE_AFTER_SECONDS = 72 * 3600
 
 # One file per job in BACKUP_LOGS_DIR, written by the backup scripts when a run starts and when it ends.
 JOB_STATUS_FILES = {
@@ -151,7 +154,7 @@ def read_job_status(job, stale_after):
     stale = age > stale_after
     when = time.strftime("%a %H:%M", time.localtime(mtime))
     if finished is None:
-        if stale:
+        if age > RUNNING_STALE_AFTER_SECONDS:
             return job_view(False, True, human_ago(age), f"a run started {started:%a %H:%M} and never finished; read its log")
         return job_view(False, False, human_ago(age), f"running since {started:%H:%M}", running=True)
     if result != "ok":

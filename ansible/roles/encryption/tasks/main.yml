@@ -1,7 +1,7 @@
 ---
 # Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
 # (init-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
-# tools and both scripts. With no encrypted folder it removes the scripts again.
+# tools and both scripts. With no encrypted folder it removes the scripts again (remove.yml).
 - name: Check every encrypted folder is an absolute path
   ansible.builtin.assert:
     that: item is match('/')
@@ -58,12 +58,6 @@
     mode: "0755"
   when: encrypted_folders | length > 0
 
-- name: Remove the encryption scripts
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  loop:
-    - "{{ scripts_dir }}/unlock.sh"
-    - "{{ scripts_dir }}/init-encrypted-folder.sh"
-    - "{{ encryption_hooks_dir }}/00-docker.sh"
+- name: Remove the encryption scripts when no folder is listed
+  ansible.builtin.import_tasks: remove.yml
   when: encrypted_folders | length == 0

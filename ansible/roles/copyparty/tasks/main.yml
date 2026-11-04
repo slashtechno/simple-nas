@@ -23,6 +23,17 @@
     quiet: true
   when: copyparty_sso_enabled | bool
 
+- name: Check every app with a Copyparty account has its password in the vault
+  ansible.builtin.assert:
+    that: lookup('ansible.builtin.vars', 'vault_' ~ item.key ~ '_copyparty_pass', default='') | length > 0
+    fail_msg: >-
+      {{ item.key }} has a Copyparty account, so vault_{{ item.key }}_copyparty_pass must be in the vault that applies to
+      {{ inventory_hostname }} (vault.yml.example).
+    quiet: true
+  loop: "{{ copyparty_clients }}"
+  loop_control:
+    label: "{{ item.key }}"
+
 - name: Check the collab accounts are in the vault
   ansible.builtin.assert:
     that: vault_copyparty_collab_users | default([]) | length > 0

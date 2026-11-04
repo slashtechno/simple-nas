@@ -108,7 +108,7 @@ Deleting files does not erase them from the drive. A drive that held plain data 
 
 ### Turning it off
 
-For each folder: unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts once no folder is left; gocryptfs stays installed.
+For each folder: unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts once no folder is left; gocryptfs stays installed. `teardown.yml` (also `--tags encryption`) removes the scripts and, when it is empty, the after-unlock directory; it never touches encrypted folders or your own after-unlock scripts.
 
 ## Unlocking
 

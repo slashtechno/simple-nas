@@ -10,17 +10,16 @@
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0755"
-      loop:
-        - backup-restic-local.sh
-        - restic-check.sh
+      loop: "{{ backup_local_scripts }}"
 
     - name: Render the local backup exclude list
       ansible.builtin.template:
-        src: restic-excludes-local.txt.j2
-        dest: "{{ scripts_dir }}/restic-excludes-local.txt"
+        src: "{{ item }}.j2"
+        dest: "{{ scripts_dir }}/{{ item }}"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0644"
+      loop: "{{ backup_local_lists }}"
 
     - name: Schedule daily local backup (2 AM)
       ansible.builtin.cron:
@@ -70,15 +69,10 @@
         name: "{{ item }}"
         user: "{{ ansible_user }}"
         state: absent
-      loop:
-        - backup-local
-        - restic-check
+      loop: "{{ backup_local_cron_jobs }}"
 
     - name: Remove the local backup scripts and exclude list
       ansible.builtin.file:
         path: "{{ scripts_dir }}/{{ item }}"
         state: absent
-      loop:
-        - backup-restic-local.sh
-        - restic-check.sh
-        - restic-excludes-local.txt
+      loop: "{{ backup_local_scripts + backup_local_lists }}"

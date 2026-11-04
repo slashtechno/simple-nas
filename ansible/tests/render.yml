@@ -175,6 +175,37 @@
         that: data_drive_mounts == ['/mnt/fast', '/mnt/primary']
         quiet: true
 
+    # geerlingguy.docker writes this dict to /etc/docker/daemon.json on every host, so a typo here breaks Docker.
+    # set_fact, not task vars: include_vars set docker_data_root and outranks them. The value is put back after.
+    - name: Keep the Docker data root the test started with
+      ansible.builtin.set_fact:
+        docker_data_root_before: "{{ docker_data_root }}"
+
+    - name: The Docker daemon options carry data-root only when docker_data_root is set
+      ansible.builtin.set_fact:
+        docker_data_root: ""
+
+    - name: Check the options without a data root
+      ansible.builtin.assert:
+        that:
+          - docker_daemon_options['log-driver'] == 'json-file'
+          - docker_daemon_options['log-opts'] == docker_log_opts
+          - "'data-root' not in docker_daemon_options"
+        quiet: true
+
+    - name: Set a data root
+      ansible.builtin.set_fact:
+        docker_data_root: /mnt/fast/docker-root
+
+    - name: Check the options with a data root
+      ansible.builtin.assert:
+        that: docker_daemon_options['data-root'] == '/mnt/fast/docker-root'
+        quiet: true
+
+    - name: Put the Docker data root back
+      ansible.builtin.set_fact:
+        docker_data_root: "{{ docker_data_root_before }}"
+
     # Each service is written down in group_vars/all/services.yml, and these checks name the line another file is
     # missing. Roles that are not a service are listed here on purpose.
     - name: Find the roles
@@ -307,6 +338,21 @@
       loop_control:
         loop_var: real_file
 
+    # teardown.yml removes the names in these lists. The roles install the scripts and lists from them directly; the cron
+    # jobs and the two shared scripts are written out in the tasks, so each name must appear there.
+    - name: Every backup cron job and shared script in derived.yml is named in the backup role's tasks
+      vars:
+        backup_role_tasks: >-
+          {{ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/main.yml')
+             ~ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/local.yml')
+             ~ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/cloud.yml') }}
+      ansible.builtin.assert:
+        that: >-
+          (backup_shared_scripts + backup_local_cron_jobs + backup_cloud_cron_jobs)
+          | reject('in', backup_role_tasks) | list | length == 0
+        fail_msg: A name in the backup_* lists of group_vars/all/derived.yml is not in roles/backup/tasks; teardown would remove the wrong thing.
+        quiet: true
+
     - name: Work out which services Caddy names
       ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
 
@@ -433,7 +479,8 @@
           - "\"TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: 'immich$$secret'\" in tinyauth_compose"
           - >-
             ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.caddy.example.test/auth/login,'
-            ~ 'https://immich.caddy.example.test/user-settings,app.immich:///oauth-callback"')
+            ~ 'https://immich.second.example.test/auth/login,https://immich.caddy.example.test/user-settings,'
+            ~ 'https://immich.second.example.test/user-settings,app.immich:///oauth-callback"')
             in tinyauth_compose
           - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
           - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"

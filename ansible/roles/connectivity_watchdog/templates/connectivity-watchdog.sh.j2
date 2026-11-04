@@ -45,7 +45,8 @@ if ! command -v nmcli > /dev/null; then
   exit 0
 fi
 interface=$(ip route show default | awk '{for (i = 1; i < NF; i++) if ($i == "dev") {print $(i + 1); exit}}')
-connection=$(nmcli --get-values GENERAL.CONNECTION device show "$interface" 2>/dev/null)
+connection=
+[ -z "$interface" ] || connection=$(nmcli --get-values GENERAL.CONNECTION device show "$interface" 2>/dev/null)
 if [ -z "$interface" ] || [ -z "$connection" ]; then
   logger -t connectivity "No NetworkManager connection carries the default route, so there is nothing to reconnect"
   exit 0

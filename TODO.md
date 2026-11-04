@@ -19,7 +19,7 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 
 - A pics `archive_dir` option in the pics repository, with its path under a drive that has a role so the backup covers it. Waiting for: the owner to write it in the pics repository.
 
-- Unlock encrypted folders without SSH, from a computer you do not control, with a small web page (probably on Vercel). Nothing in the repo depends on it. What exists for it: `unlock.sh` takes the passphrase on stdin and holds all the unlock logic, so the page only has to deliver a passphrase and run that command. Decide first: (1) how the page reaches the host without opening it to the internet (Tailscale Funnel or the Cloudflare tunnel, with a login in front); (2) whether the page's server may see the passphrase, or the browser encrypts it to a public key whose private key stays on the host; (3) rate limits on guesses. SSH from an untrusted computer needs a key or password on it, and the page does not, but it still sees the typed passphrase, so keep `gocryptfs -passwd` after use.
+- Unlock encrypted folders without SSH, from a computer you do not control: [plans/unlock-web-page.md](./plans/unlock-web-page.md). Waiting for: the owner's decisions listed there.
 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md).
 - Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: try a real deploy of the role, change the passphrase with `-passwd`, open the folder on a Mac, and run a backup script while locked on the host (it must refuse).

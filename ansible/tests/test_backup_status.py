@@ -85,7 +85,12 @@ with tempfile.TemporaryDirectory() as tmp:
     path = put(work, "restic-local.status.json", json.dumps({**OK, "result": "failed", "finished": None, "exit_code": None}))
     s = status_of(work, False, "local_daily")
     assert s["ok"] is False and s["running"] is True and s["stale"] is False, s
+    # Still running after the daily window: a first backup can take days.
     os.utime(path, (old, old))
+    s = status_of(work, False, "local_daily")
+    assert s["ok"] is False and s["running"] is True and s["stale"] is False, s
+    very_old = time.time() - 80 * 3600
+    os.utime(path, (very_old, very_old))
     s = status_of(work, False, "local_daily")
     assert s["ok"] is False and s["running"] is False and s["stale"] is True, s
 

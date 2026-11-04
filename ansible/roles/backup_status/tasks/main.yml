@@ -7,6 +7,18 @@
       (and a drive in `drives` with the `backup` role). The dashboard reads the local repository.
     quiet: true
 
+# Without the file Docker creates the path as a directory, and the next backup deploy fails writing the password there.
+- name: Check the restic password file exists (deploy the backup role first)
+  ansible.builtin.stat:
+    path: "{{ restic_password_file }}"
+  register: backup_status_password_file
+
+- name: Stop if there is no restic password file
+  ansible.builtin.assert:
+    that: backup_status_password_file.stat.isreg | default(false)
+    fail_msg: "{{ restic_password_file }} is missing: deploy the backup role to this host before backup_status."
+    quiet: true
+
 - name: Check the dashboard has a login in front of it or a port set on purpose
   ansible.builtin.assert:
     that: (tinyauth_enabled | bool) or backup_status_port != ''

@@ -37,13 +37,14 @@
 #              service is behind Tinyauth on a host that has tinyauth_enabled.
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
-  # Immich's oidc: its web login, its "link OAuth" page in the user settings, and the phone apps' fixed callback.
+  # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
+  # it was opened on), and the phone apps' fixed callback. pics and Gitea send one fixed address, so they list one.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_upload_location], no_backup: [immich_db_data_location],
      container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
-     oidc: ["https://{{ immich_subdomain }}.{{ caddy_private_domains[0] | default('') }}/auth/login",
-            "https://{{ immich_subdomain }}.{{ caddy_private_domains[0] | default('') }}/user-settings",
-            "app.immich:///oauth-callback"]}
+     oidc: "{{ caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/auth/login') | list
+               + caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/user-settings') | list
+               + ['app.immich:///oauth-callback'] }}"}
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir,
             "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",

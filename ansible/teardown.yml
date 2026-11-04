@@ -21,7 +21,7 @@
 #   # Remove specific services only (the keys in group_vars/all/services.yml)
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
-#   # Remove only the backup scripts, the connectivity watchdog, the network config, or the USB rule
+#   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, or the USB rule
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
@@ -98,6 +98,13 @@
                 path: "{{ scripts_dir }}/connectivity-watchdog.sh"
                 state: absent
 
+        # ── Encryption ─────────────────────────────────────────────────────────
+
+        # The scripts only. Encrypted folders, gocryptfs.conf and your own after-unlock scripts stay.
+        - name: Remove the encryption scripts
+          tags: [encryption]
+          ansible.builtin.import_tasks: roles/encryption/tasks/remove.yml
+
         # ── Backups ────────────────────────────────────────────────────────────
 
         - name: Remove backup cron jobs and scripts
@@ -108,28 +115,19 @@
                 name: "{{ item }}"
                 user: "{{ ansible_user }}"
                 state: absent
-              loop:
-                - backup-local
-                - backup-cloud
-                - restic-check
+              loop: "{{ backup_local_cron_jobs + backup_cloud_cron_jobs }}"
 
-            # Removes only the files the backup role installs (the lists in roles/backup/tasks/local.yml and cloud.yml;
-            # keep them in step). The dump scripts in dump.d belong to the service roles and go with their services; wiping
-            # the whole directory would leave --tags backup redeploys without them,
+            # Removes only the files the backup role installs (the backup_* lists in group_vars/all/derived.yml, which the
+            # role installs from too). The dump scripts in dump.d belong to the service roles and go with their services;
+            # wiping the whole directory would leave --tags backup redeploys without them,
             # so backups would "succeed" with no database dump.
             - name: Remove backup scripts
               ansible.builtin.file:
                 path: "{{ scripts_dir }}/{{ item }}"
                 state: absent
-              loop:
-                - backup-restic-local.sh
-                - backup-restic-cloud.sh
-                - backup-services.sh
-                - restic-check.sh
-                - restore-services.sh
-                - backup-paths.txt
-                - restic-excludes-local.txt
-                - restic-excludes-cloud.txt
+              loop: >-
+                {{ backup_shared_scripts + backup_local_scripts + backup_local_lists
+                   + backup_cloud_scripts + backup_cloud_lists }}
 
             # rmdir only succeeds when the directory is empty.
             - name: Remove the dump.d and scripts directories (only if empty)

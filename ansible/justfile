@@ -51,8 +51,18 @@ platforms:
 check: _lint _syntax _vars _links _test
 
 # Deploy everything, or one service: `just deploy crafty`. Extra flags go after: `just deploy '' --limit pinas -K`
-deploy tags='' *flags:
+deploy tags='' *flags: (_tags tags)
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
+
+# Stops a deploy or preview whose tag matches no role: ansible runs nothing for an unknown tag and exits 0.
+_tags tags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -n "{{ tags }}" ] || exit 0
+    known=$(ansible-playbook site.yml --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
+    for tag in $(echo "{{ tags }}" | tr ',' ' '); do
+      echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in site.yml. Tags: $known" >&2; exit 1; }
+    done
 
 # Remove services from a host (teardown.yml refuses to run without a host): `just teardown pi4 -e only=garage`
 teardown host *flags:
@@ -67,5 +77,5 @@ setup host:
     python3 tools/setup.py {{ host }}
 
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
-preview tags='' *flags:
+preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}

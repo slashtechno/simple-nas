@@ -71,3 +71,13 @@ backup_drive: >-
   {{ drive_mounts.backup | mandatory('Host ' ~ inventory_hostname ~ ' uses the backup drive role, but no entry in its
   `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
 
+# What the backup role installs into scripts_dir, and the cron jobs it creates. The role installs and removes exactly these
+# and teardown.yml removes all of them, so a new file or job is added here and nowhere else (the render test checks each name
+# appears in the role's tasks). Scripts are mode 0755, lists 0644.
+backup_shared_scripts: [backup-services.sh, restore-services.sh]
+backup_local_scripts: [backup-restic-local.sh, restic-check.sh]
+backup_local_lists: [restic-excludes-local.txt]
+backup_local_cron_jobs: [backup-local, restic-check]
+backup_cloud_scripts: [backup-restic-cloud.sh]
+backup_cloud_lists: [backup-paths.txt, restic-excludes-cloud.txt]
+backup_cloud_cron_jobs: [backup-cloud]

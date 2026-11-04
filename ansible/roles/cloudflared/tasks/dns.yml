@@ -48,20 +48,25 @@
     cloudflared_live_targets: "{{ cloudflared_live_tunnels.json.result | map(attribute='id') | product([cloudflared_tunnel_suffix]) | map('join') | list }}"
     cloudflared_dns_records: "{{ cloudflared_zone_lists.results | map(attribute='json.result') | flatten }}"
 
+# A second record next to ours also stops the deploy: a name with an A record beside the tunnel's CNAME resolves
+# unpredictably.
 - name: Stop if a hostname has a record that belongs to something else
   vars:
-    record: "{{ cloudflared_dns_records | selectattr('name', 'equalto', item.hostname) | first | default({}) }}"
+    records: "{{ cloudflared_dns_records | selectattr('name', 'equalto', item.hostname) | list }}"
+    record: "{{ records | first | default({}) }}"
   ansible.builtin.assert:
-    that: >-
-      record | length == 0
-      or (record.type == 'CNAME'
-          and (record.content == cloudflared_our_target
-               or record.comment | default('', true) == cloudflared_dns_comment
-               or (record.content.endswith(cloudflared_tunnel_suffix) and record.content not in cloudflared_live_targets)))
+    that:
+      - records | length <= 1
+      - >-
+        record | length == 0
+        or (record.type == 'CNAME'
+            and (record.content == cloudflared_our_target
+                 or record.comment | default('', true) == cloudflared_dns_comment
+                 or (record.content.endswith(cloudflared_tunnel_suffix) and record.content not in cloudflared_live_targets)))
     fail_msg: >-
-      {{ item.hostname }} already has a {{ record.type | default('') }} record ({{ record.content | default('') }})
-      that this role did not create and that another tunnel or service uses. If it is unused, delete it in
-      the Cloudflare dashboard (DNS) and deploy again.
+      {{ item.hostname }} has {{ records | length }} DNS record(s), first a {{ record.type | default('') }}
+      ({{ record.content | default('') }}). This role may keep one CNAME to its tunnel (or to an unused tunnel) and nothing
+      else. If the others are unused, delete them in the Cloudflare dashboard (DNS) and deploy again.
     quiet: true
   loop: "{{ cloudflared_hostnames }}"
   loop_control:

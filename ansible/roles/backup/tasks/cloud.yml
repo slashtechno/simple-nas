@@ -5,11 +5,12 @@
   block:
     - name: Render the offsite backup script
       ansible.builtin.template:
-        src: backup-restic-cloud.sh.j2
-        dest: "{{ scripts_dir }}/backup-restic-cloud.sh"
+        src: "{{ item }}.j2"
+        dest: "{{ scripts_dir }}/{{ item }}"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0755"
+      loop: "{{ backup_cloud_scripts }}"
 
     - name: Render the offsite path and exclude lists
       ansible.builtin.template:
@@ -18,9 +19,7 @@
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: "0644"
-      loop:
-        - backup-paths.txt
-        - restic-excludes-cloud.txt
+      loop: "{{ backup_cloud_lists }}"
 
     # Google Drive is reached through rclone, whose remote needs an OAuth token. It comes from the vault
     # (vault_rclone_gdrive_token, made with `rclone authorize` on a computer with a browser). The file is
@@ -102,8 +101,5 @@
   ansible.builtin.file:
     path: "{{ scripts_dir }}/{{ item }}"
     state: absent
-  loop:
-    - backup-restic-cloud.sh
-    - backup-paths.txt
-    - restic-excludes-cloud.txt
+  loop: "{{ backup_cloud_scripts + backup_cloud_lists }}"
   when: not backup_cloud_enabled | bool

@@ -6,9 +6,10 @@
       - vault_pics_secret_key is defined
       - vault_github_read_token is defined
       - vault_pics_copyparty_pass is defined
+      - vault_pics_alert_urls is defined
     fail_msg: >-
-      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token and vault_pics_copyparty_pass
-      in the vault that applies to {{ inventory_hostname }}
+      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token, vault_pics_copyparty_pass
+      and vault_pics_alert_urls ("" for no alerts) in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 

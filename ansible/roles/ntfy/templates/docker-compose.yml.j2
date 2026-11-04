@@ -29,7 +29,7 @@ services:
 {% set user_hash = vault_ntfy_password | password_hash('bcrypt', 'ntfyntfyntfyntfyntfynt', ident='2b') | replace('$', '$$') %}
       NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ user_hash }}:user'
       NTFY_AUTH_ACCESS: "{{ ntfy_user }}:*:rw"
-      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:alerts'
+      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:{{ ntfy_topic }}'
 {% if ntfy_ios_push | bool %}
       NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
 {% endif %}

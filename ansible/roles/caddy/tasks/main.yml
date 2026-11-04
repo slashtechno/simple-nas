@@ -27,7 +27,8 @@
   ansible.builtin.import_tasks: web_sites.yml
 
 # The sites this repo writes get their import from tinyauth_enabled, so only caddy_sites can ask for a snippet that is
-# not there. Before the render: the failure is in the rendered config, not in a task.
+# not there. Runs before the render, so a missing snippet stops the deploy with a task error instead of landing in the
+# config of the running Caddy.
 - name: Check the sites that import Tinyauth's snippet
   ansible.builtin.import_tasks: check_sites.yml
 
