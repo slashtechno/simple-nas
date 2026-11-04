@@ -22,4 +22,4 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - Unlock encrypted folders without SSH, from a computer you do not control: [plans/unlock-web-page.md](./plans/unlock-web-page.md). Waiting for: the owner's decisions listed there.
 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md).
-- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: try a real deploy of the role, change the passphrase with `-passwd`, open the folder on a Mac, and run a backup script while locked on the host (it must refuse).
+- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: open the folder on a Mac (gocryptfs and macFUSE).
