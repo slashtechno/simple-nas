@@ -8,7 +8,7 @@ Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the "Data directories" block of `group_vars/all/defaults.yml` |
+| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the settings in `group_vars/all/data-dirs.yml` |
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
@@ -99,7 +99,7 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 
 ## Move one service's data
 
-Each service's data directories are settings listed in `ansible/group_vars/all/defaults.yml`, under "Data directories". To move a service to another drive:
+Each service's data directories are settings listed in `ansible/group_vars/all/data-dirs.yml`. To move a service to another drive:
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.

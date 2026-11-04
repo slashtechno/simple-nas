@@ -2,7 +2,7 @@
 
 Words you do not know are defined in the [glossary](./glossary.md).
 
-Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each service needs and the setup steps beyond the flag. Run `just deploy <tag>` from `ansible/` (tag = role name). Settings and their defaults are in `ansible/group_vars/all/defaults.yml` and each role's `defaults/main.yml`; file locations are in [ansible/README.md](../ansible/README.md). Backups are in [backups.md](./backups.md).
+Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each service needs and the setup steps beyond the flag. Run `just deploy <tag>` from `ansible/` (tag = role name). Settings and their defaults are in the files of `ansible/group_vars/all/` (`just settings` lists them) and each role's `defaults/main.yml`; file locations are in [ansible/README.md](../ansible/README.md). Backups are in [backups.md](./backups.md).
 
 ## Every host
 

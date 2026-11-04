@@ -3,7 +3,7 @@
 - name: Check cloudflared_ingress before calling Cloudflare
   ansible.builtin.assert:
     that: item.keys() | sort | list == ['hostname', 'service']
-    fail_msg: "{{ item }} must have only hostname and service (no path). See the comments on cloudflared_ingress in group_vars/all/defaults.yml."
+    fail_msg: "{{ item }} must have only hostname and service (no path). See the comments on cloudflared_ingress in group_vars/all/cloudflare.yml."
     quiet: true
   loop: "{{ cloudflared_ingress }}"
   loop_control:
@@ -25,7 +25,7 @@
   ansible.builtin.set_fact:
     cloudflared_hostnames: []
 
-# zone_ids: the cloudflare_zones domains the hostname belongs to (cloudflare_zone_ids_of_name, defaults.yml).
+# zone_ids: the cloudflare_zones domains the hostname belongs to (cloudflare_zone_ids_of_name, derived.yml).
 - name: Pair each hostname with its zone
   ansible.builtin.set_fact:
     cloudflared_hostnames: "{{ cloudflared_hostnames + [{'hostname': item.hostname, 'zone_ids': zone_ids}] }}"

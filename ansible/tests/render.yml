@@ -2,7 +2,7 @@
 # Renders every role template against the example vars and checks the result.
 # Runs on your machine only (no Pi, no vault): `just _test` runs this, then
 # shellchecks the rendered scripts. It catches:
-#   - a template using a variable that isn't defined in defaults.yml, vars.yml.example,
+#   - a template using a variable that isn't defined in the shared defaults files, vars.yml.example,
 #     vault.yml.example, versions.yml, services.yml or the role's defaults/
 #   - a key in a vars.yml (group_vars/all, host_vars/<host>) that no example or role defaults
 #     file declares
@@ -17,17 +17,19 @@
   tasks:
     - name: Load the shared defaults
       ansible.builtin.include_vars:
-        file: "{{ item }}"
-      loop:
-        - "{{ playbook_dir }}/../group_vars/all/defaults.yml"
-        - "{{ playbook_dir }}/../group_vars/all/derived.yml"
+        dir: "{{ playbook_dir }}/../group_vars/all"
+        files_matching: "{{ shared_defaults_regex }}"
+
+    - name: Load the values worked out from them
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/all/derived.yml"
 
     - name: Turn on two services
       ansible.builtin.set_fact:
         dockge_enabled: true
         ntfy_enabled: true
 
-# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (defaults.yml). This host
+# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (cloudflare.yml). This host
 # renders nothing else, so it can have its own zones.
 - name: Check zone matching
   hosts: render-peer
@@ -72,6 +74,7 @@
       ansible.builtin.set_fact:
         defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(defaults|vars)/main.yml$') | sort }}"
         template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
+        shared_defaults_files: "{{ query('ansible.builtin.fileglob', repo ~ '/group_vars/all/*.yml') | select('search', shared_defaults_regex) | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
     - name: Make sure the search found something
@@ -79,14 +82,14 @@
         that:
           - defaults_files | length > 0
           - template_files | length > 0
+          - shared_defaults_files | length > 0
 
     - name: Load the example vars, the vault example, the versions (role defaults load first, because they have the lowest precedence)
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
-        {{ defaults_files
-           + [repo + '/group_vars/all/defaults.yml',
-              repo + '/group_vars/all/derived.yml',
+        {{ defaults_files + shared_defaults_files
+           + [repo + '/group_vars/all/derived.yml',
               repo + '/group_vars/all/vars.yml.example',
               repo + '/group_vars/all/versions.yml',
               repo + '/group_vars/all/services.yml',
@@ -155,10 +158,10 @@
       register: site_yml
 
     # An undeclared flag would make the role silently skip (or fail) instead of being off by default.
-    - name: Every flag site.yml tests is declared in group_vars/all/defaults.yml
+    - name: Every flag site.yml tests is declared in group_vars/all/flags.yml
       ansible.builtin.assert:
-        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml"
-        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/defaults.yml does not declare."
+        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/flags.yml') | from_yaml"
+        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/flags.yml does not declare."
       loop: "{{ site_yml.content | b64decode | regex_findall('(\\w+)_enabled') | unique }}"
 
     # After include_vars, which would reset drives to the example's empty list.
@@ -247,7 +250,7 @@
     # Names built from a service's key cannot be found by a text search, so check them here.
     - name: A service with oidc or copyparty has its switch and its vault lines in the example files
       vars:
-        shared_defaults: "{{ lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml }}"
+        shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
         vault_example: "{{ lookup('ansible.builtin.file', repo + '/host_vars/vault.yml.example') | from_yaml }}"
         needed: >-
           {{ ([item.key ~ '_sso_enabled'] if item.oidc is defined else [])
@@ -257,19 +260,19 @@
         that: needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) | length == 0
         fail_msg: >-
           {{ item.key }} needs {{ needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) }}
-          in defaults.yml or vault.yml.example.
+          in the shared defaults files or vault.yml.example.
         quiet: true
       loop: "{{ services | selectattr('oidc', 'defined') | list + services | selectattr('copyparty', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
-    - name: Every service has its flag, and a web service its port and subdomain, in defaults.yml
+    - name: Every service has its flag, and a web service its port and subdomain, in the shared defaults files
       vars:
-        shared_defaults: "{{ lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml }}"
+        shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
         needed: "{{ [item.key ~ '_enabled'] + ([item.key ~ '_port', item.key ~ '_subdomain'] if item.icon is defined and item.port is not defined else []) }}"
       ansible.builtin.assert:
         that: needed | difference(shared_defaults.keys()) | length == 0
-        fail_msg: group_vars/all/defaults.yml needs {{ needed | difference(shared_defaults.keys()) }} (with a comment above each).
+        fail_msg: the shared defaults files in group_vars/all/ need {{ needed | difference(shared_defaults.keys()) }} (with a comment above each).
         quiet: true
       loop: "{{ services }}"
       loop_control:
@@ -700,6 +703,11 @@
     repo: "{{ playbook_dir }}/.."
     ansible_user: pi
   tasks:
+    - name: Load the shared defaults
+      ansible.builtin.include_vars:
+        dir: "{{ repo }}/group_vars/all"
+        files_matching: "{{ shared_defaults_regex }}"
+
     - name: Load the all/ examples and the Backup, Common and Copyparty defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
@@ -708,7 +716,6 @@
         - "{{ repo }}/roles/common/defaults/main.yml"
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
         - "{{ repo }}/roles/tinyauth/defaults/main.yml"
-        - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/derived.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"

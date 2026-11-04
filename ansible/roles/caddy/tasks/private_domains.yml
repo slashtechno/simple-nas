@@ -10,7 +10,7 @@
   ansible.builtin.set_fact:
     caddy_names: []
 
-# zone_ids: the cloudflare_zones domains the name belongs to (cloudflare_zone_ids_of_name, defaults.yml).
+# zone_ids: the cloudflare_zones domains the name belongs to (cloudflare_zone_ids_of_name, derived.yml).
 - name: Pair each name with its zone (the domains and their wildcards)
   ansible.builtin.set_fact:
     caddy_names: "{{ caddy_names + [{'name': item, 'zone_ids': zone_ids}] }}"

@@ -12,7 +12,7 @@ It watches Docker. A container's **labels** become Caddy configuration, and Cadd
 
 Runs on any host that sets `caddy_enabled: true`; needs the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet. The image is built on the host from `roles/caddy/files/Dockerfile`: Caddy, caddy-docker-proxy and the Cloudflare DNS plugin, each pinned in `versions.yml` (`caddy_version`, `caddy_docker_proxy_version`, `caddy_cloudflare_dns_version`). The first build compiles Caddy and takes 20+ minutes on a Pi.
 
-Caddy listens on ports 80 and 443 of the host; `caddy_data_dir` is in `ansible/group_vars/all/defaults.yml`. Losing `caddy_data_dir` means certificates are issued again.
+Caddy listens on ports 80 and 443 of the host; `caddy_data_dir` is in `ansible/group_vars/all/data-dirs.yml`. Losing `caddy_data_dir` means certificates are issued again.
 
 The container joins `services` (`docker_network`, created by `roles/network` on every server), has `CADDY_INGRESS_NETWORKS` set to it, and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 
@@ -45,14 +45,14 @@ caddy_private_domains: [pi4.example.com]
 
 On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon`, no fixed `port`, and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
 
-- The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label.
+- The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [web-uis.yml](../ansible/group_vars/all/web-uis.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea builds its links from one address, `gitea_root_url`, which defaults to its name under the first private domain; the other domains reach it too.
 - With more than one domain in `caddy_private_domains`, a service with `own_login` (or with Tinyauth off) is served under every domain, and one behind the login under the first only, because the session cookie covers one parent domain ([Tinyauth](./services.md#tinyauth-login)). The Homepage links to the first.
 - Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
 
 #### Ports and names
 
-Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml).
+Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its default from [web-uis.yml](../ansible/group_vars/all/web-uis.yml).
 
 ```yaml
 gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link

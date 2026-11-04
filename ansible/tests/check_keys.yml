@@ -14,8 +14,8 @@
   ansible.builtin.set_fact:
     known_keys: "{{ known_keys + (lookup('ansible.builtin.file', item) | from_yaml | default({}, true)).keys() | list }}"
   loop: >-
-    {{ [repo + '/group_vars/all/defaults.yml', repo + '/group_vars/all/derived.yml', repo + '/group_vars/all/versions.yml',
-        repo + '/group_vars/all/vars.yml.example', repo + '/host_vars/vars.yml.example'] + defaults_files }}
+    {{ [repo + '/group_vars/all/derived.yml', repo + '/group_vars/all/versions.yml',
+        repo + '/group_vars/all/vars.yml.example', repo + '/host_vars/vars.yml.example'] + defaults_files + shared_defaults_files }}
 
 - name: Every key in {{ real_file | basename }} must be declared somewhere
   ansible.builtin.assert:

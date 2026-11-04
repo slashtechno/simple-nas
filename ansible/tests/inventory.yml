@@ -4,6 +4,9 @@
 all:
   vars:
     ansible_connection: local
+    # The files in group_vars/all/ that hold shared defaults: every .yml except the owner's vars.yml and vault.yml,
+    # versions.yml, derived.yml and services.yml. Matches a file name or a path.
+    shared_defaults_regex: '(^|/)(?!(vars|vault|versions|derived|services)\.yml$)[a-z-]+\.yml$'
   children:
     servers:
       hosts:

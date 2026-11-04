@@ -4,7 +4,7 @@ Each service is a role with its own Docker Compose project at `/opt/services/<co
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults.yml` defaults to false; the two switches for base parts there, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/flags.yml` defaults to false; the two switches for base parts there, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -36,7 +36,7 @@ All commands below run from `ansible/`.
 | File | In git | Holds | Create it |
 |---|---|---|---|
 | `inventory/hosts.yml` | no (addresses) | The hosts under `servers`, with SSH address, user and key | Copy `hosts.yml.example` |
-| `group_vars/all/defaults.yml` | yes | Every shared setting with its default; all `<name>_enabled` flags, all false except `storage_enabled` and `tailscale_enabled` | Already there; not edited |
+| `group_vars/all/defaults.yml` and its topic files `flags.yml` (all `<name>_enabled`, false except `storage_enabled` and `tailscale_enabled`), `backups.yml`, `data-dirs.yml`, `cloudflare.yml`, `direct-link.yml`, `web-uis.yml` | yes | Every shared setting with its default; a setting is in exactly one of them | Already there; not edited |
 | `group_vars/all/vars.yml` | yes | Your values that apply to every host (timezone, SSH keys, Cloudflare zones, Gitea and pics URLs) | Copy `vars.yml.example` |
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
@@ -45,9 +45,9 @@ All commands below run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
-Every setting has a comment and its default in `group_vars/all/defaults.yml` (shared settings) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` only verifies that a vault name or a setting with no default appears in its example file ([Commands](#commands)).
+Every setting has a comment and its default in `group_vars/all/` (shared settings: `defaults.yml` and the topic files) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` only verifies that a vault name or a setting with no default appears in its example file ([Commands](#commands)).
 
-A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml`, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
+A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml` and its topic files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
 
 ## Vault (secrets)
 
@@ -112,7 +112,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 | Command | Does |
 |---|---|
-| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from `defaults.yml`, `site.yml`, `services.yml` or `docs/services.md`) |
+| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`) |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
@@ -136,14 +136,14 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | Setting | File |
 |---|---|
 | Used by one role | that role's `defaults/main.yml` |
-| Shared by several roles, with a default | `group_vars/all/defaults.yml` (change it for your hosts in `vars.yml`, not here) |
+| Shared by several roles, with a default | `group_vars/all/`: the topic file that fits (`flags.yml`, `data-dirs.yml`, `web-uis.yml` ...) or `defaults.yml` (change it for your hosts in `vars.yml`, not here) |
 | Your value for every host (timezone, SSH keys, Cloudflare zones) | `group_vars/all/vars.yml`, mirrored in `vars.yml.example` |
 | One host (its flags, drives, direct link, Docker data root, tunnel hostnames) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` ([vault](#vault-secrets)) |
 | Image versions | `group_vars/all/versions.yml` |
 | Computed from the above (`fast_drive`, `drive_mounts`, ...) | `group_vars/all/derived.yml`; not edited |
 
-Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. A role's options are named after the role or the tool it drives (`backup`'s are `restic_*`, `service_dumps_dir` and `rclone_config_dir`), and `ssh_authorized_keys` is listed in `group_vars/all/vars.yml.example` because nearly every owner changes it.
+Options in `defaults/main.yml`, the shared defaults files and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. A role's options are named after the role or the tool it drives (`backup`'s are `restic_*`, `service_dumps_dir` and `rclone_config_dir`), and `ssh_authorized_keys` is listed in `group_vars/all/vars.yml.example` because nearly every owner changes it.
 
 Service setup and gotchas are in [../docs/services.md](../docs/services.md); drives are in [../docs/storage.md](../docs/storage.md).
 
@@ -198,7 +198,7 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`, one line such as `myservice_image: owner/myservice:1.2.3` (pin a version, or a digest if upstream has no versioned tag). Give the container a `container_name` and use that name for `container` in its `services.yml` entry and for a `cloudflared_ingress` service; set `restart: unless-stopped`; check the image has arm64 and x64 builds (`just platforms`).
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
 4. `defaults/main.yml`: settings only this role reads.
-5. `group_vars/all/defaults.yml`: `myservice_enabled: false`, the data directory settings and, for a web UI, `myservice_port` and `myservice_subdomain`, each with a comment. Values with no sensible default go in `vars.yml.example`.
+5. `group_vars/all/`: `myservice_enabled: false` in `flags.yml`, the data directory settings in `data-dirs.yml` and, for a web UI, `myservice_port` and `myservice_subdomain` in `web-uis.yml`, each with a comment. Values with no sensible default go in `vars.yml.example`.
 6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}` (a service with no data directories leaves `data` out). It lists the data directories (the backup must cover them, and teardown deletes them with `remove_data=true`) and, for a web UI, the Homepage tile and Caddy container. The comment at the top of the file describes each field.
 7. `site.yml`: an `import_role` task with the tag `myservice` and `when: myservice_enabled | bool`.
 8. Its secrets go in the matching `vault.yml.example`, and a row naming `roles/myservice` in the table in [../docs/services.md](../docs/services.md).

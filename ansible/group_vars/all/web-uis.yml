@@ -1,0 +1,92 @@
+---
+# Web UIs: host ports, then names under the private domain.
+# Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
+
+# Set here because the Homepage links to them. Each listens on every interface: http://<host-tailscale-name>:<port>
+# (HTTPS: docs/caddy-reference.md). Set one to "" to publish no host port; the service is then
+# reachable only through its Caddy name, which the deploy checks is set up.
+# Immich's web UI and API (the mobile app connects here).
+immich_port: 2283
+
+# Copyparty's web UI and WebDAV.
+copyparty_port: 3923
+
+# Gitea's web UI.
+gitea_port: 3000
+
+# pics' owner pages (the guest pages never use a host port).
+pics_port: 8100
+
+# Dockge asks for an account on first visit. The published port skips Tinyauth, so Dockge keeps its own login while one is set; "" makes Tinyauth its only one.
+dockge_port: 5001
+
+# ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
+ntfy_port: 8090
+
+# Tinyauth's login page. Its address is https, so it needs a Caddy name; "" publishes no host port.
+tinyauth_port: ""
+
+# Dozzle's web UI. CAUTION: a published port skips the login, and Dozzle trusts the user Tinyauth names in a header (docs/services.md#tinyauth-login).
+dozzle_port: ""
+
+# Scrutiny's web UI. "" publishes no host port.
+scrutiny_port: ""
+
+# The read-only backup dashboard: no login of its own. Behind Tinyauth by default; a host without Tinyauth must set a port and accepts that anyone on the network can read backup status and file paths.
+backup_status_port: ""
+
+# The Homepage start page: no login of its own. Behind Tinyauth by default; a host without Tinyauth must set a port and accepts that anyone on the network can open it.
+homepage_port: ""
+
+# Crafty's panel (HTTPS); the container always listens on 8443.
+crafty_port: 28443
+
+# With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<private domain>
+# (docs/caddy-reference.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
+# Immich's name.
+immich_subdomain: immich
+
+# Copyparty's name.
+copyparty_subdomain: copyparty
+
+# Gitea's name. Gitea builds its links from one address, gitea_root_url, which defaults to this name under the first
+# private domain; the other private domains also reach it.
+gitea_subdomain: git
+
+# The one address Gitea puts in links, clone URLs and its Tinyauth sign-in. Default: gitea_subdomain under the first
+# caddy_private_domains entry. Set it when Gitea's address is something else, for example a public name through a tunnel.
+gitea_root_url: >-
+  {{ ('https://' ~ gitea_subdomain ~ '.' ~ caddy_private_domains[0] ~ '/')
+     if gitea_subdomain != '' and caddy_private_domains | length > 0
+     else undef(hint='Set gitea_root_url (Gitea\'s address, e.g. https://git.example.com/) in group_vars/all/vars.yml, or set caddy_private_domains') }}
+
+# pics' owner pages.
+pics_subdomain: pics
+
+# Crafty's panel.
+crafty_subdomain: crafty
+
+# Dockge's name.
+dockge_subdomain: dockge
+
+# ntfy's name; its own base URL (ntfy_base_url) is the address phones use.
+ntfy_subdomain: ntfy
+
+# The backup dashboard's name.
+backup_status_subdomain: backups
+
+# Tinyauth's login page.
+tinyauth_subdomain: auth
+
+# Dozzle's name.
+dozzle_subdomain: logs
+
+# Scrutiny's name.
+scrutiny_subdomain: disks
+
+# Homepage's name.
+homepage_subdomain: home
+
+# This host's private domains; each must contain a domain from cloudflare_zones. Here, not in the caddy role, because the
+# Homepage on another host reads it. What the deploy creates for them (DNS-only records, certificates): docs/caddy-reference.md#web-addresses-and-https.
+caddy_private_domains: []

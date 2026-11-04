@@ -11,7 +11,8 @@ import sys
 from pathlib import Path
 
 ANSIBLE = Path(__file__).resolve().parent.parent
-DEFAULT_FILES = ["group_vars/all/defaults.yml", "group_vars/all/versions.yml", "group_vars/all/derived.yml"]
+NOT_DEFAULTS = {"vars.yml", "vault.yml", "services.yml"}
+DEFAULT_FILES = sorted(str(p.relative_to(ANSIBLE)) for p in (ANSIBLE / "group_vars/all").glob("*.yml") if p.name not in NOT_DEFAULTS)
 DEFAULT_FILES += sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("roles/*/defaults/main.yml"))
 OWNER_FILES = ["group_vars/all/vars.yml"] + sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("host_vars/*/vars.yml"))
 

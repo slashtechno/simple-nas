@@ -29,7 +29,7 @@ caddy_private_domains: [pinas.slashtechno.com]
 caddy_sites: {pinas.slashtechno.com: {import: tinyauth_forwarder, reverse_proxy: "homepage:3000"}}
 homepage_host: pinas.slashtechno.com   # Homepage refuses any address but this one, the inventory name and the tailnet name
 
-# Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/defaults.yml).
+# Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/direct-link.yml).
 direct_link_enabled: true
 
 # --- Drives ---

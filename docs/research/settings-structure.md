@@ -1,6 +1,6 @@
 # Settings structure: options considered
 
-Status: research note, not kept current. It records why the settings stay flat and what could make them easier to find. Built: `just settings` (option 8). The owner decided to keep every setting listed under "Pruning audit" as it is: a default already is the sensible value, and hardcoding it only removes the option to change it.
+Status: research note, not kept current. It records why the settings stay flat and what could make them easier to find. Built: `just settings` (option 8) and the topic split (option 7: `flags.yml`, `backups.yml`, `data-dirs.yml`, `cloudflare.yml`, `direct-link.yml`, `web-uis.yml` beside `defaults.yml`, with a duplicate-key check in `tools/check_vars.py`). The owner decided to keep every setting listed under "Pruning audit" as it is: a default already is the sensible value, and hardcoding it only removes the option to change it.
 
 ## The problem
 

@@ -1,0 +1,18 @@
+---
+# Cloudflare account and tunnel (roles/cloudflared and roles/caddy; teardown does not read them).
+# Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
+
+# API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
+cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
+
+# Account ID, from the vault.
+cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
+
+# Domain -> zone ID. Zone IDs aren't secret. Set them in group_vars/all/vars.yml (shape in vars.yml.example).
+cloudflare_zones: {}
+
+# Cloudflare's API. Not a setting to change.
+cloudflare_api_url: https://api.cloudflare.com/client/v4
+
+# Public hostnames this host's tunnel serves, as {hostname, service} entries; a host that runs the tunnel lists its own (docs/services.md#cloudflare-add-a-public-hostname).
+cloudflared_ingress: []

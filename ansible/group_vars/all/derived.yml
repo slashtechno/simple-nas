@@ -1,5 +1,5 @@
 ---
-# Values worked out from the settings in defaults.yml and your vars.yml. Not settings: change the inputs, not these.
+# Values worked out from the shared settings and your vars.yml. Not settings: change the inputs, not these.
 # Here, not in a role, because several roles and teardown.yml read them.
 
 # The zone IDs of the cloudflare_zones domains that zone_name equals or ends with after a dot (not any domain that merely
