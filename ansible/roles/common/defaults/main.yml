@@ -2,7 +2,8 @@
 # SSH public keys allowed to log in as the Ansible user, one per device (a list of lines like `ssh-ed25519 AAAA... you@laptop`). Added, never removed:
 # a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
 ssh_authorized_keys: []
-# Install the Ghostty terminfo entry and zellij on the host (a terminal multiplexer). Set false to leave both out.
+# Install the Ghostty terminfo entry, zellij (a terminal multiplexer) and zoxide (a smarter `cd`) and bat (a `cat` with colours;
+# both set up in the Ansible user's ~/.bashrc, interactive shells only) on the host. Set false to leave all four out.
 terminal_tools_enabled: true
 # Where a failed backup job and a recovered connection are sent, besides the system log (`journalctl -t backup`): the
 # URL of an ntfy topic, for example "http://pinas:8090/alerts" (the ntfy this repo runs, over the tailnet),

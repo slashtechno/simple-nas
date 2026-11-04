@@ -1,5 +1,5 @@
 ---
-# Terminal tools: the Ghostty terminfo entry and zellij.
+# Terminal tools: the Ghostty terminfo entry, zellij, zoxide and bat.
 
 # Terminals send TERM=xterm-ghostty, which a fresh Debian does not know: without it, full-screen
 # programs (zellij, vim) misbehave over SSH. Compiled from the Mac's own entry (infocmp -x xterm-ghostty).
@@ -49,3 +49,32 @@
         dest: /usr/local/bin/zellij
         state: link
         force: true   # replaces a copy installed by hand
+
+# zoxide remembers the directories you use and makes `cd` jump to them (`cd photos` goes to the most-used
+# directory matching "photos"; `cd /some/path` and `cd ..` work as before). `--cmd cd` is what replaces cd.
+# bat is `cat` with syntax colours; Debian and Ubuntu name the program batcat. plain style and no pager keep
+# the output as copyable as cat's, and bat prints plain text by itself when its output is piped.
+# Both go at the end of the Ansible user's ~/.bashrc, after Debian's "return unless interactive" line, and
+# aliases and shell functions exist only in interactive shells, so scripts, cron, `ssh host command` and sudo
+# still get the real cd and cat (`\cat` skips the alias by hand). blockinfile finds its own markers, so a rerun
+# changes nothing.
+- name: Install zoxide and bat
+  ansible.builtin.apt:
+    name:
+      - zoxide
+      - bat
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Make cd use zoxide and cat use bat in the Ansible user's shell
+  ansible.builtin.blockinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED: terminal tools"
+    block: |
+      command -v zoxide >/dev/null && eval "$(zoxide init bash --cmd cd)"
+      command -v batcat >/dev/null && alias cat='batcat --style=plain --paging=never'
+    create: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
