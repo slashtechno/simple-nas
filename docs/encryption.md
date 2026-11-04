@@ -31,7 +31,7 @@ It does not protect:
 - what the ciphertext's shape shows: the number of files and folders, their depth, roughly how long each name is, and every file's size (rounded up to 4 KiB) and modification time. The names themselves are encrypted;
 - the root drive. A headless host cannot take a passphrase at boot, so it holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the local and cloud backups, though not a listed folder;
 - the backup logs, which list every backed-up path in plain text, and the service dumps ([Dumps and backups](#dumps-and-backups));
-- a passphrase typed on a device that records it. After using a borrowed device, run `sudo gocryptfs -passwd <the .gocryptfs folder>` for every folder, then `sudo unlock.sh` (it gives the rewritten `gocryptfs.conf` back its owner, so the backups can still read it). That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`.
+- a passphrase typed on a device that records it. After using a borrowed device, change the passphrase of every folder with `sudo gocryptfs -passwd <the .gocryptfs folder>` (gocryptfs's change-passphrase command), then run `sudo unlock.sh` (it gives the rewritten `gocryptfs.conf` back its owner, so the backups can still read it). That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`.
 
 ## How it works
 
@@ -63,7 +63,7 @@ encrypted_folders:
   - /mnt/data/apps     # pics' photos and trash (pics_photos_dir, pics_trash_dir), if pics is on
 ```
 
-Listing `/mnt/data/docker` puts every service's database behind the encrypted view, including Immich's Postgres (`immich_db_data_location`). That works, but databases are the most latency-sensitive data on the host, so it is a choice to make on purpose, and one to try out before real data goes in.
+Listing `/mnt/data/docker` encrypts every service's database too, including Immich's Postgres (`immich_db_data_location`), which holds file names, dates, locations and face data. Databases make many small writes and every one passes through the encryption, so they are the slowest thing to encrypt. Try it with your real workload before moving data in. The folder is then locked after every boot, and Immich stays down until `unlock.sh` runs.
 
 `/mnt/data/fast` and `/mnt/data/collab` also hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on. A service added later with its data under `{{ fast_drive }}/docker` is covered without a change. Anything else on the drive stays plain.
 
