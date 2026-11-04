@@ -1,8 +1,0 @@
-#!/bin/bash
-# Ansible-managed (roles/encryption): the deploy rewrites this file. unlock.sh runs it after mounting the folders.
-# A container that started while its folder was locked keeps the empty folder; restarting Docker shows the files.
-# Containers started without a restart policy are not started again. Your own start commands go in a script beside
-# this one (docs/encryption.md).
-set -euo pipefail
-systemctl restart docker
-echo "Docker restarted."

@@ -40,24 +40,6 @@
   loop: [unlock.sh, init-encrypted-folder.sh]
   when: encrypted_folders | length > 0
 
-- name: Create the after-unlock scripts directory
-  ansible.builtin.file:
-    path: "{{ encryption_hooks_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-  when: encrypted_folders | length > 0
-
-- name: Install the Docker restart script
-  ansible.builtin.template:
-    src: 00-docker.sh.j2
-    dest: "{{ encryption_hooks_dir }}/00-docker.sh"
-    owner: root
-    group: root
-    mode: "0755"
-  when: encrypted_folders | length > 0
-
 - name: Remove the encryption scripts
   ansible.builtin.file:
     path: "{{ item }}"
@@ -65,5 +47,4 @@
   loop:
     - "{{ scripts_dir }}/unlock.sh"
     - "{{ scripts_dir }}/init-encrypted-folder.sh"
-    - "{{ encryption_hooks_dir }}/00-docker.sh"
   when: encrypted_folders | length == 0

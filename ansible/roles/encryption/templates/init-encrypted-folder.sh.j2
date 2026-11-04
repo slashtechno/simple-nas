@@ -22,19 +22,12 @@ if [ -n "$(ls -A "$FOLDER")" ]; then
   exit 1
 fi
 
-# The cipher cannot be changed later. A CPU with AES instructions is fastest with the default (AES-GCM);
-# one without (Raspberry Pi 4) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
-if grep -qw aes /proc/cpuinfo; then
-  CIPHER_OPTION=""
-else
-  CIPHER_OPTION="-xchacha"
-fi
-
 mkdir "$CIPHER"
 # The mounted folder's top directory shows the cipher folder's owner and mode, so copy them from the mount point: that is
 # what gives the decrypted folder the owner the deploy or the owner gave this folder (docs/encryption.md).
 chown --reference="$FOLDER" "$CIPHER"
 chmod --reference="$FOLDER" "$CIPHER"
-# shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
-gocryptfs -init $CIPHER_OPTION "$CIPHER"
+# XChaCha20 for every host: fast with or without AES instructions (a Raspberry Pi 4 has none). The cipher cannot be
+# changed later, and a folder opened on another machine needs gocryptfs 2.2 or later.
+gocryptfs -init -xchacha "$CIPHER"
 echo "Created $CIPHER. Next: save the master key above, copy $CIPHER/gocryptfs.conf off this host, run unlock.sh."
