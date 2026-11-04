@@ -11,7 +11,7 @@ default:
 
 # List every setting with its default, file and overrides; a word filters by name: `just settings gitea`
 settings word='':
-    @uv run --quiet tools/settings.py {{ word }}
+    @if command -v uv >/dev/null; then uv run --quiet tools/settings.py {{ word }}; else python3 tools/settings.py {{ word }}; fi
 
 # Install the Ansible collections and roles this repo needs
 deps:

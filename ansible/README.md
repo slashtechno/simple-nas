@@ -16,7 +16,7 @@ All commands below run from `ansible/`.
 | Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>` |
 | Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
-| Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
+| Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `python3 tools/settings.py <part>`, or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
 | Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Update the OS, Docker Engine or Tailscale | nothing to edit | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
@@ -113,7 +113,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | Command | Does |
 |---|---|
 | `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file), `_links` (a `file.md#anchor` naming no heading), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`) |
-| `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Needs `uv`: the script (`tools/settings.py`) declares its one dependency in its own header, and a recipe that outgrows a shell line is written the same way |
+| `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Uses `uv` for colour when installed (the script, `tools/settings.py`, declares its one dependency in its own header, and a recipe that outgrows a shell line is written the same way); without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
