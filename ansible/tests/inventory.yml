@@ -9,10 +9,10 @@ all:
       hosts:
         # Every drive role claimed: every template can render against it.
         render-full:
-          ansible_host: full.example.test
+          ansible_host: full.example.com
         # A second server with only a few services on, so the Homepage groups a second host.
         render-peer:
-          ansible_host: peer.example.test
+          ansible_host: peer.example.com
     layouts:
       hosts:
         # Only the root drive: no role claimed, nothing but the user's home to back up.

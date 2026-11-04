@@ -17,7 +17,7 @@ The `common` role runs on every host. It installs base packages (curl, git, vim,
 |---|---|---|---|---|
 | Immich | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles; `vault_immich_db_password` | [Immich](#immich) |
 | Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_pass`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
-| Gitea | Git server | `roles/gitea` | `fast` drive role; `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
+| Gitea | Git server | `roles/gitea` | `fast` drive role; `caddy_private_domains` or `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
 | pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_pass` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
@@ -49,7 +49,7 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 
 Git hosting with an optional Actions runner.
 
-- Set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. `gitea_domain` and `gitea_ssh_domain` default to the host name in `gitea_root_url`; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
+- Gitea's address, `gitea_root_url`, defaults to `https://<gitea_subdomain>.<first private domain>/` (`https://git.pi4.example.com/`). Set it in `group_vars/all/vars.yml` or the host's `vars.yml` for any other address, such as a public name through a tunnel; a host with no `caddy_private_domains` must set it. The other private domains also reach Gitea, but links, clone URLs and Tinyauth sign-in use `gitea_root_url`. `gitea_domain` and `gitea_ssh_domain` default to the host name in `gitea_root_url`; set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
 - `gitea_sso_enabled: true` lets a Tinyauth login open Gitea ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
@@ -134,12 +134,12 @@ Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudfla
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
 1. Make the secrets: a login password and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
-2. On the host that runs ntfy, set `ntfy_enabled: true` and `ntfy_server: <that host's inventory name>` in its `vars.yml`; `just deploy ntfy,common --limit <host>`.
+2. On the host that runs ntfy, set `ntfy_enabled: true` in its `vars.yml`, then `just deploy ntfy --limit <host>`. Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but the `alerts` user and its token, so the published port asks for a login even on the LAN. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
-- One ntfy server serves the whole homelab. Another host sends its alerts there by setting only `ntfy_server: <the ntfy host's inventory name>` (and no `ntfy_enabled`); it needs `vault_ntfy_token` from `group_vars/all/vault.yml`, and `just deploy common --limit <host>` after setting `ntfy_server`. A host with neither setting sends nothing. A server this repo does not run, such as ntfy.sh, is `ntfy_alert_url`.
+- `ntfy_alert_url` is the one setting that turns alerts on: the URL of an ntfy topic, in `group_vars/all/vars.yml` for every host or in one host's `vars.yml`. For the ntfy this repo runs it ends with the topic (`ntfy_topic`, `alerts`): `http://<host-tailscale-name>:8090/alerts`, or `https://ntfy.<host>.<your domain>/alerts` with Caddy. A server this repo does not run works the same: `https://ntfy.sh/<your-topic>`. It needs `vault_ntfy_token` from `group_vars/all/vault.yml`. One ntfy server serves the whole homelab; a host without `ntfy_alert_url` sends nothing.
 - `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers; it writes to the system log under the tag it is given (`journalctl -t backup` for the backup jobs, `-t connectivity` for the watchdog) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.

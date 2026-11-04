@@ -121,7 +121,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 It mounts each locked folder, then runs the scripts in `after-unlock.d`; containers started without a restart policy are not started again. A wrong passphrase stops it at that folder and says which; the scripts still run if an earlier folder had been mounted. It stops if a locked folder is not empty (move the files away first) instead of hiding them, and it does nothing on an unlocked host. The passphrase can also arrive on standard input (`printf %s "$PASSPHRASE" | sudo .../unlock.sh`).
 
-After a reboot, services with encrypted data stay down until someone unlocks, and the backups of every drive refuse to run while any listed folder is locked. A failed backup pushes an alert only if `ntfy_server` is set, and an ntfy server on this host is down when Docker is; point `ntfy_server` at another host (or `ntfy_alert_url` at ntfy.sh) to hear about a locked host.
+After a reboot, services with encrypted data stay down until someone unlocks, and the backups of every drive refuse to run while any listed folder is locked. A failed backup pushes an alert only if `ntfy_alert_url` is set, and an ntfy server on this host is down when Docker is; point `ntfy_alert_url` at another host's ntfy (or at ntfy.sh) to hear about a locked host.
 
 To lock again: stop the containers that use the folder, then `sudo umount <folder>`.
 

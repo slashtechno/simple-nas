@@ -113,19 +113,19 @@
     - name: Turn on the optional settings that change a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
-        homepage_links: [{name: Example, href: "https://example.test", description: "a: b", icon: mdi-star, monitor: true}]
+        homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
         pics_artist: Render Test
-        pics_website: https://example.test
+        pics_website: https://example.com
         pics_instagram: render_test
-        caddy_private_domains: [caddy.example.test, second.example.test]
+        caddy_private_domains: [pi4.example.com, second.example.com]
         caddy_sites:
-          home.caddy.example.test: {reverse_proxy: "homepage:3000"}
-          "gh.caddy.example.test": {redir: "https://github.com{uri}"}
+          home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+          "gh.pi4.example.com": {redir: "https://github.com{uri}"}
         vault_tinyauth_users: [{name: one, password: "pass$word"}, {name: two, password: second, totp: JBSWY3DPEHPK3PXP}]
-        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.test"}
+        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.com"}
         immich_port: ""
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
@@ -136,7 +136,7 @@
         gitea_sso_enabled: true
         immich_sso_enabled: true
         pics_sso_enabled: true
-        pics_oidc_owner: owner@example.test
+        pics_oidc_owner: owner@example.com
         vault_pics_oidc_secret: "pics$secret"
         vault_gitea_oidc_secret: "gitea$secret"
         vault_immich_oidc_secret: "immich$secret"
@@ -440,15 +440,15 @@
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
-          - "caddy_labels[caddy_site['home.caddy.example.test'] ~ '.reverse_proxy'] == 'homepage:3000'"
-          - "'immich.caddy.example.test immich.second.example.test' in caddy_site"
-          - "(caddy_site['crafty.caddy.example.test'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
-          - "caddy_labels[caddy_site['gh.caddy.example.test'] ~ '.redir'] == 'https://github.com{uri}'"
+          - "caddy_labels[caddy_site['home.pi4.example.com'] ~ '.reverse_proxy'] == 'homepage:3000'"
+          - "'immich.pi4.example.com immich.second.example.com' in caddy_site"
+          - "(caddy_site['crafty.pi4.example.com'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
+          - "caddy_labels[caddy_site['gh.pi4.example.com'] ~ '.redir'] == 'https://github.com{uri}'"
           - "'http://render-full' in caddy_site"
-          - "caddy_labels[caddy_site['dockge.caddy.example.test'] ~ '.import'] == 'tinyauth_forwarder'"
-          - "caddy_labels[caddy_site['copyparty.caddy.example.test'] ~ '.import'] == 'tinyauth_forwarder'"
-          - "caddy_labels[caddy_site['copyparty.caddy.example.test'] ~ '.reverse_proxy.header_up'] == 'idp$$key 1'"
-          - "'copyparty.second.example.test' not in (caddy_site.keys() | join(' '))"
+          - "caddy_labels[caddy_site['dockge.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.reverse_proxy.header_up'] == 'idp$$key 1'"
+          - "'copyparty.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
@@ -462,41 +462,41 @@
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'/mnt/primary/apps/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'dockge.second.example.test' not in (caddy_site.keys() | join(' '))"
-          - "(caddy_site['immich.caddy.example.test immich.second.example.test'] ~ '.import') not in caddy_labels"
-          - "(caddy_site['crafty.caddy.example.test'] ~ '.import') in caddy_labels"
+          - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
+          - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
+          - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
           - "'TINYAUTH_AUTH_USERS: ' ~ \"'one:$$2b$$\" in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "':JBSWY3DPEHPK3PXP\\'' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'pass$word' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
-          - "'TINYAUTH_APPURL: \"https://auth.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_APPURL: \"https://auth.pi4.example.com\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: \"s$$ecret\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           # A client per app that signs in through Tinyauth, with the app's own redirect URIs and the secret escaped.
           - "'TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTID: \"gitea\"' in tinyauth_compose"
           - "\"TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTSECRET: 'gitea$$secret'\" in tinyauth_compose"
-          - "'TINYAUTH_OIDC_CLIENTS_GITEA_TRUSTEDREDIRECTURIS: \"https://gitea.example.com/user/oauth2/tinyauth/callback\"' in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_GITEA_TRUSTEDREDIRECTURIS: \"https://git.pi4.example.com/user/oauth2/tinyauth/callback\"' in tinyauth_compose"
           - "'TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTID: \"immich\"' in tinyauth_compose"
           - "\"TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: 'immich$$secret'\" in tinyauth_compose"
           - >-
-            ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.caddy.example.test/auth/login,'
-            ~ 'https://immich.second.example.test/auth/login,https://immich.caddy.example.test/user-settings,'
-            ~ 'https://immich.second.example.test/user-settings,app.immich:///oauth-callback"')
+            ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.pi4.example.com/auth/login,'
+            ~ 'https://immich.second.example.com/auth/login,https://immich.pi4.example.com/user-settings,'
+            ~ 'https://immich.second.example.com/user-settings,app.immich:///oauth-callback"')
             in tinyauth_compose
           - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
           - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"
-          - "'TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: \"https://pics.caddy.example.test/api/auth/oidc/callback\"' in tinyauth_compose"
-          - "\"HUB_OIDC_ISSUER='https://auth.caddy.example.test'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"HUB_OIDC_REDIRECT_URL='https://pics.caddy.example.test/api/auth/oidc/callback'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"HUB_OIDC_OWNER='owner@example.test'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: \"https://pics.pi4.example.com/api/auth/oidc/callback\"' in tinyauth_compose"
+          - "\"HUB_OIDC_ISSUER='https://auth.pi4.example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_REDIRECT_URL='https://pics.pi4.example.com/api/auth/oidc/callback'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_OWNER='owner@example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "\"HUB_OIDC_CLIENT_SECRET='pics$secret'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.networks.services.aliases
-            == ['auth.caddy.example.test', 'auth.second.example.test']
+            == ['auth.pi4.example.com', 'auth.second.example.com']
           - "'GITEA__oauth2_client__OPENID_CONNECT_SCOPES: \"openid email profile\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: \"false\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.clientSecret == 'immich$secret'"
-          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.caddy.example.test'"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.pi4.example.com'"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).passwordLogin.enabled"
           - "'IMMICH_CONFIG_FILE: /immich-config.json' in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
@@ -511,7 +511,7 @@
           - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
-          - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'NTFY_BEHIND_PROXY' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
@@ -527,7 +527,7 @@
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'home.caddy.example.test,home.second.example.test,' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "'home.pi4.example.com,home.second.example.com,' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "(',' ~ homepage_host ~ '\"') in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - >-
@@ -539,16 +539,16 @@
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
             | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
-            == ['https://immich.caddy.example.test', 'http://full.example.test:3000', 'https://crafty.caddy.example.test']
+            == ['https://immich.pi4.example.com', 'https://git.pi4.example.com', 'https://crafty.pi4.example.com']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
-            | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.test:5001', 'http://peer.example.test:8090']
+            | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.com:5001', 'http://peer.example.com:8090']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.icon == 'mdi-star'
           - >-
-            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.test'
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.com'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
@@ -589,7 +589,7 @@
         labels: "{{ (sso_off.results[1].content | b64decode | from_yaml).services.caddy.labels }}"
         sites: "{{ labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
         site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
-        copyparty_hosts: "copyparty.caddy.example.test copyparty.second.example.test"
+        copyparty_hosts: "copyparty.pi4.example.com copyparty.second.example.com"
       ansible.builtin.assert:
         that:
           - "'idp-h-usr' not in conf"
@@ -643,7 +643,7 @@
           - "'IMMICH_CONFIG_FILE' not in immich_compose"
           - "'immich-config.json' not in immich_compose"
           # The login page keeps its name inside the network whatever apps sign in through it.
-          - "'auth.caddy.example.test' in caddy_compose"
+          - "'auth.pi4.example.com' in caddy_compose"
         quiet: true
 
     # Without Tinyauth there is no login page for the network to resolve and nothing to sign in through it.
@@ -666,7 +666,7 @@
       ansible.builtin.assert:
         that:
           - "'aliases:' not in caddy_compose"
-          - "'auth.caddy.example.test' not in caddy_compose"
+          - "'auth.pi4.example.com' not in caddy_compose"
         quiet: true
 
     # With the snippet gone, a site that imports it would make Caddy reject its whole config, and the deploy would
@@ -674,7 +674,7 @@
     - name: Give the host a site that imports Tinyauth's snippet
       ansible.builtin.set_fact:
         caddy_sites:
-          app.caddy.example.test: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
+          app.pi4.example.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
 
     - name: That site without Tinyauth fails the Caddy check
       block:
@@ -935,48 +935,7 @@
             quiet: true
           when: backup_local_enabled | bool
 
-        # ntfy_server builds ntfy_alert_url from the named host: this host's own ntfy is localhost, another host's is
-        # its ansible_host. ntfy_alert_url is still the lazy default loaded from the common role's defaults here.
-        - name: Point alerts at the peer host's ntfy
-          ansible.builtin.set_fact:
-            ntfy_server: render-peer
-
-        - name: Alerts go to the peer host's address and ntfy port
-          ansible.builtin.assert:
-            that: ntfy_alert_url == 'http://peer.example.test:' ~ ntfy_port ~ '/alerts'
-            quiet: true
-
-        - name: Point alerts at this host's own ntfy
-          ansible.builtin.set_fact:
-            ntfy_server: "{{ inventory_hostname }}"
-
-        - name: Alerts to this host go to localhost
-          ansible.builtin.assert:
-            that: ntfy_alert_url == 'http://localhost:' ~ ntfy_port ~ '/alerts'
-            quiet: true
-
-        - name: Point alerts at a host that is not in the inventory
-          ansible.builtin.set_fact:
-            ntfy_server: no-such-host
-
-        - name: That fails the ntfy_server check
-          block:
-            - name: Run the check
-              ansible.builtin.import_tasks: "{{ repo }}/roles/common/tasks/check_ntfy_server.yml"
-            - name: The check must have failed
-              ansible.builtin.fail:
-                msg: check_ntfy_server.yml accepted a host that is not in the inventory
-          rescue:
-            - name: Only the ntfy_server check may fail here
-              ansible.builtin.assert:
-                that: "'ntfy_server is \"no-such-host\"' in ansible_failed_result.msg"
-                quiet: true
-
-        - name: Send nothing without ntfy_server
-          ansible.builtin.set_fact:
-            ntfy_server: ""
-
-        - name: No ntfy_server means no alert URL
+        - name: Send nothing unless ntfy_alert_url is set
           ansible.builtin.assert:
             that: ntfy_alert_url == ''
             quiet: true

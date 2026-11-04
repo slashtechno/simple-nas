@@ -2,7 +2,7 @@
 
 Words you do not know are defined in the [glossary](./glossary.md).
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_server`). Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) or `ansible/group_vars/all/defaults.yml` (repositories, retention, logs).
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_alert_url`). Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) or `ansible/group_vars/all/defaults.yml` (repositories, retention, logs).
 
 ## Switching backups on
 
@@ -189,7 +189,7 @@ restic -r /mnt/offline/restic-repo copy \
 
 The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and again when it ends. A missing, unreadable or too old file shows as an error, never as ok; the `.log` files are for reading. `cat /mnt/backup/logs/restic-local.status.json` shows what the last run did. A run that stops before writing the file (a mount guard, such as a dropped backup drive) leaves the previous result in place, so a card can still say ok for up to 36 hours (9 days for the weekly jobs) after the first such failure; the alert is what reports it.
 
-A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_server` set (and `just deploy common`), sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
+A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set (and `just deploy common`), sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 ```bash
 restic snapshots                                  # add --tag daily or --tag weekly to filter

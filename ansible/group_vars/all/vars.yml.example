@@ -9,9 +9,10 @@ ssh_authorized_keys:
 # Domain -> Cloudflare zone ID, for hosts that run a tunnel (cloudflared_enabled) or set caddy_private_domains.
 cloudflare_zones:
   example.com: your_zone_id
-# Gitea (gitea_enabled): its public URL. The host name and the SSH clone name come from it;
+# Gitea (gitea_enabled): leave this out to use https://git.<first caddy_private_domains entry>/. Set it for any other
+# address, for example a public name through a tunnel. The host name and the SSH clone name come from it;
 # set gitea_domain or gitea_ssh_domain only to use a different name (docs/services.md).
-gitea_root_url: "https://gitea.example.com/"
+# gitea_root_url: "https://gitea.example.com/"
 # pics (pics_enabled): the private GitHub repo it builds from and its public guest URL.
 pics_repo: owner/lab
 pics_public_url: "https://photos.example.com"

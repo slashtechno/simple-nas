@@ -1,6 +1,4 @@
 ---
-# Public URL Gitea puts in links.
-gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
 # Host name Gitea serves its web pages for. Default: the host name in gitea_root_url.
 gitea_domain: "{{ gitea_root_url | urlsplit('hostname') }}"
 # Host name shown in SSH clone URLs. Set it when SSH clones use a different name than the web page

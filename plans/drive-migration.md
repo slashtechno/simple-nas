@@ -60,7 +60,7 @@ Do this only once the new repository has verified snapshots and the old snapshot
 - [ ] Try the role on a throwaway folder on pi4 first (TODO.md).
 - [ ] Pick the folders ([encryption.md](../docs/encryption.md#which-folders-to-list)); they must sit under `/mnt/main` or `/mnt/t7`, which the default backup rules cover. To encrypt `service_dumps_dir` as well, add it to `restic_local_extra_rules`.
 - [ ] Decide on `/mnt/t7/docker`: it holds Immich's Postgres, which would then run on the encrypted view. `docker_data_root` must stay outside every listed folder.
-- [ ] After each reboot of pinas, nothing is backed up and the encrypted services stay down until someone runs `sudo /opt/services/scripts/unlock.sh`. Set `ntfy_server` to a host that stays up so a locked pinas raises an alert.
+- [ ] After each reboot of pinas, nothing is backed up and the encrypted services stay down until someone runs `sudo /opt/services/scripts/unlock.sh`. Set `ntfy_alert_url` to the ntfy of a host that stays up so a locked pinas raises an alert.
 - [ ] After the first backup of each encrypted folder, check that the snapshot holds its `gocryptfs.conf`.
 
 ## 5. Retire the old 500GB HDD

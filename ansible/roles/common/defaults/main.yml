@@ -4,16 +4,9 @@
 ssh_authorized_keys: []
 # Install the Ghostty terminfo entry and zellij on the host (a terminal multiplexer). Set false to leave both out.
 terminal_tools_enabled: true
-# A failed backup job, and a recovered connection, always go to the system log (`journalctl -t backup`). To also send
-# them to your phone, set this to the inventory name of the host that runs ntfy (it needs ntfy_enabled: true). Any
-# host can name it, itself or another one, because a homelab needs one ntfy server. "" sends nothing. The login
-# token is vault_ntfy_token. A host that is down or unreachable cannot alert. The URL is http:// to the host's
-# ansible_host, so the token is encrypted only when that address is on the tailnet (Tailscale encrypts it); for
-# a host reached over a plain LAN, set ntfy_alert_url to an https:// Caddy name instead.
-ntfy_server: ""
-# The topic URL alerts are posted to. The default is built from ntfy_server. Set it yourself only for a server this
-# repo does not run, such as "https://ntfy.sh/<your-topic>".
-ntfy_alert_url: >-
-  {{ '' if ntfy_server == ''
-     else 'http://' ~ ('localhost' if ntfy_server == inventory_hostname else hostvars[ntfy_server].ansible_host | default(ntfy_server))
-          ~ ':' ~ hostvars[ntfy_server].ntfy_port ~ '/' ~ ntfy_topic }}
+# Where a failed backup job and a recovered connection are sent, besides the system log (`journalctl -t backup`): the
+# URL of an ntfy topic, for example "http://pinas:8090/alerts" (the ntfy this repo runs, over the tailnet),
+# "https://ntfy.pinas.example.com/alerts" (its Caddy name) or "https://ntfy.sh/<your-topic>". "" sends nothing.
+# The login token is vault_ntfy_token. A host that is down or unreachable cannot alert. Use https:// or a tailnet
+# address: the token travels in the request. For the ntfy this repo runs, the path must be ntfy_topic.
+ntfy_alert_url: ""

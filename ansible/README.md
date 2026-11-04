@@ -67,7 +67,7 @@ By hand instead: put a password in `.vault-pass`, copy `host_vars/vault.yml.exam
 
 A vault file you forget to encrypt still deploys, with its secrets in plain text on your computer: check that it starts with `$ANSIBLE_VAULT`.
 
-`.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value. What each service needs is listed in [docs/services.md](../docs/services.md); the names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`. Keep a copy of the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
+`.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value. The names are flat (`vault_ntfy_token`, not `vault.ntfy.token`) on purpose: Ansible replaces a dict instead of merging it, so a host file holding one key of an app's dict would hide the others from the shared file, and one app's secrets are split that way (ntfy's token is shared, its password is per host). What each service needs is listed in [docs/services.md](../docs/services.md); the names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`. Keep a copy of the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
 
 ## First-time setup
 

@@ -46,7 +46,7 @@ caddy_private_domains: [pi4.example.com]
 On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon`, no fixed `port`, and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
 
 - The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label.
-- Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
+- Homebridge has no name: it runs on the host network. Gitea builds its links from one address, `gitea_root_url`, which defaults to its name under the first private domain; the other domains reach it too.
 - With more than one domain in `caddy_private_domains`, a service with `own_login` (or with Tinyauth off) is served under every domain, and one behind the login under the first only, because the session cookie covers one parent domain ([Tinyauth](./services.md#tinyauth-login)). The Homepage links to the first.
 - Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
 
