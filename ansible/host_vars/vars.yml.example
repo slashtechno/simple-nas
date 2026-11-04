@@ -28,6 +28,14 @@
 # backup_cloud_enabled: true
 # restic_cloud_repository: "rclone:gdrive:/<host>-backups"
 
+# --- Copyparty extras ---
+# Any Copyparty option not covered by a setting (an SFTP or FTP listener, accounts, volumes), and the ports to publish
+# for it as "host:container" strings. Worked example: docs/services.md#copyparty-accounts-and-volumes
+# copyparty_extra_conf: |
+#   [global]
+#     ftp: 3921
+# copyparty_extra_ports: ["3921:3921"]
+
 # --- Cloudflare Tunnel ---
 # Public hostnames this host's tunnel serves (cloudflared_enabled; docs/services.md#cloudflare-add-a-public-hostname).
 # Exactly two keys per entry, no `path:`.

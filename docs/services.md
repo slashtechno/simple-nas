@@ -67,7 +67,7 @@ Apps that store files in Copyparty (pics) get an account named after the app, wi
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
-Any other Copyparty option (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config; Copyparty merges the sections of both files ([config reference](https://github.com/9001/copyparty#global-options)). Publish the listener's port with `copyparty_extra_ports`. For an SFTP login for a sync client (WebDAV lacks the modtimes rclone needs):
+Any other Copyparty option (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config; Copyparty merges the sections of both files ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_ports` publishes the listener's port. Each entry is a `"host:container"` string, as in a compose `ports:` list: the container port is the number Copyparty listens on (the `sftp:` value below), the host port is the one clients connect to (`sftp://<host>:3922`). Without an entry the listener is reachable only from other containers. For an SFTP login for a sync client (WebDAV lacks the modtimes rclone needs):
 
 ```yaml
 copyparty_extra_ports: ["3922:3922"]

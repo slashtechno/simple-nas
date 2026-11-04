@@ -1,0 +1,4 @@
+---
+# unlock.sh runs every `<name>.sh` here as root, in name order, after mounting the folders. The deploy writes only
+# 00-docker.sh (restarts Docker); the scripts you add start any other software and are never touched (docs/encryption.md).
+encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"

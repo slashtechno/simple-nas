@@ -26,9 +26,10 @@ Each entry in `encrypted_folders` is the absolute path of one folder. gocryptfs 
 Folders you do not list stay plain.
 
 - **Locked folder.** It is an empty folder marked immutable (`chattr +i`), so a container or a deploy that runs too early fails with "Operation not permitted" instead of filling the drive underneath. `unlock.sh` sets the mark just before the first mount, and only on a filesystem that supports it (ext4, xfs, btrfs); elsewhere it warns and mounts anyway. Root can remove the flag, so it is a safety net against mistakes, not a security boundary.
-- **Containers do not wait for the unlock.** One with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker. That stops every container for up to 10 seconds, including ones with plain data. Software outside Docker that uses a listed folder (a systemd service, a cron job) is not restarted: restart it by hand after the unlock.
+- **Containers do not wait for the unlock.** One with data in a locked folder fails to start, or sees an empty folder, until `unlock.sh` restarts Docker (its `00-docker.sh` script). That stops every container for up to 10 seconds, including ones with plain data.
+- **After-unlock scripts.** After mounting, `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`, in `scripts_dir`) as root, in name order. The deploy installs `00-docker.sh` there and never touches your own. For other software that uses a listed folder (a systemd service, a supervisor program, a cron job), add a script with its restart command, for example `systemctl restart myapp`. A script that fails does not stop the others, and the unlock then exits with an error.
 - **Docker's own storage** (`docker_data_root`) cannot be in a listed folder, because overlay2 does not run on a FUSE filesystem. The deploy fails if it is. `sshd` and Tailscale run on the host, so you can reach it to unlock.
-- **Cipher.** XChaCha20, fixed for every host. It cannot be changed later, and a folder opened on another machine needs gocryptfs 2.2 or later (`brew install gocryptfs macfuse`).
+- **Cipher.** `init-encrypted-folder.sh` picks it for the CPU: AES-GCM (gocryptfs's default, fastest) when the CPU has AES instructions, XChaCha20 when it has none (a Raspberry Pi 4). Both use 256-bit keys. The choice cannot be changed later, but it is recorded in the folder's `gocryptfs.conf`, so a folder opens on any CPU: an AES-GCM folder on a CPU without AES instructions is only slower. XChaCha20 needs gocryptfs 2.2 or later on any other machine that opens the folder (`brew install gocryptfs macfuse`). To see which a folder uses: `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20 and 0 for AES-GCM.
 
 ### Which folders to list
 
@@ -94,7 +95,7 @@ ssh <host>
 sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
-It mounts each locked folder, then restarts Docker. A wrong passphrase stops it at that folder and says which. It stops if a locked folder is not empty (move the files away first) instead of hiding them, and it does nothing on an unlocked host. The passphrase can also arrive on standard input (`printf %s "$PASSPHRASE" | sudo .../unlock.sh`).
+It mounts each locked folder, then runs the scripts in `after-unlock.d`; containers started without a restart policy are not started again. A wrong passphrase stops it at that folder and says which; the scripts still run if an earlier folder had been mounted. It stops if a locked folder is not empty (move the files away first) instead of hiding them, and it does nothing on an unlocked host. The passphrase can also arrive on standard input (`printf %s "$PASSPHRASE" | sudo .../unlock.sh`).
 
 After a reboot, services with encrypted data stay down until someone unlocks, and the backups of every drive refuse to run while any listed folder is locked. A failed backup pushes an alert only if `ntfy_server` is set, and an ntfy server on this host is down when Docker is; point `ntfy_server` at another host (or `ntfy_alert_url` at ntfy.sh) to hear about a locked host.
 
@@ -104,5 +105,5 @@ To lock again: stop the containers that use the folder, then `sudo umount <folde
 
 Two ways back, per folder:
 
-- **Master key:** make an empty folder, run `sudo gocryptfs -init -xchacha -masterkey <key> <empty folder>`, then copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere.
+- **Master key:** make an empty folder, run `sudo gocryptfs -init -masterkey <key> <empty folder>` with the same cipher option the folder was created with (`-xchacha` for a folder made on a CPU without AES instructions, such as a Pi 4; none for one made on a CPU with them, such as a Pi 5 or an x64 PC. The `grep` above cannot help here, because the conf is what was lost), then copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere. `init-encrypted-folder.sh` adds `-xchacha` on a CPU with no AES (a Raspberry Pi 4); add it too. With the wrong option the mount succeeds but every read fails with an input/output error.
 - **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. With a local backup the deploy fails if a listed folder is outside every path in `restic_local_rules`, so a folder always has such a backup; a cloud-only host is not checked.
