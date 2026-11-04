@@ -49,7 +49,7 @@ encrypted_folders:
 
 `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir` (`<backup drive>/service-dumps`, or `/var/lib/backup-work/service-dumps` without a local backup). Nothing encrypts that folder unless you list it, so until then whoever finds the drive reads the Immich database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and to `restic_local_extra_rules` (a listed folder outside every path in `restic_local_rules` stops the deploy, `roles/backup/tasks/check_coverage.yml`). Both backup scripts then refuse to run while it is locked, like any listed folder.
 
-restic encrypts everything it writes: contents, file names and snapshot metadata. The password is `vault_restic_password`, written to `restic_password_file` on the root drive; with it, everything in the repository is readable, including a listed folder's files, which restic reads through the mount as decrypted files. For that reason the ciphertext folders are left out of every backup (`roles/backup/templates/restic-excludes-services.txt.j2`): saving them too would store everything twice.
+restic encrypts everything it writes: contents, file names and snapshot metadata. The password is `vault_restic_password`, written to `restic_password_file` on the root drive; with it, everything in the repository is readable, including a listed folder's files, which restic reads through the mount as decrypted files. For that reason the ciphertext is left out of every backup (`roles/backup/templates/restic-excludes-services.txt.j2`): saving it too would store everything twice. Each folder's `gocryptfs.conf` is the exception: it is kept in every backup that covers the folder, so it can be restored with the data.
 
 ## Set up a folder
 
@@ -66,7 +66,7 @@ sudo /opt/services/scripts/unlock.sh
 
 The mounted folder's top directory takes the owner and mode of the empty folder it was created from, which is root's when the script creates it. A service running as another user id needs the top directory chowned while the folder is unlocked; a chown while it is locked is lost.
 
-3. `init-encrypted-folder.sh` prints a **master key** once, and only in a terminal (`ssh -t <host> sudo ...`). Put it in your password manager, and copy `gocryptfs.conf` from the `.gocryptfs` folder off the host. Each folder has its own key and file, and without them its data cannot be opened.
+3. `init-encrypted-folder.sh` prints a **master key** once, and only in a terminal (`ssh -t <host> sudo ...`). Put it in your password manager. Each folder has its own `gocryptfs.conf` in its `.gocryptfs` folder, and without it and the passphrase (or the master key) its encrypted files cannot be opened; the backups keep a copy (below), and a copy off the host is cheap insurance for a host with no backup.
 4. Move the data in, file by file:
 
 ```bash
@@ -103,7 +103,8 @@ To lock again: stop the containers that use the folder, then `sudo umount <folde
 
 ## If gocryptfs.conf is lost
 
-Two ways back, per folder:
+Per folder, in order of ease:
 
+- **Backups:** restore the conf: `restic restore latest --target <scratch> --include <the .gocryptfs folder>/gocryptfs.conf` ([backups.md](./backups.md)), put it back in the `.gocryptfs` folder, and unlock as usual. It needs the passphrase, not the master key, and the cipher is inside it.
 - **Master key:** make an empty folder, run `sudo gocryptfs -init -masterkey <key> <empty folder>` with the same cipher option the folder was created with (`-xchacha` for a folder made on a CPU without AES instructions, such as a Pi 4; none for one made on a CPU with them, such as a Pi 5 or an x64 PC. The `grep` above cannot help here, because the conf is what was lost), then copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. gocryptfs refuses `-init` in a folder that already holds files, which is why the new file is made elsewhere. `init-encrypted-folder.sh` adds `-xchacha` on a CPU with no AES (a Raspberry Pi 4); add it too. With the wrong option the mount succeeds but every read fails with an input/output error.
-- **Backups:** they hold the decrypted files and exclude the `.gocryptfs` folders. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. With a local backup the deploy fails if a listed folder is outside every path in `restic_local_rules`, so a folder always has such a backup; a cloud-only host is not checked.
+- **Files only:** if the whole `.gocryptfs` folder is gone, the backups still hold the decrypted files. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`, [backups.md](./backups.md)), and `rsync -aHAX` the files in. With a local backup the deploy fails if a listed folder is outside every path in `restic_local_rules`, so a folder always has such a backup; a cloud-only host is not checked.
