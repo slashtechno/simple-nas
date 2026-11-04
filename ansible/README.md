@@ -16,7 +16,7 @@ All commands below run from `ansible/`.
 | Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>` |
 | Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
-| Look up a setting, its default and every override | nothing | `grep -rn "^<name>:" group_vars host_vars roles/*/defaults` |
+| Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
 | Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Update the OS, Docker Engine or Tailscale | nothing to edit | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |

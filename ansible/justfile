@@ -9,6 +9,10 @@ ruff := "ruff==0.17.3"
 default:
     @just --list
 
+# List every setting with its default, file and overrides; a word filters by name: `just settings gitea`
+settings word='':
+    python3 tools/settings.py {{ word }}
+
 # Install the Ansible collections and roles this repo needs
 deps:
     ansible-galaxy collection install -r requirements.yml

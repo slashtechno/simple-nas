@@ -1,6 +1,6 @@
 # Settings structure: options considered
 
-Status: research note, not kept current. It records why the settings stay flat and what could make them easier to find. Nothing here is built yet.
+Status: research note, not kept current. It records why the settings stay flat and what could make them easier to find. Built: `just settings` (option 8). The owner decided to keep every setting listed under "Pruning audit" as it is: a default already is the sensible value, and hardcoding it only removes the option to change it.
 
 ## The problem
 
@@ -24,7 +24,7 @@ The services also read each other's settings by name built at run time (`lookup(
 | 5 | Split `host_vars/<host>/` into several files | Rejected | `tests/check_keys.yml` pairs each host's `vars.yml` with its example; splitting breaks that and the owner then edits many files. |
 | 6 | Runtime presets (`profile: minimal`) | Rejected | Hides which flags are on. The "Pick what you use" examples in `ansible/README.md` already show the combinations as plain flags. |
 | 7 | Keep every name; split `defaults.yml` into topic files (`flags.yml`, `storage.yml`, `backups.yml`, `networking.yml`) | Possible | `group_vars/all/` loads every file in it, so no variable changes. Cost: `tests/render.yml` and `check_keys.yml` read the literal `defaults.yml` path, and `tools/check_vars.py` globs it. Add a check that no key appears in two files. |
-| 8 | A `just settings` index that prints every setting, its default, its file and whether the owner overrides it | Recommended first | Reads the same files the grep recipe does, writes nothing, and fixes the "I do not know the name" problem without moving anything. |
+| 8 | (built) A `just settings` index that prints every setting, its default, its file and whether the owner overrides it | Recommended first | Reads the same files the grep recipe does, writes nothing, and fixes the "I do not know the name" problem without moving anything. |
 | 9 | Subdomain convention: a service without `<key>_subdomain` uses its key | Possible | Six of the twelve `_subdomain` defaults equal the key. Consumers would use `lookup('vars', key ~ '_subdomain', default=key)` in `site.yml`, `web_sites.yml`, Homepage and the two `oidc` entries. Settings that differ (`gitea: git`, `backup_status: backups`, `tinyauth: auth`, `dozzle: logs`, `scrutiny: disks`, `homepage: home`) stay explicit. Saves 6 lines for 5 changed readers, so it is a small win only. |
 | 10 | Form-shaped `host_vars/<host>/vars.yml.example` grouped by topic, with inert commented presets | Possible | Helps a new owner; costs nothing at run time. |
 
