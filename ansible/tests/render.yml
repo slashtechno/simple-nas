@@ -17,7 +17,10 @@
   tasks:
     - name: Load the shared defaults
       ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/../group_vars/all/defaults.yml"
+        file: "{{ item }}"
+      loop:
+        - "{{ playbook_dir }}/../group_vars/all/defaults.yml"
+        - "{{ playbook_dir }}/../group_vars/all/derived.yml"
 
     - name: Turn on two services
       ansible.builtin.set_fact:
@@ -83,6 +86,7 @@
       loop: >-
         {{ defaults_files
            + [repo + '/group_vars/all/defaults.yml',
+              repo + '/group_vars/all/derived.yml',
               repo + '/group_vars/all/vars.yml.example',
               repo + '/group_vars/all/versions.yml',
               repo + '/group_vars/all/services.yml',
@@ -647,6 +651,7 @@
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
         - "{{ repo }}/roles/tinyauth/defaults/main.yml"
         - "{{ repo }}/group_vars/all/defaults.yml"
+        - "{{ repo }}/group_vars/all/derived.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"
         - "{{ repo }}/group_vars/all/versions.yml"

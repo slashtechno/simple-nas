@@ -41,6 +41,7 @@ All commands below run from `ansible/`.
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
+| `group_vars/all/derived.yml` | yes | Values worked out from the settings (`fast_drive`, `drive_mounts`, ...); not settings | Already there; not edited |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
@@ -140,7 +141,7 @@ Edit the file that owns the setting (below), then `just deploy <tag>`. Only chan
 | One host (its flags, drives, direct link, Docker data root, tunnel hostnames) | `host_vars/<host>/vars.yml`; the example `host_vars/vars.yml.example` serves every host |
 | Secrets | a `vault.yml` ([vault](#vault-secrets)) |
 | Image versions | `group_vars/all/versions.yml` |
-| Computed from the above (`fast_drive`, `drive_mounts`, ...) | the last section of `group_vars/all/defaults.yml`; not edited |
+| Computed from the above (`fast_drive`, `drive_mounts`, ...) | `group_vars/all/derived.yml`; not edited |
 
 Options in `defaults/main.yml`, `defaults.yml` and the example files have this comment shape: what it does in one sentence, then `Allowed: ... Default: ...` when not obvious, then `CAUTION: ...` where changing it later has a consequence. A role's options are named after the role or the tool it drives (`backup`'s are `restic_*`, `service_dumps_dir` and `rclone_config_dir`), and `ssh_authorized_keys` is listed in `group_vars/all/vars.yml.example` because nearly every owner changes it.
 

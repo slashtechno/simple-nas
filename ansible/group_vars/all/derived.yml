@@ -1,0 +1,73 @@
+---
+# Values worked out from the settings in defaults.yml and your vars.yml. Not settings: change the inputs, not these.
+# Here, not in a role, because several roles and teardown.yml read them.
+
+# The zone IDs of the cloudflare_zones domains that zone_name equals or ends with after a dot (not any domain that merely
+# appears inside it: example.com must not match ample.com). Set zone_name where you read this; exactly one ID is a match.
+# Example: cloudflare_zones {example.com: abc123} and zone_name git.example.com give [abc123]; zone_name notexample.com gives [].
+cloudflare_zone_ids_of_name: >-
+  {%- set ids = [] -%}
+  {%- for zone in cloudflare_zones | dict2items -%}
+  {%- if zone_name == zone.key or zone_name.endswith('.' ~ zone.key) -%}
+  {%- set _ = ids.append(zone.value) -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {{ ids }}
+
+# geerlingguy.docker writes this one variable to /etc/docker/daemon.json. A dict set in a host's
+# host_vars replaces the same dict from group_vars instead of merging, so the options owners edit
+# stay separate settings in vars.yml and are combined here.
+docker_daemon_options: >-
+  {{ {'log-driver': 'json-file', 'log-opts': docker_log_opts}
+     | combine({'data-root': docker_data_root} if docker_data_root | length > 0 else {}) }}
+
+# The mount point of each drive role that a `drives` entry claims. A role nobody claims is absent.
+# Code that works without a role asks `'fast' in drive_mounts`; code that needs one reads
+# fast_drive / primary_drive / backup_drive, which fail with a message naming the missing role.
+# Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
+# `subelements` pairs every drive with each of its roles; the dict is role -> mount point of that drive.
+# Example: drives with roles [fast] on /mnt/fast and [primary, backup] on /mnt/big give {fast: /mnt/fast, primary: /mnt/big, backup: /mnt/big}.
+drive_mounts: >-
+  {%- set mounts = {} -%}
+  {%- for drive in drives -%}
+  {%- for role in drive.roles | default([]) -%}
+  {%- set _ = mounts.update({role: drive.mount}) -%}
+  {%- endfor -%}
+  {%- endfor -%}
+  {{ mounts }}
+# The `drives` entries that have a `uuid`: the ones mounted through fstab. An entry without one is only a folder.
+mounted_drives: "{{ drives | selectattr('uuid', 'defined') | list }}"
+# The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
+# The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
+# A drive with only the backup role is not listed: the scripts check it on their own.
+# Example: the same drives give [/mnt/fast, /mnt/big].
+data_drive_mounts: >-
+  {%- set mounts = [] -%}
+  {%- for drive in mounted_drives -%}
+  {%- if drive.roles | default([]) | intersect(['fast', 'primary']) | length > 0 and drive.mount not in mounts -%}
+  {%- set _ = mounts.append(drive.mount) -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {{ mounts }}
+# Each encrypted folder with the hidden folder next to it that holds its encrypted files.
+# Example: encrypted_folders [/mnt/primary/photos/] gives [{mount: /mnt/primary/photos, cipher: /mnt/primary/.photos.gocryptfs}].
+encrypted_pairs: >-
+  {%- set pairs = [] -%}
+  {%- for folder in encrypted_folders -%}
+  {%- set path = folder | regex_replace('/+$', '') -%}
+  {%- set _ = pairs.append({'mount': path, 'cipher': (path | dirname) ~ '/.' ~ (path | basename) ~ '.gocryptfs'}) -%}
+  {%- endfor -%}
+  {{ pairs }}
+# Mount point of the drive with the fast role (read-only; derived from `drives`).
+fast_drive: >-
+  {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its
+  `drives` has roles: [fast]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
+# Mount point of the drive with the primary role (derived from `drives`).
+primary_drive: >-
+  {{ drive_mounts.primary | mandatory('Host ' ~ inventory_hostname ~ ' uses the primary drive role, but no entry in its
+  `drives` has roles: [primary]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
+# Mount point of the drive with the backup role (derived from `drives`).
+backup_drive: >-
+  {{ drive_mounts.backup | mandatory('Host ' ~ inventory_hostname ~ ' uses the backup drive role, but no entry in its
+  `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
+
