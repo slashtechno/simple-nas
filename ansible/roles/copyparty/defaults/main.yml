@@ -1,11 +1,10 @@
 ---
-# Copyparty's SFTP listener, for a sync client (rclone, a phone app) that logs in with its own account: read, write,
-# move and delete on /files. WebDAV lacks the modtimes rclone needs; SFTP has them.
-copyparty_sftp_enabled: false
-# The SFTP account's name. Its password is vault_copyparty_sftp_pass.
-copyparty_sftp_user: sftp
-# Host port of the SFTP listener.
-copyparty_sftp_port: 3922
+# Extra Copyparty config, written to its own file next to the generated one; Copyparty merges the [global], [accounts] and
+# volume sections of both. For anything the settings here do not cover, e.g. an SFTP or FTP listener
+# (docs/services.md#copyparty-accounts-and-volumes). Keep passwords in the vault: the file is mode 0600 and --diff does not show it.
+copyparty_extra_conf: ""
+# Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
+copyparty_extra_ports: []
 # Tinyauth user names that get admin access (A) to / and to /collab and /fast: the browser name's signed-in user is
 # matched against these names exactly. Needed when copyparty_sso_enabled is true.
 copyparty_sso_admins: []

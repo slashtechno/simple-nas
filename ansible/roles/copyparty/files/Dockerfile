@@ -35,4 +35,4 @@ RUN python3 -m pip install --no-cache-dir --break-system-packages \
     pillow-heif \
     pillow-avif-plugin
 
-ENTRYPOINT ["python3", "-m", "copyparty", "-c", "/cfg/copyparty.conf"]
+ENTRYPOINT ["python3", "-m", "copyparty", "-c", "/cfg/copyparty.conf", "-c", "/cfg/extra.conf"]

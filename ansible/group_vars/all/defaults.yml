@@ -24,7 +24,7 @@ immich_enabled: false
 # password login stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled, caddy_enabled and
 # vault_immich_oidc_secret.
 immich_sso_enabled: false
-# Copyparty file server (web UI, WebDAV, optional SFTP).
+# Copyparty file server (web UI, WebDAV).
 copyparty_enabled: false
 # Put Copyparty's browser name behind the Tinyauth login and take the signed-in user from Tinyauth's header, so one
 # login opens it (copyparty_sso_admins in the copyparty role). The published port, the tunnel hostname and the apps

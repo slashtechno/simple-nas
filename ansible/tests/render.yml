@@ -90,7 +90,7 @@
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, SFTP,
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, extra ports,
     # /fast and USB volumes; Crafty Bedrock; ntfy iOS push; the Gitea runner; the optional Pics lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
@@ -101,7 +101,8 @@
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
         copyparty_collab_enabled: true
-        copyparty_sftp_enabled: true
+        copyparty_extra_conf: "[global]\n  sftp: 3922"
+        copyparty_extra_ports: ["3922:3922"]
         copyparty_fast_enabled: true
         usb_automount_enabled: true
 
@@ -399,6 +400,7 @@
             '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    rwm: pics\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'/mnt/primary/apps/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.test' not in (caddy_site.keys() | join(' '))"

@@ -101,6 +101,16 @@
   diff: false   # the passwords would show in --diff
   notify: Restart Copyparty
 
+- name: Render the extra Copyparty config
+  ansible.builtin.copy:
+    content: "{{ copyparty_extra_conf }}\n"
+    dest: "{{ copyparty_config_dir }}/extra.conf"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+  diff: false
+  notify: Restart Copyparty
+
 - name: Render Copyparty docker-compose.yml
   ansible.builtin.template:
     src: docker-compose.yml.j2

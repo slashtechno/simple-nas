@@ -32,14 +32,14 @@ services:
 {% endfor %}
     environment:
       TZ: {{ timezone }}
-{% if copyparty_port != '' or copyparty_sftp_enabled | bool %}
+{% if copyparty_port != '' or copyparty_extra_ports | length > 0 %}
     ports:
 {% if copyparty_port != '' %}
       - "{{ copyparty_port }}:3923"
 {% endif %}
-{% if copyparty_sftp_enabled | bool %}
-      - "{{ copyparty_sftp_port }}:{{ copyparty_sftp_port }}"
-{% endif %}
+{% for port in copyparty_extra_ports %}
+      - "{{ port }}"
+{% endfor %}
 {% endif %}
     networks:
       - {{ docker_network }}

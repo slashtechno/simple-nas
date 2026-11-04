@@ -60,19 +60,34 @@ Git hosting with an optional Actions runner.
 
 Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_pass`, and their own volumes at `/apps/<app>/<folder>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
 
-- The volumes are not part of `copyparty_files_dir`, so the admin's file listing and the SFTP account do not show them. The admin has full access to them at their own addresses.
+- The volumes are not part of `copyparty_files_dir`, so the admin's file listing does not show them. The admin has full access to them at their own addresses.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
 `/drives` shows the USB drives and cards plugged into the host when `usb_automount_enabled: true`, read-only unless `usb_automount_writable` ([storage.md](./storage.md#plugged-in-usb-drives-drives)).
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
-`copyparty_sftp_enabled: true` opens an SFTP listener on `copyparty_sftp_port` for a sync client. Its account is `copyparty_sftp_user` with the password `vault_copyparty_sftp_pass` from the vault, with read, write, move and delete on `/files`.
+Any other Copyparty option (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config; Copyparty merges the sections of both files ([config reference](https://github.com/9001/copyparty#global-options)). Publish the listener's port with `copyparty_extra_ports`. For an SFTP login for a sync client (WebDAV lacks the modtimes rclone needs):
+
+```yaml
+copyparty_extra_ports: ["3922:3922"]
+copyparty_extra_conf: |
+  [global]
+    sftp: 3922
+    sftp-pw
+  [accounts]
+    syncer: {{ vault_copyparty_sftp_pass }}
+  [/]
+    accs:
+      rwmd: syncer
+```
+
+Keep the password in a vault entry you name yourself.
 
 `copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it.
 
 - It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` (the name of a header only Caddy sends; `openssl rand -hex 24`) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. Tinyauth sends groups only for LDAP and OAuth logins, so Copyparty gets names, not Tinyauth groups.
-- The browser name is the only lane behind the login. The published port, the Cloudflare tunnel hostname and SFTP keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
+- The browser name is the only lane behind the login. The published port and the Cloudflare tunnel hostname keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
 - A share link on the browser name asks for the Tinyauth login as well. Copyparty's docs expect the share prefix (`/shares`) to be exempt from the login ([shares](https://github.com/9001/copyparty#shares)); hand links out on the published port or the tunnel hostname instead.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).

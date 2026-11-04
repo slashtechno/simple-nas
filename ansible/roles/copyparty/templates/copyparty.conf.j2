@@ -34,11 +34,6 @@
   idp-h-key: {{ vault_copyparty_idp_key }}
   auth-ord: idp,pw
 {% endif %}
-{% if copyparty_sftp_enabled | bool %}
-  # sftp-pw reuses [accounts] below, no separate credential store.
-  sftp: {{ copyparty_sftp_port }}
-  sftp-pw
-{% endif %}
 
 [accounts]
   {{ copyparty_user }}: {{ copyparty_pass }}
@@ -46,9 +41,6 @@
 {% for u in vault_copyparty_collab_users %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
-{% endif %}
-{% if copyparty_sftp_enabled | bool %}
-  {{ copyparty_sftp_user }}: {{ vault_copyparty_sftp_pass }}
 {% endif %}
 {% for app in copyparty_clients %}
   {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_pass') }}
@@ -61,9 +53,6 @@
 {% for u in sso_admins %}
     A: {{ u }}
 {% endfor %}
-{% if copyparty_sftp_enabled | bool %}
-    rwmd: {{ copyparty_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
-{% endif %}
 
 {# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /apps/<key>/<folder>. #}
 {% for app in copyparty_clients %}
