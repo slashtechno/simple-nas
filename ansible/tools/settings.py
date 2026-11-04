@@ -8,6 +8,8 @@
   just settings           every setting
   just settings gitea     only names containing "gitea" (with the full comment)
 
+The value after `=` is the default. A green line under it is an override from vars.yml or a host's vars.yml.
+
 Reads the YAML as text, so a multi-line default is shown on one line, cut off after 70 characters. Writes nothing.
 """
 import re
@@ -21,7 +23,9 @@ from rich.text import Text
 ANSIBLE = Path(__file__).resolve().parent.parent
 # A longer default (a template) is cut off; read the file for the rest.
 MAX_VALUE = 70
-NOT_DEFAULTS = {"vars.yml", "vault.yml", "services.yml"}
+# vars.yml and vault.yml are the owner's; services.yml is the service list and derived.yml holds computed values, neither a setting.
+# vault.yml is never read: only the names of vault entries appear, as in a default of "{{ vault_x }}".
+NOT_DEFAULTS = {"vars.yml", "vault.yml", "services.yml", "derived.yml"}
 DEFAULT_FILES = sorted(str(p.relative_to(ANSIBLE)) for p in (ANSIBLE / "group_vars/all").glob("*.yml") if p.name not in NOT_DEFAULTS)
 DEFAULT_FILES += sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("roles/*/defaults/main.yml"))
 OWNER_FILES = ["group_vars/all/vars.yml"] + sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("host_vars/*/vars.yml"))
@@ -40,7 +44,8 @@ def top_level(path):
             for more in lines[number + 1:]:
                 if not more.startswith((" ", "\t")):
                     break
-                parts.append(more.strip())
+                if not more.lstrip().startswith("#"):
+                    parts.append(more.strip())
             yield match.group(1), " ".join(parts), comment
         comment = []
 
@@ -50,8 +55,8 @@ def owner_overrides():
     for path in OWNER_FILES:
         if (ANSIBLE / path).exists():
             where = "all hosts" if path.startswith("group_vars") else path.split("/")[1]
-            for name, _, _ in top_level(path):
-                found.setdefault(name, []).append(where)
+            for name, value, _ in top_level(path):
+                found.setdefault(name, []).append((where, value))
     return found
 
 
@@ -67,17 +72,20 @@ def main():
         console.print()
         console.rule(Text(path, style="bold"), align="left")
         for name, value, comment in rows:
+            vault = re.fullmatch(r'"?\{\{ (vault_\w+) \}\}"?', value)
+            if vault:
+                value = f"(secret, from the vault entry {vault.group(1)})"
             if len(value) > MAX_VALUE:
                 value = value[:MAX_VALUE - 1] + "…"
-            line = Text.assemble((name, "bold cyan"), (" = ", "dim"), value or "(empty)")
-            if name in overrides:
-                line.append("   <- set for " + ", ".join(overrides[name]), style="green")
-            console.print(line)
+            console.print(Text.assemble((name, "bold cyan"), (" = ", "dim"), value or "(empty)"))
+            for where, own in overrides.get(name, []):
+                own = own if len(own) <= MAX_VALUE else own[:MAX_VALUE - 1] + "…"
+                console.print(Text.assemble(("    overridden for " + where + ": ", "green"), (own or "(empty)", "bold green")))
             if comment:
                 text = " ".join(comment) if word else comment[0]
                 console.print(Padding(Text(text, style="dim"), (0, 0, 0, 4)))
             shown += 1
-    console.print(f"\n{shown} settings" + (f" matching '{word}'" if word else "") + ". Green: the owner sets it.", style="dim")
+    console.print(f"\n{shown} settings" + (f" matching '{word}'" if word else "") + ". The value after = is the default; a green line is a host or all hosts overriding it.", style="dim")
 
 
 main()
