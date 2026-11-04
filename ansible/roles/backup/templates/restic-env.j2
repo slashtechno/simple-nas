@@ -1,0 +1,18 @@
+{# Shared by the backup scripts. Use: {% import 'restic-env.j2' as restic_env with context %}, then
+   restic_env.setup(repository) for the environment and the restic() wrapper, and restic_env.unlock_note() above `restic unlock`. #}
+{% macro setup(repository) -%}
+# The password-file path is set at deploy time; the environment variable overrides it for a manual run.
+export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
+export RESTIC_REPOSITORY="{{ repository }}"
+# restic's index and snapshot cache. It helps only when its drive differs from the repository's (over a network it
+# saves re-reading packs). The environment variable overrides it for a manual run.
+export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
+
+# A hung restic (a stalled drive, rclone or network pipe) must end as a failed run: while it hangs it holds the
+# repository lock and blocks every later backup.
+restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+{%- endmacro %}
+{% macro unlock_note() -%}
+# A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
+# on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+{%- endmacro %}

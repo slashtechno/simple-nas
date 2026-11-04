@@ -1,6 +1,7 @@
 #!/bin/bash
 {% import 'mount-guards.j2' as guards with context %}
 {% import 'status-report.j2' as job_status with context %}
+{% import 'restic-env.j2' as restic_env with context %}
 set -o pipefail
 
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: restic would write the
@@ -11,14 +12,7 @@ set -o pipefail
 
 {{ job_status.setup('local') }}
 
-# The password-file path is set at deploy time; the environment variable overrides it for a manual run.
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
-export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-# restic's index and snapshot cache. It helps only when its drive differs from the repository's.
-export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
-
-# A hung restic must end as a failed run, not hold the repository lock.
-restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+{{ restic_env.setup(restic_repo_path) }}
 
 LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -29,8 +23,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
 {
   echo "=== Local Backup: $(date) ==="
-  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
-  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  {{ restic_env.unlock_note() | indent(2) }}
   restic unlock
   # restic forget --prune needs free room to rewrite packs, so a full drive cannot clean itself up: stop early.
   used_pct=$(df --output=pcent {{ restic_repo_path | quote }} | tail -1 | tr -dc '0-9')
