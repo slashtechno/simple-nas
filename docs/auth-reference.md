@@ -1,5 +1,7 @@
 # Login (Tinyauth) reference
 
+Words you do not know are defined in the [glossary](./glossary.md).
+
 Tinyauth is the login in front of the web services: what it does and how a service joins it is in [services.md](./services.md#tinyauth-login). This page is how to use it: users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale and sessions. Its own settings are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`).
 
 ## Users and passwords

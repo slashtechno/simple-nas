@@ -52,6 +52,7 @@ Fully automated once enabled: daily local, weekly cloud (configs and dumps; phot
 | `ansible/roles/` | One role per service, plus the base and shared task roles |
 | `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml`), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
 | `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
+| [docs/glossary.md](./docs/glossary.md) | Plain definitions of the backup, Docker, drive, login and web terms the docs use |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | The Ansible terms and files this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
