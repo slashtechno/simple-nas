@@ -1,6 +1,13 @@
 {# Shared by the backup scripts. Use: {% import 'restic-env.j2' as restic_env with context %}, then
    restic_env.setup(repository) for the environment and the restic() wrapper, and restic_env.unlock_note() above `restic unlock`. #}
 {% macro setup(repository) -%}
+# Run as {{ ansible_user }}, like the cron job. A run as root leaves root-owned files in the repository and the cache,
+# which the nightly run cannot read, so every later backup fails on them.
+if [ "$(id -un)" != {{ ansible_user | quote }} ]; then
+  echo "ERROR: run this as {{ ansible_user }} (not $(id -un)), or the files it writes can no longer be read by the nightly backup." >&2
+  exit 1
+fi
+
 # The password-file path is set at deploy time; the environment variable overrides it for a manual run.
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
 export RESTIC_REPOSITORY="{{ repository }}"

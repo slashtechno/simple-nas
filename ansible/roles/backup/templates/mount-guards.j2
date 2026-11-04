@@ -1,8 +1,8 @@
 {# Shared by the backup scripts. Use: {% import 'mount-guards.j2' as guards with context %}, then
    guards.require_mounted(path, what_would_go_wrong) for one drive or guards.require_data_drives() for all data drives. #}
-{% macro guard(path, consequence) -%}
+{% macro guard(path, consequence, hint='Check the drive (check the USB connection; the drive mounts itself when it is back).') -%}
 if ! mountpoint -q {{ (path ~ '/.') | quote }}; then
-  echo "ERROR: {{ path }} is not a mounted filesystem — {{ consequence }}. Check the drive (check the USB connection; the drive mounts itself when it is back)." >&2
+  echo "ERROR: {{ path }} is not a mounted filesystem — {{ consequence }}. {{ hint }}" >&2
   exit 1
 fi
 {%- endmacro %}
@@ -25,6 +25,6 @@ fi
 {% endfor %}
 {% for folder in encrypted_pairs %}
 # The drive is mounted even while {{ folder.mount }} is locked, so the check above passes; this one catches the lock.
-{{ guard(folder.mount, 'it is locked, run unlock.sh; refusing to back up an empty folder') }}
+{{ guard(folder.mount, 'it is locked; refusing to back up an empty folder', 'Run unlock.sh as root (docs/encryption.md).') }}
 {% endfor %}
 {%- endmacro %}
