@@ -31,7 +31,7 @@ It does not protect:
 - what the ciphertext's shape shows: the number of files and folders, their depth, roughly how long each name is, and every file's size (rounded up to 4 KiB) and modification time. The names themselves are encrypted;
 - the root drive. A headless host cannot take a passphrase at boot, so it holds the restic password file and the Tailscale and Cloudflare credentials. A thief with the whole host can open the local and cloud backups, though not a listed folder;
 - the backup logs, which list every backed-up path in plain text, and the service dumps ([Dumps and backups](#dumps-and-backups));
-- a passphrase typed on a device that records it. After using a borrowed device, change the passphrase of every folder with `sudo gocryptfs -passwd <the .gocryptfs folder>` (gocryptfs's change-passphrase command), then run `sudo unlock.sh` (it gives the rewritten `gocryptfs.conf` back its owner, so the backups can still read it). That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`.
+- a passphrase typed on a device that records it. After using a borrowed device, change the passphrase of every folder with `sudo gocryptfs -passwd <the .gocryptfs folder>` (gocryptfs's change-passphrase command), then run `sudo unlock.sh` (it gives the rewritten `gocryptfs.conf` to the ansible user, so the backups can still read it), then run a backup: older snapshots hold the conf with the old passphrase, and a backup is what stores the new one. That does not re-encrypt the data, so it helps only if nobody copied `gocryptfs.conf`.
 
 ## How it works
 
@@ -108,7 +108,7 @@ Deleting files does not erase them from the drive. A drive that held plain data 
 
 ### Turning it off
 
-For each folder: unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts once no folder is left; gocryptfs stays installed. `teardown.yml` (also `--tags encryption`) removes the scripts and, when it is empty, the after-unlock directory; it never touches encrypted folders or your own after-unlock scripts.
+For each folder: unlock, copy the files out to a plain folder with `rsync -aHAX`, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts once no folder is left; gocryptfs stays installed. `teardown.yml` (also `--tags encryption`) removes the scripts and, when it is empty, the after-unlock directory; it never touches encrypted folders or your own after-unlock scripts. `-e remove_data=true` on a service whose data directory is a listed folder deletes the files through the mount when it is unlocked, and fails on the immutable folder when it is locked: turn encryption off for that folder first.
 
 ## Unlocking
 

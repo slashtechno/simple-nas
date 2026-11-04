@@ -45,10 +45,10 @@ trap finish EXIT
 {% for folder in encrypted_pairs %}
 # --- {{ folder.mount }} ---
 # gocryptfs writes gocryptfs.conf as root with mode 0400 (at init, and again at every -passwd), so the backup user could
-# not read it and every backup would fail on it. The backups keep the conf (docs/encryption.md), so give it the owner of
-# its folder. Done on every run, mounted or not, so running this after a -passwd repairs it.
+# not read it and every backup would fail on it. The backups keep the conf (docs/encryption.md), so give it to
+# {{ ansible_user }}, who runs them. Done on every run, mounted or not, so running this after a -passwd repairs it.
 if [ -e {{ (folder.cipher ~ '/gocryptfs.conf') | quote }} ]; then
-  chown --reference={{ folder.cipher | quote }} {{ (folder.cipher ~ '/gocryptfs.conf') | quote }}
+  chown {{ ansible_user | quote }} {{ (folder.cipher ~ '/gocryptfs.conf') | quote }}
 fi
 if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
   ask_passphrase
