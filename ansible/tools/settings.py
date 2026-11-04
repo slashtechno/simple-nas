@@ -6,11 +6,11 @@
 """List every setting: its default, what it does, and where the owner overrides it.
 
   just settings           every setting
-  just settings gitea     only names containing "gitea" (with the full comment)
+  just settings gitea     only names containing "gitea"
 
 The value after `=` is the default. A green line under it is an override from vars.yml or a host's vars.yml.
 
-Reads the YAML as text, so a multi-line default is shown on one line, cut off after 70 characters. Writes nothing.
+Reads the YAML as text, so a multi-line default is shown on one line and a long template is labelled computed (read the file for it). Writes nothing.
 """
 import re
 import sys
@@ -46,7 +46,10 @@ def top_level(path):
                     break
                 if not more.lstrip().startswith("#"):
                     parts.append(more.strip())
-            yield match.group(1), " ".join(parts), comment
+            value = " ".join(parts)
+            if not value.startswith(('"', "'")):
+                value = re.sub(r"\s+#.*$", "", value)   # a trailing YAML comment
+            yield match.group(1), value, comment
         comment = []
 
 
@@ -58,6 +61,15 @@ def owner_overrides():
             for name, value, _ in top_level(path):
                 found.setdefault(name, []).append((where, value))
     return found
+
+
+def describe(value):
+    """A value a person can read: a template that needs the file to understand becomes a label."""
+    if re.match(r'"?\{\{\s*undef\(', value):
+        return "(required: no default, set it yourself)"
+    if value.startswith(("{{", '"{{', "{%", '"{%')) and len(value) > MAX_VALUE:
+        return "(computed from other settings; see the file)"
+    return value if len(value) <= MAX_VALUE else value[:MAX_VALUE - 1] + "…"
 
 
 def main():
@@ -75,15 +87,13 @@ def main():
             vault = re.fullmatch(r'"?\{\{ (vault_\w+) \}\}"?', value)
             if vault:
                 value = f"(secret, from the vault entry {vault.group(1)})"
-            if len(value) > MAX_VALUE:
-                value = value[:MAX_VALUE - 1] + "…"
+            value = describe(value)
             console.print(Text.assemble((name, "bold cyan"), (" = ", "dim"), value or "(empty)"))
             for where, own in overrides.get(name, []):
-                own = own if len(own) <= MAX_VALUE else own[:MAX_VALUE - 1] + "…"
+                own = describe(own)
                 console.print(Text.assemble(("    overridden for " + where + ": ", "green"), (own or "(empty)", "bold green")))
             if comment:
-                text = " ".join(comment) if word else comment[0]
-                console.print(Padding(Text(text, style="dim"), (0, 0, 0, 4)))
+                console.print(Padding(Text(" ".join(comment), style="dim"), (0, 0, 0, 4)))
             shown += 1
     console.print(f"\n{shown} settings" + (f" matching '{word}'" if word else "") + ". The value after = is the default; a green line is a host or all hosts overriding it.", style="dim")
 

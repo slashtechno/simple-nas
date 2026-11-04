@@ -29,7 +29,7 @@
         dockge_enabled: true
         ntfy_enabled: true
 
-# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (cloudflare.yml). This host
+# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (derived.yml). This host
 # renders nothing else, so it can have its own zones.
 - name: Check zone matching
   hosts: render-peer

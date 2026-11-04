@@ -10,7 +10,7 @@
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
 # `roles:` (a list: one drive can fill several roles, or none). A host with no drives leaves the
-# list out; its default is [] (group_vars/all/cloudflare.yml).
+# list out; its default is [] (group_vars/all/defaults.yml).
 # The roles (fast, primary, backup), what an unclaimed one does, UUIDs and the one-, two- and three-drive examples:
 # docs/storage.md.
 # drives:

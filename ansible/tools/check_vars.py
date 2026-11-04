@@ -3,6 +3,7 @@
 
   - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example,
   - no setting is written in two of the files that hold defaults (the later file would silently win),
+  - no file in group_vars/all/ that loads after vars.yml sets a key the owner sets in vars.yml,
   - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example.
 """
 import re
@@ -34,8 +35,19 @@ for path in sources:
         problems.append(f"{name} is used in {path.relative_to(ANSIBLE)} but is in no vault.yml.example")
 
 example_keys = set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", VARS_EXAMPLE.read_text(), re.M))
+# Ansible loads group_vars/all/*.yml in name order and the later file wins, so a file sorting after vars.yml
+# would override the owner's values, and a key written in two files has no single answer.
+GROUP_ALL = ANSIBLE / "group_vars/all"
+owner_keys = set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", VARS_EXAMPLE.read_text(), re.M))
+if (GROUP_ALL / "vars.yml").exists():
+    owner_keys |= set(re.findall(r"^([a-z][a-z0-9_]*):", (GROUP_ALL / "vars.yml").read_text(), re.M))
+for path in sorted(GROUP_ALL.glob("*.yml")):
+    if path.name > "vars.yml" and path.name != "vault.yml":
+        for name in sorted(owner_keys & set(re.findall(r"^([a-z][a-z0-9_]*):", path.read_text(), re.M))):
+            problems.append(f"{name} is in {path.relative_to(ANSIBLE)}, which loads after vars.yml and would override it; rename the file to sort before vars.yml")
+
 defined_in = {}
-for path in DEFAULTS:
+for path in DEFAULTS + [GROUP_ALL / "derived.yml", GROUP_ALL / "versions.yml"]:
     for name in re.findall(r"^([a-z][a-z0-9_]*):", path.read_text(), re.M):
         defined_in.setdefault(name, []).append(path.relative_to(ANSIBLE))
 for name, paths in defined_in.items():
