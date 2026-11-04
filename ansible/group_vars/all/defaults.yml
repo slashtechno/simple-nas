@@ -13,36 +13,25 @@ scripts_dir: "{{ services_dir }}/scripts"
 # --- Which services run on a host ---
 # Tailscale is installed by default; set false on a host that reaches the network another way.
 tailscale_enabled: true
-# Every service is off until a host sets `<name>_enabled: true` (ansible/README.md).
-# Setting it false again stops deploying it but keeps it running; remove it with
-# `ansible-playbook teardown.yml --limit <host> -e only=<name>`.
-# What each service needs (drive roles, vault entries) is in docs/services.md.
+# Every service is off until a host sets `<name>_enabled: true`; to remove one see teardown.yml (ansible/README.md, docs/services.md).
 
 # Immich photo library with machine learning.
 immich_enabled: false
-# Let Immich's own login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; Immich's
-# password login stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled, caddy_enabled and
-# vault_immich_oidc_secret.
+# Immich's login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
 immich_sso_enabled: false
 # Copyparty file server (web UI, WebDAV).
 copyparty_enabled: false
-# Put Copyparty's browser name behind the Tinyauth login and take the signed-in user from Tinyauth's header, so one
-# login opens it (copyparty_sso_admins in the copyparty role). The published port, the tunnel hostname and the apps
-# keep Copyparty's own passwords. Needs tinyauth_enabled and caddy_enabled (docs/services.md#copyparty-accounts-and-volumes).
+# Copyparty's browser name behind the Tinyauth login; apps and the published port keep their own passwords (docs/services.md#copyparty-accounts-and-volumes).
 copyparty_sso_enabled: false
 # Gitea git hosting and its Actions runner.
 gitea_enabled: false
-# Let Gitea's own login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; Gitea's
-# password login stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled, caddy_enabled and
-# vault_gitea_oidc_secret.
+# Gitea's login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
 gitea_sso_enabled: false
 # Homebridge, a HomeKit bridge.
 homebridge_enabled: false
 # pics, the photo sharing app.
 pics_enabled: false
-# Let pics' owner login accept a Tinyauth login through OpenID Connect, so one Tinyauth login opens it; pics' password
-# login and the importer's token stay (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs tinyauth_enabled,
-# caddy_enabled, pics_oidc_owner and vault_pics_oidc_secret.
+# pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs pics_oidc_owner.
 pics_sso_enabled: false
 # Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
 garage_enabled: false
@@ -67,15 +56,12 @@ homepage_enabled: false
 caddy_enabled: false
 # Daily backup to the drive with the `backup` role, plus a weekly integrity check.
 backup_local_enabled: false
-# Weekly backup to restic_cloud_repository. It copies only the base directory, Copyparty's config and the service
-# dumps; photos and files go offsite only if you add them to restic_cloud_extra_rules (docs/backups.md).
+# Weekly backup to restic_cloud_repository (what it copies: docs/backups.md).
 backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false
 
-# Folders stored encrypted with gocryptfs: absolute paths, each the folder a service already uses, for example
-# `- /mnt/primary/photos`. Listing a folder is what switches encryption on (docs/encryption.md). After every boot
-# run sudo <scripts_dir>/unlock.sh; all folders share one passphrase. Not docker_data_root.
+# Absolute paths of folders to store encrypted with gocryptfs, each a folder a service already uses. Listing one switches encryption on (docs/encryption.md).
 encrypted_folders: []
 
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
@@ -101,28 +87,21 @@ docker_log_opts:
   max-size: "10m"
   max-file: "3"
 
-# Where Docker and containerd keep images, layers and anonymous volumes. Empty keeps their default
-# (/var/lib/docker and /var/lib/containerd, on the root drive). Set it per host in
-# host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/data/docker-root".
-# With the drive missing, Docker fails to start (the mount point is an automount, docs/storage.md), so it
-# cannot fill the root drive. The procedure and tests: docs/storage.md.
+# Where Docker and containerd keep images and layers. Empty keeps /var/lib/docker on the root drive; set it per host to a
+# directory on a mounted drive (docs/storage.md#dockers-own-storage).
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.
 docker_data_root: ""
 
 
 # --- Backups (docs/backups.md) ---
-# The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enabled` set to true. Local needs a
-# drive with the `backup` role; cloud needs `restic_cloud_repository`. Without local backup, logs and service
-# dumps live in /var/lib/backup-work on the root drive.
+# The local backup needs a drive with the `backup` role; the cloud backup needs `restic_cloud_repository`.
 
 # One dump script per service with a live database.
 service_dump_scripts_dir: "{{ scripts_dir }}/dump.d"
 # Local repository; used only when a backup drive is claimed.
 restic_repo_path: "{{ backup_drive }}/restic-repo"
-# Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
-# "rclone:gdrive:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
-# initialised. Set it per host in host_vars (each host needs its own path: hosts sharing a repository would
-# prune each other's snapshots).
+# Offsite repository, set per host (docs/backups.md#offsite-repository-restic_cloud_repository). The URL scheme picks the backend:
+# "rclone:gdrive:/path" for Google Drive, "sftp:user@host:/path" for SFTP.
 restic_cloud_repository: ""
 # File holding the restic repository password, written from vault_restic_password.
 restic_password_file: "/home/{{ ansible_user }}/.restic-password"
@@ -140,12 +119,8 @@ restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
 restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
 
 # --- Data directories (listed per service in services.yml, which teardown.yml and the backup coverage check read) ---
-# One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
-# (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
-# default backup (restic_local_rules) does not cover it. A variable that uses a drive role fails with a
-# message naming the role if no entry in `drives` claims it, but only on a host that enables the service.
-# Random-IO data (databases, configs) is on the fast drive; bulk data (photos, files) is on the primary.
-# When both roles are the same drive, the split changes nothing on disk.
+# To move a service to another drive, set its variable in host_vars/<host>/vars.yml (docs/storage.md#move-one-services-data).
+# Databases and configs are on the fast drive, bulk data on the primary; with both roles on one drive the split changes nothing.
 
 # The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
@@ -216,9 +191,7 @@ cloudflare_zones: {}
 cloudflare_api_url: https://api.cloudflare.com/client/v4
 
 # --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
-# Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
-# One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
-# The hostname must contain one domain from cloudflare_zones. A hostname may appear on only one host; the deploy fails otherwise.
+# Public hostnames this host's tunnel serves, as {hostname, service} entries; a host that runs the tunnel lists its own (docs/services.md#cloudflare-add-a-public-hostname).
 cloudflared_ingress: []
 
 # --- Direct Ethernet link (roles/network; teardown.yml also reads it; docs/networking.md#direct-ethernet-link) ---
@@ -251,25 +224,19 @@ copyparty_port: 3923
 gitea_port: 3000
 # pics' owner pages (the guest pages never use a host port).
 pics_port: 8100
-# Dockge; it asks you to create an account on first visit. The published port skips Caddy and Tinyauth, so Dockge
-# keeps its own login while one is set: set it to "" to make the Tinyauth login its only one.
+# Dockge asks for an account on first visit. The published port skips Tinyauth, so Dockge keeps its own login while one is set; "" makes Tinyauth its only one.
 dockge_port: 5001
 # ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
 ntfy_port: 8090
 # Tinyauth's login page. Its address is https, so it needs a Caddy name; "" publishes no host port.
 tinyauth_port: ""
-# Dozzle's web UI. "" publishes no host port. CAUTION: setting it publishes the page without a login: Dozzle
-# trusts the user Tinyauth names in a header, so anyone who can reach the port is let in.
+# Dozzle's web UI. CAUTION: a published port skips the login, and Dozzle trusts the user Tinyauth names in a header (docs/services.md#tinyauth-login).
 dozzle_port: ""
 # Scrutiny's web UI. "" publishes no host port.
 scrutiny_port: ""
-# The read-only backup dashboard. It has no login of its own, so by default it publishes no port and is served
-# behind Tinyauth at its Caddy name. A host without Tinyauth must set a port (for example 8091) and accepts that
-# anyone on the network can read backup status and file paths.
+# The read-only backup dashboard: no login of its own. Behind Tinyauth by default; a host without Tinyauth must set a port and accepts that anyone on the network can read backup status and file paths.
 backup_status_port: ""
-# The Homepage start page. It has no login of its own, so by default it publishes no port and is served behind
-# Tinyauth at its Caddy name. A host without Tinyauth must set a port (for example 3001) and accepts that anyone
-# on the network can open the page.
+# The Homepage start page: no login of its own. Behind Tinyauth by default; a host without Tinyauth must set a port and accepts that anyone on the network can open it.
 homepage_port: ""
 # Crafty's panel (HTTPS); the container always listens on 8443.
 crafty_port: 28443
@@ -302,11 +269,6 @@ dozzle_subdomain: logs
 scrutiny_subdomain: disks
 # Homepage's name.
 homepage_subdomain: home
-
-# This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
-# Here, not in the caddy role, because the Homepage on another host reads it to link to these names.
-# For each entry the deploy keeps DNS-only records <domain> and *.<domain> pointing at this host's Tailscale address, so
-# <domain> and <app>.<domain> resolve for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
-# certificate for every name it serves under it (docs/caddy-reference.md#web-addresses-and-https).
-# Empty: no records, and Caddy has no DNS challenge. Every service is served under every entry; the Homepage links to the first.
+# This host's private domains; each must contain a domain from cloudflare_zones. Here, not in the caddy role, because the
+# Homepage on another host reads it. What the deploy creates for them (DNS-only records, certificates): docs/caddy-reference.md#web-addresses-and-https.
 caddy_private_domains: []

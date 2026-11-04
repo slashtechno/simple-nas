@@ -113,15 +113,7 @@ The database is in `pics_data_dir`, covered by the daily backup; the app also wr
 
 ## Cloudflare: add a public hostname
 
-In the host's `host_vars/<host>/vars.yml`:
-
-```yaml
-cloudflared_ingress:
-  - hostname: newservice.example.com
-    service: "http://newservice:8080"
-```
-
-Then `just deploy cloudflared`.
+Add an entry to `cloudflared_ingress` in the host's `host_vars/<host>/vars.yml` (the shape is in `host_vars/vars.yml.example`), then `just deploy cloudflared`.
 
 Any host can run a tunnel: set `cloudflared_enabled: true` and its own `cloudflared_ingress` in `host_vars/<host>/vars.yml`. The tunnel is named `<host>-tunnel` unless the host sets `cloudflared_tunnel_name`. `cloudflare_zones` goes in `group_vars/all/vars.yml`; the API token and account ID are `vault_cloudflared_api_token` and `vault_cloudflared_account_id` in `group_vars/all/vault.yml`. A hostname may appear in only one host's `cloudflared_ingress`; the deploy fails if two hosts list it.
 

@@ -11,14 +11,7 @@ Tinyauth is the login in front of the web services: what it does and how a servi
 A user with a `totp` key is asked for a six-digit code after the password. The password stays; the code is added to it.
 
 1. Make a secret: `python3 -c "import base64, os; print(base64.b32encode(os.urandom(20)).decode())"`.
-2. Add it to that user in the vault:
-
-   ```yaml
-   vault_tinyauth_users:
-     - name: you
-       password: "..."
-       totp: "THE32LETTERSECRET"
-   ```
+2. Add a `totp: "THE32LETTERSECRET"` line to that user in `vault_tinyauth_users` (the list's shape is in `group_vars/all/vault.yml.example`).
 3. Deploy, then add the account in an authenticator app by choosing "enter a setup key" and pasting the secret (time-based, 6 digits, 30 seconds are the defaults).
 
 - **Lost phone:** there are no recovery codes. The vault is the recovery: delete that user's `totp` line, deploy, and enrol again with a new secret. Keep the vault password somewhere other than the phone.

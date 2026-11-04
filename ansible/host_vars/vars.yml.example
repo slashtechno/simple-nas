@@ -11,14 +11,8 @@
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
 # `roles:` (a list: one drive can fill several roles, or none). A host with no drives leaves the
 # list out; its default is [] (group_vars/all/defaults.yml).
-#   fast    SSD; random-IO data (Docker, Immich database, configs) and caches
-#   primary bulk data (photos, files)
-#   backup  restic local repo, service dumps, logs
-# Each role may be claimed by at most one drive. A host needs a drive for every role its enabled services
-# use: an unclaimed role fails the deploy with a message naming it. No `backup` drive means no local backup.
-# A drive with no `roles:` is only mounted.
-# Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
-# Examples for one, two and three drives, fstype and options: docs/storage.md#examples
+# The roles (fast, primary, backup), what an unclaimed one does, UUIDs and the one-, two- and three-drive examples:
+# docs/storage.md.
 # drives:
 #   - { uuid: "...", mount: /mnt/data, roles: [fast, primary] }
 
@@ -33,3 +27,10 @@
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
 # backup_cloud_enabled: true
 # restic_cloud_repository: "rclone:gdrive:/<host>-backups"
+
+# --- Cloudflare Tunnel ---
+# Public hostnames this host's tunnel serves (cloudflared_enabled; docs/services.md#cloudflare-add-a-public-hostname).
+# Exactly two keys per entry, no `path:`.
+# cloudflared_ingress:
+#   - hostname: newservice.example.com
+#     service: "http://newservice:8080"
