@@ -35,11 +35,13 @@ service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
 # Where rclone keeps its remote's login. The cloud backup creates it and the backup lists never copy it.
 rclone_config_dir: "/home/{{ ansible_user }}/.config/rclone"
 # The directories the backup must cover: the data of every service this host runs (group_vars/all/services.yml;
-# the `no_backup` ones are left out on purpose), plus the folders in encrypted_folders, which can be anywhere.
+# the `no_backup` ones are left out on purpose), plus the folders in encrypted_folders, which can be anywhere, and the
+# hidden folder next to each that holds its gocryptfs.conf (the backups keep the conf, docs/encryption.md).
 # Used by roles/backup/tasks/check_coverage.yml and the offsite notice in cloud.yml.
-# Example: with Gitea and an encrypted folder /mnt/primary/photos it gives [/mnt/fast/docker/gitea, /mnt/primary/photos].
+# Example: with Gitea and an encrypted folder /mnt/primary/photos it gives
+# [/mnt/fast/docker/gitea, /mnt/primary/photos, /mnt/primary/.photos.gocryptfs].
 backup_service_dirs: >-
   {{ query('ansible.builtin.vars',
            *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten | select | list
              + services | selectattr('key', 'in', enabled_service_keys) | map(attribute='keep', default=[]) | flatten | select | list))
-     + encrypted_pairs | map(attribute='mount') | list }}
+     + encrypted_pairs | map(attribute='mount') | list + encrypted_pairs | map(attribute='cipher') | list }}
