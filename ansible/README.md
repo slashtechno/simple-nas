@@ -90,7 +90,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 ## Pick what you use
 
-Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs: it gives the Ansible user passwordless sudo, installs the base packages, Docker and the terminal tools (`terminal_tools_enabled: false` leaves out zellij, zoxide, bat and the Ghostty terminfo), sets the timezone and the Docker data directory, adds your SSH keys, and masks suspend and hibernate. The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
+Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs: it gives the Ansible user passwordless sudo, installs the base packages, Docker and the terminal tools (`terminal_tools_enabled: false` leaves out zellij, zoxide, bat, eza and the Ghostty terminfo), sets the timezone and the Docker data directory, adds your SSH keys, and masks suspend and hibernate. The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
