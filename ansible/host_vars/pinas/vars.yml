@@ -10,7 +10,7 @@ gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
-# pics' photos are still in the Copyparty files folder; plans/pics-volumes.md moves them to the defaults.
+# pics' photos and trash sit in the Copyparty files folder until plans/pics-volumes.md moves them to the defaults.
 pics_photos_dir: "{{ copyparty_files_dir }}/photos"
 pics_trash_dir: "{{ copyparty_files_dir }}/photos-trash"
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)

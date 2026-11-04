@@ -6,6 +6,10 @@
 {{ folder.cipher }}/*
 !{{ folder.cipher }}/gocryptfs.conf
 {% endfor %}
+# Credentials: restic's own password and the Drive token must never be in a backup, even under a path you add.
+# They sit in the user's home, which the local backup covers on a host with no fast or primary drive.
+{{ restic_password_file }}
+{{ rclone_config_dir }}
 {% if docker_data_root | length > 0 %}
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}

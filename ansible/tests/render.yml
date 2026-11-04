@@ -244,10 +244,11 @@
       loop_control:
         label: "{{ item.key }}"
 
-    # Most entries have no dump_required field; the real deploy failed on that once, so the list is built here from the real file.
+    # The dump list follows the entries marked dump_required in services.yml; update the expected keys here when one is added.
     - name: Only the enabled services that need a dump are in dump_service_keys
       ansible.builtin.assert:
         that: dump_service_keys | sort == (['garage', 'gitea', 'immich'] | select('in', enabled_service_keys) | list | sort)
+        fail_msg: dump_service_keys must be the enabled entries with dump_required in services.yml; update the list in tests/render.yml
         quiet: true
 
     - name: Every service has a row in docs/services.md
@@ -299,6 +300,7 @@
         recurse: true
       register: host_vars_found
 
+    # include_tasks, not import_tasks: each file in the loop is checked with its own variables.
     - name: Every key in each vars.yml must also be in its example
       ansible.builtin.include_tasks: check_keys.yml
       loop: "{{ host_vars_found.files | map(attribute='path') | list }}"

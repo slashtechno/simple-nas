@@ -49,8 +49,8 @@
     # ── Services ───────────────────────────────────────────────────────────
 
     # Every entry of `services` (group_vars/all/services.yml) with a compose directory, or only those named in
-    # `only`. include_tasks, not import_tasks, because a loop needs it (a kept exception, as in site.yml's pics and
-    # tailscale), so these tasks have no tags: select services with -e only=a,b.
+    # `only`. include_tasks, not import_tasks, because a loop needs it (a kept exception, as in roles/pics and
+    # roles/tailscale), so these tasks have no tags: select services with -e only=a,b.
     - name: Check every name in only is a service
       ansible.builtin.assert:
         that: only_keys | difference(services | map(attribute='key')) | length == 0

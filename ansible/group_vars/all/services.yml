@@ -1,6 +1,5 @@
 ---
-# One entry per service this repo deploys; the roles that are not a service (common, storage, tailscale, network,
-# connectivity_watchdog, encryption, backup, compose_service, github_clone) are not listed. To add a service, add an entry here; README's
+# One entry per service this repo deploys; the roles that are not a service are not listed (the render test names them). To add a service, add an entry here; README's
 # "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
 # the data directories in defaults.yml): a list is replaced whole by a host, so keep values out of it.
 #   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
@@ -79,7 +78,7 @@ services:
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   - {name: Homepage, key: homepage, compose: homepage,
      container: homepage, container_port: 3000, icon: homepage, description: Start page}
-  # No web UI, so no tile and no Caddy name.
+  # No tile and no registry Caddy name: its web UI and S3 endpoint are published by the garage role's own compose file.
   - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir]}
   - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.

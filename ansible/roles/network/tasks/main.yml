@@ -96,6 +96,7 @@
       ansible.builtin.apt:
         name: dnsmasq
         state: present
+        cache_valid_time: 3600
 
     - name: Configure dnsmasq to auto-assign the laptop's IP
       ansible.builtin.template:

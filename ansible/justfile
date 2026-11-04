@@ -15,11 +15,11 @@ deps:
     ansible-galaxy role install -r requirements.yml
 
 # (Steps of `check`; private, run one with e.g. `just _lint`.)
-# Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the dashboard
+# Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the shipped Python
 _lint:
     uvx {{ ansible_lint }}
     uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
-    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files
 
 # Both playbooks parse
 _syntax:

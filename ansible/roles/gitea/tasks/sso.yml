@@ -11,6 +11,7 @@
   retries: 30
   delay: 5
   changed_when: false
+  check_mode: false
 
 # auth list prints a table of ID, name, type and enabled; the name is the only stable handle on a source, because the
 # ID is a database sequence. An empty result means the source does not exist yet.

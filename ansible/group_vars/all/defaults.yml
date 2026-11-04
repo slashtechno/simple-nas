@@ -96,7 +96,7 @@ docker_data_root: ""
 # --- Backups (docs/backups.md) ---
 # The local backup needs a drive with the `backup` role; the cloud backup needs `restic_cloud_repository`.
 
-# One dump script per service with a live database.
+# Where the dump scripts live, one per service with a live database. (The dumps they write go to service_dumps_dir.)
 service_dump_scripts_dir: "{{ scripts_dir }}/dump.d"
 # Local repository; used only when a backup drive is claimed.
 restic_repo_path: "{{ backup_drive }}/restic-repo"
@@ -163,11 +163,15 @@ gitea_data_dir: "{{ fast_drive }}/docker/gitea"
 gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"
 # ntfy's message history and user database; little is lost without it.
 ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"
+# Container-internal port of pics' guest pages (never published): the tunnel points here, in cloudflared_ingress. Only pics_port is
+# published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
+pics_public_port: 8001
 # pics' data directory (fast drive).
 pics_data_dir: "{{ fast_drive }}/docker/pics"
-# Where pics keeps its photos and its trash (primary drive). Copyparty serves them to pics only, as the volumes
-# /apps/pics/photos and /apps/pics/trash, so they are not part of copyparty_files_dir and the admin's file listing.
+# Where pics keeps its photos (primary drive). Copyparty serves them to pics only, as the volume /apps/pics/photos
+# (and the trash as /apps/pics/trash), so they are not part of copyparty_files_dir and the admin's file listing.
 pics_photos_dir: "{{ primary_drive }}/apps/pics/photos"
+# Where pics moves deleted photos (primary drive); the only pics volume where files can be deleted.
 pics_trash_dir: "{{ primary_drive }}/apps/pics/trash"
 # Homebridge's configuration and pairings (fast drive).
 homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"

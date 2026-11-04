@@ -49,7 +49,6 @@
   ansible.builtin.command: mountpoint -q {{ (item.mount ~ '/.') | quote }}
   loop: "{{ mounted_drives }}"
   changed_when: false
-  when: not ansible_check_mode
 
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:

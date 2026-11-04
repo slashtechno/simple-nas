@@ -33,7 +33,7 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 - **tailnet**: the private network Tailscale builds between your devices; **MagicDNS** is Tailscale's DNS for it (`pi4.<tailnet>.ts.net`).
 - **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false (the base switches `storage_enabled` and `tailscale_enabled` default to true), so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
-- **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS, that Docker is not a snap and that every web service has a port or a name; they carry `tags: [always]`.
+- **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS, that Docker is not a snap that every web service has a port or a name, and that every app that signs in through Tinyauth has Tinyauth, Caddy and its vault secret; they carry `tags: [always]`.
 - **`teardown.yml`** is one play of tasks. One looped `include_tasks` of `teardown_service.yml` removes every entry of `services` (`-e only=a,b` picks some); the alerts, connectivity watchdog, backup, network and storage blocks have their own `tags:`. It refuses to run without `--limit`. The play-level `remove_data: false` is what `-e remove_data=true` overrides.
 
 ## 3. Role anatomy

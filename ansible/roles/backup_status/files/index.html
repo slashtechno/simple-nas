@@ -252,12 +252,15 @@
   async function copyText(text, el) {
     try {
       await navigator.clipboard.writeText(text);
+      return true;
     } catch (err) {
+      // Plain http has no clipboard: select the text so the owner can copy it.
       const range = document.createRange();
       range.selectNodeContents(el);
       const sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
+      return false;
     }
   }
 
@@ -268,9 +271,9 @@
     const btn = e.target.closest('button[data-copy-target]');
     if (!btn) return;
     const code = document.getElementById(btn.dataset.copyTarget);
-    await copyText(code.textContent, code);
+    const copied = await copyText(code.textContent, code);
     const original = btn.textContent;
-    btn.textContent = 'Copied';
+    btn.textContent = copied ? 'Copied' : 'Selected: press Ctrl+C';
     setTimeout(() => { btn.textContent = original; }, 1400);
   });
 

@@ -8,7 +8,7 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 - [x] `just preview --limit pi4` passes (8 changes: Dockge and Caddy compose, backup scripts and exclude list, the check job moves to Saturday 5 AM). It found a real bug the render test missed (the dump-script check failed on entries without `dump_required`); fixed and tested.
 - [x] pi4: common, backup, tinyauth, caddy, dozzle and the watchdog deployed one tag at a time (storage, network and encryption not run: no change in the preview). Deploying showed that the Caddy deploy rebuilds the image and takes 20+ minutes on a loaded Pi 4.
-- [ ] pi4: the first manual `backup-restic-local.sh` run (2026-11-02 18:32) hit the old 2-hour cap after 13.7 GiB scanned over USB 2 (exit 124, status failed). The cap is now 23 hours and deployed; rerun it in the background (`nohup`) and read `restic-local.status.json`.
+- [ ] pi4: the first manual `backup-restic-local.sh` run timed out under the earlier 2-hour cap after 13.7 GiB scanned over USB 2. `restic_command_timeout` is 23 hours and deployed; rerun it in the background (`nohup`) and read `restic-local.status.json`.
 - [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` not run there: its `drives` still name the old 500 GB backup drive; the 6 TB drive gets its role once the owner decides about it.
 - [ ] dietvostro last (real containers, never restart Docker there).
 - [ ] Test the ntfy alert with a deliberate failure (no host runs ntfy yet; `alert.sh` logging to the journal is checked on pi4).
@@ -16,7 +16,7 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 ## Phase 1: drives
 
-- [x] The 500 GB drive is out and the 6 TB Exos is in.
+- [ ] The 500 GB drive is still the `backup` drive in `host_vars/pinas/vars.yml`; the Exos swap is [drive-migration.md](./drive-migration.md).
 - [ ] Read the Exos's long SMART test when it finishes (`smartctl -a`).
 - [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
 - [x] Connectivity watchdog (built; deployed on pi4) (opt-in role, switch `connectivity_watchdog_enabled`, default off). pi4 once stayed on wifi with a valid address and working ping while every TCP and DNS lookup failed, so it dropped off Tailscale until `nmcli con down` and `up` fixed it (2026-11-02, cause unknown). Nothing emitted an event, so only an active probe can notice. Design (both Pi reviews agree on the first three):

@@ -21,6 +21,7 @@ Each word is defined once, here. The other docs link to this page instead of exp
 - **Docker socket.** The file `/var/run/docker.sock`, through which Docker accepts commands. Whatever can read it can do everything Docker can: start and stop containers and read every container's files. Caddy and Dockge mount it, so only software you trust gets it.
 - **`network_mode: host`.** The container shares the host's network address instead of getting its own. Homebridge needs this so HomeKit can discover it. The cost is that it is not on the Docker network, so Caddy names and the Cloudflare tunnel cannot reach it by container name.
 - **FUSE and overlay2.** FUSE lets a program, not the kernel, present a folder; gocryptfs uses it to show the decrypted view. overlay2 is how Docker stacks a container's writable layer over its image, and it does not work on a FUSE folder. So Docker's own storage cannot be in an encrypted folder.
+- **LMDB.** A key-value database that is one memory-mapped file on disk. Garage keeps its metadata in one.
 - **SMART.** Health counters built into drives (errors, reallocated sectors, temperature). Scrutiny reads them over time, which can show a drive failing before it dies. Some USB enclosures do not pass these queries through.
 
 ## Names, logins and the web
