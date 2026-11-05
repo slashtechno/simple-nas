@@ -90,7 +90,7 @@ For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy
 
 The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
 
-1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment` (`TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS`, `_NAME`, as in `roles/tinyauth/templates/docker-compose.yml.j2`) and give the app the issuer `https://auth.<first private domain>`. Not tested here.
+1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment` (`TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS`, `_NAME`, as in `roles/tinyauth/templates/docker-compose.yml.j2`) and give the app the issuer `https://auth.<first private domain>`.
 2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
 3. **It has an off switch (Dockge, which the role switches off itself):** turn the app's login off. Every user then shares one app account.
 4. **Its login is optional (Homepage):** leave it unset, so Tinyauth is the only login.
@@ -103,7 +103,7 @@ Clients that cannot log in through a web page (mobile apps, API tokens, git, Web
 The login and its session cookie belong to the private domain. Tinyauth takes the cookie domain from its own address (`TINYAUTH_APPURL`, one parent domain per instance), so a public name on any other domain can never share the session. Options, best first:
 
 1. **Tailscale on the device.** Nothing to change: the private names resolve to the tailnet address. Use this when the device can run Tailscale.
-2. **Publish the names through Caddy, under the same private domain** (not tested here). A tunnel name is an exact proxied record, so it wins over the private wildcard record. Point it at Caddy, not the container, and publish the login page too, because a browser with no session is sent there. In the host's `vars.yml`:
+2. **Publish the names through Caddy, under the same private domain.** A tunnel name is an exact proxied record, so it wins over the private wildcard record. Point it at Caddy, not the container, and publish the login page too, because a browser with no session is sent there. In the host's `vars.yml`:
 
    ```yaml
    cloudflared_enabled: true
@@ -118,11 +118,27 @@ The login and its session cookie belong to the private domain. Tinyauth takes th
    Then `just deploy caddy,cloudflared --limit <host>`. The login page is now on the internet: give every user a `totp` secret first (above). Cloudflare ends the TLS, so the sites are `http://` ([With cloudflared](./caddy-reference.md#with-cloudflared)).
 3. **The app's own login, exposed directly:** a tunnel entry to the container, only for an app that has a login ([which](./services.md#tinyauth-login)). Never for Dozzle, Scrutiny, the Garage web UI or Dockge with its login off.
 
-Cloudflare Access in front of a tunnel entry also works, but its policy lives in Cloudflare's dashboard, outside this repo. A second Tinyauth for another domain does not fit: it needs its own users, container and forwarder snippet by hand. Tailscale Funnel gives another domain (`ts.net`), so the login cannot follow it.
+A second Tinyauth for another domain does not fit: it needs its own users, container and forwarder snippet by hand. Tailscale Funnel gives another domain (`ts.net`), so the login cannot follow it.
+
+## Who may use what (authorization)
+
+Tinyauth checks who you are, and it can also limit each app to some of those users. This repo sets none of it: every user in `vault_tinyauth_users` reaches every protected service. Rules are per app, set as environment variables in `tinyauth_environment` (the labels form needs the Docker socket, which is left off):
+
+```yaml
+tinyauth_environment:
+  TINYAUTH_APPS_DOZZLE_USERS_ALLOW: alice      # only alice reaches dozzle.<domain>
+  TINYAUTH_APPS_DOCKGE_PATH_BLOCK: ^/api       # regex on the path
+  TINYAUTH_APPS_SCRUTINY_IP_ALLOW: 100.64.0.0/10
+  TINYAUTH_AUTH_ACLS_POLICY: deny              # nobody until an app lists them
+```
+
+The app name is the subdomain (`dozzle` for `dozzle.pi4.…`). Also available: `USERS_BLOCK`, `PATH_ALLOW` (skips the login for matching paths), `IP_BLOCK`, `IP_BYPASS`, and `OAUTH_WHITELIST` / `OAUTH_GROUPS` for provider logins. A request for a name no rule matches gets no restriction, so set the policy to `deny` if that matters. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+
+An OIDC client (Gitea, Immich, pics) cannot be limited to some users this way; that is why pics checks `pics_oidc_owner` itself.
 
 ## Tailscale
 
-Two routes, neither used by the deploy by default and neither tested here:
+Two routes, neither used by the deploy by default:
 
 - **Continue with Tailscale** is built into Tinyauth: `TINYAUTH_TAILSCALE_ENABLED: "true"`, `TINYAUTH_TAILSCALE_APITOKEN` (an API token from the Tailscale admin console, in the vault) and `TINYAUTH_TAILSCALE_TAILNET`. It works out who you are from the device your request comes from, so Tinyauth must see the real client IP: also set `TINYAUTH_AUTH_TRUSTEDPROXIES` to the `services` network's subnet (`docker network inspect services`). Tagged devices are not recognised.
 - **[tsidp](https://github.com/tailscale/tsidp)** is a separate small service that makes your tailnet an OpenID Connect provider; Tinyauth then uses it as another provider (the three URLs above, and `TINYAUTH_OAUTH_PROVIDERS_<ID>_CLAIMS_USERNAME: username`). Neither project documents the pair.
