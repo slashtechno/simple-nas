@@ -35,11 +35,10 @@ nmcli device wifi list         # networks the Pi can see right now
 ## What `roles/network` does
 
 - Creates the shared Docker network `docker_network` (`services`) on every host.
-- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
-- Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings and their defaults are in `ansible/group_vars/all/direct-link.yml`; override them in the host's `vars.yml`.
+- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init, which configures a machine at first boot (Raspberry Pi Imager and Ubuntu's Raspberry Pi images use it), cannot rewrite the network config later.
+- Sets up the direct Ethernet link when `direct_link_enabled` is true ([Direct Ethernet link](#direct-ethernet-link)).
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
 - The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, with a higher autoconnect priority than the installer's profile, so NetworkManager picks it for the port. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
-- The Ubuntu Server installer writes its own netplan file and a cloud-init file that already disables cloud-init's network config; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init at first boot. Either way the file `roles/network` writes makes cloud-init leave the network alone afterwards.
 
 ## Connectivity watchdog
 
@@ -55,7 +54,7 @@ Deploy it with `just deploy connectivity_watchdog --limit <host>`; `just deploy 
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
-1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml` (the address and port settings keep their defaults from `ansible/group_vars/all/direct-link.yml` unless you override them), then `just deploy network --limit <host>`.
+1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml` (the address and port settings are in `ansible/group_vars/all/direct-link.yml`; override them in the same `vars.yml`), then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `https://10.10.20.1:3923` for Copyparty. Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once; `http://` on that port works too.
 
