@@ -34,7 +34,7 @@ services:
       # may not contain an underscore, so it is the key with dashes.
 {% for key in limited %}
       TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_CONFIG_DOMAIN: "{{ lookup('ansible.builtin.vars', key ~ '_subdomain') }}.{{ caddy_private_domains[0] }}"
-      TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_USERS_ALLOW: "{{ service_users[key] | join(',') }}"
+      TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_USERS_ALLOW: "{{ service_users[key] | join(',') | replace('$', '$$') }}"
 {% endfor %}
 {% endif %}
 {% for name, value in tinyauth_environment.items() %}
