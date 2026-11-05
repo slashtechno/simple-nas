@@ -30,13 +30,13 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 | Service | What it is | Role | Needs | Section |
 |---|---|---|---|---|
 | Immich | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles; `vault_immich_db_password` | [Immich](#immich) |
-| Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_pass`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
+| Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_password`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
 | Gitea | Git server | `roles/gitea` | `fast` drive role; `caddy_private_domains` or `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
-| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_pass` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
+| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
-| ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
+| ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; a Caddy name; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
 | Dozzle | Container logs in a browser | `roles/dozzle` | `fast` drive role; a Caddy name; `tinyauth_enabled` | [Dozzle: container logs](#dozzle-container-logs) |
 | Scrutiny | Drive health (SMART) dashboard | `roles/scrutiny` | `fast` drive role; a Caddy name; `tinyauth_enabled`; a drive that answers SMART | [Scrutiny: drive health](#scrutiny-drive-health) |
@@ -73,9 +73,9 @@ Git hosting with an optional Actions runner.
 ## Copyparty accounts and volumes
 
 - Config: rendered from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
-- Admin account: `copyparty_user` / `copyparty_pass`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends listed in `vault_copyparty_collab_users`; the admin has access too. With it off there is no folder and no friend accounts.
+- Admin account: `copyparty_user` / `copyparty_password`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends listed in `vault_copyparty_collab_users`; the admin has access too. With it off there is no folder and no friend accounts.
 
-Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_pass`, and their own volumes at `/apps/<app>/<folder>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
+Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_password`, and their own volumes at `/apps/<app>/<folder>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
 
 - The volumes are not part of `copyparty_files_dir`, so the admin's file listing does not show them. The admin has full access to them at their own addresses.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
@@ -126,7 +126,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname in the host's `vars.yml`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
    - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
-2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_pass`. Use values without single quotes.
+2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password`. Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `pics` account and its volumes first.
 4. Optional: sign in with Tinyauth instead of the password (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay. pics' Caddy name is not behind Tinyauth: pics has its own login and the sign-in goes through it.
 
@@ -164,12 +164,12 @@ Every record the role writes carries the comment `managed by simple-nas, tunnel 
 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
-1. Make the secrets: a login password and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
+1. Make the secrets: a login (user name, such as `alerts`, and a password) and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The user and password go in `vault_ntfy_user` and `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
 2. On the host that runs ntfy, set `ntfy_enabled: true` in its `vars.yml`, then `just deploy ntfy,caddy --limit <host>` (Caddy adds `ntfy.<private domain>`). Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
-3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` (`ntfy_user`, a plain setting, not in the vault) and your password (`just edit vault --host <host>`), and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
+3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with the user and password from the vault (`vault_ntfy_user`, `vault_ntfy_password`: `just edit vault --host <host>`), and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
-- The server denies everyone but the `alerts` user and its token, so reading or publishing a topic asks for a login even on the LAN. The web page at `/alerts` loads without one because it is only the app's shell; it shows no messages until you sign in. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
+- The server denies everyone but that user and its token, so reading or publishing a topic asks for a login even on the LAN. The web page at `/alerts` loads without one because it is only the app's shell; it shows no messages until you sign in. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
 - `ntfy_alert_url` is the one setting that turns alerts on, in `group_vars/all/vars.yml` for every host or in one host's `vars.yml`. It needs `vault_ntfy_token`. A host without it sends nothing.
   - This repo's ntfy: the server address from step 3 plus the topic (`ntfy_topic`, `alerts`), such as `http://<host-tailscale-name>:8090/alerts` or `https://ntfy.<host>.<your domain>/alerts`.
   - A server this repo does not run: `https://ntfy.sh/<your-topic>`.
@@ -217,11 +217,11 @@ The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scruti
 
 ## Garage (S3)
 
-Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_pass` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
+Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_password` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
 
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`), not as files: [Restore: Garage](./backups.md#restore-garage).
 - Garage reads its cluster layout from `garage_data_dir/meta`. A first deploy (empty meta dir) starts with `--single-node` so Garage auto-configures the one-node layout; later starts omit the flag, which Garage requires once a layout exists (the reason is in the comment in `roles/garage/tasks/main.yml`).
-- `vault_garage_webui_pass` is the web UI password; the deploy hashes it (bcrypt with a fixed salt, so the output is the same on every run).
+- `vault_garage_webui_password` is the web UI password; the deploy hashes it (bcrypt with a fixed salt, so the output is the same on every run).
 - Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
 - Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI. The same S3 API answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 

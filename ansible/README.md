@@ -51,9 +51,10 @@ Every setting has a comment and its default in `group_vars/all/` (`defaults.yml`
 
 ## Vault (secrets)
 
-A vault file is a YAML file encrypted with `ansible-vault`. Secrets live in `vault_*` variables inside it. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
+A vault file is a YAML file encrypted with `ansible-vault`. Secrets live in `vault_*` variables inside it. Templates and defaults read them through a plain name, for example `copyparty_password` is `"{{ vault_copyparty_password }}"`, so the committed files never hold a secret.
 
 - **Password:** Ansible decrypts the files in memory with `ansible/.vault-pass` (one line, nothing else; gitignored, so `chmod 600` it). Keep the password in your password manager too: the restic backups cannot be read without it. `just deploy` and `just preview` pass `--vault-password-file .vault-pass`; type the same flag when you run `ansible-playbook` yourself. Use the same password for every vault file.
+- **Names:** a login's user name sits in the vault beside its password, so one place holds the whole login: `vault_<service>_user` and `vault_<service>_password` (`vault_ntfy_user`, `vault_ntfy_password`). Other secrets are `_token`, `_key` or `_oidc_secret`.
 - **First-time setup:** `just setup <host>` creates `.vault-pass` with a random password and `host_vars/<host>/vars.yml` from the example. It writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password), encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists every other secret in the examples (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`); add the ones your services use.
 - **By hand instead:** put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_vars/<host>/vault.yml` (and `group_vars/all/vault.yml.example` to `group_vars/all/vault.yml`), keep the keys your services use, and run `ansible-vault encrypt --vault-password-file .vault-pass <file>`.
 - **Check:** a vault file you forget to encrypt still deploys, with its secrets in plain text on your computer. Make sure it starts with `$ANSIBLE_VAULT`.

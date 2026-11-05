@@ -5,14 +5,15 @@
 # To edit later (opens in $EDITOR — set to VS Code with the line below):
 #   EDITOR="code --wait" ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml
 
-# The ntfy login password (the one you type into the ntfy app). The deploy hashes it.
+# The ntfy login: the one account that may read and write every topic (user name and password you type into the ntfy app). The deploy hashes the password.
+vault_ntfy_user: "alerts"
 vault_ntfy_password: "change-me-generate-with-openssl-rand-base64-24"
 # Immich's Postgres password.
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 # Copyparty admin user name.
 vault_copyparty_user: "yourusername"
 # Copyparty admin password.
-vault_copyparty_pass: "change-me-generate-with-openssl-rand-base64-32"
+vault_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
 # Friends who can access /collab via WebDAV. Used only when copyparty_collab_enabled is true (vars.yml).
 vault_copyparty_collab_users:
   - user: "friend1"
@@ -24,7 +25,7 @@ vault_copyparty_collab_users:
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.
 vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
 # pics' Copyparty account password (the copyparty field of pics in services.yml):
-vault_pics_copyparty_pass: "change-me-generate-with-openssl-rand-base64-32"
+vault_pics_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
 # Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).
 # Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
 # "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
@@ -54,6 +55,6 @@ vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
 # Login of the Garage web UI.
 vault_garage_webui_user: "admin"
 # Password of the Garage web UI. The deploy hashes it.
-vault_garage_webui_pass: "change-me-generate-with-openssl-rand-base64-24"
+vault_garage_webui_password: "change-me-generate-with-openssl-rand-base64-24"
 
 # Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.

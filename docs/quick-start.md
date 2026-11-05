@@ -57,7 +57,7 @@ The vault files (`just edit vault`) need the values `just setup` could not inven
 |---|---|---|
 | `group_vars/all/vault.yml` | `vault_cloudflared_api_token` | your Cloudflare token |
 | | `vault_tinyauth_users` | a login: `name` and `password` |
-| `host_vars/home/vault.yml` | `vault_copyparty_user`, `vault_copyparty_pass` | the Copyparty admin account |
+| `host_vars/home/vault.yml` | `vault_copyparty_user`, `vault_copyparty_password` | the Copyparty admin account |
 
 ## 3. Prepare the host
 

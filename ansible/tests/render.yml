@@ -255,7 +255,7 @@
         needed: >-
           {{ ([item.key ~ '_sso_enabled'] if item.oidc is defined else [])
              + (['vault_' ~ item.key ~ '_oidc_secret'] if item.oidc is defined else [])
-             + (['vault_' ~ item.key ~ '_copyparty_pass'] if item.copyparty is defined else []) }}
+             + (['vault_' ~ item.key ~ '_copyparty_password'] if item.copyparty is defined else []) }}
       ansible.builtin.assert:
         that: needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) | length == 0
         fail_msg: >-

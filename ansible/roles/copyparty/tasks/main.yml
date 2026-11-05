@@ -3,9 +3,9 @@
   ansible.builtin.assert:
     that:
       - vault_copyparty_user is defined
-      - vault_copyparty_pass is defined
+      - vault_copyparty_password is defined
     fail_msg: >-
-      copyparty needs vault_copyparty_user, vault_copyparty_pass in the vault that applies to {{ inventory_hostname }}
+      copyparty needs vault_copyparty_user, vault_copyparty_password in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
@@ -25,9 +25,9 @@
 
 - name: Check every app with a Copyparty account has its password in the vault
   ansible.builtin.assert:
-    that: lookup('ansible.builtin.vars', 'vault_' ~ item.key ~ '_copyparty_pass', default='') | length > 0
+    that: lookup('ansible.builtin.vars', 'vault_' ~ item.key ~ '_copyparty_password', default='') | length > 0
     fail_msg: >-
-      {{ item.key }} has a Copyparty account, so vault_{{ item.key }}_copyparty_pass must be in the vault that applies to
+      {{ item.key }} has a Copyparty account, so vault_{{ item.key }}_copyparty_password must be in the vault that applies to
       {{ inventory_hostname }} (vault.yml.example).
     quiet: true
   loop: "{{ copyparty_clients }}"

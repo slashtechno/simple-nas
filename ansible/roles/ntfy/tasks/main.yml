@@ -2,11 +2,12 @@
 - name: Check the ntfy secrets are in the vault
   ansible.builtin.assert:
     that:
+      - vault_ntfy_user is defined
       - vault_ntfy_password is defined
       - vault_ntfy_token is defined
       - vault_ntfy_token is match('^tk_[A-Za-z0-9]{29}$')
     fail_msg: >-
-      vault_ntfy_password and vault_ntfy_token ("tk_" plus 29 letters or digits) must be in the vault.
+      vault_ntfy_user, vault_ntfy_password and vault_ntfy_token ("tk_" plus 29 letters or digits) must be in the vault.
       A placeholder token makes ntfy refuse to start, and alerts then fail silently. vault.yml.example says how to make them.
     quiet: true
 

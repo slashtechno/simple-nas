@@ -22,6 +22,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 
 ## Common mistakes
 
+- Splitting a login: a user name and its password go together in the vault as `vault_<service>_user` and `vault_<service>_password`, never one in a setting and one in the vault.
 - Assuming the root drive is a microSD. It can be NVMe, USB or SD; say "root drive".
 - Keying behaviour on a group name. Behaviour comes from `<name>_enabled` flags and the `drives` list.
 - Writing a default in two places, or a setting without a comment above it.

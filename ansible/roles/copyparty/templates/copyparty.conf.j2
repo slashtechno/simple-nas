@@ -36,14 +36,14 @@
 {% endif %}
 
 [accounts]
-  {{ copyparty_user }}: {{ copyparty_pass }}
+  {{ copyparty_user }}: {{ copyparty_password }}
 {% if copyparty_collab_enabled | bool %}
 {% for u in vault_copyparty_collab_users %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
 {% endif %}
 {% for app in copyparty_clients %}
-  {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_pass') }}
+  {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_password') }}
 {% endfor %}
 
 [/]

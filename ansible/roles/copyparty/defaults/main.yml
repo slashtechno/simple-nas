@@ -11,4 +11,4 @@ copyparty_sso_admins: []
 # The Copyparty admin login, from the vault.
 copyparty_user: "{{ vault_copyparty_user }}"
 # The Copyparty admin password, from the vault.
-copyparty_pass: "{{ vault_copyparty_pass }}"
+copyparty_password: "{{ vault_copyparty_password }}"

@@ -27,9 +27,9 @@ services:
       NTFY_AUTH_FILE: /var/lib/ntfy/user.db
       NTFY_AUTH_DEFAULT_ACCESS: deny-all
 {% set user_hash = vault_ntfy_password | password_hash('bcrypt', 'ntfyntfyntfyntfyntfynt', ident='2b') | replace('$', '$$') %}
-      NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ user_hash }}:user'
-      NTFY_AUTH_ACCESS: "{{ ntfy_user }}:*:rw"
-      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:{{ ntfy_topic }}'
+      NTFY_AUTH_USERS: '{{ vault_ntfy_user }}:{{ user_hash }}:user'
+      NTFY_AUTH_ACCESS: "{{ vault_ntfy_user }}:*:rw"
+      NTFY_AUTH_TOKENS: '{{ vault_ntfy_user }}:{{ vault_ntfy_token }}:{{ ntfy_topic }}'
 {% if ntfy_ios_push | bool %}
       NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
 {% endif %}
