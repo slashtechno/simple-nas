@@ -30,6 +30,15 @@ Each backup and check run starts with `restic unlock`, which removes only stale 
 
 restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only costs speed.
 
+## First backup
+
+The first run into an empty repository reads and hashes everything, so it takes hours for hundreds of GB over USB.
+
+- Start it by hand rather than waiting for the cron job, detached so a dropped SSH session does not stop it: `setsid nohup /opt/services/scripts/backup-restic-local.sh > /tmp/first-backup.log 2>&1 < /dev/null &`, as the ansible user.
+- Start it so that it ends before 02:00, when the cron job runs the same script.
+- Files the backup user cannot read are reported as `error:` lines. restic still saves the snapshot, and the run then exits 3 and fires the alert ([Switching backups on](#switching-backups-on)).
+- Afterwards `restic snapshots` and `restic check` show a good repository ([Connecting](#connecting)).
+
 ## What runs automatically
 
 | Cron job | Schedule | What it does |

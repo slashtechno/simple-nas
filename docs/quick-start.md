@@ -7,7 +7,7 @@ Details for each part are in [services.md](./services.md); this page is the orde
 ## You need
 
 - A Debian-family host (Raspberry Pi OS, Debian 12+, Ubuntu) with SSH and your SSH key on it.
-- Three drives formatted ext4. Their UUIDs: `sudo blkid`.
+- Three drives formatted ext4, and their UUIDs: [Preparing a drive](./storage.md#preparing-a-drive).
 - A domain on Cloudflare, plus an API token with **Zone:DNS:Edit** ([why](./caddy-reference.md#web-addresses-and-https)), and the domain's zone ID.
 - A Tailscale account, and a password manager (for the encryption passphrase and master key).
 

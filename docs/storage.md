@@ -119,12 +119,32 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 - On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts plugged-in drives.
 - Re-deploy to apply: `just deploy storage,copyparty`.
 
+## Preparing a drive
+
+For a drive that is new to the host, before it goes in `drives`. Run on the host.
+
+1. **Identify it.** `lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE` lists the drives. Letters such as `sdc` change when drives are replugged, so before erasing check the model and serial (`sudo smartctl -i -d sat /dev/sdX`) against the label on the drive, and give every command below the `/dev/disk/by-id/...` path or a letter you have just re-checked.
+2. **Look before erasing.** A second-hand drive can hold files. Mount it read-only and list everything, hidden folders included: `sudo mount -o ro /dev/sdX1 /mnt/check` (add `-t ntfs-3g` for NTFS), `sudo ls -la /mnt/check`, then `sudo umount /mnt/check`.
+3. **Vet a used drive** with SMART and a read-only `badblocks` scan ([Checking a drive over USB](#checking-a-drive-over-usb)).
+4. **Partition and format** (this erases the drive):
+
+   ```bash
+   sudo wipefs -a /dev/sdX1                                   # skip if the drive has no partition yet
+   sudo parted -s /dev/sdX mklabel gpt mkpart data ext4 1MiB 100%
+   sudo mkfs.ext4 -L <label> -m 0 /dev/sdX1
+   ```
+
+   `-m 0` turns off ext4's 5% reserve for root, which a data or backup drive does not need. The backup scripts already refuse to run at 95% full ([backups.md](./backups.md#what-runs-automatically)).
+5. **Read the UUID** with `sudo blkid /dev/sdX1` (`lsblk` can lag behind) and put it in the `drives` entry.
+
+Then `just deploy storage --limit <host>` mounts it.
+
 ## Adding, replacing or retiring a drive
 
 To add or replace a drive:
 
 1. Prepare the drive and its entry:
-   - Format it as ext4: `sudo mkfs.ext4 /dev/sdX1` (find the device with `lsblk`). Formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted.
+   - Prepare it ([Preparing a drive](#preparing-a-drive)); a drive bought with exFAT or NTFS will not mount until it is formatted ext4.
    - Add or point a `drives` entry at it: a new `uuid`, on the same `mount` or a new one, with `roles` updated.
    - If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
 2. `just deploy storage --limit <host>`.
