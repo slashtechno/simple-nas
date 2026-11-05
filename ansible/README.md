@@ -36,7 +36,7 @@ All commands below run from `ansible/`.
 | File | In git | Holds | Create it |
 |---|---|---|---|
 | `inventory/hosts.yml` | no (addresses) | The hosts under `servers`, with SSH address, user and key | Copy `hosts.yml.example` |
-| `group_vars/all/defaults.yml` and its topic files `flags.yml` (every `<name>_enabled` but `direct_link_enabled`, false except `storage_enabled` and `tailscale_enabled`), `backups.yml`, `data-dirs.yml`, `cloudflare.yml`, `direct-link.yml`, `ports-and-names.yml` | yes | Every shared setting with its default; a setting is in exactly one of them, and each file sorts before `vars.yml` (the later file wins, so `vars.yml` overrides them; `just check` enforces it) | Already there; not edited |
+| `group_vars/all/defaults.yml` and its topic files `flags.yml` (every `<name>_enabled` but `direct_link_enabled`, false except `storage_enabled` and `tailscale_enabled`), `backups.yml`, `data-dirs.yml`, `cloudflare.yml`, `direct-link.yml`, `ports-and-names.yml` | yes | Every shared setting with its default; a setting is in exactly one of them | Already there; not edited |
 | `group_vars/all/vars.yml` | yes | Your values that apply to every host (timezone, SSH keys, Cloudflare zones, Gitea and pics URLs) | Copy `vars.yml.example` |
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
@@ -45,29 +45,28 @@ All commands below run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
-Every setting has a comment and its default in `group_vars/all/` (shared settings: `defaults.yml` and the topic files) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated. The `vars` check inside `just check` verifies that a vault name or a setting with no default appears in its example file, that no setting has a default in two files, and that every shared defaults file sorts before `vars.yml` ([Commands](#commands)).
+Every setting has a comment and its default in `group_vars/all/` (`defaults.yml` and the topic files) or `roles/<role>/defaults/main.yml` (one role's). Read the file; nothing is generated.
 
-A value is taken from the last of these that sets it: a role's `defaults/main.yml`, `group_vars/all/defaults.yml` and its topic files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`.
+**Which value wins:** the last one set, in this order: a role's `defaults/main.yml`, the shared defaults files in `group_vars/all/`, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`. Files in `group_vars/all/` load in name order, so every shared defaults file must sort before `vars.yml`. `just check` enforces that, that a vault name or a setting with no default appears in its example file, and that no setting has a default in two files ([Commands](#commands)).
 
 ## Vault (secrets)
 
-A vault file is a YAML file encrypted with `ansible-vault`. Ansible decrypts it in memory with the password in `ansible/.vault-pass` (one line, nothing else; the file is gitignored, so `chmod 600` it and keep the password in your password manager too). `just deploy` and `just preview` pass `--vault-password-file .vault-pass`; type the same flag when you run `ansible-playbook` yourself. Use the same password for every vault file.
+A vault file is a YAML file encrypted with `ansible-vault`. Secrets live in `vault_*` variables inside it. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
 
-Secrets live in `vault_*` variables inside a vault file. Templates and defaults read them through a plain name, for example `copyparty_pass` is `"{{ vault_copyparty_pass }}"`, so the committed files never hold a secret.
-
-`just setup <host>` does the first-time work: it creates `.vault-pass` with a random password, creates `host_vars/<host>/vars.yml` from the example, and writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password). It encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists every other secret in the examples (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`); add the ones your services use. Copy `.vault-pass` into your password manager: the restic backups cannot be read without it.
+- **Password:** Ansible decrypts the files in memory with `ansible/.vault-pass` (one line, nothing else; gitignored, so `chmod 600` it). Keep the password in your password manager too: the restic backups cannot be read without it. `just deploy` and `just preview` pass `--vault-password-file .vault-pass`; type the same flag when you run `ansible-playbook` yourself. Use the same password for every vault file.
+- **First-time setup:** `just setup <host>` creates `.vault-pass` with a random password and `host_vars/<host>/vars.yml` from the example. It writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password), encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists every other secret in the examples (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`); add the ones your services use.
+- **By hand instead:** put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_vars/<host>/vault.yml` (and `group_vars/all/vault.yml.example` to `group_vars/all/vault.yml`), keep the keys your services use, and run `ansible-vault encrypt --vault-password-file .vault-pass <file>`.
+- **Check:** a vault file you forget to encrypt still deploys, with its secrets in plain text on your computer. Make sure it starts with `$ANSIBLE_VAULT`.
+- **Git and precedence:** `.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value.
+- **Flat names:** `vault_ntfy_token`, not `vault.ntfy.token`. Ansible replaces a dict instead of merging it, so a host file holding one key of an app's dict would hide the others from the shared file, and one app's secrets are split that way (ntfy's token is shared, its password is per host).
+- **Where to look:** what each service needs is in [docs/services.md](../docs/services.md); names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`.
+- **Copies:** keep the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
 
 ```bash
 just setup <host>
 ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml      # add the secrets it listed, or change one later
 ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml
 ```
-
-By hand instead: put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_vars/<host>/vault.yml` (and `group_vars/all/vault.yml.example` to `group_vars/all/vault.yml`), keep the keys your services use, and run `ansible-vault encrypt --vault-password-file .vault-pass <file>`.
-
-A vault file you forget to encrypt still deploys, with its secrets in plain text on your computer: check that it starts with `$ANSIBLE_VAULT`.
-
-`.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value. The names are flat (`vault_ntfy_token`, not `vault.ntfy.token`) on purpose: Ansible replaces a dict instead of merging it, so a host file holding one key of an app's dict would hide the others from the shared file, and one app's secrets are split that way (ntfy's token is shared, its password is per host). What each service needs is listed in [docs/services.md](../docs/services.md); the names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`. Keep a copy of the vault files and their password somewhere that is not the Pi: restoring a backup needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
 
 ## First-time setup
 
