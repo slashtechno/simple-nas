@@ -47,7 +47,7 @@ services:
       caddy_{{ site.n }}.respond: "404"
 {% set site.n = site.n + 1 %}
 {% endfor %}
-      # One site per service this host runs (web_services, group_vars/all/services.yml), unless its subdomain is "".
+      # One site per service this host runs (web_services in derived.yml, from the entries in services.yml), unless its subdomain is "".
 {% for web in caddy_web_sites %}
       caddy_{{ site.n }}: "{{ web.hosts }}"
 {% if web.protected | bool %}

@@ -4,7 +4,7 @@
 # share its memory cap, its data root and its published ports. Not in cloudflared_ingress:
 # the panel is HTTPS with a self-signed cert and Minecraft is raw TCP, neither of which a
 # Cloudflare tunnel can carry. Reach both over the LAN or Tailscale. The panel joins services so
-# Caddy can give it a name (web_services, group_vars/all/services.yml).
+# Caddy can give it a name (web_services in derived.yml, from the entries in services.yml).
 networks:
   {{ docker_network }}:
     external: true
