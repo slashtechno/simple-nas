@@ -1,6 +1,6 @@
 # Rename `<fast>/docker` to `<fast>/appdata`
 
-Status: pi4 done when this line says so; pinas and dietvostro wait for their next deploy. Delete this file when all hosts are done.
+Status: pi4 done. pinas and dietvostro wait for their next deploy. Delete this file when all hosts are done.
 
 The per-service data directory on the fast drive was `<fast>/docker`, which reads like Docker's engine storage. It is now `<fast>/appdata` (`group_vars/all/data-dirs.yml`). The code has no fallback to the old name, so each host moves its directory once, before its next deploy.
 
