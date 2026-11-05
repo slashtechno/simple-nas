@@ -20,7 +20,7 @@
       - unknown_users | length == 0
       - unknown_services | length == 0
       - not_limited | length == 0
-      - not_lists | trim == ''
+      - not_lists | length == 0
     fail_msg: >-
       service_users must name Tinyauth users from vault_tinyauth_users and services from services.yml, and only
       services Tinyauth can limit ({{ (protected_service_keys + ['pics']) | join(', ') }}); a service with accounts of
@@ -32,7 +32,11 @@
     unknown_users: "{{ service_users.values() | flatten | unique | difference(vault_tinyauth_users | map(attribute='name') | list) }}"
     unknown_services: "{{ service_users.keys() | list | difference(services | map(attribute='key') | list) }}"
     not_lists: >-
-      {% for name, users in service_users.items() if users is string or users is not sequence or users | length == 0 %}{{ name }} {% endfor %}
+      {%- set bad = [] -%}
+      {%- for name, users in service_users.items() if users is string or users is not sequence or users | length == 0 -%}
+      {%- set _ = bad.append(name) -%}
+      {%- endfor -%}
+      {{ bad }}
     not_limited: >-
       {{ service_users.keys() | list | select('in', enabled_service_keys)
          | difference(protected_service_keys + ['pics']) | list }}
