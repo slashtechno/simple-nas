@@ -84,7 +84,7 @@ Apps that store files in Copyparty (pics) get an account named after the app, wi
 
 `/fast` is a volume on the fast drive (`copyparty_fast_dir`, default `<fast_drive>/fast`) for SSD-speed working space. It exists only when you set `copyparty_fast_enabled: true`, which is worth it only when the fast and primary roles are on different drives. `/` stays the bulk volume. A `fast/` folder inside `files/` is hidden once the volume exists.
 
-Any other Copyparty option (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config; Copyparty merges the sections of both files ([config reference](https://github.com/9001/copyparty#global-options)).
+Any other Copyparty option (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config; Copyparty reads both files together. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file, so the generated `/`, `/collab` and `/fast` cannot be extended from here ([config reference](https://github.com/9001/copyparty#global-options)).
 
 - `copyparty_extra_ports` publishes a listener's port, as `"host:container"` strings like a compose `ports:` list. Container port: the number Copyparty listens on. Host port: the one clients connect to. Without an entry the listener is reachable only from other containers.
 
@@ -109,7 +109,7 @@ Keep the password in a vault entry you name yourself.
 
 - It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. A Tinyauth user name is the Copyparty user name, so every other signed-in user has only what `copyparty_extra_conf` grants them (below); `service_users.copyparty` can limit who may open the page at all. Tinyauth sends groups only for LDAP and OAuth logins, so Copyparty gets names, not Tinyauth groups.
 - The browser name is the only lane behind the login. The published port and the Cloudflare tunnel hostname keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
-- **A user with access to one folder only:** give the user a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`, `/fast`). Copyparty refuses the same volume in both the generated and the extra file, so the generated `/`, `/collab` and `/fast` cannot be extended.
+- **A user with access to one folder only:** give the user a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`, `/fast`).
 
   ```yaml
   copyparty_extra_conf: |
