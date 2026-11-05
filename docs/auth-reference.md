@@ -69,22 +69,7 @@ First login:
 
 For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy with `caddy_private_domains`, and the app on the same host as Tinyauth.
 
-1. Join the `services` network, name the app under the host's first private domain, and add the `tinyauth_forwarder` label ([label syntax](./caddy-reference.md#label-syntax)):
-
-   ```yaml
-   services:
-     app:
-       image: example/app
-       networks: [services]
-       labels:
-         caddy: app.pi4.example.com
-         caddy.import: tinyauth_forwarder
-         caddy.reverse_proxy: "{{upstreams 8080}}"   # the port the app listens on inside the container
-   networks:
-     services:
-       external: true
-   ```
-
+1. Name the app under the host's first private domain and add the `tinyauth_forwarder` label, on the `services` network ([label syntax](./caddy-reference.md#label-syntax)).
 2. Publish no port for the app: a published port skips Caddy and the login.
 3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login. To see the rule Caddy loaded: `docker exec caddy cat /config/caddy/Caddyfile.autosave | grep -A3 app.pi4`. A request without a browser (`curl`) gets 401, not the login page.
 

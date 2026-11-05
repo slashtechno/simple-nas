@@ -139,12 +139,4 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 No router port forwarding is needed. A public hostname is an explicit entry in the host's `cloudflared_ingress`; there is no wildcard to Caddy, because every labeled container would become public. Any host that sets `cloudflared_enabled: true` runs its own tunnel with its own `cloudflared_ingress`; see [services.md](./services.md#cloudflare-add-a-public-hostname).
 
-For a published app, point the entry at Caddy and use an `http://` site address, since Cloudflare terminates TLS:
-
-```yaml
-labels:
-  caddy: http://notes.example.com
-  caddy.reverse_proxy: "{{upstreams 3000}}"
-```
-
-An `http://` site address gets a plain `200` with no redirect, so no global `auto_https` label is needed.
+For a published app, point the entry at Caddy and write the app's label as `caddy: http://notes.example.com` (Cloudflare terminates TLS). An `http://` site address gets a plain `200` with no redirect, so no global `auto_https` label is needed.

@@ -2,85 +2,54 @@
 
 From a fresh clone to one host running **Immich**, **Copyparty**, **Dockge** for your own apps behind a **Tinyauth** login and **Caddy** names, daily **backups**, and **encrypted** data folders, on **three drives**. About an hour, plus the time the drives take to format.
 
-Details for each part are in [services.md](./services.md); this page is the order to do things in.
+Each step links to the doc that explains it.
 
 ## You need
 
 - A Debian-family host (Raspberry Pi OS, Debian 12+, Ubuntu) with SSH and your SSH key on it.
 - Three drives formatted ext4, and their UUIDs: [Preparing a drive](./storage.md#preparing-a-drive).
-- A domain on Cloudflare, plus an API token with **Zone:DNS:Edit** ([why](./caddy-reference.md#web-addresses-and-https)), and the domain's zone ID.
-- A Tailscale account, and a password manager (for the encryption passphrase and master key).
+- A domain on Cloudflare, an API token with **Zone:DNS:Edit** ([why](./caddy-reference.md#web-addresses-and-https)) and the domain's zone ID.
+- A Tailscale account, and a password manager (for the encryption passphrase and master keys).
 
 ## 1. Install and add the host
 
-Follow [First-time setup and Add a host](../ansible/README.md#first-time-setup) (steps 1 to 4) in `ansible/README.md`: install the tools, add the host to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname). `just setup` creates the vault password, `host_vars/home/vars.yml` and both vault files, with random values for every secret that can be random, and lists the ones left for you.
+Follow steps 1 to 4 of [Add a host](../ansible/README.md#add-a-host): install the tools, add the host to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname).
 
 ## 2. Fill in your values
 
-`group_vars/all/vars.yml` (shared by all hosts; the shape is in `vars.yml.example`):
+- `group_vars/all/vars.yml`: your timezone, SSH key and Cloudflare zone ID (`vars.yml.example` shows the shape).
+- `host_vars/home/vars.yml`:
 
-```yaml
-timezone: Europe/London
-ssh_authorized_keys: ["ssh-ed25519 AAAA... you@laptop"]
-cloudflare_zones: {example.com: your_zone_id}
-```
+  ```yaml
+  immich_enabled: true
+  copyparty_enabled: true
+  dockge_enabled: true
+  dockge_port: ""                  # Dockge is reachable only through Caddy and the login
+  caddy_enabled: true
+  tinyauth_enabled: true
+  backup_local_enabled: true
+  dozzle_enabled: true
+  scrutiny_enabled: true           # needs drives that answer SMART
+  caddy_private_domains: [home.example.com]
+  ```
 
-`host_vars/home/vars.yml`:
-
-```yaml
-immich_enabled: true
-copyparty_enabled: true
-dockge_enabled: true
-dockge_port: ""                  # Dockge is reachable only through Caddy and the login
-caddy_enabled: true
-tinyauth_enabled: true
-backup_local_enabled: true
-dozzle_enabled: true             # container logs, https://dozzle.home.example.com
-scrutiny_enabled: true           # drive health, https://scrutiny.home.example.com (needs drives that answer SMART)
-caddy_private_domains: [home.example.com]   # apps get https://<app>.home.example.com, on your tailnet only
-
-drives:
-  - {uuid: "aaaa-...", mount: /mnt/fast,    roles: [fast]}      # databases, configs, stacks
-  - {uuid: "bbbb-...", mount: /mnt/primary, roles: [primary]}   # photos, files
-  - {uuid: "cccc-...", mount: /mnt/backup,  roles: [backup]}    # restic repository
-
-encrypted_folders:               # what each holds: storage.md, What lives where
-  - /mnt/fast/appdata
-  - /mnt/fast/stacks
-  - /mnt/primary/photos
-  - /mnt/primary/files
-```
-
-The vault files (`just edit vault`) need the values `just setup` could not invent:
-
-| File | Entry | Value |
-|---|---|---|
-| `group_vars/all/vault.yml` | `vault_cloudflared_api_token` | your Cloudflare token |
-| | `vault_tinyauth_users` | a login: `name` and `password` |
-| `host_vars/home/vault.yml` | `vault_copyparty_user`, `vault_copyparty_password` | the Copyparty admin account |
+  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (the `appdata`, `stacks`, `photos` and `files` folders: [which folders](./encryption.md#which-folders-to-list)).
+- The vault (`just edit vault`): the secrets `just setup` listed ([which file holds what](../ansible/README.md#vault-secrets)).
 
 ## 3. Prepare the host
 
 ```bash
-just deploy storage,common,tailscale --limit home -K    # -K asks for the sudo password, this once
+just deploy storage,common,tailscale --limit home -K
 ssh <user>@<host> sudo tailscale up                     # open the link it prints
 ```
 
 ## 4. Create the encrypted folders (before any service starts)
 
-`photos` and `files` are your personal data. `appdata` (every service's databases and configs) and `stacks` (your Dockge apps' compose files and data) add the rest. With any of them encrypted, the services that use them wait for an unlock after each boot ([encryption.md](./encryption.md#how-it-works)).
-
 ```bash
 just deploy encryption,backup --limit home
-ssh -t <user>@<host>
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/fast/appdata     # once per folder
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/fast/stacks     # same passphrase each time
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/photos  # save each master key in your password manager
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/files
-sudo /opt/services/scripts/unlock.sh
 ```
 
-The folders are empty, so there is nothing to move in. More: [encryption.md](./encryption.md#set-up-a-folder).
+Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in.
 
 ## 5. Deploy everything
 
@@ -88,18 +57,13 @@ The folders are empty, so there is nothing to move in. More: [encryption.md](./e
 just deploy '' --limit home
 ```
 
-Then reboot once (`sudo reboot`; the drive guard arms at boot) and unlock: `sudo /opt/services/scripts/unlock.sh`.
+Reboot once (`sudo reboot`) and [unlock](./encryption.md#unlocking).
 
 ## 6. Check it
 
-- `https://dockge.home.example.com`, `https://immich.home.example.com`, `https://copyparty.home.example.com` open after the Tinyauth login (`https://auth.home.example.com`).
-- `https://dozzle.home.example.com` ([Dozzle](./services.md#dozzle-container-logs): every container's log) and `https://scrutiny.home.example.com` ([Scrutiny](./services.md#scrutiny-drive-health): each drive's SMART health; the deploy stops if no drive answers SMART).
-- Run a backup by hand (`/opt/services/scripts/backup-restic-local.sh`, [as your user](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
+- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login; so do [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health).
+- Run a backup by hand ([backups.md](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).
-
-## After every reboot
-
-Nothing with encrypted data runs, and no backup runs, until you `sudo /opt/services/scripts/unlock.sh`. Set `ntfy_alert_url` to hear about a locked host ([encryption.md](./encryption.md#unlocking)).
 
 ## Next
 

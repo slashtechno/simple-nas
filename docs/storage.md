@@ -25,7 +25,7 @@ Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked
 
 ## What lives where
 
-Mount points below are the [quick start's](./quick-start.md); yours are the `mount` values in `drives`.
+Mount points below are examples; yours are the `mount` values in `drives`.
 
 ```
 /mnt/fast/                      fast drive
