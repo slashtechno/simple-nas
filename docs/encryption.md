@@ -125,6 +125,39 @@ After a reboot, services with encrypted data stay down until someone unlocks, an
 
 To lock again: stop the containers that use the folder, then `sudo umount <folder>`.
 
+### Doing it by hand
+
+The scripts are thin: they run these gocryptfs commands and add checks. You can run the commands yourself (for a folder in `encrypted_folders`, so the backups still guard and skip it correctly).
+
+<details>
+<summary>Create a folder without <code>init-encrypted-folder.sh</code></summary>
+
+```bash
+sudo mkdir -p /mnt/data/photos                        # must be empty
+sudo mkdir /mnt/data/.photos.gocryptfs                # the encrypted files, beside the folder
+sudo chown --reference=/mnt/data/photos /mnt/data/.photos.gocryptfs    # the mounted folder shows this owner and mode
+sudo chmod --reference=/mnt/data/photos /mnt/data/.photos.gocryptfs
+sudo gocryptfs -init -xchacha /mnt/data/.photos.gocryptfs             # drop -xchacha if `grep -w aes /proc/cpuinfo` prints something
+```
+
+Run it in a terminal: the passphrase prompt and the one-time master key need one. The script adds the refusal to overwrite an existing folder and picks the cipher for the CPU.
+
+</details>
+
+<details>
+<summary>Unlock without <code>unlock.sh</code></summary>
+
+```bash
+sudo chown <ansible user> /mnt/data/.photos.gocryptfs/gocryptfs.conf    # so the backups can read it (gocryptfs makes it root-only)
+sudo chattr +i /mnt/data/photos                                         # optional: while locked, nothing can write into the empty folder
+sudo gocryptfs -allow_other /mnt/data/.photos.gocryptfs /mnt/data/photos # asks for the passphrase; -allow_other lets containers read it
+sudo systemctl restart docker                                           # or restart the containers that use the folder
+```
+
+Lock again with `sudo umount /mnt/data/photos`. The script does the same for every folder with one passphrase prompt, refuses a folder that is not empty, and runs your `after-unlock.d` scripts.
+
+</details>
+
 ## If gocryptfs.conf is lost
 
 Per folder, in order of ease:
