@@ -17,7 +17,6 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 ## Phase 1: drives
 
 - [ ] The 500 GB drive is still the `backup` drive in `host_vars/pinas/vars.yml`; the Exos swap is [drive-migration.md](./drive-migration.md).
-- [ ] Read the Exos's long SMART test when it finishes (`smartctl -a`).
 - [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
 - [x] Connectivity watchdog (built; deployed on pi4) (opt-in role, switch `connectivity_watchdog_enabled`, default off). pi4 once stayed on wifi with a valid address and working ping while every TCP and DNS lookup failed, so it dropped off Tailscale until `nmcli con down` and `up` fixed it (2026-11-02, cause unknown). Nothing emitted an event, so only an active probe can notice. Design (both Pi reviews agree on the first three):
   - Probe: a TCP connect to port 443 of 1.1.1.1 and 8.8.8.8 (bash `/dev/tcp` in `timeout`); healthy if either connects. Not ICMP (it passed during the fault), not DNS, not Tailscale health (flaps on control-plane trouble).

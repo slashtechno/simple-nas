@@ -16,13 +16,10 @@ Starting layout: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has 
 
 ## 0. Vet the new drives
 
-Run on each new drive, especially the used Exos; read its SMART yourself, not the seller's:
+Vet each new drive yourself, not on the seller's word: `sudo smartctl -d sat -a /dev/sdX` (power-on hours, reallocated and pending sectors), then a read-only `badblocks` scan. A long `smartctl` self-test aborts through the Exos's USB bridge.
 
-```bash
-smartctl -a /dev/sdX        # power-on hours, reallocated and pending sectors
-smartctl -t long /dev/sdX   # wait for it to finish, then read smartctl -a again
-```
-
+- [x] Exos: vetted (SMART counters all 0, full read-only `badblocks` scan found no bad blocks). It is plugged into pinas, still formatted NTFS.
+- [ ] P10: vet it before it holds photos.
 - [ ] Exos (3.5") needs a powered USB-SATA dock (12V).
 - [ ] P10 (2.5") is bus-powered. On pinas the T7 and P10 share a 1.6A USB budget (the 500GB HDD has its own brick); check their combined draw or use a powered hub.
 
