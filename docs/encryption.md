@@ -52,11 +52,11 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 
 ### Which folders to list
 
-List the folders that hold data, not a drive's mount point (`/mnt/data` would put the ciphertext on the root drive, and a formatted drive is not empty because of `lost+found`). With the default paths and one drive at `/mnt/data` holding `fast` and `primary` ([storage.md](./storage.md#examples)):
+List the folders that hold data, not a drive's mount point (`/mnt/data` would put the ciphertext on the root drive, and a formatted drive is not empty because of `lost+found`). With the default paths and one drive at `/mnt/data` holding `fast` and `primary` ([layout: storage.md](./storage.md#what-lives-where)):
 
 ```yaml
 encrypted_folders:
-  - /mnt/data/docker   # every service's data directory on the fast drive
+  - /mnt/data/docker   # the databases and configs of every service this repo deploys (not Docker's engine storage)
   - /mnt/data/stacks   # Dockge stacks
   - /mnt/data/photos   # Immich's photos
   - /mnt/data/files    # Copyparty's files

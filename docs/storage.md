@@ -12,6 +12,28 @@ Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext
 
 Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
 
+## What lives where
+
+Mount points below are the [quick start's](./quick-start.md); yours are the `mount` values in `drives`.
+
+```
+/mnt/fast/                      fast drive
+├─ docker/<service>/            each service's own data: databases, configs, sessions
+├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
+├─ fast/                        Copyparty's /fast volume
+└─ restic-cache/                restic's cache
+/mnt/primary/                   primary drive
+├─ photos/                      Immich's photos
+├─ files/, collab/              Copyparty's files
+└─ apps/pics/{photos,trash}/    pics
+/mnt/backup/                    backup drive: restic repository, dumps, logs
+/opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)
+/var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")
+```
+
+- `docker/` is the data of the services this repo deploys. It is not Docker's engine storage, which is the last line.
+- Every path is a setting in `group_vars/all/data-dirs.yml`.
+
 ## Examples
 
 The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use; an unclaimed role fails the deploy with a message naming it, only on a host that enables a service needing it.

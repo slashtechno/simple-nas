@@ -42,7 +42,7 @@ drives:
   - {uuid: "bbbb-...", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}   # photos, files
   - {uuid: "cccc-...", mount: /mnt/backup,  fstype: ext4, options: "defaults,nofail", roles: [backup]}    # restic repository
 
-encrypted_folders:               # every data folder; each name is explained in services.md and encryption.md
+encrypted_folders:               # what each folder holds: storage.md#what-lives-where
   - /mnt/fast/docker
   - /mnt/fast/stacks
   - /mnt/primary/photos
@@ -65,6 +65,8 @@ ssh <user>@<host> sudo tailscale up                     # open the link it print
 ```
 
 ## 4. Create the encrypted folders (before any service starts)
+
+`photos` and `files` are your personal data. `docker` (every service's databases and configs) and `stacks` (your Dockge apps' compose files and data) add the rest. With any of them encrypted, the services that use them wait for an unlock after each boot ([encryption.md](./encryption.md#how-it-works)).
 
 ```bash
 just deploy encryption,backup --limit home
