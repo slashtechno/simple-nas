@@ -130,6 +130,7 @@
         vault_tinyauth_users: [{name: one, password: "pass$word"}, {name: two, password: second, totp: JBSWY3DPEHPK3PXP}]
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.com"}
         immich_port: ""
+        immich_extra_origins: ["https://photos.example.org"]
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
         copyparty_sso_enabled: true
@@ -488,8 +489,9 @@
           - "\"TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: 'immich$$secret'\" in tinyauth_compose"
           - >-
             ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.pi4.example.com/auth/login,'
-            ~ 'https://immich.second.example.com/auth/login,https://immich.pi4.example.com/user-settings,'
-            ~ 'https://immich.second.example.com/user-settings,app.immich:///oauth-callback"')
+            ~ 'https://immich.pi4.example.com/user-settings,https://immich.second.example.com/auth/login,'
+            ~ 'https://immich.second.example.com/user-settings,https://photos.example.org/auth/login,'
+            ~ 'https://photos.example.org/user-settings,app.immich:///oauth-callback"')
             in tinyauth_compose
           - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
           - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"

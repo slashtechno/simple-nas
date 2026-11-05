@@ -21,11 +21,12 @@
 #              account named after its key, with the password vault_<key>_copyparty_password, and each volume is served
 #              at /apps/<key>/<folder> (also its path inside the container), from the directory the setting <dir> names. The admin has full access to it too. Put
 #              no delete (d) in perms where the app must not destroy files: Copyparty then renames instead of overwriting.
-#   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them.
+#   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them
+#              (an app that sends the address it was opened on gets one per address it is opened at: immich_extra_origins).
 #              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
 #              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
 #              of the account id the app stores, so changing it orphans every linked account. The app's own side
-#              repeats the id and the URI (pics' env file, Immich's config file): change both together.
+#              repeats the id and the URI (pics' env file, Immich's settings in roles/immich/tasks/main.yml): change both together.
 #   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
 #   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
 #              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
@@ -44,9 +45,8 @@ services:
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_upload_location], no_backup: [immich_db_data_location],
      container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
-     oidc: "{{ caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/auth/login') | list
-               + caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/user-settings') | list
-               + ['app.immich:///oauth-callback'] }}"}
+     oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | list + immich_extra_origins)
+               | product(['/auth/login', '/user-settings']) | map('join') | list + ['app.immich:///oauth-callback'] }}"}
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir,
             "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",

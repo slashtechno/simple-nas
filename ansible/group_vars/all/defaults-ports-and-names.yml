@@ -46,6 +46,10 @@ crafty_port: 28443
 # Immich's name.
 immich_subdomain: immich
 
+# Addresses besides the Caddy names that Immich is opened at, scheme included, e.g. a Cloudflare Tunnel hostname:
+# ["https://photos.example.com"]. Immich sends the address it was opened on to Tinyauth, which must trust it.
+immich_extra_origins: []
+
 # Copyparty's name.
 copyparty_subdomain: copyparty
 
