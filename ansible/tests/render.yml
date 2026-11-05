@@ -452,6 +452,8 @@
           - "(caddy_site['crafty.pi4.example.com'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
           - "caddy_labels[caddy_site['gh.pi4.example.com'] ~ '.redir'] == 'https://github.com{uri}'"
           - "'http://render-full' in caddy_site"
+          - "caddy_labels[caddy_site['*.pi4.example.com'] ~ '.respond'] == '404'"
+          - "caddy_labels[caddy_site['*.second.example.com'] ~ '.respond'] == '404'"
           - "caddy_labels[caddy_site['dockge.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
           - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
           - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.reverse_proxy.header_up'] == 'idp$$key 1'"
