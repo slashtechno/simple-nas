@@ -32,5 +32,5 @@ api_bind_addr = "0.0.0.0:3903"
 
 # Required by Garage v2 — the admin API requires an auth token.
 # Generate with: openssl rand -hex 32
-# This is what you put into garage-webui's AUTH_USER_PASS / API_ADMIN_KEY.
+# The web UI uses it as its API_ADMIN_KEY.
 admin_token = "{{ vault_garage_admin_token }}"

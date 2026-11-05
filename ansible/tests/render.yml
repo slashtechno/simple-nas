@@ -269,7 +269,11 @@
     - name: Every service has its flag, and a web service its port and subdomain, in the shared defaults files
       vars:
         shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
-        needed: "{{ [item.key ~ '_enabled'] + ([item.key ~ '_port', item.key ~ '_subdomain'] if item.icon is defined and item.port is not defined else []) }}"
+        # Garage's web UI has no port setting: Tinyauth is its only way in.
+        needed: >-
+          {{ [item.key ~ '_enabled']
+             + ([item.key ~ '_port'] if item.icon is defined and item.port is not defined and item.key != 'garage' else [])
+             + ([item.key ~ '_subdomain'] if item.icon is defined and item.port is not defined else []) }}
       ansible.builtin.assert:
         that: needed | difference(shared_defaults.keys()) | length == 0
         fail_msg: the shared defaults files in group_vars/all/ need {{ needed | difference(shared_defaults.keys()) }} (with a comment above each).

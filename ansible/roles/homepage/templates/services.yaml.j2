@@ -6,7 +6,7 @@
 {% set has_names = hostvars[host].caddy_enabled | bool and domains | length > 0 %}
 {# A tile needs a link: a Caddy name or a host port. #}
 {% for tile in web_services if hostvars[host][tile.key ~ '_enabled'] | bool
-     and (tile.port is defined or hostvars[host][tile.key ~ '_port'] != '' or (has_names and hostvars[host][tile.key ~ '_subdomain'] != '')) %}
+     and (tile.port is defined or hostvars[host][tile.key ~ '_port'] | default('') != '' or (has_names and hostvars[host][tile.key ~ '_subdomain'] != '')) %}
 {# The heading is printed once per host, before its first tile (loop.first). #}
 {% if loop.first %}
 - {{ host }}:
@@ -16,7 +16,7 @@
 {% if has_names and sub != '' %}
 {% set href = 'https://' ~ sub ~ '.' ~ domains[0] %}
 {% else %}
-{% set port = tile.port if tile.port is defined else hostvars[host][tile.key ~ '_port'] %}
+{% set port = tile.port if tile.port is defined else hostvars[host][tile.key ~ '_port'] | default('') %}
 {% set href = (tile.scheme | default('http')) ~ '://' ~ hostvars[host].ansible_host | default(host) ~ ':' ~ port %}
 {% endif %}
     - {{ tile.name | to_json }}:

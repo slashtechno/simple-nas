@@ -4,12 +4,21 @@
     that:
       - vault_garage_rpc_secret is defined
       - vault_garage_admin_token is defined
-      - vault_garage_webui_user is defined
-      - vault_garage_webui_password is defined
     fail_msg: >-
-      garage needs vault_garage_rpc_secret, vault_garage_admin_token, vault_garage_webui_user and
-      vault_garage_webui_password in the vault that applies to {{ inventory_hostname }}
+      garage needs vault_garage_rpc_secret and vault_garage_admin_token in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
+    quiet: true
+
+# The web UI holds the admin token and has no login of its own, so it is served only behind Tinyauth, never on a
+# host port or a tunnel name.
+- name: Check the web UI is behind Tinyauth and Caddy
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+    fail_msg: >-
+      Garage's web UI has no login of its own: switch on tinyauth_enabled (docs/services.md#tinyauth-login) and
+      caddy_enabled with a caddy_private_domains entry.
     quiet: true
 
 - name: Create Garage compose directory

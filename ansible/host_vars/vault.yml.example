@@ -52,9 +52,5 @@ vault_pics_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 # Token for Garage's admin API.
 vault_garage_admin_token: "change-me-generate-with-openssl-rand-hex-32"
-# Login of the Garage web UI.
-vault_garage_webui_user: "admin"
-# Password of the Garage web UI. The deploy hashes it.
-vault_garage_webui_password: "change-me-generate-with-openssl-rand-base64-24"
 
 # Cloudflare and backup secrets every host shares are in group_vars/all/vault.yml.

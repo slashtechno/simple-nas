@@ -34,7 +34,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 | Gitea | Git server | `roles/gitea` | `fast` drive role; `caddy_private_domains` or `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
 | pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
-| Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; four `vault_garage_*` entries | [Garage](#garage-s3) |
+| Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; a Caddy name; `tinyauth_enabled`; `vault_garage_rpc_secret`, `vault_garage_admin_token` | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
 | Tinyauth | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role; a Caddy name; `vault_tinyauth_users` | [Tinyauth: login](#tinyauth-login) |
@@ -217,12 +217,11 @@ The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scruti
 
 ## Garage (S3)
 
-Set `garage_enabled: true`, fill in `vault_garage_rpc_secret`, `vault_garage_admin_token`, `vault_garage_webui_user` and `vault_garage_webui_password` in the host's vault, then `just deploy garage,cloudflared --limit <host>`.
+Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_admin_token` in the host's vault, then `just deploy garage,caddy --limit <host>`. The web UI needs `tinyauth_enabled` and Caddy with a `caddy_private_domains` entry ([Tinyauth](#tinyauth-login)); the deploy stops without them.
 
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`), not as files: [Restore: Garage](./backups.md#restore-garage).
 - Garage reads its cluster layout from `garage_data_dir/meta`. A first deploy (empty meta dir) starts with `--single-node` so Garage auto-configures the one-node layout; later starts omit the flag, which Garage requires once a layout exists (the reason is in the comment in `roles/garage/tasks/main.yml`).
-- `vault_garage_webui_password` is the web UI password; the deploy hashes it (bcrypt with a fixed salt, so the output is the same on every run).
-- Open `https://garage.example.com` (the `garage-webui` entry in `cloudflared_ingress`), log in with the web UI credentials, and create buckets and access keys there.
+- The web UI is at `https://garage.<private domain>` behind the Tinyauth login; create buckets and access keys there. It has no login of its own and holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
 - Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the web UI. The same S3 API answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 
 ## Crafty (Minecraft servers)

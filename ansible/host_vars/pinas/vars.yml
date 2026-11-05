@@ -72,5 +72,3 @@ cloudflared_ingress:
     # Caddy CORS proxy sits on 3900; it handles OPTIONS preflights and injects
     # Access-Control-Allow-Origin before forwarding to Garage internally.
     service: "http://garage-cors-proxy:3900"
-  - hostname: garage.slashtechno.com
-    service: "http://garage-webui:3909"

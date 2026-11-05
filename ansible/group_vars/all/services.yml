@@ -79,8 +79,9 @@ services:
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   - {name: Homepage, key: homepage, compose: homepage,
      container: homepage, container_port: 3000, icon: homepage, description: Start page}
-  # No tile and no registry Caddy name: its web UI and S3 endpoint are published by the garage role's own compose file.
-  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir]}
+  # The tile and Caddy name are the web UI (behind Tinyauth); the S3 endpoint is published by the garage role's own compose file.
+  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir],
+     container: garage-webui, container_port: 3909, icon: garage, description: S3 storage}
   - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
   - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}

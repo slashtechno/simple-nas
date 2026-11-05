@@ -84,6 +84,9 @@ dozzle_subdomain: dozzle
 # Scrutiny's name.
 scrutiny_subdomain: scrutiny
 
+# Garage's web UI name (its S3 endpoint has none: it is on garage_s3_port and the tunnel).
+garage_subdomain: garage
+
 # Homepage's name.
 homepage_subdomain: homepage
 
