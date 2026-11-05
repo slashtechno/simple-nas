@@ -25,7 +25,7 @@ services:
       # name:bcrypt-hash[:totp-secret], separated by commas. Tinyauth wants a hash, so the vault passwords are hashed here
       # (a fixed salt keeps the output the same on every run, as for ntfy and Garage).
       TINYAUTH_AUTH_USERS: '{% for user in vault_tinyauth_users %}{{ user.name }}:{{ user.password | password_hash('bcrypt', 'tinyauthtinyauthtinyau', ident='2b') | replace('$', '$$') }}{% if user.totp is defined %}:{{ user.totp }}{% endif %}{% if not loop.last %},{% endif %}{% endfor %}'
-      # No Docker socket: per-app rules are not used, own_login in services.yml decides what is protected.
+      # No Docker socket: per-app rules come from service_users below, not from container labels.
       TINYAUTH_LABELPROVIDER: none
       TINYAUTH_ANALYTICS_ENABLED: "false"
 {% set limited = protected_service_keys | select('in', service_users.keys() | list) | select('in', enabled_service_keys) | list %}

@@ -121,7 +121,7 @@ A service not listed stays open to every Tinyauth user. How a listed service is 
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
-Rules beyond a user list (a path, an IP range, `deny` as the default) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api` or `TINYAUTH_AUTH_ACLS_POLICY: deny`; the app name is the subdomain. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by `TINYAUTH_APPS_<ID>_OAUTH_WHITELIST` instead. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. A service the host does not run is ignored. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 

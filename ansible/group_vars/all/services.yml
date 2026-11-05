@@ -99,12 +99,12 @@ enabled_service_keys: >-
   {%- endfor -%}
   {{ on }}
 
-# The keys of the services Tinyauth sits in front of: those without own_login (services.yml), plus Copyparty when its
+# The keys of the services Tinyauth sits in front of: those without own_login or a fixed port (services.yml), plus Copyparty when its
 # single sign-on is on. Tinyauth's cookie covers one parent domain, so these are served under the first private domain only.
 # Example: [dockge, dozzle, scrutiny] on a host with Tinyauth, [] on one without.
 protected_service_keys: >-
   {{ [] if not (tinyauth_enabled | bool) else
-     (web_services | rejectattr('own_login', 'defined') | map(attribute='key') | list)
+     (web_services | rejectattr('own_login', 'defined') | rejectattr('port', 'defined') | map(attribute='key') | list)
      + (['copyparty'] if copyparty_sso_enabled | bool else []) }}
 
 # The keys of the enabled entries marked dump_required: their live database is left out of the backup, so the deploy
