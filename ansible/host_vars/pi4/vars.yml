@@ -36,4 +36,3 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [backup]
-
