@@ -1,6 +1,6 @@
 # Words used in these docs
 
-Each word is defined once, here. The other docs link to this page instead of explaining the word again. Encryption has its own list of terms at the top of [encryption.md](./encryption.md#the-concepts).
+Each word is defined once, here. The other docs link to this page instead of explaining the word again. Encryption has its own list of terms at the top of [encryption.md](./encryption.md).
 
 ## Backups
 

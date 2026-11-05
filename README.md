@@ -4,6 +4,8 @@ Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a
 
 Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every image pinned in `versions.yml` has both builds (Caddy is built on the host from the official multi-arch `caddy` images): `just platforms` in `ansible/` checks that after a version change.
 
+**New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server (Immich, Copyparty, Dockge, a login, backups, encryption, three drives).
+
 Every server gets Docker and the base packages; Tailscale and the drive mounts are on by default. Everything else is opt-in per host ([ansible/README.md](./ansible/README.md)). Hosts are listed under `servers` in `ansible/inventory/hosts.yml`; the example is `ansible/inventory/hosts.yml.example`.
 
 The services are listed, with what each one is and needs, in [docs/services.md](./docs/services.md#services). A drive role (`fast`, `primary`, `backup`) is a job a drive in the host's `drives` list is given: [docs/storage.md](./docs/storage.md). A vault entry is a secret in an encrypted `vault.yml`: [ansible/README.md](./ansible/README.md#vault-secrets).
