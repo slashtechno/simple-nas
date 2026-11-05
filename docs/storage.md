@@ -74,12 +74,18 @@ drives:
 The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. It also adds `nofail` unless your `options` already have it.
 
 - **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits up to 30 seconds and then fails with `No such device`. The mount point is a placeholder, not a plain folder, so a container cannot write to the root drive. After the drive returns, the next access mounts it again, with no script or udev rule.
-- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting.
-- **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
+- **`nofail` and no idle timeout:** `nofail` keeps a drive that fails to mount from stopping a headless host booting. `x-systemd.idle-timeout` is left out because it would unmount a quiet drive, and a running container keeps its old, dead mount.
 - **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
 - **In `systemctl status`:** `mnt-data.automount` is `active (waiting)` and `mnt-data.mount` is inactive until something opens the path. `df` shows the drive only after that.
 - **Remount by hand:** `sudo systemctl restart mnt-data.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
 - **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after up to 30 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
+
+## With a drive missing
+
+- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 30 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
+- **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
+- **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
+- **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
 
 ## Using the root drive for fast or primary
 
@@ -151,13 +157,6 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the root drive.
 
 To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space, and its root-owned files make the backup exit with errors until you delete it (`sudo rm -r <old docker_data_root>`) or add `- <old docker_data_root>` to `restic_local_extra_rules`.
-
-### With a drive missing
-
-- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 30 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
-- **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
-- **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
-- **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
 
 ### Detach a drive
 
