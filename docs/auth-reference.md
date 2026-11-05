@@ -30,7 +30,10 @@ tinyauth_environment:
   TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
 ```
 
-- **Always set the whitelist.** The deploy stops if a provider is set without it. It is either one regex for the whole value, wrapped in slashes (`/@example\.com$/`), or a comma-separated list of exact addresses; a value that mixes the two matches no regex and only the exact entries. A login through a public provider is only as restrictive as this list.
+- **Always set the whitelist.** The deploy stops if a provider is set without it. A login through a public provider is only as restrictive as this list.
+  - **A regex** for the whole value, wrapped in slashes: `/@example\.com$/`.
+  - **Or a comma-separated list** of exact addresses.
+  - A value that mixes the two matches no regex and only the exact entries.
 - `google` is the same with `GOOGLE` in the names. Another provider (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` in the same pattern ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 - Password logins stay available next to the provider: the role needs `vault_tinyauth_users`.
 - Only a provider that sends groups puts them in the app's `Remote-Groups` header; GitHub and Google send none.
@@ -39,13 +42,28 @@ tinyauth_environment:
 
 OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are; the app never sees your password. Gitea, Immich and pics can do this, so one Tinyauth login opens them, and each keeps its own accounts and permissions.
 
-- Turn it on for an app on the host: `gitea_sso_enabled: true`, `immich_sso_enabled: true` or `pics_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
-- Put the client secret in the vault: `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` or `vault_pics_oidc_secret` (`openssl rand -hex 24`), then `just deploy tinyauth,gitea,immich,pics --limit <host>`.
+Setup:
+
+1. Turn it on for an app on the host: `gitea_sso_enabled: true`, `immich_sso_enabled: true` or `pics_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
+2. Put the client secret in the vault: `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` or `vault_pics_oidc_secret` (`openssl rand -hex 24`).
+3. Deploy: `just deploy tinyauth,gitea,immich,pics --limit <host>`.
+
+Behaviour:
+
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
-- With more than one domain in `caddy_private_domains`: Tinyauth itself and its issuer address are on the first domain. Immich sends the address you opened it on, so Tinyauth accepts the Immich sign-in on every domain. pics and Gitea send one fixed address (pics: its name under the first domain; Gitea: `gitea_root_url`), so Tinyauth sign-in works on that name only; their password login works on every name.
 - Every user in `vault_tinyauth_users` is offered to every app: Tinyauth cannot restrict a client to some of its users. pics therefore checks the user itself: `pics_oidc_owner` (a user name or email address) is the one account that may open it.
-- First login: Immich matches you by email, and Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching Immich account gets a new one automatically. Gitea creates no accounts: it shows its link page once, to attach the Tinyauth login to an existing Gitea account, and a login with no account to attach stops there (an admin creates the Gitea account first).
-- With `immich_sso_enabled`, Immich reads its settings from a file the deploy writes and refuses to save changes from its settings page. The file carries the OAuth client and the password-login switch, and every other setting is Immich's default.
+- **Immich settings:** with `immich_sso_enabled`, Immich reads its settings from a file the deploy writes and refuses to save changes from its settings page. The file carries the OAuth client and the password-login switch, and every other setting is Immich's default.
+
+With more than one domain in `caddy_private_domains`:
+
+- Tinyauth itself and its issuer address are on the first domain.
+- **Immich** sends the address you opened it on, so Tinyauth accepts the Immich sign-in on every domain.
+- **pics** (its name under the first domain) and **Gitea** (`gitea_root_url`) send one fixed address, so Tinyauth sign-in works on that name only. Their password login works on every name.
+
+First login:
+
+- **Immich** matches you by email. Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching Immich account gets a new one automatically.
+- **Gitea** creates no accounts. It shows its link page once, to attach the Tinyauth login to an existing Gitea account; a login with no account to attach stops there, so an admin creates the Gitea account first.
 
 ## Tailscale
 
