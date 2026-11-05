@@ -40,7 +40,7 @@ caddy_private_domains: [pi4.example.com]
   - `--check` prints the plan. To remove the records, set the list to `[]` and run `just deploy caddy --limit <host>` before `teardown.yml -e only=caddy`; teardown does not call Cloudflare.
 - **Certificates:** Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
 - **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
-- **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
+- **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate. A public name for a service behind the login: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet).
 - **Secrets:** Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
 
 #### Service names

@@ -98,6 +98,28 @@ The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote
 
 Clients that cannot log in through a web page (mobile apps, API tokens, git, WebDAV, webhooks) are stopped by the forwarder with a 401. Leave the label off for those, so the app's own login protects it (as for Immich and Gitea), or give them a second name without the label. A script can also send a Tinyauth user and password as HTTP basic auth, for a user without two-factor.
 
+## Reach a protected service from outside the tailnet
+
+The login and its session cookie belong to the private domain. Tinyauth takes the cookie domain from its own address (`TINYAUTH_APPURL`, one parent domain per instance), so a public name on any other domain can never share the session. Options, best first:
+
+1. **Tailscale on the device.** Nothing to change: the private names resolve to the tailnet address. Use this when the device can run Tailscale.
+2. **Publish the names through Caddy, under the same private domain** (not tested here). A tunnel name is an exact proxied record, so it wins over the private wildcard record. Point it at Caddy, not the container, and publish the login page too, because a browser with no session is sent there. In the host's `vars.yml`:
+
+   ```yaml
+   cloudflared_enabled: true
+   cloudflared_ingress:
+     - {hostname: dockge.pi4.example.com, service: "http://caddy:80"}
+     - {hostname: auth.pi4.example.com, service: "http://caddy:80"}
+   caddy_sites:
+     http://dockge.pi4.example.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
+     http://auth.pi4.example.com: {reverse_proxy: "tinyauth:3000"}
+   ```
+
+   Then `just deploy caddy,cloudflared --limit <host>`. The login page is now on the internet: give every user a `totp` secret first (above). Cloudflare ends the TLS, so the sites are `http://` ([With cloudflared](./caddy-reference.md#with-cloudflared)).
+3. **The app's own login, exposed directly:** a tunnel entry to the container, only for an app that has a login ([which](./services.md#tinyauth-login)). Never for Dozzle, Scrutiny, the Garage web UI or Dockge with its login off.
+
+Cloudflare Access in front of a tunnel entry also works, but its policy lives in Cloudflare's dashboard, outside this repo. A second Tinyauth for another domain does not fit: it needs its own users, container and forwarder snippet by hand. Tailscale Funnel gives another domain (`ts.net`), so the login cannot follow it.
+
 ## Tailscale
 
 Two routes, neither used by the deploy by default and neither tested here:
