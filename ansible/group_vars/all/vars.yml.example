@@ -16,6 +16,5 @@ cloudflare_zones:
 # pics (pics_enabled): the private GitHub repo it builds from and its public guest URL.
 pics_repo: owner/lab
 pics_public_url: "https://photos.example.com"
-# Who may use a service: Tinyauth user names per service key (docs/auth-reference.md#who-may-use-what).
-# pics_sso_enabled needs pics listed; a service not listed is open to every Tinyauth user.
+# Who may use a service (docs/auth-reference.md#who-may-use-what); pics_sso_enabled needs pics listed.
 service_users: {pics: [you]}

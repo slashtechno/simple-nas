@@ -87,9 +87,8 @@ backup_cloud_cron_jobs: [backup-cloud]
 # The entries with a web UI, in the order above.
 web_services: "{{ services | selectattr('icon', 'defined') | list }}"
 
-# The keys of the entries whose <key>_enabled is true on this host. lookup('vars', ...) reads a setting whose name is
-# built from the key, which a filter cannot do. Use it as: services | selectattr('key', 'in', enabled_service_keys)
-# Example: a host with immich_enabled and caddy_enabled true gives [immich, caddy].
+# The keys of the entries whose <key>_enabled is true on this host (lookup reads a setting named from the key, which a
+# filter cannot). Example: immich_enabled and caddy_enabled true give [immich, caddy].
 enabled_service_keys: >-
   {%- set on = [] -%}
   {%- for service in services if lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool -%}
@@ -124,5 +123,4 @@ oidc_service_keys: >-
   {{ on }}
 
 # The enabled entries with a copyparty field: the apps that get a Copyparty account and volumes on this host.
-# Example: [pics] entry on a host that runs pics, [] on one that does not.
 copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('copyparty', 'defined') | list }}"
