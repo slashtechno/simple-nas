@@ -218,7 +218,7 @@ Teardown never touches drive mounts, the restic password or Tailscale state. It 
 
 Verify a restore before `remove_data=true`. The paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
 
-Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, if `dockge_port` is `""`, Dockge without a login. To get Dockge's own login back, set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` ([services.md](../docs/services.md#ad-hoc-app-platform)).
+Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, if `dockge_port` is `""`, Dockge without a login. Dockge's recovery is in [services.md](../docs/services.md#ad-hoc-app-platform).
 
 ## Add a new service
 

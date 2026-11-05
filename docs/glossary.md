@@ -9,7 +9,7 @@ Each word is defined once, here. The other docs link to this page instead of exp
 - **Deduplication and chunks.** Restic cuts files into small chunks by content and stores each different chunk once. That is why a second backup of the same files is small. The *chunker settings* are how it cuts; two repositories only share chunks if they cut the same way, which is why a second repository is created with the first one's settings ([backups.md](./backups.md#offline-copy-on-a-second-drive)).
 - **Retention.** The rule for which old snapshots to keep (`restic_local_retention`, for example the last 7 daily ones).
 - **Forget and prune.** `forget` removes snapshots that rule no longer keeps, and `prune` then frees the disk space they used. Both are needed to get space back.
-- **Snapshot group.** Restic groups snapshots by host and by the list of paths backed up. Change the path list and a new group starts; the old group stops growing and keeps its last snapshots until you remove them. `restic restore latest` takes the newest snapshot of one group, so after changing the lists, restore each group separately.
+- **Snapshot group.** Restic groups snapshots by host and by the list of paths backed up. Changing the path list starts a new group ([backups.md](./backups.md#choosing-what-is-backed-up)).
 - **Dump.** A database exporting its own contents into one file while it runs. A copy of a running database's files can catch it half-written and fail to open; a dump always restores. That is why Immich, Gitea and Garage are dumped before every backup.
 - **Cron.** Linux's built-in scheduler: a command and a time, and the host runs it by itself. The backups run because cron starts them. If the host is off at 02:00, that run does not happen and is not made up later.
 

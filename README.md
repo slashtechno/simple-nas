@@ -4,7 +4,7 @@ Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a
 
 Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every pinned image has both builds; `just platforms` in `ansible/` checks that after a version change.
 
-**New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server (Immich, Copyparty, Dockge, a login, backups, encryption, three drives).
+**New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server (Immich, Copyparty, Dockge, a login, container logs, drive health, backups, encryption, three drives).
 
 Everything except Docker and the base packages is opt-in per host: [ansible/README.md](./ansible/README.md). The services and what each needs: [docs/services.md](./docs/services.md#services). Drive roles: [docs/storage.md](./docs/storage.md).
 
@@ -23,7 +23,7 @@ Internet → Cloudflare Tunnel (hostnames come from cloudflared_ingress)
 <details>
 <summary>Only two drives? That works: one for data, one for backups.</summary>
 
-A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role and its data to it. A backup on the same drive as the data is not a backup, so keep `backup` on a separate drive.
+A drive can fill several roles, so a host needs just two: an SSD with `roles: [fast, primary]` and a second drive with `roles: [backup]`. A third drive (a bigger one for photos and files) can be added later by moving the `primary` role and its data to it.
 
 The one-, two- and three-drive layouts are written out in [docs/storage.md](./docs/storage.md#examples).
 
