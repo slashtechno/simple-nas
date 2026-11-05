@@ -82,3 +82,47 @@ backup_local_cron_jobs: [backup-local, restic-check]
 backup_cloud_scripts: [backup-restic-cloud.sh]
 backup_cloud_lists: [backup-paths.txt, restic-excludes-cloud.txt]
 backup_cloud_cron_jobs: [backup-cloud]
+
+# Lists worked out from the services in services.yml and this host's switches.
+# The entries with a web UI, in the order above.
+web_services: "{{ services | selectattr('icon', 'defined') | list }}"
+
+# The keys of the entries whose <key>_enabled is true on this host. lookup('vars', ...) reads a setting whose name is
+# built from the key, which a filter cannot do. Use it as: services | selectattr('key', 'in', enabled_service_keys)
+# Example: a host with immich_enabled and caddy_enabled true gives [immich, caddy].
+enabled_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}
+
+# The keys of the services Tinyauth sits in front of: those without own_login or a fixed port (services.yml), plus Copyparty when its
+# single sign-on is on. Tinyauth's cookie covers one parent domain, so these are served under the first private domain only.
+# Example: [dockge, dozzle, scrutiny] on a host with Tinyauth, [] on one without.
+protected_service_keys: >-
+  {{ [] if not (tinyauth_enabled | bool) else
+     (web_services | rejectattr('own_login', 'defined') | rejectattr('port', 'defined') | map(attribute='key') | list)
+     + (['copyparty'] if copyparty_sso_enabled | bool else []) }}
+
+# The keys of the enabled entries marked dump_required: their live database is left out of the backup, so the deploy
+# checks their dump script is installed (roles/backup/tasks/checks.yml).
+# Example: [immich] on a host that runs Immich, [] on one that does not.
+dump_service_keys: >-
+  {{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'defined')
+     | selectattr('dump_required') | map(attribute='key') | list }}
+
+# The keys of the enabled entries with oidc whose <key>_sso_enabled is true: the apps Tinyauth is an OpenID Connect
+# provider for on this host.
+# Example: [gitea, immich] on a host with both switched on and signing in through Tinyauth.
+oidc_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if service.oidc is defined and lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool
+      and lookup('ansible.builtin.vars', service.key ~ '_sso_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}
+
+# The enabled entries with a copyparty field: the apps that get a Copyparty account and volumes on this host.
+# Example: [pics] entry on a host that runs pics, [] on one that does not.
+copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('copyparty', 'defined') | list }}"
