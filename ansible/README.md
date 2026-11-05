@@ -17,7 +17,7 @@ All commands below run from `ansible/`.
 | Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
 | Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `python3 tools/settings.py <part>`, or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
-| Add or change a secret | `ansible-vault edit host_vars/<host>/vault.yml` (or `group_vars/all/vault.yml`) | `just deploy <tag>` |
+| Add or change a secret | `just edit vault` (or `ansible-vault edit host_vars/<host>/vault.yml`, `group_vars/all/vault.yml`) | `just deploy <tag>` |
 | Update a service's image | its line in `group_vars/all/versions.yml` | `just preview <tag>`, then `just deploy <tag>` ([update images](#update-service-images)) |
 | Update the OS, Docker Engine or Tailscale | nothing to edit | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
 | Add a host | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
@@ -64,8 +64,7 @@ A vault file is a YAML file encrypted with `ansible-vault`. Secrets live in `vau
 
 ```bash
 just setup <host>
-ansible-vault edit --vault-password-file .vault-pass host_vars/<host>/vault.yml      # add the secrets it listed, or change one later
-ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml
+just edit vault      # add the secrets it listed, or change one later; asks for the host, or all
 ```
 
 ## First-time setup
@@ -123,6 +122,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 |---|---|
 | `just check` | Everything CI runs; run before committing. Each step runs alone: `just _lint`, `_syntax`, `_vars`, `_links`, `_precedence`, `_test` ([what they check](#what-just-check-runs)) |
 | `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Colour needs `uv`; without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
+| `just edit [vars\|vault] [--host H \| --all] [--editor E]` | Opens a vars or vault file in an editor it finds on your PATH, asking with the arrow keys for what you leave out; `--all` is the files shared by every host. A vault is decrypted for the edit and encrypted again. Needs `uv` (the plain `ansible-vault edit --vault-password-file .vault-pass <file>` always works) |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |

@@ -51,7 +51,7 @@ encrypted_folders:               # what each holds: storage.md, What lives where
   - /mnt/primary/files
 ```
 
-The vault files (`ansible-vault edit --vault-password-file .vault-pass <file>`) need the values `just setup` could not invent:
+The vault files (`just edit vault`) need the values `just setup` could not invent:
 
 | File | Entry | Value |
 |---|---|---|

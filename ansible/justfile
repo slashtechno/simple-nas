@@ -84,6 +84,10 @@ os-upgrade limit='servers' *flags:
 setup host:
     python3 tools/setup.py {{ host }}
 
+# Open a vars or vault file in an editor, asking for what you leave out (needs uv): `just edit vault --host pinas`
+edit *args:
+    uv run --quiet tools/edit.py {{ args }}
+
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
