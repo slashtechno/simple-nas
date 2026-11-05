@@ -2,7 +2,7 @@
 
 > **Status: active plan. Delete this file when the migration is done; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Waiting on the owner's steps. The drives are bought (the Exos; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` still names the old 500 GB drive. The steps run on pinas.
+Waiting on the owner's steps. The drives are bought (the IronWolf; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` still names the old 500 GB drive. The steps run on pinas.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../docs/storage.md)):
 
@@ -10,22 +10,22 @@ Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles 
 |---|---|---|---|
 | `fast` | Samsung T7 500GB SSD | `/mnt/t7` | Docker data, Immich database, configs, restic cache, Copyparty `hist` |
 | `primary` | WD_BLACK P10 2TB | `/mnt/main` | photos, files, collab |
-| `backup` | Seagate Exos 6TB (used) | `/mnt/backup` | restic repo, service dumps, logs |
+| `backup` | Seagate IronWolf Pro 6TB (used) | `/mnt/backup` | restic repo, service dumps, logs |
 
 Starting layout: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has `[backup]`.
 
 ## 0. Vet the new drives
 
-Vet each new drive yourself, not on the seller's word: `sudo smartctl -d sat -a /dev/sdX` (power-on hours, reallocated and pending sectors), then a read-only `badblocks` scan. A long `smartctl` self-test aborts through the Exos's USB bridge.
+Vet each new drive yourself, not on the seller's word: `sudo smartctl -d sat -a /dev/sdX` (power-on hours, reallocated and pending sectors), then a read-only `badblocks` scan. A long `smartctl` self-test aborts through the IronWolf's USB bridge.
 
-- [x] Exos: vetted (SMART counters all 0, full read-only `badblocks` scan found no bad blocks). It is plugged into pinas, still formatted NTFS.
+- [x] IronWolf: vetted (SMART counters all 0, full read-only `badblocks` scan found no bad blocks). It is plugged into pinas and formatted ext4 (UUID in `host_vars/pinas/vars.yml`).
 - [ ] P10: vet it before it holds photos.
-- [ ] Exos (3.5") needs a powered USB-SATA dock (12V).
+- [ ] IronWolf (3.5") needs a powered USB-SATA dock (12V).
 - [ ] P10 (2.5") is bus-powered. On pinas the T7 and P10 share a 1.6A USB budget (the 500GB HDD has its own brick); check their combined draw or use a powered hub.
 
 ## 1. Backup drive swap (low risk, first)
 
-- [ ] Format the Exos as ext4 on the host and note its UUID.
+- [ ] Format the IronWolf as ext4 on the host and note its UUID.
 - [ ] Stop whatever holds the old backup drive open: `docker compose down` in `/opt/services/backup-status` (it mounts the repository and logs), then `sudo systemctl stop mnt-backup.automount mnt-backup.mount` (docs/storage.md "Detach a drive"), and plug in the new one. The drive's UUID changes, so a container that kept the old mount shows nothing until it is recreated; the deploy below recreates it.
 - [ ] Set the `uuid:` of the `backup` entry in `drives` to the new drive (mount stays `/mnt/backup`).
 - [ ] `just deploy storage,backup --limit <host>`. The storage role updates the fstab line for `/mnt/backup` and mounts the new drive; the backup role runs `restic init` on it.

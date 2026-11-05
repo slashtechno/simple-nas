@@ -40,7 +40,7 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [fast, primary]   # one SSD fills both roles (docs/storage.md#examples)
-  - uuid: "7fdfb249-0d0e-46c9-af00-813ff465c77d"   # ST3500418AS → /mnt/backup
+  - uuid: "d3c015db-9c24-4da3-a127-4ae02ef498b6"   # Seagate IronWolf Pro 6TB → /mnt/backup
     mount: /mnt/backup
     fstype: ext4
     options: defaults,nofail

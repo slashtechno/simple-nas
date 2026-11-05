@@ -16,7 +16,7 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 ## Phase 1: drives
 
-- [ ] The 500 GB drive is still the `backup` drive in `host_vars/pinas/vars.yml`; the Exos swap is [drive-migration.md](./drive-migration.md).
+- [ ] The 500 GB drive is still the `backup` drive in `host_vars/pinas/vars.yml`; the IronWolf swap is [drive-migration.md](./drive-migration.md).
 - [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
 - [x] Connectivity watchdog (built; deployed on pi4) (opt-in role, switch `connectivity_watchdog_enabled`, default off). pi4 once stayed on wifi with a valid address and working ping while every TCP and DNS lookup failed, so it dropped off Tailscale until `nmcli con down` and `up` fixed it (2026-11-02, cause unknown). Nothing emitted an event, so only an active probe can notice. Design (both Pi reviews agree on the first three):
   - Probe: a TCP connect to port 443 of 1.1.1.1 and 8.8.8.8 (bash `/dev/tcp` in `timeout`); healthy if either connects. Not ICMP (it passed during the fault), not DNS, not Tailscale health (flaps on control-plane trouble).
@@ -62,7 +62,7 @@ Verified: Tinyauth's About page says it is for homelabs and sharing with family 
 - [ ] Closed by default: `backup_status_port` is `""` (the dashboard has no login; an assert stops a host with neither Tinyauth nor a port). Other ports stay published on purpose: apps, git, WebDAV, push and game clients need them, and a derived "no port when Caddy is on" would silently unplug them. Tinyauth stays opt-in so Caddy works without it. pi4 sets `dockge_port: ""`; not deployed.
 - [ ] Crafty: the owner decides between staying behind Tinyauth with a second, easy-to-type Crafty password (today) or `own_login: true` (one login, Crafty's own). Revisit when upstream OIDC (issue 762) ships.
 - Decided: each host runs its own Tinyauth; the same `vault_tinyauth_users` in the group vault gives every host the same logins, and a host vault overrides it. A shared single Tinyauth instance is not built.
-- [x] Dozzle (behind Tinyauth, no published port) and Scrutiny (devices read from `smartctl --scan` at deploy time) are roles, deployed on pinas; Dozzle also on pi4. Scrutiny on pinas sees the T7 and the Exos (57 °C during the read scan). Scrutiny on pi4 not deployed: no `smartmontools` there and its USB sticks are unlikely to report SMART.
+- [x] Dozzle (behind Tinyauth, no published port) and Scrutiny (devices read from `smartctl --scan` at deploy time) are roles, deployed on pinas; Dozzle also on pi4. Scrutiny on pinas sees the T7 and the IronWolf (57 °C during the read scan). Scrutiny on pi4 not deployed: no `smartmontools` there and its USB sticks are unlikely to report SMART.
 - Not doing: Cockpit, Renovate, Uptime Kuma, Healthchecks, resticprofile, Backrest, the Cloudflare module, SOPS.
 
 ## Decided
