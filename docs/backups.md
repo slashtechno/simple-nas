@@ -1,7 +1,5 @@
 # Backups
 
-Words you do not know are defined in the [glossary](./glossary.md).
-
 Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy it from `ansible/` with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_alert_url`). Every setting named below, with its default, is in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) or `ansible/group_vars/all/backups.yml` (repositories, retention, logs).
 
 ## Switching backups on

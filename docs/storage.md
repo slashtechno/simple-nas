@@ -1,7 +1,5 @@
 # Storage: drive roles
 
-Words you do not know are defined in the [glossary](./glossary.md).
-
 Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. The `storage` role mounts them: it runs everywhere and `storage_enabled: false` skips it on a host whose drives are mounted another way.
 
 Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext4`), `options` (default `defaults`) and `roles:`, the roles it fills. An entry without a `uuid` is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.

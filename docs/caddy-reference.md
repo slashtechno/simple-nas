@@ -1,7 +1,5 @@
 # Caddy
 
-Words you do not know are defined in the [glossary](./glossary.md).
-
 The optional reverse proxy: what `roles/caddy` deploys, the names and ports it serves, and the label syntax of caddy-docker-proxy ([project README](https://github.com/lucaslorentz/caddy-docker-proxy)).
 
 ## What it does

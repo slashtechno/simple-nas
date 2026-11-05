@@ -1,7 +1,5 @@
 # Service notes
 
-Words you do not know are defined in the [glossary](./glossary.md).
-
 Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each service needs and the setup steps beyond the flag.
 
 - **Deploy one:** `just deploy <tag>` from `ansible/` (tag = role name).
