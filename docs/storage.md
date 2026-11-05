@@ -17,7 +17,7 @@ Each `drives` entry has these fields:
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the settings in `group_vars/all/data-dirs.yml` |
+| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the settings in `group_vars/all/defaults-data-dirs.yml` |
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
@@ -42,7 +42,7 @@ Mount points below are the [quick start's](./quick-start.md); yours are the `mou
 /var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")
 ```
 
-- Every path is a setting in `group_vars/all/data-dirs.yml`.
+- Every path is a setting in `group_vars/all/defaults-data-dirs.yml`.
 
 ## Examples
 
@@ -168,7 +168,7 @@ Check the drive maker's operating range; a hard drive in a closed enclosure can 
 
 ## Move one service's data
 
-Each service's data directories are settings listed in `ansible/group_vars/all/data-dirs.yml`. To move a service to another drive:
+Each service's data directories are settings listed in `ansible/group_vars/all/defaults-data-dirs.yml`. To move a service to another drive:
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.

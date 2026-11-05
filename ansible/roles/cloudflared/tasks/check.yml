@@ -3,7 +3,7 @@
 - name: Check cloudflared_ingress before calling Cloudflare
   ansible.builtin.assert:
     that: item.keys() | sort | list == ['hostname', 'service']
-    fail_msg: "{{ item }} must have only hostname and service (no path). See the comments on cloudflared_ingress in group_vars/all/cloudflare.yml."
+    fail_msg: "{{ item }} must have only hostname and service (no path). See the comments on cloudflared_ingress in group_vars/all/defaults-cloudflare.yml."
     quiet: true
   loop: "{{ cloudflared_ingress }}"
   loop_control:

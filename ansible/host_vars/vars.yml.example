@@ -1,11 +1,11 @@
 # Copy to host_vars/<host>/vars.yml, named after the host in the inventory, and keep only the
 # options this host needs. Secrets for one host (a wifi password) go in host_vars/<host>/vault.yml.
 
-# Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/direct-link.yml).
-# direct_link_enabled: true   # the address and port settings, with defaults, are in group_vars/all/direct-link.yml
+# Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/defaults-direct-link.yml).
+# direct_link_enabled: true   # the address and port settings, with defaults, are in group_vars/all/defaults-direct-link.yml
 
 # Services: turn one on for this host with `<name>_enabled: true` (the flags are listed in
-# group_vars/all/flags.yml, what each needs in docs/services.md). Flags are set per host, here.
+# group_vars/all/defaults-flags.yml, what each needs in docs/services.md). Flags are set per host, here.
 
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with

@@ -4,7 +4,7 @@
 #
 # One play over every server. The base roles (drives, packages, Docker, Tailscale, network) run
 # everywhere; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
-# (default: false, in group_vars/all/flags.yml).
+# (default: false, in group_vars/all/defaults-flags.yml).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
 # To stop deploying a service: set <name>_enabled: false for the host.

@@ -14,7 +14,10 @@ ANSIBLE = Path(__file__).resolve().parent.parent
 VAULT_EXAMPLES = [ANSIBLE / "group_vars/all/vault.yml.example", ANSIBLE / "host_vars/vault.yml.example"]
 VARS_EXAMPLE = ANSIBLE / "group_vars/all/vars.yml.example"
 NOT_DEFAULTS = {"vars.yml", "vault.yml", "versions.yml", "derived.yml", "services.yml"}
-SHARED = sorted(p for p in (ANSIBLE / "group_vars/all").glob("*.yml") if p.name not in NOT_DEFAULTS)
+SHARED = sorted((ANSIBLE / "group_vars/all").glob("defaults*.yml"))
+for path in sorted((ANSIBLE / "group_vars/all").glob("*.yml")):
+    if path not in SHARED and path.name not in NOT_DEFAULTS:
+        problems.append(f"{path.relative_to(ANSIBLE)} is not a known file; shared defaults are in defaults.yml or defaults-<topic>.yml")
 DEFAULTS = SHARED + sorted(ANSIBLE.glob("roles/*/defaults/main.yml"))
 
 problems = []

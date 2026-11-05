@@ -1,7 +1,7 @@
 ---
 # One entry per service this repo deploys; the roles that are not a service are not listed (the render test names them). To add a service, add an entry here; README's
 # "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
-# the data directories in data-dirs.yml): a list is replaced whole by a host, so keep values out of it.
+# the data directories in defaults-data-dirs.yml): a list is replaced whole by a host, so keep values out of it.
 #   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
 #              <key>_subdomain its name under the private domain. The role is roles/<key>.
 #   compose    the service's directory under services_dir (also its compose project). Teardown removes it.

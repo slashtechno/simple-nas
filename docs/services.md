@@ -24,7 +24,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 ## Services
 
 - **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)).
-- **Caddy name** in the table means `caddy_enabled` with at least one `caddy_private_domains` entry.
+- **Caddy name** in the table means `caddy_enabled` with at least one `caddy_private_domains` entry. The address is `<subdomain>.<first private domain>`, for example `logs.pi4.example.com`; each service's `<key>_subdomain` is in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml), and the Homepage links every address. Caddy builds its list of names on each deploy, so after switching a service on, deploy it together with Caddy: `just deploy <service>,caddy,homepage --limit <host>`.
 - **Vault entries** go in `host_vars/<host>/vault.yml` (service secrets) or `group_vars/all/vault.yml` (shared secrets): [ansible/README.md](../ansible/README.md#vault-secrets).
 
 | Service | What it is | Role | Needs | Section |
@@ -165,7 +165,7 @@ Every record the role writes carries the comment `managed by simple-nas, tunnel 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
 1. Make the secrets: a login password and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The password goes in `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
-2. On the host that runs ntfy, set `ntfy_enabled: true` in its `vars.yml`, then `just deploy ntfy --limit <host>`. Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
+2. On the host that runs ntfy, set `ntfy_enabled: true` in its `vars.yml`, then `just deploy ntfy,caddy --limit <host>` (Caddy adds `ntfy.<private domain>`). Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
