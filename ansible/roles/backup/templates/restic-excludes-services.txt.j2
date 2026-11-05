@@ -24,6 +24,12 @@
 # every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.
 {{ caddy_data_dir }}/caddy
 {% endif %}
+{% if copyparty_enabled | bool %}
+# Root-owned by the Copyparty container, mode 700 (its salts and self-signed certificate): the backup user cannot
+# read it, so without this line every local run fails with restic exit 3. Both regenerate after a restore;
+# only share links made with the old file-key salt stop working.
+{{ copyparty_config_dir }}/copyparty
+{% endif %}
 # Owned by the Cloudflare container's user, mode 400: the backup user cannot read it, so without this line every
 # run fails with restic exit 3. It stays on disk when cloudflared_enabled is turned off, so the line is unconditional.
 # A deploy writes it again from Cloudflare.

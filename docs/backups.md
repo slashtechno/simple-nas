@@ -81,7 +81,7 @@ With the defaults on a NAS:
   - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups));
   - `restic_cache_dir`, the restic repository itself, the `**/.cache` folders and the data drives' `lost+found`;
   - logins: the restic password file, the rclone config, and Cloudflare's tunnel token (`services_dir/cloudflared/token`, rewritten from the vault on each deploy);
-  - rebuildable data: Docker's storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned, regenerates after a restore), Crafty's own `backups/` archives;
+  - rebuildable data: Docker's storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`) and Copyparty's salts and certificate (`copyparty_config_dir/copyparty`), both root-owned and regenerated after a restore, Crafty's own `backups/` archives;
   - files that are unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)).
 
   The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
