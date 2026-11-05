@@ -63,7 +63,7 @@ With more than one domain in `caddy_private_domains`:
 First login:
 
 - **Immich** matches you by email. Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching Immich account is refused, so an Immich admin creates the account first.
-- **Gitea** creates no accounts. It shows its link page once, to attach the Tinyauth login to an existing Gitea account; a login with no account to attach stops there, so an admin creates the Gitea account first.
+- **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first. Start the sign-in on Gitea's own address (`gitea_root_url`): Tinyauth sends the browser back to that address, and a sign-in begun on another name (such as the private `git.<host>` name) loses its session cookie and fails with "could not find a matching session".
 
 ## Protect an app of your own
 
