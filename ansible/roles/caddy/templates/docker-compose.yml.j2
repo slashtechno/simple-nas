@@ -30,11 +30,27 @@ services:
 {% if caddy_private_domains | length > 0 %}
       # A global option: every site Caddy serves gets its certificate through the Cloudflare DNS challenge.
       caddy.acme_dns: cloudflare {env.CLOUDFLARE_API_TOKEN}
-      # One site per service this host runs (web_services, group_vars/all/web_services.yml), unless its subdomain is "".
-{% for svc in web_services if svc.port is not defined and hostvars[inventory_hostname][svc.key ~ '_enabled'] | bool and hostvars[inventory_hostname][svc.key ~ '_subdomain'] != '' %}
-      caddy_{{ site.n }}: "{% for domain in caddy_private_domains %}{{ hostvars[inventory_hostname][svc.key ~ '_subdomain'] }}.{{ domain }}{{ ' ' if not loop.last }}{% endfor %}"
-      caddy_{{ site.n }}.reverse_proxy: "{{ svc.scheme | default('http') }}://{{ svc.container }}:{{ svc.container_port }}"
-{% if svc.scheme | default('http') == 'https' %}
+{% if tinyauth_enabled | bool %}
+      # A snippet: a site that imports it sends each request to Tinyauth first and passes the user on as headers.
+      # Ad-hoc apps in Dockge opt in with one label: caddy.import: tinyauth_forwarder
+      caddy_{{ site.n }}: (tinyauth_forwarder)
+      caddy_{{ site.n }}.forward_auth: tinyauth:3000
+      caddy_{{ site.n }}.forward_auth.uri: /api/auth/caddy
+      caddy_{{ site.n }}.forward_auth.copy_headers: Remote-User Remote-Name Remote-Email Remote-Groups
+{% set site.n = site.n + 1 %}
+{% endif %}
+      # One site per service this host runs (web_services, group_vars/all/services.yml), unless its subdomain is "".
+{% for web in caddy_web_sites %}
+      caddy_{{ site.n }}: "{{ web.hosts }}"
+{% if web.protected | bool %}
+      caddy_{{ site.n }}.import: tinyauth_forwarder
+{% endif %}
+      caddy_{{ site.n }}.reverse_proxy: "{{ web.scheme }}://{{ web.container }}:{{ web.container_port }}"
+{% if web.idp_key | bool %}
+      # Copyparty's idp-h-key: the header's name is the secret and its value is ignored. Only Caddy sends it.
+      caddy_{{ site.n }}.reverse_proxy.header_up: "{{ vault_copyparty_idp_key | replace('$', '$$') }} 1"
+{% endif %}
+{% if web.scheme == 'https' %}
       caddy_{{ site.n }}.reverse_proxy.transport: http
       caddy_{{ site.n }}.reverse_proxy.transport.tls_insecure_skip_verify: ""
 {% endif %}
@@ -59,4 +75,13 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - {{ caddy_data_dir }}:/data
     networks:
-      - {{ docker_network }}
+      {{ docker_network }}:
+{% if tinyauth_enabled | bool and caddy_private_domains | length > 0 %}
+        # The login page's names, which Docker's DNS resolves to this container for every other container on the
+        # network. Gitea and Immich read Tinyauth's settings from inside their own containers
+        # (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+        aliases:
+{% for domain in caddy_private_domains %}
+          - "{{ tinyauth_subdomain }}.{{ domain }}"
+{% endfor %}
+{% endif %}

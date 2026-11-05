@@ -1,6 +1,6 @@
 ---
 # Your values for the settings that have no default or that nearly every owner changes. Copy to vars.yml.
-# Everything else, with its default, is in defaults.yml (or a role's defaults/main.yml); override a setting by writing it here.
+# Everything else, with its default, is in defaults.yml or its topic files (or a role's defaults/main.yml); override a setting by writing it here.
 
 timezone: America/New_York
 # One public key per device that may log in as the Ansible user.
@@ -9,10 +9,12 @@ ssh_authorized_keys:
 # Domain -> Cloudflare zone ID, for hosts that run a tunnel (cloudflared_enabled) or set caddy_private_domains.
 cloudflare_zones:
   example.com: your_zone_id
-# Gitea (gitea_enabled): its public URL, host name and SSH host name.
-gitea_root_url: "https://gitea.example.com/"
-gitea_domain: "gitea.example.com"
-gitea_ssh_domain: "gitea.example.com"
+# Gitea (gitea_enabled): leave this out to use https://git.<first caddy_private_domains entry>/. Set it for any other
+# address, for example a public name through a tunnel. The host name and the SSH clone name come from it;
+# set gitea_domain or gitea_ssh_domain only to use a different name (docs/services.md).
+# gitea_root_url: "https://gitea.example.com/"
 # pics (pics_enabled): the private GitHub repo it builds from and its public guest URL.
 pics_repo: owner/lab
 pics_public_url: "https://photos.example.com"
+# With pics_sso_enabled: the one Tinyauth user name or email address that may open pics' owner pages.
+pics_oidc_owner: you@example.com

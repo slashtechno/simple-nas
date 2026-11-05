@@ -1,0 +1,43 @@
+---
+# The services this repo runs on the host that get an https name (web_services, group_vars/all/services.yml):
+# one entry each, with the names it is served under, one per caddy_private_domains entry (only the first for a service
+# behind Tinyauth). The compose template loops over this list.
+- name: Start the list of services with a name (it stays empty when none has one)
+  ansible.builtin.set_fact:
+    caddy_web_sites: []
+
+# Tinyauth's cookie covers one parent domain, so a protected service is served under the first private domain only.
+# Services with own_login: true (services.yml) are never protected, except Copyparty's browser name, which its own
+# single sign-on puts behind the login. A list of keys, so each service's entry below holds a plain true or false.
+- name: Work out which services are behind the login
+  ansible.builtin.set_fact:
+    caddy_protected_keys: >-
+      {{ [] if not (tinyauth_enabled | bool) else
+         (web_services | rejectattr('own_login', 'defined') | map(attribute='key') | list)
+         + (['copyparty'] if copyparty_sso_enabled | bool else []) }}
+
+- name: Add each service that is switched on and has a subdomain
+  ansible.builtin.set_fact:
+    caddy_web_sites: "{{ caddy_web_sites + [site] }}"
+  vars:
+    subdomain: "{{ lookup('vars', item.key ~ '_subdomain') }}"
+    # The names come from caddy_private_domains, prefixed with the service's subdomain.
+    site_hosts: >-
+      {{ (caddy_private_domains[:1] if item.key in caddy_protected_keys else caddy_private_domains)
+         | map('regex_replace', '^', subdomain ~ '.') | join(' ') }}
+    site:
+      hosts: "{{ site_hosts }}"
+      protected: "{{ item.key in caddy_protected_keys }}"
+      # The header that proves to Copyparty that the user Tinyauth named came from Caddy (its idp-h-key setting). Only
+      # the site every request reaches through the login gets it, so the published port and the tunnel cannot claim one.
+      idp_key: "{{ item.key == 'copyparty' and (item.key in caddy_protected_keys) }}"
+      container: "{{ item.container }}"
+      container_port: "{{ item.container_port }}"
+      scheme: "{{ item.scheme | default('http') }}"
+  loop: "{{ web_services }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - item.port is not defined   # a service with a fixed host port has no name (Homebridge)
+    - lookup('vars', item.key ~ '_enabled') | bool
+    - lookup('vars', item.key ~ '_subdomain') != ''

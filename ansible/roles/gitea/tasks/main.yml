@@ -17,6 +17,10 @@
     compose_service_name: gitea
     compose_service_has_secrets: true
 
+- name: Add Gitea's Tinyauth login source
+  ansible.builtin.import_tasks: sso.yml
+  when: gitea_sso_enabled | bool
+
 # Gitea has a live database, so the backup runs this dump script first
 # (see backup-services.sh). teardown_service.yml removes it again.
 - name: Install the Gitea dump script

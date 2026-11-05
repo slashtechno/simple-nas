@@ -1,0 +1,6 @@
+---
+# The drives the collector reads, as device paths such as /dev/sda. Empty: the role runs
+# `smartctl --scan` on the host and uses every drive it lists. Set it on a host where that list is wrong.
+scrutiny_devices: []
+# How often the collector reads every drive, as a cron expression. Scrutiny's own default is once a day at midnight.
+scrutiny_collect_schedule: "0 */6 * * *"

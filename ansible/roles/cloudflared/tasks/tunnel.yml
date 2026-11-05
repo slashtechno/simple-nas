@@ -1,0 +1,46 @@
+---
+- name: Look up the tunnel by name
+  ansible.builtin.uri:
+    url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel?name={{ cloudflared_tunnel_name }}&is_deleted=false"
+  check_mode: false
+  changed_when: false
+  register: cloudflared_lookup
+
+# An empty result means there is no tunnel with that name yet.
+- name: Remember the tunnel Cloudflare returned (empty if none)
+  ansible.builtin.set_fact:
+    cloudflared_existing: "{{ cloudflared_lookup.json.result | first | default({}) }}"
+
+# A locally managed tunnel keeps its rules in a file on the host, which this role does not write.
+# Cloudflare can convert it (Zero Trust, Networks, Tunnels, the tunnel's migrate option).
+# Deleting it instead takes the public hostnames offline until the next deploy creates a new one.
+- name: Stop if the existing tunnel is locally managed
+  ansible.builtin.assert:
+    that: cloudflared_existing.config_src | default('cloudflare') == 'cloudflare'
+    fail_msg: >-
+      The tunnel "{{ cloudflared_tunnel_name }}" is locally managed, so its rules cannot be set from here.
+      In the Cloudflare dashboard (Zero Trust, Networks, Tunnels) use the tunnel's migrate option
+      and deploy again. Or delete the tunnel there and deploy: that creates a new one, but every
+      public hostname is offline until the deploy finishes.
+    quiet: true
+
+- name: Say that the tunnel will be created
+  ansible.builtin.debug:
+    msg: "There is no tunnel called {{ cloudflared_tunnel_name }}. A real deploy creates it; --check cannot show the steps that depend on it."
+  when: cloudflared_existing | length == 0
+
+- name: Create the tunnel
+  ansible.builtin.uri:
+    url: "{{ cloudflare_api_url }}/accounts/{{ cloudflare_account_id }}/cfd_tunnel"
+    method: POST
+    body_format: json
+    body:
+      name: "{{ cloudflared_tunnel_name }}"
+      config_src: cloudflare
+  register: cloudflared_created
+  when: cloudflared_existing | length == 0
+
+# The ID is empty only in --check, when the tunnel does not exist yet. The tasks that need it are skipped then.
+- name: Remember the tunnel ID
+  ansible.builtin.set_fact:
+    cloudflared_tunnel_id: "{{ cloudflared_existing.id | default(cloudflared_created.json.result.id | default('')) }}"

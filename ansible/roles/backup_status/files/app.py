@@ -2,16 +2,16 @@
 """Read-only backup status dashboard (the "Snapshot Deck").
 
 Serves index.html plus two JSON endpoints, /api/status and /api/snapshots,
-built from `restic --no-lock` and the backup role's log files. The repo and
+built from `restic --no-lock` and the status files the backup scripts write. The repo and
 password file are mounted read-only, so nothing here can change a backup;
 destructive actions are only shown in the UI as SSH commands to run by hand.
 
-Contract with roles/backup: snapshot tags `daily`/`weekly`, the log names
-below, and the "=== Complete:" line a script prints only when it succeeded.
+Contract with roles/backup: snapshot tags `daily`/`weekly` and the status files named
+in JOB_STATUS_FILES (written by roles/backup/templates/status-report.j2). The logs are for
+people to read; this page never parses them.
 """
 
 import datetime
-import glob
 import http.server
 import json
 import os
@@ -28,26 +28,25 @@ RESTIC_REPO_PATH = os.environ["RESTIC_REPO_PATH"]
 RESTIC_PASSWORD_FILE = os.environ["RESTIC_PASSWORD_FILE"]
 BACKUP_LOGS_DIR = os.environ["BACKUP_LOGS_DIR"]
 
-# Host-side values from group_vars, used only to build the SSH commands shown
-# in the UI (they run on the Pi, not in this container).
-SSH_USER = os.environ["SSH_USER"]
-HOST_BACKUP_DRIVE = os.environ["HOST_BACKUP_DRIVE"]
-HOST_RESTIC_REPO_PATH = os.environ["HOST_RESTIC_REPO_PATH"]
-HOST_RESTIC_PASSWORD_FILE = os.environ["HOST_RESTIC_PASSWORD_FILE"]
-HOST_RESTIC_CLOUD_REPOSITORY = os.environ["HOST_RESTIC_CLOUD_REPOSITORY"]
-HOST_RESTIC_LOCAL_RETENTION = os.environ["HOST_RESTIC_LOCAL_RETENTION"]
-HOST_RESTIC_CLOUD_RETENTION = os.environ["HOST_RESTIC_CLOUD_RETENTION"]
-HOST_RESTIC_CLOUD_RCLONE_ARGS = os.environ["HOST_RESTIC_CLOUD_RCLONE_ARGS"]
-HOST_SCRIPTS_DIR = os.environ["HOST_SCRIPTS_DIR"]
+# Host-side values from the compose file (HOST_CONFIG, JSON): used to build the SSH commands shown in
+# the UI, which run on the host, not in this container.
+HOST_CONFIG = json.loads(os.environ["HOST_CONFIG"])
 
 PORT = int(os.environ.get("PORT", "8080"))
 CACHE_TTL_SECONDS = 30
 
 LOCAL_STALE_AFTER_SECONDS = 36 * 3600       # daily job — allow a missed run
 WEEKLY_STALE_AFTER_SECONDS = 9 * 24 * 3600  # weekly jobs — allow a missed week
+# A run that has not finished is still working until this long after it started: the local run makes three restic
+# calls, each allowed restic_command_timeout (23 hours by default), so a first backup can legitimately take days.
+RUNNING_STALE_AFTER_SECONDS = 72 * 3600
 
-# Printed by the backup scripts only after every step succeeded.
-COMPLETE_MARKER = "=== Complete:"
+# One file per job in BACKUP_LOGS_DIR, written by the backup scripts when a run starts and when it ends.
+JOB_STATUS_FILES = {
+    "local_daily": "restic-local.status.json",
+    "cloud_weekly": "restic-cloud.status.json",
+    "integrity_check": "restic-check.status.json",
+}
 
 _cache_lock = threading.Lock()
 _cache = {}  # key -> (expires_at_monotonic, value)
@@ -89,9 +88,9 @@ def run_restic_lines(args):
     return [line for line in restic_output(args).splitlines() if line.strip()]
 
 
-def read_text(path):
-    with open(path, "r", errors="replace") as f:
-        return f.read()
+def repo_mounted():
+    """The repository's config file exists only while the backup drive is mounted."""
+    return os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
 
 
 def human_bytes(n):
@@ -109,11 +108,6 @@ def human_ago(seconds):
     return f"{int(seconds // 86400)}d ago"
 
 
-def newest_matching(pattern):
-    matches = glob.glob(pattern)
-    return max(matches, key=os.path.getmtime) if matches else None
-
-
 def parse_restic_time(ts):
     """Parse restic's timestamp into an aware datetime.
 
@@ -123,100 +117,71 @@ def parse_restic_time(ts):
     return datetime.datetime.fromisoformat(ts)
 
 
-def last_run_completed(log_text):
-    """True if the most recent run in the log reached the Complete marker.
-
-    A log file holds every run of one day (the scripts append), so a failure
-    after an earlier success must not be hidden. Each run starts with a header
-    line "=== <Job>: <date>"; only the text after the last header counts.
-    """
-    headers = [m.start() for m in re.finditer(r"^=== (?!Complete)", log_text, re.MULTILINE)]
-    last_run = log_text[headers[-1]:] if headers else log_text
-    return COMPLETE_MARKER in last_run
-
-
-def parse_dated_job_log(glob_pattern, stale_after):
-    """Status of the newest dated log matching the pattern.
-
-    Success means the log contains COMPLETE_MARKER. A run that fails, including
-    one with unreadable source files (restic exit 3), exits before it. Don't grep for
-    "error": restic's own success line says "no errors were found".
-    """
-    path = newest_matching(glob_pattern)
-    if not path:
-        return {"ok": None, "stale": True, "last_run_human": None, "detail_human": "no log yet"}
-
-    mtime = os.path.getmtime(path)
-    age = time.time() - mtime
+def job_view(ok, stale, last_run_human, detail_human, running=False):
     return {
-        "ok": last_run_completed(read_text(path)),
-        "stale": age > stale_after,
-        "last_run_human": human_ago(age),
-        "detail_human": time.strftime("%a %H:%M", time.localtime(mtime)),
-    }
-
-
-def build_local_daily_status(stale_after):
-    """Read from the repo itself, so manual restic runs show up too. The cloud
-    and integrity jobs can only be judged from logs: this container has no
-    cloud credentials and `restic check` leaves nothing to query.
-    """
-    if not os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config")):
-        return {"ok": False, "stale": True, "last_run_human": None, "detail_human": "backup drive not mounted"}
-    snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"]))
-    daily_times = [
-        parse_restic_time(s["time"]) for s in snapshots if "daily" in (s.get("tags") or [])
-    ]
-    if not daily_times:
-        return {"ok": None, "stale": True, "last_run_human": None, "detail_human": "no snapshots yet"}
-
-    latest = max(daily_times)
-    now = datetime.datetime.now(latest.tzinfo)
-    age = (now - latest).total_seconds()
-    stale = age > stale_after
-    detail = latest.strftime("%a %H:%M")
-    failed_since = False
-
-    # A failed run newer than the last snapshot would otherwise look fine.
-    log_path = newest_matching(os.path.join(BACKUP_LOGS_DIR, "restic-local-*.log"))
-    if (
-        log_path
-        and os.path.getmtime(log_path) > latest.timestamp()
-        and not last_run_completed(read_text(log_path))
-    ):
-        detail += " · a more recent attempt failed"
-        failed_since = True
-
-    return {
-        "ok": not stale and not failed_since,
+        "ok": ok,
         "stale": stale,
-        "last_run_human": human_ago(age),
-        "detail_human": detail,
+        "running": running,
+        "last_run_human": last_run_human,
+        "detail_human": detail_human,
     }
 
 
-def parse_integrity_log(stale_after):
-    pattern = os.path.join(BACKUP_LOGS_DIR, "restic-check-*.log")
-    result = parse_dated_job_log(pattern, stale_after)
-    if result["ok"] is False:
-        content = read_text(newest_matching(pattern))
-        error_lines = len(re.findall(r"^error:", content, re.IGNORECASE | re.MULTILINE))
-        result["detail_human"] = f"failed · {error_lines} error line(s), see log"
-    return result
+def read_job_status(job, stale_after):
+    """A job's status, from the file its script writes.
+
+    Only `result: ok` in a file younger than `stale_after` counts as ok. A missing, malformed or
+    too old file is an error, never ok. `finished: null` is what the script writes when a run
+    starts: the run is still going if the file is fresh, and was killed if it is old.
+    """
+    path = os.path.join(BACKUP_LOGS_DIR, JOB_STATUS_FILES[job])
+    try:
+        mtime = os.path.getmtime(path)
+        with open(path, "r") as f:
+            status = json.load(f)
+        started = parse_restic_time(status["started"])
+        finished = status["finished"]
+        result = status["result"]
+        exit_code = status["exit_code"]
+    except FileNotFoundError:
+        return job_view(False, True, None, "no status file: this job has not run since it was deployed")
+    except (OSError, ValueError, KeyError, TypeError):
+        return job_view(False, True, None, "status file unreadable; read the job's log")
+    if result not in ("ok", "failed"):
+        return job_view(False, True, None, "status file unreadable; read the job's log")
+
+    age = time.time() - mtime
+    stale = age > stale_after
+    when = time.strftime("%a %H:%M", time.localtime(mtime))
+    if finished is None:
+        if age > RUNNING_STALE_AFTER_SECONDS:
+            return job_view(False, True, human_ago(age), f"a run started {started:%a %H:%M} and never finished; read its log")
+        return job_view(False, False, human_ago(age), f"running since {started:%H:%M}", running=True)
+    if result != "ok":
+        return job_view(False, stale, human_ago(age), f"exit {exit_code} at {when}; read the job's log")
+    if stale:
+        return job_view(False, True, human_ago(age), f"last run finished {when}, too old for this schedule")
+    return job_view(True, False, human_ago(age), when)
+
+
+def build_local_status(stale_after):
+    """A status file read through an unmounted mount point is not the drive's, so it is no evidence."""
+    if not repo_mounted():
+        return job_view(False, True, None, "backup drive not mounted")
+    return read_job_status("local_daily", stale_after)
 
 
 def build_status():
     jobs = {
-        "local_daily": build_local_daily_status(LOCAL_STALE_AFTER_SECONDS),
-        "cloud_weekly": parse_dated_job_log(
-            os.path.join(BACKUP_LOGS_DIR, "restic-cloud-*.log"),
-            WEEKLY_STALE_AFTER_SECONDS,
-        ),
-        "integrity_check": parse_integrity_log(WEEKLY_STALE_AFTER_SECONDS),
+        "local_daily": build_local_status(LOCAL_STALE_AFTER_SECONDS),
+        "integrity_check": read_job_status("integrity_check", WEEKLY_STALE_AFTER_SECONDS),
     }
+    # A host without a cloud backup has no cloud job to show.
+    if HOST_CONFIG["cloudEnabled"]:
+        jobs["cloud_weekly"] = read_job_status("cloud_weekly", WEEKLY_STALE_AFTER_SECONDS)
 
-    mounted = os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
-    drive = {"mounted": mounted, "label": HOST_BACKUP_DRIVE}
+    mounted = repo_mounted()
+    drive = {"mounted": mounted, "label": HOST_CONFIG["backupDrive"]}
     if mounted:
         usage = shutil.disk_usage(RESTIC_REPO_PATH)
         drive["free_human"] = f"{human_bytes(usage.free)} free"
@@ -266,9 +231,9 @@ def _snapshot_row(snap, repo):
 def build_snapshots():
     # No per-snapshot `restic stats`: it walks the whole tree and took 30s+
     # per snapshot on the HDD.
-    mounted = os.path.isfile(os.path.join(RESTIC_REPO_PATH, "config"))
+    mounted = repo_mounted()
     local_snapshots = cached("restic_snapshots", lambda: run_restic(["snapshots"])) if mounted else []
-    cloud_snapshots = read_cloud_snapshots_cache()
+    cloud_snapshots = read_cloud_snapshots_cache() if HOST_CONFIG["cloudEnabled"] else []
 
     result = [_snapshot_row(s, "local") for s in local_snapshots]
     result += [_snapshot_row(s, "cloud") for s in cloud_snapshots]
@@ -308,16 +273,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _index(self):
         with open(os.path.join(BASE_DIR, "index.html"), "r") as f:
             html = f.read()
-        html = (
-            html.replace("__SSH_USER__", SSH_USER)
-            .replace("__HOST_RESTIC_REPO_PATH__", HOST_RESTIC_REPO_PATH)
-            .replace("__HOST_RESTIC_PASSWORD_FILE__", HOST_RESTIC_PASSWORD_FILE)
-            .replace("__HOST_RESTIC_CLOUD_REPOSITORY__", HOST_RESTIC_CLOUD_REPOSITORY)
-            .replace("__HOST_RESTIC_LOCAL_RETENTION__", HOST_RESTIC_LOCAL_RETENTION)
-            .replace("__HOST_RESTIC_CLOUD_RETENTION__", HOST_RESTIC_CLOUD_RETENTION)
-            .replace("__HOST_RESTIC_CLOUD_RCLONE_ARGS__", HOST_RESTIC_CLOUD_RCLONE_ARGS)
-            .replace("__HOST_SCRIPTS_DIR__", HOST_SCRIPTS_DIR)
-        )
+        # "<" is escaped so no value can end the script tag early.
+        config_json = json.dumps(HOST_CONFIG).replace("<", "\\u003c")
+        html = html.replace("__HOST_CONFIG__", config_json)
         self._send(html.encode(), "text/html; charset=utf-8")
 
     def do_GET(self):

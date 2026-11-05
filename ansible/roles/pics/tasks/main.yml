@@ -5,20 +5,19 @@
       - vault_pics_password is defined
       - vault_pics_secret_key is defined
       - vault_github_read_token is defined
+      - vault_pics_copyparty_pass is defined
+      - vault_pics_alert_urls is defined
     fail_msg: >-
-      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token in the vault that applies to {{ inventory_hostname }}
+      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token, vault_pics_copyparty_pass
+      and vault_pics_alert_urls ("" for no alerts) in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
-# pics reaches Copyparty by container name on the Docker network, as the "photos" service account.
-- name: Check Copyparty runs on this host with a photos account
+# pics reaches Copyparty by container name on the Docker network, as the account named pics (copyparty in services.yml).
+- name: Check Copyparty runs on this host
   ansible.builtin.assert:
-    that:
-      - copyparty_enabled | bool
-      - "'photos' in (copyparty_service_accounts | default([]) | map(attribute='user'))"
-    fail_msg: >-
-      pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add a
-      copyparty_service_accounts entry with user: photos (example in the comment above copyparty_service_accounts in group_vars/all/defaults.yml).
+    that: copyparty_enabled | bool
+    fail_msg: "pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true."
     quiet: true
 
 - name: Create pics directories

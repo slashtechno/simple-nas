@@ -1,6 +1,7 @@
 ---
-# Tailscale's install script adds its own apt source and keyring. The role writes a source for the same
-# repository, and apt refuses two sources with different keys.
+# Tailscale's install script adds its own apt source and keyring. The collection role below writes a source for
+# the same repository (tailscale.sources, key in /etc/apt/keyrings), and apt refuses two sources with different
+# keys. These two files are the install script's; the collection never writes them.
 - name: Remove the install script's Tailscale apt source
   ansible.builtin.file:
     path: /etc/apt/sources.list.d/tailscale.list
@@ -15,7 +16,7 @@
 # join a new host once by hand with `sudo tailscale up` (add flags such as --advertise-exit-node
 # there; Tailscale remembers them). No auth key is stored anywhere in this repo.
 # state: present installs Tailscale if missing but never upgrades it during a deploy; the role's
-# default, latest, would. Upgrade by hand with `sudo apt upgrade tailscale`.
+# default, latest, would. Upgrade it with `just os-upgrade`.
 # include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of the collection role.
 # Skipped under --check: the collection reads `tailscale status --json` with a plain command task, which
 # --check skips, so its next task then fails parsing the empty output. A preview therefore does not show

@@ -1,34 +1,44 @@
 # Copy to host_vars/<host>/vars.yml, named after the host in the inventory, and keep only the
 # options this host needs. Secrets for one host (a wifi password) go in host_vars/<host>/vault.yml.
 
-# Direct Ethernet link (Pi <-> laptop, bypasses wifi for fast transfers)
-# Plug a cable straight from the Pi's eth0 into a laptop. Static IP, no gateway,
-# so it can't route internet traffic. Laptop's IP is auto-assigned via a
-# scoped dnsmasq (DHCP only, no DNS/gateway) — no manual laptop config needed.
-# See docs/networking.md#direct-ethernet-link.
-# direct_link_enabled: true   # the address and port settings, with defaults, are in group_vars/all/defaults.yml
+# Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/direct-link.yml).
+# direct_link_enabled: true   # the address and port settings, with defaults, are in group_vars/all/direct-link.yml
 
 # Services: turn one on for this host with `<name>_enabled: true` (the flags are listed in
-# group_vars/all/defaults.yml, what each needs in docs/services.md). Flags are set per host, here.
+# group_vars/all/flags.yml, what each needs in docs/services.md). Flags are set per host, here.
 
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
 # `roles:` (a list: one drive can fill several roles, or none). A host with no drives leaves the
 # list out; its default is [] (group_vars/all/defaults.yml).
-#   fast    SSD; random-IO data (Docker, Immich database, configs) and caches
-#   primary bulk data (photos, files)
-#   backup  restic local repo, service dumps, logs
-# Each role may be claimed by at most one drive. A host needs a drive for every role its enabled services
-# use: an unclaimed role fails the deploy with a message naming it. No `backup` drive means no local backup.
-# A drive with no `roles:` is only mounted.
-# Find UUIDs on the host: lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS
-# Examples for one, two and three drives, and the `nofail` option: docs/storage.md#examples
+# The roles (fast, primary, backup), what an unclaimed one does, UUIDs and the one-, two- and three-drive examples:
+# docs/storage.md.
 # drives:
-#   - { uuid: "...", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
+#   - { uuid: "...", mount: /mnt/data, roles: [fast, primary] }
+
+# --- Encryption ---
+# Folders stored encrypted with gocryptfs; unlock by hand after each boot (docs/encryption.md).
+# encrypted_folders:
+#   - /mnt/data/photos
 
 # --- Offsite backup ---
 # backup_cloud_enabled turns on the weekly offsite copy for this host. It uploads only the base directory and
-# Copyparty's config; add data paths to restic_cloud_rules (docs/backups.md). Every host needs its own
+# Copyparty's config; add data paths to restic_cloud_extra_rules (docs/backups.md). Every host needs its own
 # path: hosts sharing a repository would prune each other's snapshots. Backends and setup: docs/backups.md.
 # backup_cloud_enabled: true
 # restic_cloud_repository: "rclone:gdrive:/<host>-backups"
+
+# --- Copyparty extras ---
+# Any Copyparty option not covered by a setting (an SFTP or FTP listener, accounts, volumes), and the ports to publish
+# for it as "host:container" strings. Worked example: docs/services.md#copyparty-accounts-and-volumes
+# copyparty_extra_conf: |
+#   [global]
+#     ftp: 3921
+# copyparty_extra_ports: ["3921:3921"]
+
+# --- Cloudflare Tunnel ---
+# Public hostnames this host's tunnel serves (cloudflared_enabled; docs/services.md#cloudflare-add-a-public-hostname).
+# Exactly two keys per entry, no `path:`.
+# cloudflared_ingress:
+#   - hostname: newservice.example.com
+#     service: "http://newservice:8080"

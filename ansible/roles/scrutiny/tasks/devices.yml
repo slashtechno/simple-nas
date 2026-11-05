@@ -1,0 +1,22 @@
+---
+- name: Install smartmontools, which provides smartctl
+  ansible.builtin.apt:
+    name: smartmontools
+    state: present
+
+# Read-only, so it also runs under --check.
+- name: List the drives that answer SMART
+  ansible.builtin.command: smartctl --scan
+  register: scrutiny_smartctl_scan
+  changed_when: false
+  check_mode: false
+
+- name: Keep the device path of each device smartctl lists
+  ansible.builtin.set_fact:
+    scrutiny_devices: "{{ scrutiny_smartctl_scan.stdout_lines | map('split') | map('first') | list }}"
+
+- name: Check a drive on this host answers SMART
+  ansible.builtin.assert:
+    that: scrutiny_devices | length > 0
+    fail_msg: no drive on this host answers SMART; Scrutiny has nothing to show
+    quiet: true

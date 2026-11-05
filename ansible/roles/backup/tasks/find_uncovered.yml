@@ -1,0 +1,18 @@
+---
+# Input: backup_dirs and backup_paths, absolute paths without a trailing slash.
+# Sets backup_uncovered to the directories that are neither one of the paths nor inside one: /data/photos is
+# inside /data, but /database is not.
+- name: Find the directories outside every path
+  ansible.builtin.set_fact:
+    backup_uncovered: >-
+      {%- set outside = [] -%}
+      {%- for dir in backup_dirs -%}
+      {%- set found = namespace(inside=false) -%}
+      {%- for path in backup_paths if dir == path or dir.startswith(path ~ '/') -%}
+      {%- set found.inside = true -%}
+      {%- endfor -%}
+      {%- if not found.inside -%}
+      {%- set _ = outside.append(dir) -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {{ outside }}

@@ -68,16 +68,9 @@
             ip4: "{{ direct_link_ip }}/{{ direct_link_prefix }}"
             method4: manual
             autoconnect: true
-            state: present
-
-        # The Pi ships with a default DHCP profile on eth0 ("Wired connection 1");
-        # it's turned off so it can never race our static one for the port.
-        - name: Disable auto-connect on the default eth0 DHCP profile
-          community.general.nmcli:
-            type: ethernet
-            conn_name: "Wired connection 1"
-            ifname: "{{ direct_link_iface }}"
-            autoconnect: false
+            # NetworkManager auto-activates the highest-priority profile for a port (the default is 0), so this one
+            # wins over the installer's DHCP profile, whatever that is called.
+            autoconnect_priority: 100
             state: present
 
     # netplan merges files in name order and a later file overrides the same keys, so this file turns off the
@@ -103,6 +96,7 @@
       ansible.builtin.apt:
         name: dnsmasq
         state: present
+        cache_valid_time: 3600
 
     - name: Configure dnsmasq to auto-assign the laptop's IP
       ansible.builtin.template:

@@ -2,6 +2,8 @@
 
 Wifi profiles are managed on the host with `nmcli`, not by Ansible. Ansible sets up the shared Docker network and the direct Ethernet link.
 
+HTTPS names and ports for the web apps are in [caddy-reference.md](./caddy-reference.md#web-addresses-and-https).
+
 ## If a Pi drops off the network
 
 Work down the list; stop when you can reach it.
@@ -22,7 +24,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 - NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
 - Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale.
-- There is no switch-back automation. If one is needed, the options are a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`, root-owned, run with the interface name and an event such as `up`) or a systemd timer running `nmcli device wifi rescan` and `nmcli con up`.
+- There is no switch-back automation. To add one, use a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`) or a systemd timer running `nmcli`.
 - The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
 
 ## Rules for changing network config
@@ -33,91 +35,28 @@ nmcli device wifi list         # networks the Pi can see right now
 ## What `roles/network` does
 
 - Creates the shared Docker network `docker_network` (`services`) on every host.
-- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`) so cloud-init, which configures a machine once at first boot, cannot rewrite the network config later.
-- Sets up the direct Ethernet link when `direct_link_enabled` is true. The `direct_link_*` settings and their defaults are in `ansible/group_vars/all/defaults.yml`; override them in the host's `vars.yml`.
+- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init, which configures a machine at first boot (Raspberry Pi Imager and Ubuntu's Raspberry Pi images use it), cannot rewrite the network config later.
+- Sets up the direct Ethernet link when `direct_link_enabled` is true ([Direct Ethernet link](#direct-ethernet-link)).
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, and the default Ethernet profile must be named `Wired connection 1` (the name on those systems); on a host where it has another name, the link's disable and revert steps fail. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
-- The Ubuntu Server installer writes its own netplan file and a cloud-init file that already disables cloud-init's network config; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init at first boot. Either way the file `roles/network` writes makes cloud-init leave the network alone afterwards.
+- The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, with a higher autoconnect priority than the installer's profile, so NetworkManager picks it for the port. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
 
-## Web addresses and HTTPS
+## Connectivity watchdog
 
-Every service with a web UI listens on a host port (unless you set it to `""`, below) and is reachable from any device on your tailnet at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+A host can stay on wifi with a valid address and working ping while every TCP connection and DNS lookup fails; nothing reports it and the host drops off Tailscale. `connectivity_watchdog_enabled: true` (default off) runs `connectivity-watchdog.sh` from root's `cron` every 2 minutes:
 
-For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name; one choice is yours: which service is the root of the server. Point a name at it with `caddy_sites`: Homepage for a launcher, Copyparty for a file server, Dockge for an app host.
+- It tries a TCP connection to port 443 of each address in `connectivity_probe_addresses`; the host is online if any connects. The tuning settings and their defaults are in `ansible/roles/connectivity_watchdog/defaults/main.yml`.
+- After 3 failed checks in a row it runs `nmcli connection down` and `up` on the connection that carries the default route (wifi or Ethernet, never the direct link, which has no gateway). It waits 30 minutes between reconnects and stops after 6 per outage, so a real internet outage does not loop. It never reboots. A host without NetworkManager only logs.
+- Every step is in the system log (`journalctl -t connectivity`). When the check works again after an outage, one alert goes through `alert.sh` ([ntfy](./services.md#ntfy-failure-alerts)).
 
-### Names for apps: `caddy_private_domains`
-
-For `https://<app>.<host>.<your domain>` with a Let's Encrypt certificate, tailnet only, with no port forwarding:
-
-```yaml
-caddy_enabled: true
-caddy_private_domains: [pi4.example.com]
-```
-
-- **Cloudflare:** the domain must contain one from `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
-- **DNS:** a deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
-  - Every record carries the comment `managed by simple-nas, caddy <host>`.
-  - A name that already has a record without it stops the deploy. Records with it for a domain not in the list are deleted.
-  - `--check` prints the plan. To remove the records, set the list to `[]` and deploy before `teardown.yml --tags caddy`; teardown does not call Cloudflare.
-- **Certificates:** Caddy asks Let's Encrypt for each name through the Cloudflare DNS challenge, so no port is opened. Names appear in public certificate logs.
-- **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
-- **Public names** do not use this: they are entries in `cloudflared_ingress`, and Cloudflare serves their certificate.
-- **Secrets:** Caddy's token is in its compose file on the host (the compose files are in the offsite backup), and Caddy sits next to the Docker socket. It is the same vault token the tunnel uses, with DNS edit on every zone and the tunnel permission.
-
-#### Service names
-
-On a host that runs Caddy, every service from this repo that is switched on gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
-
-- The subdomains and container ports are in [web_services.yml](../ansible/group_vars/all/web_services.yml), and the `*_subdomain` settings in [defaults.yml](../ansible/group_vars/all/defaults.yml). A subdomain is a single label. The container ports are fixed by the images and are not settings.
-- Homebridge has no name: it runs on the host network. Gitea has none by default (`gitea_subdomain: ""`): it builds links from `gitea_root_url`, a single address.
-- With more than one domain in `caddy_private_domains`, each service is served under every domain and the Homepage links to the first.
-- Crafty's panel serves a self-signed certificate; Caddy accepts it and browsers see Caddy's.
-
-#### Ports and names
-
-Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its default from [defaults.yml](../ansible/group_vars/all/defaults.yml).
-
-```yaml
-gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
-gitea_subdomain: code        # https://code.pi4.example.com
-ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
-dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
-```
-
-- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name; a service reached only through the Cloudflare Tunnel keeps its port.
-- Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
-- A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
-- The names come from labels on the Caddy container, and the Homepage reads them when it is deployed. After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). Homepage links assume Caddy's HTTPS port is 443.
-
-#### Names of your own
-
-- **A container of this repo**, such as the root of the server as the start page, takes `caddy_sites`: a map of address to Caddy directives (`reverse_proxy` takes `container:port` on the `services` network).
-
-  ```yaml
-  caddy_sites:
-    home.pi4.example.com: {reverse_proxy: "homepage:3000"}
-    gh.pi4.example.com: {redir: "https://github.com{uri}"}   # gh.pi4.example.com/owner/repo opens github.com/owner/repo
-  homepage_host: home.pi4.example.com   # Homepage refuses any other address
-  ```
-
-  - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
-  - Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
-- **An app of your own** takes a name with labels: `caddy: webtop.pi4.example.com` and `caddy.reverse_proxy: "{{upstreams 3000}}"` ([caddy-reference.md](./caddy-reference.md)).
-
-### Short name
-
-A host with `caddy_private_domains` redirects `http://<host>` (302) to the first private domain: `http://pi4` to `https://pi4.example.com`.
-
-- `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
-- Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
+Deploy it with `just deploy connectivity_watchdog --limit <host>`; `just deploy common` first if alerts are new. Setting the flag to false removes its cron job and script on the next deploy.
 
 ## Direct Ethernet link
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s measured, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`; the laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
-1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml` (the address and port settings keep their defaults from `ansible/group_vars/all/defaults.yml` unless you override them), then `just deploy network --limit <host>`.
+1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml` (the address and port settings are in `ansible/group_vars/all/direct-link.yml`; override them in the same `vars.yml`), then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
-3. Open `http://10.10.20.1:3923` for Copyparty.
+3. Open `https://10.10.20.1:3923` for Copyparty. Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once; `http://` on that port works too.
 
 The link can't reach the internet or collide with a VPN:
 - `dnsmasq` hands out DHCP only (no DNS, no gateway), and neither end has a gateway, so there is no route off the cable.

@@ -1,0 +1,40 @@
+#!/bin/bash
+# Ansible-managed (roles/encryption). Creates the encrypted files for one folder in encrypted_folders, once:
+#   sudo {{ scripts_dir }}/init-encrypted-folder.sh <folder>
+# Then save the master key it prints, copy gocryptfs.conf off the host, and run unlock.sh (docs/encryption.md).
+set -euo pipefail
+
+FOLDER="${1:?Usage: $0 <folder from encrypted_folders>}"
+case "${FOLDER%/}" in
+{% for folder in encrypted_pairs %}
+  {{ folder.mount | quote }}) FOLDER={{ folder.mount | quote }}; CIPHER={{ folder.cipher | quote }} ;;
+{% endfor %}
+  *) echo "ERROR: $FOLDER is not in encrypted_folders. Add it there and deploy encryption first." >&2; exit 1 ;;
+esac
+
+if [ -e "$CIPHER" ]; then
+  echo "ERROR: $CIPHER already exists. Refusing to create a second set of encrypted files." >&2
+  exit 1
+fi
+mkdir -p "$FOLDER"
+if [ -n "$(ls -A "$FOLDER")" ]; then
+  echo "ERROR: $FOLDER is not empty. Move its files away first (docs/encryption.md)." >&2
+  exit 1
+fi
+
+# The cipher cannot be changed later. A CPU with AES instructions is fastest with the default (AES-GCM);
+# one without (Raspberry Pi 4) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
+if grep -qw aes /proc/cpuinfo; then
+  CIPHER_OPTION=""
+else
+  CIPHER_OPTION="-xchacha"
+fi
+
+mkdir "$CIPHER"
+# The mounted folder's top directory shows the cipher folder's owner and mode, so copy them from the mount point: that is
+# what gives the decrypted folder the owner the deploy or the owner gave this folder (docs/encryption.md).
+chown --reference="$FOLDER" "$CIPHER"
+chmod --reference="$FOLDER" "$CIPHER"
+# shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
+gocryptfs -init $CIPHER_OPTION "$CIPHER"
+echo "Created $CIPHER. Next: save the master key above, copy $CIPHER/gocryptfs.conf off this host, run unlock.sh."

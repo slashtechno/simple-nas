@@ -1,3 +1,0 @@
----
-# The stacks directory (dockge_stacks_dir) is in group_vars/all/defaults.yml. Dockge needs the same path
-# inside and outside its container, so it is mounted at the same path.

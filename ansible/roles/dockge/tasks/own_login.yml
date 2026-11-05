@@ -1,0 +1,53 @@
+---
+# Tinyauth is Dockge's only login when it stands in front of Dockge's Caddy name: the role then switches
+# Dockge's own login off in its database, and back on when Tinyauth is off or a host port publishes Dockge
+# past Caddy (docs/services.md#tinyauth-login). The play runs as root, which the database needs.
+- name: Work out whether Dockge's own login should be off
+  ansible.builtin.set_fact:
+    dockge_login_off: "{{ (tinyauth_enabled | bool) and (caddy_enabled | bool) and dockge_port == '' }}"
+
+# Reading is safe while Dockge runs; writing is not, because the running process checkpoints its WAL over it.
+- name: Read Dockge's disableAuth setting
+  ansible.builtin.script:
+    cmd: "{{ role_path }}/files/disable-auth.py {{ (dockge_data_dir ~ '/dockge.db') | quote }} get"
+  register: dockge_disable_auth
+  changed_when: false
+  check_mode: false
+
+# A missing row means Dockge's own login is on, so a host that should keep it needs no write.
+- name: Note whether the stored setting is the one this host should have
+  ansible.builtin.set_fact:
+    dockge_login_changes: >-
+      {{ ((dockge_disable_auth.stdout | trim) == 'true' and not dockge_login_off | bool)
+         or ((dockge_disable_auth.stdout | trim) in ['false', 'unset'] and dockge_login_off | bool) }}
+
+- name: Leave Dockge's own login alone until Dockge has an account
+  ansible.builtin.debug:
+    msg: >-
+      Dockge has no account yet, so its own login stays on. Open Dockge once, create the first account, then
+      deploy again: with Tinyauth in front of Dockge, that account is the only login from then on.
+  when:
+    - dockge_login_off | bool
+    - (dockge_disable_auth.stdout | trim) in ['no-db', 'no-user']
+
+- name: Make Dockge's own login follow Tinyauth
+  when: dockge_login_changes | bool
+  block:
+    - name: Stop Dockge to write its database
+      community.docker.docker_compose_v2:
+        project_src: "{{ services_dir }}/dockge"
+        state: stopped
+
+    - name: Write Dockge's disableAuth setting
+      ansible.builtin.script:
+        cmd: >-
+          {{ role_path }}/files/disable-auth.py
+          {{ (dockge_data_dir ~ '/dockge.db') | quote }}
+          set {{ dockge_login_off | ternary('true', 'false') }}
+      changed_when: true
+
+    - name: Start Dockge with the setting in place
+      community.docker.docker_compose_v2:
+        project_src: "{{ services_dir }}/dockge"
+        state: present
+        pull: "{{ docker_pull_policy }}"

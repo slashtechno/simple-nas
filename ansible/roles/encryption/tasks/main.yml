@@ -1,0 +1,63 @@
+---
+# Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
+# (init-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
+# tools and both scripts. With no encrypted folder it removes the scripts again (remove.yml).
+- name: Check every encrypted folder is an absolute path
+  ansible.builtin.assert:
+    that: item is match('/')
+    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/primary/photos."
+    quiet: true
+  loop: "{{ encrypted_folders }}"
+
+# overlay2, which Docker's storage uses, does not run on a FUSE filesystem; Docker would not start.
+- name: Check Docker's storage is not in an encrypted folder
+  ansible.builtin.assert:
+    that: not (docker_data_root ~ '/').startswith(item.mount ~ '/')
+    fail_msg: "docker_data_root {{ docker_data_root }} is inside the encrypted folder {{ item.mount }}."
+    quiet: true
+  loop: "{{ encrypted_pairs }}"
+  loop_control:
+    label: "{{ item.mount }}"
+  when: docker_data_root | length > 0
+
+- name: Install gocryptfs and FUSE
+  ansible.builtin.apt:
+    name:
+      - gocryptfs
+      - fuse3
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: encrypted_folders | length > 0
+
+- name: Install the encryption scripts
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ scripts_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: "0750"
+  loop: [unlock.sh, init-encrypted-folder.sh]
+  when: encrypted_folders | length > 0
+
+- name: Create the after-unlock scripts directory
+  ansible.builtin.file:
+    path: "{{ encryption_hooks_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: encrypted_folders | length > 0
+
+- name: Install the Docker restart script
+  ansible.builtin.template:
+    src: 00-docker.sh.j2
+    dest: "{{ encryption_hooks_dir }}/00-docker.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  when: encrypted_folders | length > 0
+
+- name: Remove the encryption scripts when no folder is listed
+  ansible.builtin.import_tasks: remove.yml
+  when: encrypted_folders | length == 0

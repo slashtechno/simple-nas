@@ -1,3 +1,4 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 networks:
   {{ docker_network }}:
     external: true
@@ -9,8 +10,9 @@ services:
     restart: unless-stopped
     volumes:
       - {{ gitea_data_dir }}:/data
-      - /etc/localtime:/etc/localtime:ro
     environment:
+      TZ: {{ timezone }}
+      # Must be the uid and gid of ansible_user, who owns the data directories (tasks/main.yml).
       USER_UID: 1000
       USER_GID: 1000
       GITEA__server__ROOT_URL: {{ gitea_root_url }}
@@ -20,7 +22,15 @@ services:
       GITEA__database__DB_TYPE: sqlite3
       GITEA__database__PATH: /data/gitea/gitea.db
       GITEA__service__DISABLE_REGISTRATION: "true"
-{% if vault_gitea_runner_token %}
+{% if gitea_sso_enabled | bool %}
+      # Signing in through the Tinyauth login source, which the deploy adds to the database once this container runs.
+      # With auto-registration off, a first login goes to Gitea's link page, where the user attaches it to their
+      # existing account; the password form stays (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The scopes are
+      # needed for the email claim: without them Gitea asks only for "openid" and Tinyauth sends no address.
+      GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
+      GITEA__oauth2_client__OPENID_CONNECT_SCOPES: "openid email profile"
+{% endif %}
+{% if vault_gitea_runner_token | default("") %}
       GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
 {% endif %}
     ports:
@@ -31,7 +41,7 @@ services:
     networks:
       - {{ docker_network }}
 
-{% if vault_gitea_runner_token %}
+{% if vault_gitea_runner_token | default("") %}
   gitea-runner:
     image: {{ gitea_runner_image }}
     container_name: gitea-runner

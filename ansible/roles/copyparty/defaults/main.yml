@@ -1,11 +1,13 @@
 ---
-# Copyparty's SFTP listener, used by the pocketpi project's sync through its own
-# account (vault_pocketpi_sftp_user / _pass, rwmd on /files). WebDAV lacks the modtimes rclone needs; SFTP has them.
-copyparty_sftp_enabled: false
-# Host port of the SFTP listener.
-copyparty_sftp_port: 3922
-
-
+# Extra Copyparty config, written to its own file next to the generated one; Copyparty merges the [global], [accounts] and
+# volume sections of both. For anything the settings here do not cover, e.g. an SFTP or FTP listener
+# (docs/services.md#copyparty-accounts-and-volumes). Keep passwords in the vault: the file is mode 0600 and --diff does not show it.
+copyparty_extra_conf: ""
+# Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
+copyparty_extra_ports: []
+# Tinyauth user names that get admin access (A) to / and to /collab and /fast: the browser name's signed-in user is
+# matched against these names exactly. Needed when copyparty_sso_enabled is true.
+copyparty_sso_admins: []
 # The Copyparty admin login, from the vault.
 copyparty_user: "{{ vault_copyparty_user }}"
 # The Copyparty admin password, from the vault.

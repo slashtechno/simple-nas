@@ -1,0 +1,18 @@
+---
+# `import tinyauth_forwarder` names a snippet that the compose template writes only when Tinyauth is on and the host has
+# a private domain. Caddy rejects its whole config when an import names no snippet, and its container still reports
+# success, so every name would stop working with nothing in the deploy output.
+- name: Check every site that imports Tinyauth's snippet has the snippet
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_private_domains | length > 0
+    fail_msg: >-
+      {{ item.key }} imports tinyauth_forwarder, which Caddy only gets when tinyauth_enabled is true and
+      caddy_private_domains has an entry. Turn both on for this host, or drop the import from that site
+      (docs/caddy-reference.md#names-of-your-own).
+    quiet: true
+  loop: "{{ caddy_sites | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: item.value is mapping and (item.value.import | default('')) == 'tinyauth_forwarder'

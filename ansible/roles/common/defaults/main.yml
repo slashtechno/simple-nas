@@ -2,3 +2,13 @@
 # SSH public keys allowed to log in as the Ansible user, one per device (a list of lines like `ssh-ed25519 AAAA... you@laptop`). Added, never removed:
 # a key you delete here stays on the hosts until removed from ~/.ssh/authorized_keys by hand.
 ssh_authorized_keys: []
+# Install the Ghostty terminfo entry, zellij (a terminal multiplexer), zoxide (a smarter `cd`), bat (a `cat` with colours)
+# and eza (an `ls` with colours, on Debian 13 / Ubuntu 24.04 and later). zoxide, bat and eza are set up in the Ansible
+# user's ~/.bashrc, interactive shells only. Set false to leave all of them out.
+terminal_tools_enabled: true
+# Where a failed backup job and a recovered connection are sent, besides the system log (`journalctl -t backup`): the
+# URL of an ntfy topic, for example "http://pinas:8090/alerts" (the ntfy this repo runs, over the tailnet),
+# "https://ntfy.pinas.example.com/alerts" (its Caddy name) or "https://ntfy.sh/<your-topic>". "" sends nothing.
+# The login token is vault_ntfy_token. A host that is down or unreachable cannot alert. Use https:// or a tailnet
+# address: the token travels in the request. For the ntfy this repo runs, the path must be ntfy_topic.
+ntfy_alert_url: ""

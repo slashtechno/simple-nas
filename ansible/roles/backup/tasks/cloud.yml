@@ -1,0 +1,105 @@
+---
+# The weekly offsite backup: its script, path and exclude lists, rclone remote, repository and cron job.
+- name: Set up the offsite backup
+  when: backup_cloud_enabled | bool
+  block:
+    - name: Render the offsite backup script
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ scripts_dir }}/{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+      loop: "{{ backup_cloud_scripts }}"
+
+    - name: Render the offsite path and exclude lists
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ scripts_dir }}/{{ item }}"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"
+      loop: "{{ backup_cloud_lists }}"
+
+    # Google Drive is reached through rclone, whose remote needs an OAuth token. It comes from the vault
+    # (vault_rclone_gdrive_token, made with `rclone authorize` on a computer with a browser). The file is
+    # written only when it does not exist: rclone writes refreshed tokens back into it, so overwriting
+    # it on every deploy would replace a fresh token with the stale one from the vault.
+    - name: Create the rclone config directory
+      ansible.builtin.file:
+        path: "{{ rclone_config_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0700"
+      when: vault_rclone_gdrive_token | default('') | length > 0
+
+    - name: Write the rclone Google Drive remote (only if there is no rclone.conf yet)
+      ansible.builtin.template:
+        src: rclone.conf.j2
+        dest: "{{ rclone_config_dir }}/rclone.conf"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0600"
+        force: false
+      no_log: true   # the rendered file holds the OAuth token and would show in --diff
+      when: vault_rclone_gdrive_token | default('') | length > 0
+
+    # The offsite list is short on purpose (photos and files are large), so say what it leaves out instead of letting
+    # the owner assume everything is offsite. Read-only: it also runs under --check.
+    - name: Find the service data the offsite backup does not include
+      ansible.builtin.import_tasks: find_uncovered.yml
+      vars:
+        backup_dirs: "{{ backup_service_dirs }}"
+        backup_paths: "{{ (restic_cloud_rules | reject('match', '^- ') | list) | map('regex_replace', '/$', '') | list }}"
+
+    - name: Say which service data the offsite backup does not include
+      ansible.builtin.debug:
+        msg: >-
+          Not in the offsite backup: {{ backup_uncovered }}. Add the ones you want to restic_cloud_extra_rules
+          (docs/backups.md); they stay in the local backup either way.
+      when: backup_uncovered | length > 0
+
+    # A repository that is configured but cannot be initialised (no rclone remote, wrong credentials,
+    # unreachable server) fails the deploy, so a backup that would never run is caught at deploy time.
+    - name: Initialize cloud restic repository (idempotent)
+      ansible.builtin.command:
+        cmd: >-
+          restic -o "rclone.args={{ restic_cloud_rclone_args }}" init
+      environment:
+        RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+        RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"
+      register: restic_cloud_init
+      changed_when: "'created restic repository' in restic_cloud_init.stdout"
+      failed_when:
+        - restic_cloud_init.rc != 0
+        - "'already exists' not in restic_cloud_init.stderr"
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Schedule weekly cloud backup (Sunday 4 AM)
+      ansible.builtin.cron:
+        name: backup-cloud
+        user: "{{ ansible_user }}"
+        minute: "0"
+        hour: "4"
+        weekday: "0"
+        job: >-
+          /bin/bash {{ (scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
+          >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
+          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
+          "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
+
+- name: Remove the weekly cloud backup job when the offsite backup is off
+  ansible.builtin.cron:
+    name: backup-cloud
+    user: "{{ ansible_user }}"
+    state: absent
+  when: not backup_cloud_enabled | bool
+
+- name: Remove the offsite backup script and lists when the offsite backup is off
+  ansible.builtin.file:
+    path: "{{ scripts_dir }}/{{ item }}"
+    state: absent
+  loop: "{{ backup_cloud_scripts + backup_cloud_lists }}"
+  when: not backup_cloud_enabled | bool

@@ -19,6 +19,18 @@ def slug(heading):
     return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
 
 
+def headings_of(text):
+    """The headings of a Markdown file, skipping `# comment` lines inside code fences."""
+    found = set()
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+        elif not in_fence and re.match(r"#{1,6} ", line):
+            found.add(slug(line.lstrip("#")))
+    return found
+
+
 def files():
     return [p for p in REPO.rglob("*") if p.is_file() and p.suffix in SUFFIXES and not SKIP & set(p.parts)]
 
@@ -27,8 +39,7 @@ def main():
     headings = {}
     for path in files():
         if path.suffix == ".md":
-            lines = path.read_text().splitlines()
-            headings[path] = {slug(line.lstrip("#")) for line in lines if re.match(r"#{1,6} ", line)}
+            headings[path] = headings_of(path.read_text())
     problems = []
     for path in files():
         try:

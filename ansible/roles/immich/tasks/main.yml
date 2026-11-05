@@ -25,6 +25,28 @@
     group: "999"
     mode: "0700"
 
+- name: Create Immich's compose directory for its config file
+  ansible.builtin.file:
+    path: "{{ services_dir }}/immich"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+  when: immich_sso_enabled | bool
+
+# Immich reads its whole configuration from this file when it is set, and refuses to save settings from its web UI while
+# it is set: a setting the template leaves out gets Immich's default, not the value the settings page saved.
+- name: Render Immich's config file
+  ansible.builtin.template:
+    src: immich-config.json.j2
+    dest: "{{ services_dir }}/immich/immich-config.json"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+  diff: false   # the client secret would show in --diff
+  notify: Restart Immich
+  when: immich_sso_enabled | bool
+
 - name: Deploy immich
   ansible.builtin.import_role:
     name: compose_service

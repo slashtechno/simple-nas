@@ -1,12 +1,12 @@
 #!/bin/bash
+{% import 'mount-guards.j2' as guards with context %}
 set -euo pipefail
 
 # Runs every dump script in {{ service_dump_scripts_dir }}/ and writes the dumps to
 # {{ service_dumps_dir }}/. Called by the restic backup scripts before they run.
 #
 # Each service with a live database installs its own script there from its role
-# (roles/immich/files/dump.sh, roles/gitea/files/dump.sh, roles/garage/files/dump.sh), so a service that is
-# not deployed leaves no script. A script receives the dump directory as $1 and
+# (docs/backups.md), so a service that is not deployed leaves no script. A script receives the dump directory as $1 and
 # names its output <script name>-*, e.g. immich.sh writes immich-db-*.sql.gz.
 # Services that are plain files (Copyparty, pics, Homebridge, Crafty)
 # need no script: restic copies them directly.
@@ -19,12 +19,7 @@ SCRIPTS_DIR="{{ service_dump_scripts_dir }}"
 
 {% if backup_local_enabled | bool %}
 # Refuse to run if the backup drive is not mounted: $DUMP_DIR would be created on the root filesystem.
-# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
-# bare path also succeeds on the automount placeholder of a missing drive.
-if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to write dumps onto root. Check the backup drive (check the USB connection; the drive mounts itself when it is back)." >&2
-  exit 1
-fi
+{{ guards.require_mounted(backup_drive, 'refusing to write dumps onto root') }}
 
 {% endif %}
 mkdir -p "$DUMP_DIR"
@@ -40,7 +35,7 @@ for script in "$SCRIPTS_DIR"/*.sh; do
     continue   # keep the old dumps: they may be the only good ones
   fi
   # Keep only the last 3 dumps of this service
-  find "$DUMP_DIR" -maxdepth 1 -name "${name}-*" -type f | sort -r | tail -n +4 | xargs -r rm -f
+  find "$DUMP_DIR" -maxdepth 1 -name "${name}-*" ! -name "*.tmp" -type f | sort -r | tail -n +4 | xargs -r rm -f
 done
 
 if $failed; then

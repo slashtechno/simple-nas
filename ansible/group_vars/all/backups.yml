@@ -1,0 +1,35 @@
+---
+# Backups (docs/backups.md).
+# Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
+
+# The local backup needs a drive with the `backup` role; the cloud backup needs `restic_cloud_repository`.
+
+# Where the dump scripts live, one per service with a live database. (The dumps they write go to service_dumps_dir.)
+service_dump_scripts_dir: "{{ scripts_dir }}/dump.d"
+
+# Local repository; used only when a backup drive is claimed.
+restic_repo_path: "{{ backup_drive }}/restic-repo"
+
+# Offsite repository, set per host (docs/backups.md#offsite-repository-restic_cloud_repository). The URL scheme picks the backend:
+# "rclone:gdrive:/path" for Google Drive, "sftp:user@host:/path" for SFTP.
+restic_cloud_repository: ""
+
+# File holding the restic repository password, written from vault_restic_password.
+restic_password_file: "/home/{{ ansible_user }}/.restic-password"
+
+# Where backup logs and service dumps live: on the backup drive with a local backup, else on the root drive.
+backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/backup-work' }}"
+
+# Where the backup logs are written.
+backup_logs_dir: "{{ backup_work_dir }}/logs"
+
+# restic forget options for the local repository: snapshots kept per day, week and month.
+restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
+
+# restic forget options for the offsite repository: snapshots kept per week and month.
+restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
+
+# rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
+# fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
+# Leave it alone unless you see that error.
+restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"

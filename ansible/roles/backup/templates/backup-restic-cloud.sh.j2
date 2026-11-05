@@ -1,37 +1,23 @@
 #!/bin/bash
+{% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
+{% import 'restic-env.j2' as restic_env with context %}
 set -o pipefail
 
 {% if backup_local_enabled | bool %}
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: the service dumps and logs
 # are written there, and they would fill the root drive instead.
-# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
-# bare path also succeeds on the automount placeholder of a missing drive.
-if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (check the USB connection; the drive mounts itself when it is back)." >&2
-  exit 1
-fi
+{{ guards.require_mounted(backup_drive, 'refusing to back up onto root') }}
 
 {% endif %}
-{% for mount in data_drive_mounts %}
-# Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
-# snapshot counts toward retention and pushes out good ones.
-if ! mountpoint -q {{ (mount ~ '/.') | quote }}; then
-  echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (check the USB connection; the drive mounts itself when it is back)." >&2
-  exit 1
-fi
-{% endfor %}
+{{ guards.require_data_drives() }}
 
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
-export RESTIC_REPOSITORY="{{ restic_cloud_repository }}"
-# restic's cache avoids re-reading packs over the network. The environment variable overrides it for a manual run.
-export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
+{{ job_status.setup('cloud') }}
+
+{{ restic_env.setup(restic_cloud_repository) }}
 
 # Throttles rclone's request rate to stay under Google Drive's quota (restic_cloud_rclone_args in group_vars).
 RESTIC_RCLONE_OPT=(-o "rclone.args={{ restic_cloud_rclone_args }}")
-
-# A stalled rclone or network pipe can hang restic while it holds the repository lock. `timeout` turns
-# the hang into a failed cron run instead of blocking every later cloud backup.
-restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
 
 # The paths to back up: backup-paths.txt next to this script. Comment lines are skipped.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
@@ -54,8 +40,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
 {
   echo "=== Cloud Backup: $(date) ==="
-  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
-  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  {{ restic_env.unlock_note() | indent(2) }}
   restic "${RESTIC_RCLONE_OPT[@]}" unlock
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }

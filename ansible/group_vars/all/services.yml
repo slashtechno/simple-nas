@@ -1,0 +1,121 @@
+---
+# One entry per service this repo deploys; the roles that are not a service are not listed (the render test names them). To add a service, add an entry here; README's
+# "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
+# the data directories in data-dirs.yml): a list is replaced whole by a host, so keep values out of it.
+#   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
+#              <key>_subdomain its name under the private domain. The role is roles/<key>.
+#   compose    the service's directory under services_dir (also its compose project). Teardown removes it.
+#   data       names of the settings that hold the service's data directories (not the paths: a path needs the host's
+#              drives, and a host without them still reads this list). With backup_local_enabled the deploy fails unless
+#              the local backup covers them; the offsite notice names them, and teardown deletes them with remove_data=true.
+#              Consumers turn the names into paths with query('ansible.builtin.vars', ...). An empty string is
+#              skipped, so "{{ 'x_dir' if x_enabled | bool else '' }}" makes a directory conditional.
+#   no_backup  setting names of directories teardown deletes but the backup leaves out on purpose
+#              (restic-excludes-services.txt.j2)
+#   keep       setting names of directories the backup must cover but teardown never deletes (the owner's files)
+#   dump_required
+#              true when the backup's file copy of the live database is not the copy to restore (it is left out, or it
+#              is copied torn while running). The dump script the role installs is then the only copy, so the deploy
+#              fails if it is missing
+#   copyparty  for an app that stores files in Copyparty: volumes, each {folder, dir, perms}. The app gets a Copyparty
+#              account named after its key, with the password vault_<key>_copyparty_pass, and each volume is served
+#              at /apps/<key>/<folder> (also its path inside the container), from the directory the setting <dir> names. The admin has full access to it too. Put
+#              no delete (d) in perms where the app must not destroy files: Copyparty then renames instead of overwriting.
+#   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them.
+#              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
+#              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
+#              of the account id the app stores, so changing it orphans every linked account. The app's own side
+#              repeats the id and the URI (pics' env file, Immich's config file): change both together.
+#   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
+#   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
+#              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
+#   container, container_port
+#              what Caddy proxies to on the services network
+#   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
+#   own_login  true when the service has a login or clients of its own (apps, git, WebDAV, push): Tinyauth never sits in
+#              front of its Caddy name, except Copyparty's browser name with copyparty_sso_enabled. Every other web
+#              service is behind Tinyauth on a host that has tinyauth_enabled.
+#   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
+services:
+  # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
+  # it was opened on), and the phone apps' fixed callback. pics and Gitea send one fixed address, so they list one.
+  - {name: Immich, key: immich, compose: immich, dump_required: true,
+     data: [immich_upload_location], no_backup: [immich_db_data_location],
+     container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
+     oidc: "{{ caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/auth/login') | list
+               + caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | map('regex_replace', '$', '/user-settings') | list
+               + ['app.immich:///oauth-callback'] }}"}
+  - {name: Copyparty, key: copyparty, compose: copyparty,
+     data: [copyparty_files_dir, copyparty_config_dir,
+            "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",
+            "{{ 'copyparty_fast_dir' if copyparty_fast_enabled | bool else '' }}"],
+     no_backup: [copyparty_hist_dir],
+     container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
+  - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
+     data: [gitea_data_dir, gitea_runner_data_dir],
+     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git,
+     oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
+  - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
+     copyparty: {volumes: [{folder: photos, dir: pics_photos_dir, perms: rwm}, {folder: trash, dir: pics_trash_dir, perms: rwmd}]},
+     container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
+     oidc: ["https://{{ pics_subdomain }}.{{ caddy_private_domains[0] | default('') }}/api/auth/oidc/callback"]}
+  - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
+     port: 8581, icon: homebridge, description: HomeKit}
+  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
+     container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
+  # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
+  - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
+     container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
+  - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
+     container: ntfy, container_port: 80, own_login: true, icon: ntfy, description: Alerts}
+  - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir],
+     container: tinyauth, container_port: 3000, own_login: true, icon: mdi-shield-account, description: Login}
+  - {name: Dozzle, key: dozzle, compose: dozzle, data: [dozzle_data_dir],
+     container: dozzle, container_port: 8080, icon: dozzle, description: Logs}
+  - {name: Scrutiny, key: scrutiny, compose: scrutiny,
+     data: [scrutiny_config_dir], no_backup: [scrutiny_influx_dir],
+     container: scrutiny, container_port: 8080, icon: scrutiny, description: Disk health}
+  - {name: Backups, key: backup_status, compose: backup-status,
+     container: backup-status, container_port: 8080, icon: restic, description: Backup status}
+  - {name: Homepage, key: homepage, compose: homepage,
+     container: homepage, container_port: 3000, icon: homepage, description: Start page}
+  # No tile and no registry Caddy name: its web UI and S3 endpoint are published by the garage role's own compose file.
+  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir]}
+  - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
+  # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
+  - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}
+
+# The entries with a web UI, in the order above.
+web_services: "{{ services | selectattr('icon', 'defined') | list }}"
+
+# The keys of the entries whose <key>_enabled is true on this host. lookup('vars', ...) reads a setting whose name is
+# built from the key, which a filter cannot do. Use it as: services | selectattr('key', 'in', enabled_service_keys)
+# Example: a host with immich_enabled and caddy_enabled true gives [immich, caddy].
+enabled_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}
+
+# The keys of the enabled entries marked dump_required: their live database is left out of the backup, so the deploy
+# checks their dump script is installed (roles/backup/tasks/checks.yml).
+# Example: [immich] on a host that runs Immich, [] on one that does not.
+dump_service_keys: >-
+  {{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('dump_required', 'defined')
+     | selectattr('dump_required') | map(attribute='key') | list }}
+
+# The keys of the enabled entries with oidc whose <key>_sso_enabled is true: the apps Tinyauth is an OpenID Connect
+# provider for on this host.
+# Example: [gitea, immich] on a host with both switched on and signing in through Tinyauth.
+oidc_service_keys: >-
+  {%- set on = [] -%}
+  {%- for service in services if service.oidc is defined and lookup('ansible.builtin.vars', service.key ~ '_enabled') | bool
+      and lookup('ansible.builtin.vars', service.key ~ '_sso_enabled') | bool -%}
+  {%- set _ = on.append(service.key) -%}
+  {%- endfor -%}
+  {{ on }}
+
+# The enabled entries with a copyparty field: the apps that get a Copyparty account and volumes on this host.
+# Example: [pics] entry on a host that runs pics, [] on one that does not.
+copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('copyparty', 'defined') | list }}"

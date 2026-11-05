@@ -1,3 +1,4 @@
+# Ansible-managed — do not edit directly, edit vars.yml/vault.yml and re-deploy.
 networks:
   {{ docker_network }}:
     external: true
@@ -24,16 +25,21 @@ services:
 {% if copyparty_collab_enabled | bool %}
       - {{ copyparty_collab_dir }}:/collab:rw
 {% endif %}
+{% for app in copyparty_clients %}
+{% for v in app.copyparty.volumes %}
+      - {{ lookup('ansible.builtin.vars', v.dir) }}:/apps/{{ app.key }}/{{ v.folder }}:rw
+{% endfor %}
+{% endfor %}
     environment:
       TZ: {{ timezone }}
-{% if copyparty_port != '' or copyparty_sftp_enabled | bool %}
+{% if copyparty_port != '' or copyparty_extra_ports | length > 0 %}
     ports:
 {% if copyparty_port != '' %}
       - "{{ copyparty_port }}:3923"
 {% endif %}
-{% if copyparty_sftp_enabled | bool %}
-      - "{{ copyparty_sftp_port }}:{{ copyparty_sftp_port }}"
-{% endif %}
+{% for port in copyparty_extra_ports %}
+      - "{{ port }}"
+{% endfor %}
 {% endif %}
     networks:
       - {{ docker_network }}

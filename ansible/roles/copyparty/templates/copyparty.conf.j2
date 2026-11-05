@@ -1,12 +1,12 @@
 # Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
+{% set sso_admins = copyparty_sso_admins if copyparty_sso_enabled | bool else [] %}
 [global]
   e2dsa
   e2ts
   # WebDAV write support for every volume. Volumes do not inherit flags, but `daw` is also a global option.
   daw
-  # Thumbnails, databases and the transcode cache live in this one directory (the fast drive) instead of a
-  # `.hist` folder inside each volume.
+  # Thumbnails, databases and the transcode cache live in `copyparty_hist_dir` instead of a `.hist` folder inside each volume.
   hist: /hist
   # Cap the thumbnailer's RAM at 1 GiB (upstream's default is 60% of system RAM).
   th-ram-max: 1
@@ -25,10 +25,14 @@
   xff-src: lan
   rproxy: -1
   shr: /shares
-{% if copyparty_sftp_enabled | bool %}
-  # sftp-pw reuses [accounts] below, no separate credential store.
-  sftp: {{ copyparty_sftp_port }}
-  sftp-pw
+{% if copyparty_sso_enabled | bool %}
+  # The user Tinyauth's login names in the Remote-User header is the Copyparty user, without a second login. Copyparty
+  # ignores that header unless the request also carries a header whose NAME is the secret below (idp-h-key), and Caddy
+  # sends it on the browser name only, so the published port and the tunnel cannot claim a user. auth-ord tries that
+  # header first and Copyparty's own passwords second, so WebDAV and apps keep their accounts.
+  idp-h-usr: remote-user
+  idp-h-key: {{ vault_copyparty_idp_key }}
+  auth-ord: idp,pw
 {% endif %}
 
 [accounts]
@@ -38,29 +42,26 @@
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
 {% endif %}
-{% if copyparty_sftp_enabled | bool %}
-  {{ vault_pocketpi_sftp_user }}: {{ vault_pocketpi_sftp_pass }}
-{% endif %}
-{% for s in copyparty_service_accounts | default([]) %}
-  {{ s.user }}: {{ s.pass }}
+{% for app in copyparty_clients %}
+  {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_pass') }}
 {% endfor %}
 
 [/]
   /files
   accs:
     A: {{ copyparty_user }}
-{% if copyparty_sftp_enabled | bool %}
-    rwmd: {{ vault_pocketpi_sftp_user }}  # m+d required -- rclone uploads/overwrites via rename
-{% endif %}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 
-{# One volume per service-account folder, a subfolder of /files. #}
-{% for s in copyparty_service_accounts | default([]) %}
-{% for v in s.volumes %}
-[/{{ v.folder }}]
-  /files/{{ v.folder }}
+{# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /apps/<key>/<folder>. #}
+{% for app in copyparty_clients %}
+{% for v in app.copyparty.volumes %}
+[/apps/{{ app.key }}/{{ v.folder }}]
+  /apps/{{ app.key }}/{{ v.folder }}
   accs:
     A: {{ copyparty_user }}
-    {{ v.perms }}: {{ s.user }}
+    {{ v.perms }}: {{ app.key }}
 
 {% endfor %}
 {% endfor %}
@@ -69,6 +70,9 @@
   /collab
   accs:
     A: {{ copyparty_user }}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 {% for u in vault_copyparty_collab_users %}
     A: {{ u.user }}
 {% endfor %}
@@ -79,6 +83,9 @@
   /fast
   accs:
     A: {{ copyparty_user }}
+{% for u in sso_admins %}
+    A: {{ u }}
+{% endfor %}
 
 {% endif %}
 {% if usb_automount_enabled | bool %}

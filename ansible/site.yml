@@ -4,7 +4,7 @@
 #
 # One play over every server. The base roles (drives, packages, Docker, Tailscale, network) run
 # everywhere; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
-# (default: false, in group_vars/all/defaults.yml).
+# (default: false, in group_vars/all/flags.yml).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich
 # To stop deploying a service: set <name>_enabled: false for the host.
@@ -38,7 +38,7 @@
         quiet: true
       tags: [always]
 
-    # A service with no host port is reachable only through its Caddy name.
+    # A web service needs a host port, or a Caddy name (caddy_enabled, a private domain and a subdomain); with neither, nothing can reach it.
     - name: Check every web service has a host port or a Caddy name
       ansible.builtin.assert:
         that: >-
@@ -46,12 +46,32 @@
           or (caddy_enabled | bool and caddy_private_domains | length > 0 and lookup('ansible.builtin.vars', item.key ~ '_subdomain', default='') != '')
         fail_msg: >-
           {{ item.name }} has no host port ({{ item.key }}_port: "") and no Caddy name. Give it a port, or turn on
-          caddy_enabled and caddy_private_domains and keep {{ item.key }}_subdomain non-empty (docs/networking.md).
+          caddy_enabled and caddy_private_domains and keep {{ item.key }}_subdomain non-empty (docs/caddy-reference.md).
         quiet: true
       loop: "{{ web_services | rejectattr('port', 'defined') | list }}"
       loop_control:
         label: "{{ item.name }}"
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
+      tags: [always]
+
+    # An app that signs in through Tinyauth needs the login page's name (Tinyauth with Caddy and a private domain) and
+    # the client secret Tinyauth checks (oidc in services.yml, docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+    - name: Check every app that signs in through Tinyauth has what it needs
+      ansible.builtin.assert:
+        that:
+          - tinyauth_enabled | bool
+          - caddy_enabled | bool
+          - caddy_private_domains | length > 0
+          - lookup('ansible.builtin.vars', 'vault_' ~ item.key ~ '_oidc_secret', default='') != ''
+          - item.oidc | select('search', '://[.]') | list | length == 0   # an empty subdomain or private domain
+        fail_msg: >-
+          Signing {{ item.name }} in through Tinyauth needs tinyauth and caddy switched on with a caddy_private_domains
+          entry, and vault_{{ item.key }}_oidc_secret in the vault that applies to {{ inventory_hostname }}
+          (vault.yml.example says how to make it).
+        quiet: true
+      loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
       tags: [always]
 
   tasks:
@@ -71,15 +91,40 @@
       ansible.builtin.import_role:
         name: tailscale
       tags: [tailscale]
+      when: tailscale_enabled | bool
+
+    - name: Set up encryption
+      ansible.builtin.import_role:
+        name: encryption
+      tags: [encryption]
 
     - name: Set up the Docker network and the direct link
       ansible.builtin.import_role:
         name: network
       tags: [network]
 
+    - name: Deploy or remove the connectivity watchdog
+      ansible.builtin.import_role:
+        name: connectivity_watchdog
+      tags: [connectivity_watchdog]
+
     # Docker restarts here, before any service container exists.
     - name: Apply the base roles' handlers
       ansible.builtin.meta: flush_handlers
+
+    # Before the services: an app that signs in through Tinyauth fetches the login page's settings as it starts
+    # (roles/gitea/tasks/sso.yml), and Caddy's first build takes 20+ minutes on a Pi.
+    - name: Deploy caddy
+      ansible.builtin.import_role:
+        name: caddy
+      tags: [caddy]
+      when: caddy_enabled | bool
+
+    - name: Deploy tinyauth
+      ansible.builtin.import_role:
+        name: tinyauth
+      tags: [tinyauth]
+      when: tinyauth_enabled | bool
 
     - name: Deploy immich
       ansible.builtin.import_role:
@@ -129,12 +174,6 @@
       tags: [homepage]
       when: homepage_enabled | bool
 
-    - name: Deploy caddy
-      ansible.builtin.import_role:
-        name: caddy
-      tags: [caddy]
-      when: caddy_enabled | bool
-
     - name: Deploy cloudflared
       ansible.builtin.import_role:
         name: cloudflared
@@ -152,6 +191,18 @@
         name: backup
       tags: [backup]
       when: backup_local_enabled | bool or backup_cloud_enabled | bool
+
+    - name: Deploy dozzle
+      ansible.builtin.import_role:
+        name: dozzle
+      tags: [dozzle]
+      when: dozzle_enabled | bool
+
+    - name: Deploy scrutiny
+      ansible.builtin.import_role:
+        name: scrutiny
+      tags: [scrutiny]
+      when: scrutiny_enabled | bool
 
     - name: Deploy ntfy
       ansible.builtin.import_role:

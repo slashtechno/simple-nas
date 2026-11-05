@@ -23,7 +23,8 @@
     version: "{{ version | default('main') }}"
   register: private_repo_clone
   # The token goes in through git's environment, so it is never written to .git/config or a command line.
-  # no_log keeps it out of Ansible's output.
+  # no_log stays on: the token sits in this task's environment, and Ansible would print it in a failure or at -vvv.
+  # A failed clone then shows no git error; rerun the git clone by hand on the host to see it.
   environment:
     GIT_CONFIG_COUNT: "1"
     GIT_CONFIG_KEY_0: "http.https://github.com/.extraheader"

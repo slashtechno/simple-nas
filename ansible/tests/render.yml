@@ -1,9 +1,9 @@
 ---
 # Renders every role template against the example vars and checks the result.
-# Runs on your machine only (no Pi, no vault): `just test` runs this, then
+# Runs on your machine only (no Pi, no vault): `just _test` runs this, then
 # shellchecks the rendered scripts. It catches:
-#   - a template using a variable that isn't defined in defaults.yml, vars.yml.example,
-#     vault.yml.example, versions.yml, web_services.yml or the role's defaults/
+#   - a template using a variable that isn't defined in the shared defaults files, vars.yml.example,
+#     vault.yml.example, versions.yml, services.yml or the role's defaults/
 #   - a key in a vars.yml (group_vars/all, host_vars/<host>) that no example or role defaults
 #     file declares
 #   - template syntax errors
@@ -17,12 +17,41 @@
   tasks:
     - name: Load the shared defaults
       ansible.builtin.include_vars:
-        file: "{{ playbook_dir }}/../group_vars/all/defaults.yml"
+        dir: "{{ playbook_dir }}/../group_vars/all"
+        files_matching: "{{ shared_defaults_regex }}"
+
+    - name: Load the values worked out from them
+      ansible.builtin.include_vars:
+        file: "{{ playbook_dir }}/../group_vars/all/derived.yml"
 
     - name: Turn on two services
       ansible.builtin.set_fact:
         dockge_enabled: true
         ntfy_enabled: true
+
+# The roles pair a hostname with its Cloudflare zone through cloudflare_zone_ids_of_name (derived.yml). This host
+# renders nothing else, so it can have its own zones.
+- name: Check zone matching
+  hosts: render-peer
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Give the host test zones
+      ansible.builtin.set_fact:
+        cloudflare_zones: {example.com: id-1, ample.com: id-2, me.com: id-3}
+
+    - name: A hostname matches only a zone it equals or ends with after a dot
+      vars:
+        zone_name: "{{ item.name }}"
+      ansible.builtin.assert:
+        that: cloudflare_zone_ids_of_name == item.zones
+        quiet: true
+      loop:
+        - {name: x.example.com, zones: [id-1]}
+        - {name: example.com, zones: [id-1]}
+        - {name: a.b.ample.com, zones: [id-2]}
+        - {name: notexample.com, zones: []}
+        - {name: home.com, zones: []}
 
 - name: Render all role templates against the example vars
   hosts: render-full
@@ -45,6 +74,7 @@
       ansible.builtin.set_fact:
         defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(defaults|vars)/main.yml$') | sort }}"
         template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
+        shared_defaults_files: "{{ query('ansible.builtin.fileglob', repo ~ '/group_vars/all/*.yml') | select('search', shared_defaults_regex) | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
     - name: Make sure the search found something
@@ -52,53 +82,71 @@
         that:
           - defaults_files | length > 0
           - template_files | length > 0
+          - shared_defaults_files | length > 0
 
     - name: Load the example vars, the vault example, the versions (role defaults load first, because they have the lowest precedence)
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
-        {{ defaults_files
-           + [repo + '/group_vars/all/defaults.yml',
+        {{ defaults_files + shared_defaults_files
+           + [repo + '/group_vars/all/derived.yml',
               repo + '/group_vars/all/vars.yml.example',
               repo + '/group_vars/all/versions.yml',
-              repo + '/group_vars/all/web_services.yml',
+              repo + '/group_vars/all/services.yml',
               repo + '/host_vars/vars.yml.example',
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, SFTP,
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, extra ports,
     # /fast and USB volumes; Crafty Bedrock; ntfy iOS push; the Gitea runner; the optional Pics lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
       ansible.builtin.set_fact:
         "{{ item }}_enabled": true
-      loop: [immich, copyparty, gitea, homebridge, pics, garage, crafty, ntfy, cloudflared, dockge, homepage, caddy, backup_local, backup_cloud, backup_status]
+      loop: "{{ services | map(attribute='key') | list + ['backup_local', 'backup_cloud'] }}"
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
         copyparty_collab_enabled: true
-        copyparty_sftp_enabled: true
+        copyparty_extra_conf: "[global]\n  sftp: 3922"
+        copyparty_extra_ports: ["3922:3922"]
         copyparty_fast_enabled: true
         usb_automount_enabled: true
 
     - name: Turn on the optional settings that change a template
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
-        homepage_links: [{name: Example, href: "https://example.test", description: "a: b", icon: mdi-star, monitor: true}]
+        homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
         pics_artist: Render Test
-        pics_website: https://example.test
+        pics_website: https://example.com
         pics_instagram: render_test
-        caddy_private_domains: [caddy.example.test, second.example.test]
+        caddy_private_domains: [pi4.example.com, second.example.com]
         caddy_sites:
-          home.caddy.example.test: {reverse_proxy: "homepage:3000"}
-          "gh.caddy.example.test": {redir: "https://github.com{uri}"}
+          home.pi4.example.com: {reverse_proxy: "homepage:3000"}
+          "gh.pi4.example.com": {redir: "https://github.com{uri}"}
+        vault_tinyauth_users: [{name: one, password: "pass$word"}, {name: two, password: second, totp: JBSWY3DPEHPK3PXP}]
+        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.com"}
         immich_port: ""
         copyparty_port: ""
+        # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
+        copyparty_sso_enabled: true
+        copyparty_sso_admins: [sso-admin]
+        vault_copyparty_idp_key: "idp$key"
+        # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
+        gitea_sso_enabled: true
+        immich_sso_enabled: true
+        pics_sso_enabled: true
+        pics_oidc_owner: owner@example.com
+        vault_pics_oidc_secret: "pics$secret"
+        vault_gitea_oidc_secret: "gitea$secret"
+        vault_immich_oidc_secret: "immich$secret"
         dockge_port: ""
+        scrutiny_devices: [/dev/sdb]   # the render test replaces the host's smartctl scan
         cloudflare_api_token: render-test-token
+        encrypted_folders: [/mnt/primary/immich/]   # the trailing slash is tolerated
 
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
@@ -110,18 +158,18 @@
       register: site_yml
 
     # An undeclared flag would make the role silently skip (or fail) instead of being off by default.
-    - name: Every flag site.yml tests is declared in group_vars/all/defaults.yml
+    - name: Every flag site.yml tests is declared in group_vars/all/flags.yml
       ansible.builtin.assert:
-        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/defaults.yml') | from_yaml"
-        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/defaults.yml does not declare."
-      loop: "{{ site_yml.content | b64decode | regex_findall('when: (\\w+)_enabled') }}"
+        that: "(item ~ '_enabled') in lookup('ansible.builtin.file', repo + '/group_vars/all/flags.yml') | from_yaml"
+        fail_msg: "site.yml tests {{ item }}_enabled, which group_vars/all/flags.yml does not declare."
+      loop: "{{ site_yml.content | b64decode | regex_findall('(\\w+)_enabled') | unique }}"
 
     # After include_vars, which would reset drives to the example's empty list.
     - name: Claim every drive role on its own drive
       ansible.builtin.set_fact:
         drives:
-          - {uuid: "4444-DDDD", mount: /mnt/fast, fstype: ext4, options: "defaults,nofail", roles: [fast]}
-          - {uuid: "5555-EEEE", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}
+          - {uuid: "4444-DDDD", mount: /mnt/fast, roles: [fast]}
+          - {uuid: "5555-EEEE", mount: /mnt/primary, roles: [primary]}
           - {uuid: "6666-FFFF", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup]}
 
     # Written out, not derived: the drives above claim fast and primary on their own drives.
@@ -130,18 +178,186 @@
         that: data_drive_mounts == ['/mnt/fast', '/mnt/primary']
         quiet: true
 
-    - name: Find every host's vars.yml
+    # geerlingguy.docker writes this dict to /etc/docker/daemon.json on every host, so a typo here breaks Docker.
+    # set_fact, not task vars: include_vars set docker_data_root and outranks them. The value is put back after.
+    - name: Keep the Docker data root the test started with
+      ansible.builtin.set_fact:
+        docker_data_root_before: "{{ docker_data_root }}"
+
+    - name: The Docker daemon options carry data-root only when docker_data_root is set
+      ansible.builtin.set_fact:
+        docker_data_root: ""
+
+    - name: Check the options without a data root
+      ansible.builtin.assert:
+        that:
+          - docker_daemon_options['log-driver'] == 'json-file'
+          - docker_daemon_options['log-opts'] == docker_log_opts
+          - "'data-root' not in docker_daemon_options"
+        quiet: true
+
+    - name: Set a data root
+      ansible.builtin.set_fact:
+        docker_data_root: /mnt/fast/docker-root
+
+    - name: Check the options with a data root
+      ansible.builtin.assert:
+        that: docker_daemon_options['data-root'] == '/mnt/fast/docker-root'
+        quiet: true
+
+    - name: Put the Docker data root back
+      ansible.builtin.set_fact:
+        docker_data_root: "{{ docker_data_root_before }}"
+
+    # Each service is written down in group_vars/all/services.yml, and these checks name the line another file is
+    # missing. Roles that are not a service are listed here on purpose.
+    - name: Find the roles
       ansible.builtin.find:
-        paths: "{{ repo }}/host_vars"
+        paths: "{{ repo }}/roles"
+        file_type: directory
+        depth: 1
+      register: role_dirs
+
+    - name: Every role is a service in services.yml or a role that is not a service
+      vars:
+        not_services: [backup, common, compose_service, connectivity_watchdog, encryption, github_clone, network, storage, tailscale]
+        role_dir_names: "{{ role_dirs.files | map(attribute='path') | map('basename') | list }}"
+        unlisted: "{{ role_dir_names | difference(services | map(attribute='key') | list) | difference(not_services) }}"
+      ansible.builtin.assert:
+        that: unlisted | length == 0
+        fail_msg: >-
+          roles/{{ unlisted | join(', roles/') }} is neither a service in group_vars/all/services.yml (add an entry)
+          nor a role listed in not_services in tests/render.yml.
+        quiet: true
+
+    - name: Every service is deployed by site.yml with its tag and its flag
+      vars:
+        site_tasks: "{{ (site_yml.content | b64decode | from_yaml)[0].tasks }}"
+        deploys: "{{ site_tasks | selectattr('tags', 'defined') | selectattr('tags', 'contains', item.key) | list }}"
+      ansible.builtin.assert:
+        that:
+          - deploys | length == 1
+          - deploys[0]['ansible.builtin.import_role'].name == item.key
+          - deploys[0].when == item.key ~ '_enabled | bool'
+        fail_msg: >-
+          site.yml needs one task for {{ item.key }}: import_role name {{ item.key }}, tags [{{ item.key }}],
+          when: {{ item.key }}_enabled | bool
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # Names built from a service's key cannot be found by a text search, so check them here.
+    - name: A service with oidc or copyparty has its switch and its vault lines in the example files
+      vars:
+        shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
+        vault_example: "{{ lookup('ansible.builtin.file', repo + '/host_vars/vault.yml.example') | from_yaml }}"
+        needed: >-
+          {{ ([item.key ~ '_sso_enabled'] if item.oidc is defined else [])
+             + (['vault_' ~ item.key ~ '_oidc_secret'] if item.oidc is defined else [])
+             + (['vault_' ~ item.key ~ '_copyparty_pass'] if item.copyparty is defined else []) }}
+      ansible.builtin.assert:
+        that: needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) | length == 0
+        fail_msg: >-
+          {{ item.key }} needs {{ needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) }}
+          in the shared defaults files or vault.yml.example.
+        quiet: true
+      loop: "{{ services | selectattr('oidc', 'defined') | list + services | selectattr('copyparty', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Every service has its flag, and a web service its port and subdomain, in the shared defaults files
+      vars:
+        shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
+        needed: "{{ [item.key ~ '_enabled'] + ([item.key ~ '_port', item.key ~ '_subdomain'] if item.icon is defined and item.port is not defined else []) }}"
+      ansible.builtin.assert:
+        that: needed | difference(shared_defaults.keys()) | length == 0
+        fail_msg: the shared defaults files in group_vars/all/ need {{ needed | difference(shared_defaults.keys()) }} (with a comment above each).
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # The dump list follows the entries marked dump_required in services.yml; update the expected keys here when one is added.
+    - name: Only the enabled services that need a dump are in dump_service_keys
+      ansible.builtin.assert:
+        that: dump_service_keys | sort == (['garage', 'gitea', 'immich'] | select('in', enabled_service_keys) | list | sort)
+        fail_msg: dump_service_keys must be the enabled entries with dump_required in services.yml; update the list in tests/render.yml
+        quiet: true
+
+    - name: Every service has a row in docs/services.md
+      ansible.builtin.assert:
+        that: "('roles/' ~ item.key) in lookup('ansible.builtin.file', repo + '/../docs/services.md')"
+        fail_msg: docs/services.md needs a row naming `roles/{{ item.key }}` in its table.
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # A data entry that names a setting nobody defines fails here with "undefined"; one that resolves to a
+    # relative path would make the backup coverage check and teardown act on the wrong place.
+    - name: Every data directory of every service is an absolute path
+      vars:
+        dirs: "{{ ((item.data | default([])) + (item.no_backup | default([])) + (item.keep | default([]))) | select | list }}"
+        paths: "{{ query('ansible.builtin.vars', *dirs) }}"
+      ansible.builtin.assert:
+        that: paths | reject('match', '^/') | list | length == 0
+        fail_msg: "{{ item.key }} has data directories that are not absolute paths: {{ paths }}"
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # teardown.yml builds each service's data_paths from the same entries: the stacks are the owner's and stay, the
+    # database and hist directories that the backup skips go.
+    - name: Teardown deletes the right directories
+      vars:
+        by_key: "{{ dict(services | map(attribute='key') | zip(services)) }}"
+        names: "{{ ((by_key[item.key].data | default([])) + (by_key[item.key].no_backup | default([]))) | select | list }}"
+        deleted: "{{ query('ansible.builtin.vars', *names) }}"
+      ansible.builtin.assert:
+        that:
+          - item.key != 'dockge' or deleted == [dockge_data_dir]
+          - item.key != 'copyparty' or copyparty_hist_dir in deleted
+          - item.key != 'immich' or immich_db_data_location in deleted
+          - deleted | length == deleted | unique | length
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # A copy of the repo with no vars.yml of its own has none to check.
+    - name: Find every vars.yml (shared and per host)
+      ansible.builtin.find:
+        paths: ["{{ repo }}/group_vars", "{{ repo }}/host_vars"]
         patterns: ["vars.yml"]
         recurse: true
       register: host_vars_found
 
+    # include_tasks, not import_tasks: each file in the loop is checked with its own variables.
     - name: Every key in each vars.yml must also be in its example
       ansible.builtin.include_tasks: check_keys.yml
-      loop: "{{ [repo + '/group_vars/all/vars.yml'] + (host_vars_found.files | map(attribute='path') | list) }}"
+      loop: "{{ host_vars_found.files | map(attribute='path') | list }}"
       loop_control:
         loop_var: real_file
+
+    # teardown.yml removes the names in these lists. The roles install the scripts and lists from them directly; the cron
+    # jobs and the two shared scripts are written out in the tasks, so each name must appear there.
+    - name: Every backup cron job and shared script in derived.yml is named in the backup role's tasks
+      vars:
+        backup_role_tasks: >-
+          {{ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/main.yml')
+             ~ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/local.yml')
+             ~ lookup('ansible.builtin.file', repo ~ '/roles/backup/tasks/cloud.yml') }}
+      ansible.builtin.assert:
+        that: >-
+          (backup_shared_scripts + backup_local_cron_jobs + backup_cloud_cron_jobs)
+          | reject('in', backup_role_tasks) | list | length == 0
+        fail_msg: A name in the backup_* lists of group_vars/all/derived.yml is not in roles/backup/tasks; teardown would remove the wrong thing.
+        quiet: true
+
+    - name: Work out which services Caddy names
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
 
     - name: Create one output directory per role
       ansible.builtin.file:
@@ -171,19 +387,134 @@
         {{ template_files | select('search', '/docker-compose.yml.j2$') | map('dirname') | map('dirname') | map('basename')
         | product(['environment', 'volumes', 'labels', 'ports']) | list }}
 
+    # The watchdog must probe every configured address, never reboot or name a network port, and alert with its own tag.
+    - name: The connectivity watchdog script probes, reconnects and alerts as designed
+      vars:
+        watchdog: "{{ lookup('ansible.builtin.file', out_dir ~ '/connectivity_watchdog/connectivity-watchdog.sh') }}"
+      ansible.builtin.assert:
+        that:
+          - connectivity_probe_addresses | length > 0
+          - connectivity_probe_addresses | reject('in', watchdog) | list | length == 0
+          - "'/dev/tcp/' in watchdog"
+          - "'nmcli connection down' in watchdog and 'nmcli connection up' in watchdog"
+          - "'connectivity restored' in watchdog and 'alert.sh' in watchdog"
+          - "'systemctl' not in watchdog and 'shutdown' not in watchdog and '/sbin/reboot' not in watchdog"
+          - "'wlan0' not in watchdog and 'eth0' not in watchdog"
+        quiet: true
+
+    # Caddy numbers its sites by their position in the list, so the checks find a site by its address, not its number.
+    - name: Read Caddy's labels, and the label number of each site address
+      ansible.builtin.set_fact:
+        caddy_labels: "{{ (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.labels }}"
+    - name: Look up each site address
+      vars:
+        sites: "{{ caddy_labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
+      ansible.builtin.set_fact:
+        caddy_site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
+
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered
+      vars:
+        tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml') }}"
       ansible.builtin.assert:
         that:
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
-          - "'caddy_7.reverse_proxy: \"homepage:3000\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_0: \"immich.caddy.example.test immich.second.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_3.reverse_proxy.transport.tls_insecure_skip_verify' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_8: \"gh.caddy.example.test\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_8.redir: \"https://github.com{uri}\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
-          - "'caddy_9: \"http://render-full\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          # Encryption: unlock.sh makes the locked folder immutable, mounts with -allow_other and never -nonempty;
+          # the backups refuse a locked folder and skip its encrypted copy.
+          - "'.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'chown --reference=\"$FOLDER\" \"$CIPHER\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'-xchacha' in lookup('ansible.builtin.file', out_dir ~ '/encryption/init-encrypted-folder.sh')"
+          - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'/after-unlock.d' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'systemctl' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'systemctl restart docker' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-docker.sh')"
+          - >-
+            ('chown ' ~ ansible_user ~ ' /mnt/primary/.immich.gocryptfs/gocryptfs.conf')
+            in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')
+          - "'chattr +i /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'does not support the immutable flag' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'gocryptfs -allow_other /mnt/primary/.immich.gocryptfs /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
+          - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
+          - >-
+            '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
+            in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
+          - "(services_dir ~ '/cloudflared/token') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - >-
+            '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
+            in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
+          - "caddy_labels[caddy_site['home.pi4.example.com'] ~ '.reverse_proxy'] == 'homepage:3000'"
+          - "'immich.pi4.example.com immich.second.example.com' in caddy_site"
+          - "(caddy_site['crafty.pi4.example.com'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
+          - "caddy_labels[caddy_site['gh.pi4.example.com'] ~ '.redir'] == 'https://github.com{uri}'"
+          - "'http://render-full' in caddy_site"
+          - "caddy_labels[caddy_site['dockge.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['copyparty.pi4.example.com'] ~ '.reverse_proxy.header_up'] == 'idp$$key 1'"
+          - "'copyparty.second.example.com' not in (caddy_site.keys() | join(' '))"
+          - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          # Admin access to /, /collab and /fast, the volumes that exist in this render.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 3"
+          # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
+          - >-
+            '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    rwm: pics\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "'/mnt/primary/apps/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
+          - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
+          - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"
+          - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
+          - "'TINYAUTH_AUTH_USERS: ' ~ \"'one:$$2b$$\" in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "':JBSWY3DPEHPK3PXP\\'' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'pass$word' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_APPURL: \"https://auth.pi4.example.com\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: \"s$$ecret\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          # A client per app that signs in through Tinyauth, with the app's own redirect URIs and the secret escaped.
+          - "'TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTID: \"gitea\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_GITEA_CLIENTSECRET: 'gitea$$secret'\" in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_GITEA_TRUSTEDREDIRECTURIS: \"https://git.pi4.example.com/user/oauth2/tinyauth/callback\"' in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTID: \"immich\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_IMMICH_CLIENTSECRET: 'immich$$secret'\" in tinyauth_compose"
+          - >-
+            ('TINYAUTH_OIDC_CLIENTS_IMMICH_TRUSTEDREDIRECTURIS: "https://immich.pi4.example.com/auth/login,'
+            ~ 'https://immich.second.example.com/auth/login,https://immich.pi4.example.com/user-settings,'
+            ~ 'https://immich.second.example.com/user-settings,app.immich:///oauth-callback"')
+            in tinyauth_compose
+          - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: \"https://pics.pi4.example.com/api/auth/oidc/callback\"' in tinyauth_compose"
+          - "\"HUB_OIDC_ISSUER='https://auth.pi4.example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_REDIRECT_URL='https://pics.pi4.example.com/api/auth/oidc/callback'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_OWNER='owner@example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_CLIENT_SECRET='pics$secret'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.networks.services.aliases
+            == ['auth.pi4.example.com', 'auth.second.example.com']
+          - "'GITEA__oauth2_client__OPENID_CONNECT_SCOPES: \"openid email profile\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "'GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: \"false\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.clientSecret == 'immich$secret'"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.pi4.example.com'"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
+          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).passwordLogin.enabled"
+          - "'IMMICH_CONFIG_FILE: /immich-config.json' in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
+          - "(services_dir ~ '/immich/immich-config.json:/immich-config.json:ro') in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
+          - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
+          # Dockge's port is empty here, which makes Tinyauth its only login; the role writes that switch into
+          # Dockge's database at run time (roles/dockge/tasks/own_login.yml), where no template test reaches.
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dockge/docker-compose.yml')"
+          - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
+          - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
+          - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
-          - "'git.caddy.example.test' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'NTFY_BEHIND_PROXY' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
@@ -199,30 +530,169 @@
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
           - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "(inventory_hostname ~ ':' ~ homepage_port) in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "'home.pi4.example.com,home.second.example.com,' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
+          - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "(',' ~ homepage_host ~ '\"') in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml | map('dict2items') | map('first') | map(attribute='key') | list)
             == ['render-full', 'render-peer', 'Links']
           - >-
-            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | length == 9
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full']
+            | length == (web_services | map(attribute='key') | select('in', enabled_service_keys) | list | length)
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
             | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
-            == ['https://immich.caddy.example.test', 'http://full.example.test:3000', 'https://crafty.caddy.example.test']
+            == ['https://immich.pi4.example.com', 'https://git.pi4.example.com', 'https://crafty.pi4.example.com']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
-            | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.test:5001', 'http://peer.example.test:8090']
+            | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.com:5001', 'http://peer.example.com:8090']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.icon == 'mdi-star'
           - >-
-            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.test'
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.com'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
         quiet: true
+
+    # Copyparty's own login is the default: no IdP lines in its config and nothing in front of its Caddy name.
+    - name: Make a directory for the render without Copyparty's single sign-on
+      ansible.builtin.file:
+        path: "{{ out_dir }}/sso-off"
+        state: directory
+        mode: "0755"
+
+    - name: Turn Copyparty's single sign-on off
+      ansible.builtin.set_fact:
+        copyparty_sso_enabled: false
+
+    - name: Work out which services Caddy names without it
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
+
+    - name: Render Copyparty's config and Caddy's compose without it
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}"
+        dest: "{{ out_dir }}/sso-off/{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop:
+        - copyparty/templates/copyparty.conf.j2
+        - caddy/templates/docker-compose.yml.j2
+
+    - name: Read the two renders
+      ansible.builtin.slurp:
+        src: "{{ out_dir }}/sso-off/{{ item }}"
+      loop: [copyparty.conf, docker-compose.yml]
+      register: sso_off
+
+    - name: Without it, Copyparty has no IdP lines and its Caddy name is not behind the login
+      vars:
+        conf: "{{ sso_off.results[0].content | b64decode }}"
+        labels: "{{ (sso_off.results[1].content | b64decode | from_yaml).services.caddy.labels }}"
+        sites: "{{ labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
+        site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
+        copyparty_hosts: "copyparty.pi4.example.com copyparty.second.example.com"
+      ansible.builtin.assert:
+        that:
+          - "'idp-h-usr' not in conf"
+          - "'idp-h-key' not in conf"
+          - "'auth-ord' not in conf"
+          - "'sso-admin' not in conf"
+          - "copyparty_hosts in site"
+          - "(site[copyparty_hosts] ~ '.import') not in labels"
+          - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
+        quiet: true
+
+    # The two OIDC logins off: no client at Tinyauth, no login source settings for Gitea and no config file for Immich.
+    # The login page keeps its name inside the network, because that follows tinyauth_enabled, not these two.
+    - name: Make a directory for the render without the two OIDC logins
+      ansible.builtin.file:
+        path: "{{ out_dir }}/oidc-off/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [tinyauth, caddy, gitea, immich, pics]
+
+    - name: Turn the two OIDC logins off
+      ansible.builtin.set_fact:
+        gitea_sso_enabled: false
+        immich_sso_enabled: false
+        pics_sso_enabled: false
+
+    - name: Render the four templates that carry them
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}/templates/docker-compose.yml.j2"
+        dest: "{{ out_dir }}/oidc-off/{{ item }}/docker-compose.yml"
+        mode: "0644"
+      loop: [tinyauth, caddy, gitea, immich]
+
+    - name: Render pics' settings file without its OIDC login
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/pics/templates/pics.env.j2"
+        dest: "{{ out_dir }}/oidc-off/pics/pics.env"
+        mode: "0644"
+
+    - name: Without them, nothing asks Tinyauth for a login or Immich for its config file
+      vars:
+        tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/tinyauth/docker-compose.yml') }}"
+        caddy_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/caddy/docker-compose.yml') }}"
+        gitea_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/gitea/docker-compose.yml') }}"
+        immich_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/immich/docker-compose.yml') }}"
+      ansible.builtin.assert:
+        that:
+          - "'TINYAUTH_OIDC_CLIENTS' not in tinyauth_compose"
+          - "'GITEA__oauth2_client__' not in gitea_compose"
+          - "'HUB_OIDC' not in lookup('ansible.builtin.file', out_dir ~ '/oidc-off/pics/pics.env')"
+          - "'IMMICH_CONFIG_FILE' not in immich_compose"
+          - "'immich-config.json' not in immich_compose"
+          # The login page keeps its name inside the network whatever apps sign in through it.
+          - "'auth.pi4.example.com' in caddy_compose"
+        quiet: true
+
+    # Without Tinyauth there is no login page for the network to resolve and nothing to sign in through it.
+    - name: Turn Tinyauth off too
+      ansible.builtin.set_fact:
+        tinyauth_enabled: false
+
+    - name: Work out which services Caddy names without Tinyauth
+      ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/web_sites.yml"
+
+    - name: Render Caddy's compose without Tinyauth
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/caddy/templates/docker-compose.yml.j2"
+        dest: "{{ out_dir }}/oidc-off/caddy/docker-compose.yml"
+        mode: "0644"
+
+    - name: Without Tinyauth, Caddy has no name inside the network
+      vars:
+        caddy_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/caddy/docker-compose.yml') }}"
+      ansible.builtin.assert:
+        that:
+          - "'aliases:' not in caddy_compose"
+          - "'auth.pi4.example.com' not in caddy_compose"
+        quiet: true
+
+    # With the snippet gone, a site that imports it would make Caddy reject its whole config, and the deploy would
+    # still report success. The role's check must stop that and name both settings.
+    - name: Give the host a site that imports Tinyauth's snippet
+      ansible.builtin.set_fact:
+        caddy_sites:
+          app.pi4.example.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
+
+    - name: That site without Tinyauth fails the Caddy check
+      block:
+        - name: Run the Caddy check
+          ansible.builtin.import_tasks: "{{ playbook_dir }}/../roles/caddy/tasks/check_sites.yml"
+        - name: The check must have failed
+          ansible.builtin.fail:
+            msg: the Caddy check accepted a tinyauth_forwarder import while tinyauth_enabled is false
+      rescue:
+        - name: The message names both settings the snippet needs
+          ansible.builtin.assert:
+            that:
+              - "'tinyauth_enabled' in ansible_failed_result | to_json"
+              - "'caddy_private_domains' in ansible_failed_result | to_json"
+            quiet: true
 
 # One host per drive layout. Only the all/ examples are loaded, so no host's own settings leak in.
 - name: Check each drive layout
@@ -233,21 +703,39 @@
     repo: "{{ playbook_dir }}/.."
     ansible_user: pi
   tasks:
-    - name: Load the all/ examples and the Backup and Copyparty defaults
+    - name: Load the shared defaults
+      ansible.builtin.include_vars:
+        dir: "{{ repo }}/group_vars/all"
+        files_matching: "{{ shared_defaults_regex }}"
+
+    - name: Load the all/ examples and the Backup, Common and Copyparty defaults
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop:
         - "{{ repo }}/roles/backup/defaults/main.yml"
+        - "{{ repo }}/roles/common/defaults/main.yml"
         - "{{ repo }}/roles/copyparty/defaults/main.yml"
-        - "{{ repo }}/group_vars/all/defaults.yml"
+        - "{{ repo }}/roles/tinyauth/defaults/main.yml"
+        - "{{ repo }}/group_vars/all/derived.yml"
         - "{{ repo }}/group_vars/all/vars.yml.example"
         - "{{ repo }}/group_vars/all/vault.yml.example"
         - "{{ repo }}/group_vars/all/versions.yml"
+        - "{{ repo }}/group_vars/all/services.yml"
 
     # After include_vars, which would reset drives to the example's empty list.
     - name: Give the host its fixture drives
       ansible.builtin.set_fact:
         drives: "{{ fixture_drives }}"
+
+    # Every host loops over whole entries (site.yml's web check, Caddy, Homepage, teardown), so an entry must not need a
+    # drive role to render: a host with no fast or primary drive still has to get through them.
+    - name: Looping over every service entry needs no drive role
+      ansible.builtin.debug:
+        msg: "{{ item }}"
+        verbosity: 4
+      loop: "{{ services + web_services }}"
+      loop_control:
+        label: "{{ item.key }}"
 
     # The flags follow the fixture: local when it claims a backup drive, cloud when it says so.
     - name: Turn the backups on as the fixture says
@@ -260,6 +748,10 @@
       ansible.builtin.set_fact:
         restic_local_rules: "{{ restic_local_rules + expect.rules }}"
       when: expect.rules is defined
+
+    - name: Encrypt the fixture's folders
+      ansible.builtin.set_fact:
+        encrypted_folders: "{{ expect.encrypted | default([]) }}"
 
     - name: Enable the fixture's services
       ansible.builtin.set_fact:
@@ -335,9 +827,10 @@
             that:
               - >-
                 offsite_script | regex_findall('if ! mountpoint -q \\S+/\\.; then') | length
-                == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0)
+                == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0) + encrypted_folders | length
               - "not offsite_paths is search('(?m)^- ')"
               - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
+              - "'copyparty' not in expect.services | default([]) or copyparty_hist_dir in offsite_excludes"
 
         - name: Read the local exclude list
           ansible.builtin.slurp:
@@ -351,6 +844,16 @@
             local_excludes: "{{ local_excludes_file.content | b64decode }}"
           ansible.builtin.assert:
             that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
+          when: backup_local_enabled | bool
+
+        - name: Every drive with data has its lost+found and the repository left out of the local backup
+          vars:
+            local_excludes: "{{ local_excludes_file.content | b64decode }}"
+          ansible.builtin.assert:
+            that:
+              - "(item ~ '/lost+found') in local_excludes"
+              - "restic_repo_path in local_excludes"
+          loop: "{{ data_drive_mounts }}"
           when: backup_local_enabled | bool
 
         - name: Every service's data is inside a locally backed-up path
@@ -374,6 +877,22 @@
               ansible.builtin.assert:
                 that: "'/not-backed-up/photos' in ansible_failed_result.msg"
 
+        - name: An encrypted folder outside every backed-up path is refused
+          when: backup_local_enabled | bool
+          block:
+            - name: Encrypt a folder on a drive the backup does not cover
+              ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
+              vars:
+                encrypted_pairs: [{mount: /not-backed-up/vault, cipher: /not-backed-up/.vault.gocryptfs}]
+                encrypted_folders: [/not-backed-up/vault]
+            - name: The coverage check must have failed
+              ansible.builtin.fail:
+                msg: check_coverage.yml accepted an encrypted folder outside restic_local_rules
+          rescue:
+            - name: Only the coverage check may fail here
+              ansible.builtin.assert:
+                that: "'/not-backed-up/vault' in ansible_failed_result.msg"
+
         - name: Add a "- <directory>" rule for a directory left out on purpose
           ansible.builtin.set_fact:
             rules_with_opt_out: "{{ restic_local_rules + ['- /not-backed-up/photos'] }}"
@@ -395,16 +914,55 @@
               - "'/.config/rclone' in (local_excludes_file.content | b64decode)"
           when: backup_local_enabled | bool
 
+        # The dashboard reads one status file per job; each script writes it at the start and on exit.
+        - name: The scripts write the status files the dashboard reads
+          vars:
+            out: "{{ out_dir }}/layouts/{{ inventory_hostname }}"
+            app: "{{ lookup('ansible.builtin.file', repo ~ '/roles/backup_status/files/app.py') }}"
+            cloud_script: "{{ lookup('ansible.builtin.file', out ~ '/backup-restic-cloud.sh') }}"
+          ansible.builtin.assert:
+            that:
+              - "(backup_logs_dir ~ '/restic-cloud.status.json') in cloud_script"
+              - "'restic-cloud.status.json' in app"
+              - "'trap ' in cloud_script and 'write_status failed null null' in cloud_script"
+              - "'=== Complete' not in app"
+            quiet: true
+
+        - name: The local and check scripts write their status files too
+          vars:
+            out: "{{ out_dir }}/layouts/{{ inventory_hostname }}"
+            app: "{{ lookup('ansible.builtin.file', repo ~ '/roles/backup_status/files/app.py') }}"
+          ansible.builtin.assert:
+            that:
+              - "(backup_logs_dir ~ '/restic-local.status.json') in lookup('ansible.builtin.file', out ~ '/backup-restic-local.sh')"
+              - "(backup_logs_dir ~ '/restic-check.status.json') in lookup('ansible.builtin.file', out ~ '/restic-check.sh')"
+              - "'restic-local.status.json' in app and 'restic-check.status.json' in app"
+              # The dashboard reads the logs directory through this read-only mount.
+              - "(backup_logs_dir ~ ':/data/logs:ro') in lookup('ansible.builtin.file', out_dir ~ '/backup_status/docker-compose.yml')"
+            quiet: true
+          when: backup_local_enabled | bool
+
+        - name: Send nothing unless ntfy_alert_url is set
+          ansible.builtin.assert:
+            that: ntfy_alert_url == ''
+            quiet: true
+
         # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
         # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
+        - name: Render alert.sh with no ntfy topic
+          ansible.builtin.template:
+            src: "{{ repo }}/roles/common/templates/alert.sh.j2"
+            dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert.sh"
+            mode: "0644"
+
         - name: Turn on ntfy alerts for this host
           ansible.builtin.set_fact:
             ntfy_alert_url: http://localhost:8090/alerts
 
         - name: Render alert.sh with an ntfy topic set
           ansible.builtin.template:
-            src: "{{ repo }}/roles/backup/templates/alert.sh.j2"
+            src: "{{ repo }}/roles/common/templates/alert.sh.j2"
             dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert-with-ntfy.sh"
             mode: "0644"
 
@@ -421,3 +979,4 @@
               - "'curl' in (alert_scripts.results[1].content | b64decode)"
               - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
               - "'|| true' in (alert_scripts.results[1].content | b64decode)"
+              - "'logger -t \"${2:-backup}\"' in (alert_scripts.results[0].content | b64decode)"

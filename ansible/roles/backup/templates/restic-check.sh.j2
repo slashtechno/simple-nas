@@ -1,32 +1,26 @@
 #!/bin/bash
+{% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
+{% import 'restic-env.j2' as restic_env with context %}
 set -o pipefail
 
-# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
-# bare path also succeeds on the automount placeholder of a missing drive.
-if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — skipping integrity check." >&2
-  exit 1
-fi
+{{ guards.require_mounted(backup_drive, 'skipping integrity check') }}
 
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
-export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
+{{ job_status.setup('check') }}
 
-# A hung check must end as a failed run, not hold the repository lock (see backup-restic-cloud.sh.j2).
-restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+{{ restic_env.setup(restic_repo_path) }}
 
-# One log file per day; every run appends a "=== Integrity Check" header, and the dashboard
-# judges only the text after the last header. 2>&1 matters: restic prints its "error:" lines on
-# stderr, and the dashboard counts them in this log.
+# One log file per day; every run appends a "=== Integrity Check" header. 2>&1 matters: restic prints its
+# "error:" lines on stderr, and this log is where you read them.
 LOG_FILE="{{ backup_logs_dir }}/restic-check-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
 {
   echo "=== Integrity Check: $(date) ==="
-  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
-  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  {{ restic_env.unlock_note() | indent(2) }}
   restic unlock
-  restic check
+  # Checks the repository structure and reads a 5% sample of the stored data.
+  restic check --read-data-subset=5%
   check_rc=$?
   if [ "$check_rc" -eq 0 ]; then
     echo "=== Complete: $(date) ==="

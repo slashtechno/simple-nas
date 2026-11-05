@@ -1,9 +1,8 @@
 ---
-# Public URL Gitea puts in links.
-gitea_root_url: "{{ undef(hint='Set gitea_root_url (the public URL, e.g. https://git.example.com/) in group_vars/all/vars.yml') }}"
-# Host name Gitea serves its web pages for.
-gitea_domain: "{{ undef(hint='Set gitea_domain (the public host name, e.g. git.example.com) in group_vars/all/vars.yml') }}"
-# Host name shown in SSH clone URLs.
-gitea_ssh_domain: "{{ undef(hint='Set gitea_ssh_domain (the host name for SSH clones, e.g. git.example.com) in group_vars/all/vars.yml') }}"
+# Host name Gitea serves its web pages for. Default: the host name in gitea_root_url.
+gitea_domain: "{{ gitea_root_url | urlsplit('hostname') }}"
+# Host name shown in SSH clone URLs. Set it when SSH clones use a different name than the web page
+# (a Cloudflare tunnel carries only HTTP, so SSH needs a name that points at the host itself).
+gitea_ssh_domain: "{{ gitea_domain }}"
 # SSH port for git clones, published on the host.
 gitea_ssh_port: "2222"

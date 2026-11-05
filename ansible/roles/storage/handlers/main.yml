@@ -1,6 +1,11 @@
 ---
+# The trigger makes drives that are already plugged in go through the new rule; without it only a drive plugged in later mounts.
 - name: Reload udev rules
   ansible.builtin.command: udevadm control --reload-rules
+  changed_when: true
+
+- name: Apply udev rules to plugged-in drives
+  ansible.builtin.command: udevadm trigger --subsystem-match=block --property-match=ID_BUS=usb --action=add
   changed_when: true
 
 - name: Reload systemd daemon

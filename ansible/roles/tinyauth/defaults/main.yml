@@ -1,0 +1,6 @@
+---
+# Extra Tinyauth settings, as environment variables: {NAME: value}. Any TINYAUTH_* variable from
+# https://tinyauth.app/docs/reference/configuration/ works, which is how OAuth logins, email whitelists and the session
+# lifetime are set (docs/auth-reference.md). Keep a secret in a vault.yml and refer to it by its name in double braces.
+# Example: {TINYAUTH_AUTH_SESSIONEXPIRY: "604800"} keeps a login for a week.
+tinyauth_environment: {}

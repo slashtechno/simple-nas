@@ -12,11 +12,14 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 
 ## Clean-up after a deploy
 
-- Delete the stale `pi-nas-runner` entry in Gitea.
-- After the next Sunday offsite backup: `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
+- Delete the stale `pi-nas-runner` entry in Gitea. Waiting for: a few minutes in Gitea's admin page.
+- Waiting for: the next Sunday offsite backup. Then `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
 
 ## Waiting for hardware or a decision
 
+- A pics `archive_dir` option in the pics repository, with its path under a drive that has a role so the backup covers it. Waiting for: the owner to write it in the pics repository.
+
+- Unlock encrypted folders without SSH, from a computer you do not control: [plans/unlock-web-page.md](./plans/unlock-web-page.md). Waiting for: the owner's decisions listed there.
+
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md).
-- Encryption at rest: [docs/research/encryption.md](./docs/research/encryption.md).
-- A pics `archive_dir` option belongs in the pics repository, with its path under a drive that has a role so the backup covers it.
+- Encryption at rest ([docs/encryption.md](./docs/encryption.md)): waits for a spare drive. Before real data goes in: open the folder on a Mac (gocryptfs and macFUSE).

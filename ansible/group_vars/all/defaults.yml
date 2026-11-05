@@ -3,65 +3,35 @@
 # Change a value for your hosts in vars.yml next to this file, or per host in host_vars/<host>/vars.yml; never edit it here.
 # A value of `{{ undef(hint=...) }}` has no sensible default: set it in vars.yml, or the deploy stops and prints the hint.
 # Secrets go in a vault.yml next to this file, never here. Vault names are in vault.yml.example.
+# Shared settings are split by topic: this file holds the general ones; flags.yml, backups.yml, data-dirs.yml,
+# cloudflare.yml, direct-link.yml and ports-and-names.yml hold the rest. A setting is in exactly one of them (`just settings` lists all).
 
-# Timezone for the host and its containers. List names with `timedatectl list-timezones`.
+# Timezone for the host and the containers whose image reads TZ. List names with `timedatectl list-timezones`.
 timezone: UTC
-# Where compose projects and helper scripts are deployed on the host.
+
+# Where compose projects are deployed on the host.
 services_dir: /opt/services
+
 # Where the helper and backup scripts are deployed.
 scripts_dir: "{{ services_dir }}/scripts"
-# --- Which services run on a host ---
-# Every service is off until a host switches it on: set `<name>_enabled: true` in
-# host_vars/<host>/vars.yml, and false again to stop deploying it.
-# A service that is already deployed keeps running; remove it with `ansible-playbook teardown.yml --limit <host> --tags <name>`.
-# What each service needs (drive roles, vault entries) is in docs/services.md.
 
-# Immich photo library with machine learning.
-immich_enabled: false
-# Copyparty file server (web UI, WebDAV, optional SFTP).
-copyparty_enabled: false
-# Gitea git hosting and its Actions runner.
-gitea_enabled: false
-# Homebridge, a HomeKit bridge.
-homebridge_enabled: false
-# pics, the photo sharing app.
-pics_enabled: false
-# Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
-garage_enabled: false
-# Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).
-crafty_enabled: false
-# ntfy push-notification server (docs/services.md#ntfy-failure-alerts).
-ntfy_enabled: false
-# Cloudflare Tunnel that publishes the hostnames in cloudflared_ingress.
-cloudflared_enabled: false
-# Dockge, a web UI for your own compose stacks.
-dockge_enabled: false
-# Homepage, a start page with a link to every enabled service (docs/services.md#homepage).
-homepage_enabled: false
-# Caddy reverse proxy that routes by container label.
-caddy_enabled: false
-# Daily backup to the drive with the `backup` role, plus a weekly integrity check.
-backup_local_enabled: false
-# Weekly backup to restic_cloud_repository.
-backup_cloud_enabled: false
-# Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
-backup_status_enabled: false
+# Absolute paths of folders to store encrypted with gocryptfs, each a folder a service already uses. Listing one switches encryption on (docs/encryption.md).
+encrypted_folders: []
 
-# Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
-storage_enabled: true
 # This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
 # (explained in host_vars/vars.yml.example).
 drives: []
-# Mount USB drives and card readers when they are plugged in (not drives listed in `drives`).
-# Mounted at /run/media/system/<label>; Copyparty shows them under /drives (docs/storage.md).
-usb_automount_enabled: false
+
 # false: plugged-in drives are read-only. true: Copyparty can change and delete files on them.
 usb_automount_writable: false
+
 # Name of the shared Docker network the services join.
 docker_network: services
+
 # Docker image pull policy. Allowed: missing, always. Default: missing.
 # "always" pulls newer images on every run, see ansible/README.md#update-service-images.
 docker_pull_policy: missing
+
 # Log rotation for every container: json-file keeps 3 files of 10m per container. Docker's default
 # never rotates, and logs fill the root drive. Allowed: json-file options (strings).
 # CAUTION: applies only to containers created after the change; recreate the rest with
@@ -70,227 +40,18 @@ docker_log_opts:
   max-size: "10m"
   max-file: "3"
 
-# Where Docker and containerd keep images, layers and anonymous volumes. Empty keeps their default
-# (/var/lib/docker and /var/lib/containerd, on the root drive). Set it per host in
-# host_vars/<host>/vars.yml to a directory on a mounted drive, e.g. "/mnt/t7/docker-root".
-# With the drive missing, Docker fails to start (the mount point is an automount, docs/storage.md), so it
-# cannot fill the root drive. The procedure and tests: docs/storage.md.
+# Where Docker and containerd keep images and layers. Empty keeps /var/lib/docker on the root drive; set it per host to a
+# directory on a mounted drive (docs/storage.md#dockers-own-storage).
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.
 docker_data_root: ""
 
+# unlock.sh runs every `<name>.sh` here as root, in name order, after mounting the encrypted folders. The deploy writes only
+# 00-docker.sh (restarts Docker); the scripts you add start any other software and are never touched (docs/encryption.md).
+encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
-# --- Backups (docs/backups.md) ---
-# The backup role runs on a host with `backup_local_enabled` or `backup_cloud_enabled` set to true. Local needs a
-# drive with the `backup` role; cloud needs `restic_cloud_repository`. Without local backup, logs and service
-# dumps live in /var/lib/backup-work on the root drive.
+# The topic the ntfy server this repo runs accepts alerts on (its access token is limited to it). End ntfy_alert_url with it
+# (ntfy_alert_url is in roles/common/defaults/main.yml; alert.sh reads both).
+ntfy_topic: alerts
 
-# One dump script per service with a live database.
-service_dump_scripts_dir: "{{ scripts_dir }}/dump.d"
-# Local repository; used only when a backup drive is claimed.
-restic_repo_path: "{{ backup_drive }}/restic-repo"
-# Offsite repository. The URL scheme picks the backend (docs/backups.md#offsite-repository-restic_cloud_repository):
-# "rclone:gdrive:/path" for Google Drive, "sftp:user@host:/path" for SFTP. The deploy fails if it cannot be
-# initialised. Set it per host in host_vars (each host needs its own path: hosts sharing a repository would
-# prune each other's snapshots).
-restic_cloud_repository: ""
-# File holding the restic repository password, written from vault_restic_password.
-restic_password_file: "/home/{{ ansible_user }}/.restic-password"
-# Where backup logs and service dumps live: on the backup drive with a local backup, else on the root drive.
-backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/var/lib/backup-work' }}"
-# Where the backup logs are written.
-backup_logs_dir: "{{ backup_work_dir }}/logs"
-# restic forget options for the local repository: snapshots kept per day, week and month.
-restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
-# restic forget options for the offsite repository: snapshots kept per week and month.
-restic_cloud_retention: "--keep-weekly 12 --keep-monthly 6"
-# rclone's default Google Drive client is shared by all rclone users, so a burst of small uploads can
-# fail with 403 RATE_LIMIT_EXCEEDED. This throttle avoids that; no custom OAuth client (docs/backups.md).
-# Leave it alone unless you see that error.
-restic_cloud_rclone_args: "serve restic --stdio --tpslimit=10"
-
-# --- Data directories (teardown.yml also reads them) ---
-# One variable per service. To move a service to another drive, set its variable in host_vars/<host>/vars.yml
-# (procedure: docs/storage.md#move-one-services-data). Keep the new path under a drive that has a role, or the
-# default backup (restic_local_rules) does not cover it. A variable that uses a drive role fails with a
-# message naming the role if no entry in `drives` claims it, but only on a host that enables the service.
-# Random-IO data (databases, configs) is on the fast drive; bulk data (photos, files) is on the primary.
-# When both roles are the same drive, the split changes nothing on disk.
-
-# The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
-dockge_stacks_dir: "{{ fast_drive }}/stacks"
-# Dockge's own database (users, settings).
-dockge_data_dir: "{{ fast_drive }}/docker/dockge"
-# Caddy's certificates and state. Losing it means certificates are issued again.
-caddy_data_dir: "{{ fast_drive }}/docker/caddy"
-# Immich's photos (primary drive).
-immich_upload_location: "{{ primary_drive }}/photos"
-# Immich's Postgres data directory (fast drive).
-immich_db_data_location: "{{ fast_drive }}/docker/immich_postgres"
-# The files Copyparty serves (primary drive).
-copyparty_files_dir: "{{ primary_drive }}/files"
-# Copyparty's configuration (fast drive).
-copyparty_config_dir: "{{ fast_drive }}/docker/copyparty_config"
-# Copyparty's thumbnails, databases and transcode cache (fast drive).
-copyparty_hist_dir: "{{ fast_drive }}/copyparty-hist"
-# Add a /fast volume to Copyparty (SSD scratch and working space). Useful only when the fast and primary
-# roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
-copyparty_fast_enabled: false
-# Where the /fast volume lives.
-copyparty_fast_dir: "{{ fast_drive }}/fast"
-# Gitea's repositories and database (fast drive).
-gitea_data_dir: "{{ fast_drive }}/docker/gitea"
-# The Gitea runner's registration (.runner); on the fast drive so it is backed up.
-gitea_runner_data_dir: "{{ fast_drive }}/docker/gitea_runner"
-# ntfy's message history and user database; little is lost without it.
-ntfy_data_dir: "{{ fast_drive }}/docker/ntfy"
-# pics' data directory (fast drive).
-pics_data_dir: "{{ fast_drive }}/docker/pics"
-# Homebridge's configuration and pairings (fast drive).
-homebridge_config_dir: "{{ fast_drive }}/docker/homebridge"
-# Garage's metadata and data (fast drive).
-garage_data_dir: "{{ fast_drive }}/docker/garage"
-# Crafty's servers and configuration (fast drive).
-crafty_data_dir: "{{ fast_drive }}/docker/crafty"
-
-# --- Failure alerts (roles/backup/templates/alert.sh.j2) ---
-# File on the host holding vault_ntfy_token, read by alert.sh.
+# File on the host holding vault_ntfy_token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
-
-# --- Cloudflare account (roles/cloudflared and roles/caddy; teardown does not read it) ---
-# API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
-cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
-# Account ID, from the vault.
-cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
-# Domain -> zone ID. Zone IDs aren't secret. Set them in group_vars/all/vars.yml (shape in vars.yml.example).
-cloudflare_zones: {}
-# Cloudflare's API. Not a setting to change.
-cloudflare_api_url: https://api.cloudflare.com/client/v4
-
-# --- Cloudflare Tunnel (roles/cloudflared; a server that runs one sets cloudflared_enabled: true and its own cloudflared_ingress) ---
-# Public hostnames this host's tunnel serves. Empty here; a host that runs a tunnel lists its own in host_vars/<host>/vars.yml.
-# One entry per hostname, exactly two keys: hostname and service (the internal Docker address). No `path:`.
-# The hostname must contain one domain from cloudflare_zones. A hostname may appear on only one host; the deploy fails otherwise.
-cloudflared_ingress: []
-
-# --- Direct Ethernet link (roles/network; teardown.yml also reads it; docs/networking.md#direct-ethernet-link) ---
-# A cable straight from the Pi to a laptop: a static address on the Pi, no gateway, and a dnsmasq that hands the
-# laptop its address on that port only. The port must be idle, not the one the Pi is managed over.
-direct_link_enabled: false
-# The Pi's network port for the cable.
-direct_link_iface: eth0
-# The Pi's address on the link.
-direct_link_ip: 10.10.20.1
-# The address handed to the laptop.
-direct_link_peer_ip: 10.10.20.2
-# Prefix length; 30 leaves room for just these two addresses.
-direct_link_prefix: 30
-
-# --- Host ports of the web UIs ---
-# Set here because the Homepage launcher links to them. Each listens on every interface (LAN and tailnet),
-# so it is reachable at http://<host-tailscale-name>:<port> from any device on your tailnet; docs/networking.md
-# covers HTTPS. pics' guest pages go through the Cloudflare tunnel (a cloudflared_ingress entry that points at
-# pics_public_port).
-# Set one to "" to publish no host port: the service is then reachable only through its Caddy name, so the host needs
-# caddy_enabled, caddy_private_domains and a non-empty <name>_subdomain (the deploy checks this). Keep the port as a way in when Caddy is down.
-# Immich's web UI and API (the mobile app connects here).
-immich_port: 2283
-# Copyparty's web UI and WebDAV.
-copyparty_port: 3923
-# Gitea's web UI.
-gitea_port: 3000
-# pics' owner pages (the guest pages never use a host port).
-pics_port: 8100
-# Dockge; it asks you to create an account on first visit.
-dockge_port: 5001
-# ntfy's web UI and API. Nothing is readable or writable without the login: ntfy_* auth defaults to deny-all.
-ntfy_port: 8090
-# The read-only backup dashboard. It has no login.
-backup_status_port: 8091
-# Crafty's panel (HTTPS); the container always listens on 8443.
-crafty_port: 28443
-
-# --- Names of the web UIs under the private domain ---
-# With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<private domain>
-# (docs/networking.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
-# Immich's name.
-immich_subdomain: immich
-# Copyparty's name.
-copyparty_subdomain: copyparty
-# Gitea builds its links from gitea_root_url, a single address, so it has no name by default. To give it one,
-# set gitea_root_url to the same address (and the name is then also what the Homepage links to).
-gitea_subdomain: ""
-# pics' owner pages.
-pics_subdomain: pics
-# Crafty's panel.
-crafty_subdomain: crafty
-# Dockge's name.
-dockge_subdomain: dockge
-# ntfy's name; its own base URL (ntfy_base_url) is the address phones use.
-ntfy_subdomain: ntfy
-# The backup dashboard's name.
-backup_status_subdomain: backups
-
-# This host's private domains, such as [pi4.example.com]; each must contain a domain from cloudflare_zones.
-# Here, not in the caddy role, because the Homepage on another host reads it to link to these names.
-# For each entry the deploy keeps DNS-only records <domain> and *.<domain> pointing at this host's Tailscale address, so
-# <domain> and <app>.<domain> resolve for anyone on your tailnet and nobody else, and Caddy gets a Let's Encrypt
-# certificate for every name it serves under it (docs/networking.md#web-addresses-and-https).
-# Empty: no records, and Caddy has no DNS challenge. Every service is served under every entry; the Homepage links to the first.
-caddy_private_domains: []
-
-# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
-# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
-copyparty_collab_enabled: false
-
-# Directory behind /collab (primary drive).
-copyparty_collab_dir: "{{ primary_drive }}/collab"
-
-# Accounts for apps that talk to Copyparty. Each gets its own volume at
-# /<folder>, stored in copyparty_files_dir/<folder>; the admin gets A on it
-# too. Two entries can't share a folder. Passwords go in the vault.
-# Example, a photo app: no d on photos, so without delete Copyparty also refuses overwrites (it renames
-# instead) and the app can't destroy a photo; it may delete only in its own photos-trash volume.
-#   - user: photos
-#     pass: "{{ vault_copyparty_photos_pass }}"
-#     volumes:
-#       - { folder: photos, perms: rwm }
-#       - { folder: photos-trash, perms: rwmd }
-copyparty_service_accounts: []
-
-# --- Computed values (not edited) ---
-# Worked out from the settings above and in vars.yml. Change the inputs, not these.
-
-# geerlingguy.docker writes this one variable to /etc/docker/daemon.json. A dict set in a host's
-# host_vars replaces the same dict from group_vars instead of merging, so the options owners edit
-# stay separate settings in vars.yml and are combined here.
-docker_daemon_options: >-
-  {{ {'log-driver': 'json-file', 'log-opts': docker_log_opts}
-     | combine({'data-root': docker_data_root} if docker_data_root | length > 0 else {}) }}
-
-# The mount point of each drive role that a `drives` entry claims. A role nobody claims is absent.
-# Code that works without a role asks `'fast' in drive_mounts`; code that needs one reads
-# fast_drive / primary_drive / backup_drive, which fail with a message naming the missing role.
-# Nothing builds a path from an unclaimed role, so no service can write to the root of the filesystem.
-# `subelements` pairs every drive with each of its roles; the dict is role -> mount point of that drive.
-drive_mounts: >-
-  {%- set pairs = drives | subelements('roles', skip_missing=True) -%}
-  {{ dict(pairs | map(attribute='1') | zip(pairs | map(attribute='0.mount'))) }}
-# The mount point of each drive that holds service data (role fast or primary) and is mounted by uuid.
-# The backup scripts refuse to run unless these are mounted, so they never save a snapshot of an empty folder.
-# A drive with only the backup role is not listed: the scripts check it on their own.
-data_drive_mounts: >-
-  {{ drives | selectattr('uuid', 'defined') | selectattr('roles', 'defined')
-     | rejectattr('roles', 'subset', ['backup']) | map(attribute='mount') | unique | list }}
-# Mount point of the drive with the fast role (read-only; derived from `drives`).
-fast_drive: >-
-  {{ drive_mounts.fast | mandatory('Host ' ~ inventory_hostname ~ ' uses the fast drive role, but no entry in its
-  `drives` has roles: [fast]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
-# Mount point of the drive with the primary role (derived from `drives`).
-primary_drive: >-
-  {{ drive_mounts.primary | mandatory('Host ' ~ inventory_hostname ~ ' uses the primary drive role, but no entry in its
-  `drives` has roles: [primary]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
-# Mount point of the drive with the backup role (derived from `drives`).
-backup_drive: >-
-  {{ drive_mounts.backup | mandatory('Host ' ~ inventory_hostname ~ ' uses the backup drive role, but no entry in its
-  `drives` has roles: [backup]. Add it in host_vars/' ~ inventory_hostname ~ '/vars.yml (examples: docs/storage.md#examples).') }}
-

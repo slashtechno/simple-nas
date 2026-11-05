@@ -1,0 +1,30 @@
+{# Shared by the backup scripts. Use: {% import 'mount-guards.j2' as guards with context %}, then
+   guards.require_mounted(path, what_would_go_wrong) for one drive or guards.require_data_drives() for all data drives. #}
+{% macro guard(path, consequence, hint='Check the drive (check the USB connection; the drive mounts itself when it is back).') -%}
+if ! mountpoint -q {{ (path ~ '/.') | quote }}; then
+  echo "ERROR: {{ path }} is not a mounted filesystem — {{ consequence }}. {{ hint }}" >&2
+  exit 1
+fi
+{%- endmacro %}
+{% macro explain() -%}
+# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q`
+# on the bare path also succeeds on the automount placeholder of a missing drive.
+{%- endmacro %}
+{% macro require_mounted(path, consequence) -%}
+{{ explain() }}
+{{ guard(path, consequence) }}
+{%- endmacro %}
+{% macro require_data_drives() -%}
+{% if data_drive_mounts | length > 0 %}
+{{ explain() }}
+{% endif %}
+{% for mount in data_drive_mounts %}
+# Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
+# snapshot counts toward retention and pushes out good ones.
+{{ guard(mount, 'refusing to back up an empty folder') }}
+{% endfor %}
+{% for folder in encrypted_pairs %}
+# The drive is mounted even while {{ folder.mount }} is locked, so the check above passes; this one catches the lock.
+{{ guard(folder.mount, 'it is locked; refusing to back up an empty folder', 'Run unlock.sh as root (docs/encryption.md).') }}
+{% endfor %}
+{%- endmacro %}

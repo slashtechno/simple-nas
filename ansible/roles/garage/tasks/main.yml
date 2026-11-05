@@ -33,6 +33,22 @@
   ansible.builtin.set_fact:
     garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"
 
+# An empty meta directory next to existing data blocks means the metadata was not copied along (a moved
+# garage_data_dir). A first deploy would then start Garage with a new, empty cluster and orphan the blocks.
+- name: Check for data blocks
+  ansible.builtin.find:
+    path: "{{ garage_data_dir }}/data"
+    file_type: any
+  register: garage_data_contents
+
+- name: Stop if the data blocks are here but the metadata is not
+  ansible.builtin.assert:
+    that: not (garage_is_first_deploy and garage_data_contents.matched > 0)
+    fail_msg: >-
+      {{ garage_data_dir }}/data has files but {{ garage_data_dir }}/meta is empty. Copy the old meta directory
+      over (or restore the metadata dump, docs/backups.md#restore-garage), then deploy again.
+    quiet: true
+
 - name: Create Garage data directories
   ansible.builtin.file:
     path: "{{ item }}"

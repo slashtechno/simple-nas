@@ -6,9 +6,8 @@ set -euo pipefail
 
 DUMP_DIR="$1"
 CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
-# Postgres role inside the container (matches POSTGRES_USER in the immich compose file)
+# Postgres role inside the container; keep it the same as POSTGRES_USER in the immich compose file and restore-services.sh
 DB_USER="${IMMICH_DB_USER:-immich}"
-DB_PASSWORD="${IMMICH_DB_PASSWORD:-}"   # optional; passed to pg_dumpall as PGPASSWORD
 DUMP="$DUMP_DIR/immich-db-$(date +%Y%m%dT%H%M%S).sql.gz"
 
 if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "true" ]; then
@@ -17,12 +16,12 @@ if [ "$(docker inspect -f '{{.State.Running}}' "$CONTAINER" 2>/dev/null)" != "tr
 fi
 
 echo "Dumping Immich DB..."
-env_args=()
-[ -n "$DB_PASSWORD" ] && env_args=(-e "PGPASSWORD=$DB_PASSWORD")
+# Only the `immich` database (POSTGRES_DB in docker-compose.yml.j2). pg_dumpall would also drop and recreate the
+# role and the maintenance database, which the restore cannot do while connected as that role.
 # Write to a .tmp name and rename on success, so a half-written dump never
 # looks like a good one (and never counts toward the "keep 3").
-if ! docker exec "${env_args[@]}" "$CONTAINER" \
-     pg_dumpall --clean --if-exists --username="$DB_USER" | gzip > "$DUMP.tmp"; then
+if ! docker exec "$CONTAINER" \
+     pg_dump --clean --if-exists --username="$DB_USER" immich | gzip > "$DUMP.tmp"; then
   rm -f "$DUMP.tmp"
   echo "Error: Immich DB dump failed (check DB credentials)" >&2
   exit 1

@@ -1,75 +1,100 @@
 # Storage: drive roles
 
-Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. Each entry has `uuid`, `mount`, `fstype` and `options`, and optionally `roles:` (a root-drive entry has only `mount` and `roles`, see [below](#using-the-root-drive-for-fast-or-primary)), the roles it fills. A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. The `storage` role mounts them: it runs everywhere and `storage_enabled: false` skips it on a host whose drives are mounted another way.
+
+Each `drives` entry has these fields:
+
+| Field | Meaning |
+|---|---|
+| `mount` | Where the drive is mounted (required) |
+| `uuid` | The drive's UUID: `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS` on the host. An entry without one is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)) |
+| `fstype` | Filesystem, default `ext4` |
+| `options` | Mount options, default `defaults` |
+| `roles` | The roles the drive fills. A drive with no `roles` is only mounted |
+
+- One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name.
+- Which roles a host needs is under [Examples](#examples).
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data (Docker, Immich database, configs) and caches (restic cache, Copyparty `hist`) |
+| `fast` | Random-IO data (Docker stacks, database directories, every other service's config directory) and caches (restic cache, Copyparty `hist`); the full list is the settings in `group_vars/all/data-dirs.yml` |
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/defaults.yml`. Using a role that no entry claims fails the deploy with a message naming the role. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
+Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
+
+## What lives where
+
+Mount points below are the [quick start's](./quick-start.md); yours are the `mount` values in `drives`.
+
+```
+/mnt/fast/                      fast drive
+├─ appdata/<service>/           each service's own data: databases, configs, sessions
+├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
+├─ fast/                        Copyparty's /fast volume
+└─ restic-cache/                restic's cache
+/mnt/primary/                   primary drive
+├─ photos/                      Immich's photos
+├─ files/, collab/              Copyparty's files
+└─ apps/pics/{photos,trash}/    pics
+/mnt/backup/                    backup drive: restic repository, dumps, logs
+/opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)
+/var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")
+```
+
+- Every path is a setting in `group_vars/all/data-dirs.yml`.
 
 ## Examples
 
-The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it, and only on a host that enables the service that needs it.
+The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use; an unclaimed role fails the deploy with a message naming it, only on a host that enables a service needing it.
 
-- `fast`: Dockge's stacks and data, Caddy's data, and the data of Immich's database, Gitea, pics, Homebridge, Garage, Crafty and ntfy.
-- `primary`: Immich's photos and Copyparty's files and collab folder.
-- `backup`: needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
+- `backup` is needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
 
 Docker's own storage (images, layers) is separate: it stays on the root drive unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).
 
-A host that keeps its apps on the root drive (a folder, nothing mounted):
+A host that keeps its apps in a folder on the root drive lists it without a `uuid` ([Using the root drive](#using-the-root-drive-for-fast-or-primary)).
+
+A host with one USB drive for apps and backups (`[fast, backup]`), or for everything including photos (`[fast, primary, backup]`). The backup drive must have a `uuid`. A backup on the drive that holds the data is lost with it; that is fine for data you can replace, and `backup_cloud_enabled: true` ([backups.md](./backups.md)) adds an offsite copy.
 
 ```yaml
 drives:
-  - { mount: /srv/apps, roles: [fast] }
-```
-
-A host with one USB drive for apps and backups. The backup drive must have a `uuid`. A backup on the drive that holds the data is lost with it; that is fine for data you can replace, and `backup_cloud_enabled: true` ([backups.md](./backups.md)) adds an offsite copy.
-
-```yaml
-drives:
-  - { uuid: "1111-AAAA", mount: /mnt/data, fstype: ext4, options: "defaults,nofail", roles: [fast, backup] }
-```
-
-A one-drive NAS (the same trade-off applies):
-
-```yaml
-drives:
-  - { uuid: "...", mount: /mnt/t7, fstype: ext4, options: "defaults,nofail",
-      roles: [fast, primary, backup] }
+  - { uuid: "1111-AAAA", mount: /mnt/data, roles: [fast, backup] }
 ```
 
 An SSD for apps and files plus a separate backup drive. The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed:
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast, primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/data,     roles: [fast, primary] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 A three-drive NAS (fast SSD, slow bulk drive, backup target):
 
 ```yaml
 drives:
-  - { uuid: "...", mount: /mnt/t7,     fstype: ext4, options: "defaults,nofail", roles: [fast] }
-  - { uuid: "...", mount: /mnt/p10,    fstype: ext4, options: "defaults,nofail", roles: [primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/data,     roles: [fast] }
+  - { uuid: "...", mount: /mnt/bulk,    roles: [primary] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 ### How a drive is mounted
 
-The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. You write only the options you want yourself, and `nofail`.
+The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's `options` in fstab. It also adds `nofail` unless your `options` already have it.
 
 - **Automount:** at boot systemd puts a placeholder filesystem on the mount point, and mounts the real drive the first time anything opens a path under it. While the drive is missing, that access waits up to 30 seconds and then fails with `No such device`. The mount point is a placeholder, not a plain folder, so a container cannot write to the root drive. After the drive returns, the next access mounts it again, with no script or udev rule.
-- **`nofail`:** keeps a drive that fails to mount from stopping a headless host booting. The deploy requires it on every drive (it skips the drive checks on a host with `storage_enabled: false`).
-- **No idle timeout:** `x-systemd.idle-timeout` would unmount a drive that is quiet, and a running container keeps its old, dead mount.
+- **`nofail` and no idle timeout:** `nofail` keeps a drive that fails to mount from stopping a headless host booting. `x-systemd.idle-timeout` is left out because it would unmount a quiet drive, and a running container keeps its old, dead mount.
 - **Armed at boot:** `daemon-reload` generates the units, but only the boot arms them. Until the reboot after the first deploy, the drive is a plain mount with no guard against it vanishing.
-- **In `systemctl status`:** `mnt-t7.automount` is `active (waiting)` and `mnt-t7.mount` is inactive until something opens the path. `df` shows the drive only after that.
-- **Remount by hand:** `sudo systemctl restart mnt-t7.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
+- **In `systemctl status`:** `mnt-data.automount` is `active (waiting)` and `mnt-data.mount` is inactive until something opens the path. `df` shows the drive only after that.
+- **Remount by hand:** `sudo systemctl restart mnt-data.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
 - **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after up to 30 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
+
+## With a drive missing
+
+- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 30 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
+- **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
+- **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
+- **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
 
 ## Using the root drive for fast or primary
 
@@ -78,7 +103,7 @@ A `drives` entry with no `uuid` is a folder on the root drive (the drive the OS 
 ```yaml
 drives:
   - { mount: /srv/data, roles: [fast, primary] }
-  - { uuid: "...", mount: /mnt/backup, fstype: ext4, options: "defaults,nofail", roles: [backup] }
+  - { uuid: "...", mount: /mnt/backup, roles: [backup] }
 ```
 
 The `backup` role needs an entry with a `uuid`, or the deploy fails: a backup on the root drive dies with it. Other downsides: the Immich database wears out an SD card, and one root drive failure loses the OS and the data together.
@@ -97,22 +122,36 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 ## Adding, replacing or retiring a drive
 
 To add or replace a drive:
-1. Format it and add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
-2. `just deploy storage`.
+
+1. Prepare the drive and its entry:
+   - Format it as ext4: `sudo mkfs.ext4 /dev/sdX1` (find the device with `lsblk`). Formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted.
+   - Add or point a `drives` entry at it: a new `uuid`, on the same `mount` or a new one, with `roles` updated.
+   - If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
+2. `just deploy storage --limit <host>`.
 3. Copy the data over, for example `rsync -aHAX`.
+4. Recreate the containers that bind the drive: a container keeps the old mount until it is recreated, and a deploy does not recreate one whose compose file and image are unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
 
 To retire a drive, delete its entry. The role adds or updates fstab lines and never removes one, so remove the old line from `/etc/fstab` by hand (and `sudo umount` it); nothing is unmounted or deleted for you.
 
 A backup drive that drops out and comes back is covered in [backups.md](./backups.md#if-the-backup-drive-disconnects).
 
+## Checking a drive over USB
+
+A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`).
+
+- **Read the temperature:** `sudo smartctl -d sat -a /dev/sdX` (attribute 194). Scrutiny reads the same data ([services.md](./services.md)).
+- **If the bridge answers `unsupported field in scsi command`:** its pass-through is broken. The fix is a `usb-storage.quirks` kernel option for that bridge, applied at boot (see smartmontools' USB page).
+
+Check the drive maker's operating range; a hard drive in a closed enclosure can run near its limit, and a fan on the enclosure lowers it by 10 to 15 °C. Reading the temperature wakes a spun-down drive. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`; start it with `systemd-run --unit=<name>`); stopping the unit kills it.
+
 ## Move one service's data
 
-Each service's data directory is one variable (the list is in `ansible/group_vars/all/defaults.yml`, under "Data directories"). To move a service to another drive:
+Each service's data directories are settings listed in `ansible/group_vars/all/data-dirs.yml`. To move a service to another drive:
 
-1. Set its variable in `host_vars/<host>/vars.yml` to a path under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
+1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive that has a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. Stop the service: `cd /opt/services/<service> && docker compose down`.
 3. Copy the data: `rsync -aHAX <old path>/ <new path>/`.
-4. `just deploy <service>`, then check it works. Delete the old copy by hand.
+4. `just deploy <service> --limit <host>`, then check it works. Delete the old copy by hand.
 
 ## Docker's own storage
 
@@ -123,30 +162,28 @@ Docker keeps images, layers and anonymous volumes under `/var/lib/docker` and `/
 ### Put it on a drive
 
 1. Add the drive to `drives` in the host's `host_vars` and deploy it (`just deploy storage`).
-2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/t7/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
-3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change):
+2. In `host_vars/<host>/vars.yml` set `docker_data_root: "/mnt/data/docker-root"` (see `ansible/group_vars/all/defaults.yml`).
+3. Stop Docker and containerd by hand (`docker.socket` too, or socket activation restarts Docker mid-change). A deploy restarts them only when it writes their config, so a run that failed after writing it leaves them running the old settings until you restart them:
    ```bash
    sudo systemctl stop docker.service docker.socket containerd.service
    ```
-4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json`, `root = ".../containerd"` into `/etc/containerd/config.toml`. With the drive missing, Docker and containerd fail to start instead of creating their directories on the root drive.
+4. `just deploy common --limit <host>`. This writes `data-root` into `/etc/docker/daemon.json` and `root = ".../containerd"` into `/etc/containerd/config.toml`. With the drive missing, Docker and containerd fail to start instead of creating their directories on the root drive.
 5. `sudo systemctl start containerd.service docker.service`.
 6. `just deploy '' --limit <host>`, so compose pulls the images and recreates the containers.
 7. When the stacks are healthy, delete the old contents of `/var/lib/docker` and `/var/lib/containerd` to free the root drive.
 
-To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space.
-
-Stop the services by hand: Ansible restarts a service only when a task reports a change, so a run that failed after editing the file does not restart it on the next run.
-
-### With a drive missing
-
-- **At boot:** the host starts. Opening a path on the missing drive fails with `No such device` after 30 seconds. Containers whose data is on it fail to start, and nothing is written under the mount point on the root drive.
-- **Drive returns:** the next access mounts it. Containers that failed to start, or lost their mount, stay down until restarted: `just deploy '' --limit <host>` or `docker compose up -d`.
-- **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
-- **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
+To go back, set `docker_data_root: ""` and repeat the steps. Nothing is copied; do not `rsync` layers (overlay whiteouts, hardlinks and extended attributes copy badly). The old directory stays as unused space, and its root-owned files make the backup exit with errors until you delete it (`sudo rm -r <old docker_data_root>`) or add `- <old docker_data_root>` to `restic_local_extra_rules`.
 
 ### Detach a drive
 
-An unmount is undone by the next access to the path. Stop the automount first, then the mount: `sudo systemctl stop mnt-t7.automount mnt-t7.mount` (the unit name is the path with `/` as `-`). Remove the drive's `drives` entry and its fstab line before it is attached to another host.
+The unit name is the mount path with `/` as `-` (`/mnt/backup` is `mnt-backup`). Replace `sdX` with the device from `lsblk`.
+
+1. Stop whatever uses the drive: running backups (`pgrep -a restic`) and the containers that bind it (`docker compose down` in each project under `/opt/services` that uses it, including `backup-status`). A container keeps its own copy of the mount, which `findmnt` on the host does not show.
+2. Stop the automount, then the mount, because the next access to the path undoes an unmount: `sudo systemctl stop mnt-backup.automount mnt-backup.mount`.
+3. Check nothing holds it: `findmnt /mnt/backup` and `sudo grep -l sdX1 /proc/*/mountinfo` print nothing. If either prints something, `sudo lsof /dev/sdX1` names the holder.
+4. `sync`, then `sudo udisksctl power-off -b /dev/sdX`. Unplug it once the activity light stops.
+
+To mount it again, plug it in and run `sudo systemctl start mnt-backup.automount`, then open the path (`ls /mnt/backup/.`). Recreate the containers that bind it (step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)). To attach it to another host, remove its `drives` entry and its fstab line first.
 
 ### Gitea runner registration
 

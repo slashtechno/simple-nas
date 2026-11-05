@@ -17,8 +17,8 @@ services:
 {% endif %}
     volumes:
       - {{ ntfy_data_dir }}:/var/lib/ntfy
-      - /etc/localtime:/etc/localtime:ro
     environment:
+      TZ: {{ timezone }}
       NTFY_BASE_URL: "{{ ntfy_base_url }}"
       NTFY_LISTEN_HTTP: ":80"
       # Behind Caddy: the visitor is the rightmost X-Forwarded-For address, which Caddy sets, so rate limits are per client.
@@ -29,7 +29,7 @@ services:
 {% set user_hash = vault_ntfy_password | password_hash('bcrypt', 'ntfyntfyntfyntfyntfynt', ident='2b') | replace('$', '$$') %}
       NTFY_AUTH_USERS: '{{ ntfy_user }}:{{ user_hash }}:user'
       NTFY_AUTH_ACCESS: "{{ ntfy_user }}:*:rw"
-      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:alerts'
+      NTFY_AUTH_TOKENS: '{{ ntfy_user }}:{{ vault_ntfy_token }}:{{ ntfy_topic }}'
 {% if ntfy_ios_push | bool %}
       NTFY_UPSTREAM_BASE_URL: https://ntfy.sh
 {% endif %}

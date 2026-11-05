@@ -1,5 +1,5 @@
 ---
-# Removes one compose service. Called from teardown.yml with:
+# Removes one compose service. Called from teardown.yml for each entry of `services`, with:
 #   service: directory name under services_dir (also the compose project)
 #   data_paths: directories deleted only when remove_data=true (default: none)
 - name: Down {{ service }} compose project

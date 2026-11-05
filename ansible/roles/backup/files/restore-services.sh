@@ -24,7 +24,7 @@ fi
 case "$TARGET" in
   immich)
     IMMICH_DB_CONTAINER="${IMMICH_DB_CONTAINER:-immich_postgres}"
-    # Must match POSTGRES_USER in roles/immich/templates/docker-compose.yml.j2 (and backup-services.sh).
+    # Must match POSTGRES_USER in roles/immich/templates/docker-compose.yml.j2 (and roles/immich/files/dump.sh).
     IMMICH_DB_USER="${IMMICH_DB_USER:-immich}"
     
     echo "Restoring Immich DB from: $DUMPFILE"
@@ -32,7 +32,7 @@ case "$TARGET" in
       docker start "$IMMICH_DB_CONTAINER" && sleep 3
     fi
     
-    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql -v ON_ERROR_STOP=1 --username="$IMMICH_DB_USER" postgres
+    gunzip -c "$DUMPFILE" | docker exec -i "$IMMICH_DB_CONTAINER" psql -v ON_ERROR_STOP=1 --username="$IMMICH_DB_USER" immich
     echo "Immich DB restored"
     ;;
 

@@ -1,32 +1,18 @@
 #!/bin/bash
+{% import 'mount-guards.j2' as guards with context %}
+{% import 'status-report.j2' as job_status with context %}
+{% import 'restic-env.j2' as restic_env with context %}
 set -o pipefail
 
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: restic would write the
 # repository onto the root filesystem, under the empty mount point, until it fills.
-# The trailing /. opens the path, which mounts the drive (automount) or fails when it is missing; `mountpoint -q` on the
-# bare path also succeeds on the automount placeholder of a missing drive.
-if ! mountpoint -q {{ (backup_drive ~ '/.') | quote }}; then
-  echo "ERROR: {{ backup_drive }} is not a mounted filesystem — refusing to back up onto root. Check the backup drive (check the USB connection; the drive mounts itself when it is back)." >&2
-  exit 1
-fi
+{{ guards.require_mounted(backup_drive, 'refusing to back up onto root') }}
 
-{% for mount in data_drive_mounts %}
-# Refuse to run if {{ mount }} is not mounted: restic would save a snapshot of an empty folder, and each such
-# snapshot counts toward retention and pushes out good ones.
-if ! mountpoint -q {{ (mount ~ '/.') | quote }}; then
-  echo "ERROR: {{ mount }} is not a mounted filesystem — refusing to back up an empty folder. Check the drive (check the USB connection; the drive mounts itself when it is back)." >&2
-  exit 1
-fi
-{% endfor %}
+{{ guards.require_data_drives() }}
 
-# The password-file path is set at deploy time; the environment variable overrides it for a manual run.
-export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
-export RESTIC_REPOSITORY="{{ restic_repo_path }}"
-# restic's index and snapshot cache. It helps only when its drive differs from the repository's.
-export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
+{{ job_status.setup('local') }}
 
-# A hung restic must end as a failed run, not hold the repository lock (see backup-restic-cloud.sh.j2).
-restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+{{ restic_env.setup(restic_repo_path) }}
 
 LOG_FILE="{{ backup_logs_dir }}/restic-local-$(date +%Y-%m-%d).log"
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -37,13 +23,13 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
 {
   echo "=== Local Backup: $(date) ==="
-  # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails
-  # on it. `unlock` removes only stale locks (not refreshed for 30 minutes); a live backup's lock stays.
+  {{ restic_env.unlock_note() | indent(2) }}
   restic unlock
   # restic forget --prune needs free room to rewrite packs, so a full drive cannot clean itself up: stop early.
-  used_pct=$(df --output=pcent {{ backup_drive | quote }} | tail -1 | tr -dc '0-9')
+  used_pct=$(df --output=pcent {{ restic_repo_path | quote }} | tail -1 | tr -dc '0-9')
+  [ -n "$used_pct" ] || { echo "ERROR: could not read the free space on {{ restic_repo_path }}."; exit 1; }
   if [ "$used_pct" -ge 95 ]; then
-    echo "ERROR: {{ backup_drive }} is ${used_pct}% full; free space or lower restic_local_retention before the next backup."
+    echo "ERROR: the drive holding {{ restic_repo_path }} is ${used_pct}% full; free space or lower restic_local_retention before the next backup."
     exit 1
   fi
   # Dump the databases first (Immich, Gitea); the dumps are backed up below.
@@ -72,7 +58,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/restic-excludes-local.txt"
 
     echo "Repository stats:"
     restic stats || { echo "ERROR: restic stats failed!"; exit 1; }
-    echo "Free space on HDD:"
+    echo "Free space on the backup drive:"
     df -h {{ backup_drive | quote }}
   else
     echo "ERROR: Backup failed (restic exit code $backup_rc)!"

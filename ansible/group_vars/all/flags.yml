@@ -1,0 +1,94 @@
+---
+# Which parts run on a host. Every part is off until a host sets `<name>_enabled: true` in host_vars/<host>/vars.yml.
+# Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
+
+# Tailscale is installed by default; set false on a host that reaches the network another way.
+tailscale_enabled: true
+
+# Every service is off until a host sets `<name>_enabled: true`; to remove one see teardown.yml (ansible/README.md, docs/services.md).
+
+# Immich photo library with machine learning.
+immich_enabled: false
+
+# Immich's login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+immich_sso_enabled: false
+
+# Copyparty file server (web UI, WebDAV).
+copyparty_enabled: false
+
+# Copyparty's browser name behind the Tinyauth login; apps and the published port keep their own passwords (docs/services.md#copyparty-accounts-and-volumes).
+copyparty_sso_enabled: false
+
+# Gitea git hosting and its Actions runner.
+gitea_enabled: false
+
+# Gitea's login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+gitea_sso_enabled: false
+
+# Homebridge, a HomeKit bridge.
+homebridge_enabled: false
+
+# pics, the photo sharing app.
+pics_enabled: false
+
+# pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs pics_oidc_owner.
+pics_sso_enabled: false
+
+# Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
+garage_enabled: false
+
+# Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).
+crafty_enabled: false
+
+# ntfy push-notification server (docs/services.md#ntfy-failure-alerts).
+ntfy_enabled: false
+
+# Cloudflare Tunnel that publishes the hostnames in cloudflared_ingress.
+cloudflared_enabled: false
+
+# Tinyauth, a login page that Caddy puts in front of every service with a Caddy name, except those marked own_login in
+# services.yml (docs/services.md#tinyauth-login). Here, not in the tinyauth role, because Caddy and Homepage read it.
+tinyauth_enabled: false
+
+# Dozzle, a read-only web view of the logs of every container on the host (docs/services.md#dozzle-container-logs).
+dozzle_enabled: false
+
+# Scrutiny, a web dashboard of each drive's SMART health (docs/services.md#scrutiny-drive-health).
+scrutiny_enabled: false
+
+# Dockge, a web UI for your own compose stacks.
+dockge_enabled: false
+
+# Homepage, a start page with a link to every enabled service (docs/services.md#homepage).
+homepage_enabled: false
+
+# Caddy reverse proxy that routes by container label.
+caddy_enabled: false
+
+# Daily backup to the drive with the `backup` role, plus a weekly integrity check.
+backup_local_enabled: false
+
+# Weekly backup to restic_cloud_repository (what it copies: docs/backups.md).
+backup_cloud_enabled: false
+
+# Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
+backup_status_enabled: false
+
+# Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
+storage_enabled: true
+
+# Mount USB drives and card readers when they are plugged in (not drives listed in `drives`).
+# Mounted at /run/media/system/<label>; Copyparty shows them under /drives (docs/storage.md).
+usb_automount_enabled: false
+
+# Add a /fast volume to Copyparty (SSD scratch and working space). Useful only when the fast and primary
+# roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
+copyparty_fast_enabled: false
+
+# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
+# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
+copyparty_collab_enabled: false
+
+# Check every 2 minutes that the host can open TCP connections to the internet, and reconnect its network connection
+# when it cannot (docs/networking.md#connectivity-watchdog). Needs NetworkManager to reconnect.
+connectivity_watchdog_enabled: false

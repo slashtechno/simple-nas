@@ -1,19 +1,40 @@
-# Per-service patterns shared by the local and cloud exclude lists (included by both).
+# Patterns shared by the local and cloud exclude lists (included by both).
+{% for folder in encrypted_pairs %}
+# The encrypted copy of {{ folder.mount }}: restic backs up the decrypted files, so saving these too would store everything twice.
+# Only gocryptfs.conf is kept: it is small, holds the cipher and the master key (encrypted under the passphrase), and is
+# what the folder cannot be opened without (docs/encryption.md).
+{{ folder.cipher }}/*
+!{{ folder.cipher }}/gocryptfs.conf
+{% endfor %}
+# Credentials: restic's own password and the Drive token must never be in a backup, even under a path you add.
+# They sit in the user's home, which the local backup covers on a host with no fast or primary drive.
+{{ restic_password_file }}
+{{ rclone_config_dir }}
+# lost+found is root-only, so restic exits 3 on it; every drive formatted by mkfs.ext4 has one. Listed for both backups
+# because the offsite list can name a whole drive.
+{% for mount in data_drive_mounts %}
+{{ mount }}/lost+found
+{% endfor %}
+{% if docker_data_root | length > 0 %}
+# Docker's images and layers: root-owned and rebuilt by pulling.
+{{ docker_data_root }}
+{% endif %}
 {% if caddy_enabled | bool %}
 # Root-owned by the Caddy container, mode 700: the backup user cannot read it, so without this line
 # every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.
 {{ caddy_data_dir }}/caddy
 {% endif %}
+# Owned by the Cloudflare container's user, mode 400: the backup user cannot read it, so without this line every
+# run fails with restic exit 3. It stays on disk when cloudflared_enabled is turned off, so the line is unconditional.
+# A deploy writes it again from Cloudflare.
+{{ services_dir }}/cloudflared/token
 {% if gitea_enabled | bool %}
 {{ gitea_data_dir }}/ssh
 {% endif %}
-{% if immich_enabled | bool %}
-{{ immich_db_data_location }}
-{% endif %}
-{% if copyparty_enabled | bool %}
-{{ copyparty_config_dir }}/copyparty
-{{ copyparty_hist_dir }}
-{% endif %}
+# The directories each enabled service lists as no_backup in group_vars/all/services.yml.
+{% for path in query('ansible.builtin.vars', *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='no_backup', default=[]) | flatten | select | list)) %}
+{{ path }}
+{% endfor %}
 {% if garage_enabled | bool %}
 # Root-owned and a live database: the backup user cannot read it, and Garage's dump (garage.sh) carries a
 # consistent copy.

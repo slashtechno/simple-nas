@@ -1,0 +1,11 @@
+---
+# Addresses probed on TCP port 443. The host counts as online when any one connects. They are raw IPs so a DNS
+# fault cannot make a working connection look dead.
+connectivity_probe_addresses: [1.1.1.1, 8.8.8.8]
+# Failed checks in a row (one check every 2 minutes) before the connection is reconnected.
+connectivity_failures_before_action: 3
+# Minutes to wait after a reconnect before trying another.
+connectivity_cooldown_minutes: 30
+# Reconnects to try in one outage before giving up until a check succeeds again. A real internet outage looks the
+# same as the fault on the host, so the watchdog bounds what it does instead of telling them apart.
+connectivity_max_reconnects: 6

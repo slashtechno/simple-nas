@@ -1,12 +1,14 @@
 ---
 # Every image version in one place. To update one: read the release notes,
 # edit the line, `just preview <service>`, `just deploy <service>`.
-# `just tags <image>` lists the tags that exist.
+# The registry's tags page lists the tags that exist.
 # A floating tag (latest, release, nightly) only moves when you deploy with
 # `-e docker_pull_policy=always`. Prefer a version.
 
-# Immich: release notes https://github.com/immich-app/immich/releases
+# Immich: the server and machine-learning images must use the same version. Release notes https://github.com/immich-app/immich/releases
 immich_version: v3.1.0
+immich_server_image: "ghcr.io/immich-app/immich-server:{{ immich_version }}"
+immich_machine_learning_image: "ghcr.io/immich-app/immich-machine-learning:{{ immich_version }}"
 # Postgres and Valkey are pinned by digest: change only when Immich's notes say so.
 immich_postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
 immich_valkey_image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b19a6d69690f94a3954ec131277b9a26b95b3aa
@@ -15,20 +17,21 @@ immich_valkey_image: docker.io/valkey/valkey:8@sha256:81db6d39e1bba3b3ff32bd3a1b
 copyparty_base_image: copyparty/iv:1.20.26
 
 # Garage: https://garagehq.deuxfleurs.fr/_releases.html
-garage_version: v2.4.1
+garage_image: dxflrs/garage:v2.4.1
 garage_caddy_image: "caddy:{{ caddy_version }}-alpine"
 garage_webui_image: khairul169/garage-webui:1.1.0
 
 # Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
-crafty_version: 4.11.0
+crafty_image: registry.gitlab.com/crafty-controller/crafty-4:4.11.0
 
 # Gitea and its runner: https://github.com/go-gitea/gitea/releases
 gitea_image: gitea/gitea:1.27.3
 gitea_runner_image: docker.io/gitea/act_runner:0.6.1
 
+# Homebridge, the HomeKit bridge: https://github.com/homebridge/homebridge/releases
 homebridge_image: homebridge/homebridge:2026-08-28
 
-# backup-status dashboard (built on the Pi)
+# backup-status dashboard (built on the host)
 restic_image: restic/restic:0.19.1
 backup_status_python_image: python:3.14.9-slim
 
@@ -49,6 +52,15 @@ caddy_cloudflare_dns_version: 0.2.4
 
 # ntfy (failure alerts): https://github.com/binwiederhier/ntfy/releases
 ntfy_image: binwiederhier/ntfy:v2.33.1
+
+# Tinyauth (login in front of the web services): https://github.com/tinyauthapp/tinyauth/releases
+tinyauth_image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
+
+# Dozzle (container logs): https://github.com/amir20/dozzle/releases
+dozzle_image: amir20/dozzle:v11.4.0
+
+# Scrutiny (disk SMART dashboard): https://github.com/AnalogJ/scrutiny/releases
+scrutiny_image: ghcr.io/analogj/scrutiny:v0.10.0-omnibus
 
 # pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
 pics_version: main

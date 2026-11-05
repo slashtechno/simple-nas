@@ -1,35 +1,47 @@
 ---
-# A failed backup job always goes to the system log (`journalctl -t backup`). Set this to also send it
-# to an ntfy server's topic, e.g. "http://localhost:8090/alerts" on the host that runs ntfy (roles/ntfy). The login token
-# is vault_ntfy_token. Leave "" to send nothing. A host that is down or unreachable cannot alert.
-ntfy_alert_url: ""
-# What the local (daily) backup copies and skips, one rule per line:
-#   /path        back this path up (an absolute path)
-#   - pattern    leave this out (the "- " is a dash and a space; restic exclude syntax, `**` matches any depth)
-#   - !pattern   put back something an earlier "- " line left out
-# A worked example is in docs/backups.md#choosing-what-is-backed-up.
-# The service dumps dir is always added, and caches and live database directories are always skipped
-# (roles/backup/templates/restic-excludes-*.txt.j2); your "- " lines come after those, so "- !" can undo a default.
+# What the local (daily) backup copies and skips, one rule per line: "/path" backs a path up, "- pattern" leaves
+# something out, "- !pattern" puts it back. The service dumps dir is always added and caches and live database
+# directories are always skipped (roles/backup/templates/restic-excludes-*.txt.j2).
 # Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
-# the ansible user, so files only root can read (/etc, container-owned data) are skipped: restic saves the
-# snapshot without them, and the run then fails so the alert fires. Fix their permissions or exclude them.
-# CAUTION: restic groups snapshots by host + paths, so adding or removing a path line starts a new snapshot
-# group; the old group's last snapshots stay until you run `restic forget --path <old path> ...` by hand
-# (docs/backups.md#choosing-what-is-backed-up). Changing "- " lines never splits a group.
-restic_local_rules: "{{ [drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list or ['/home/' ~ ansible_user] }}"
+# the ansible user, so files only root can read are skipped and the run then fails so the alert fires.
+# Adding or removing a "/path" line starts a new snapshot group: docs/backups.md#choosing-what-is-backed-up
+# To add to the default instead of replacing it, set restic_local_extra_rules.
+# Example: primary on /mnt/big and fast on /mnt/fast give [/mnt/big, /mnt/fast]; a host with neither gives [/home/<user>].
+restic_local_rules: >-
+  {{ ([drive_mounts.primary | default(''), drive_mounts.fast | default('')] | select | unique | list
+      or ['/home/' ~ ansible_user])
+     + restic_local_extra_rules }}
+# Rules added after the default local rules. Same line format; most hosts only need this.
+restic_local_extra_rules: []
 # The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
 # every path. Default: this host's base directory (compose files, credentials) and Copyparty's config. Add more
 # paths to upload more, e.g. a drive's data on a host with no local backup; Immich's photos are not included
-# (they are large): add "{{ immich_upload_location }}".
+# (they are large): add "{{ immich_upload_location }}" to restic_cloud_extra_rules.
 restic_cloud_rules: >-
   {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
-     + [services_dir] }}
+     + [services_dir] + restic_cloud_extra_rules }}
+# Rules added after the default cloud rules. Same line format.
+restic_cloud_extra_rules: []
 # Every restic call in the backup scripts is wrapped in `timeout` with this value, so a stalled
-# rclone or network pipe cannot hold the repo lock indefinitely.
-restic_command_timeout: "2h"
+# rclone or network pipe cannot hold the repo lock past the next daily run. It is long on purpose: the first backup
+# into an empty repository, or one after a big change, can run for many hours on a slow USB drive.
+restic_command_timeout: "23h"
 # restic's index and snapshot cache. On the fast drive it keeps cache reads off the backup drive and
 # off Google Drive; it only helps once the fast and backup roles are different drives. Not backed up.
 # A host without a fast drive keeps it in the user's ~/.cache.
 restic_cache_dir: "{{ drive_mounts.fast ~ '/restic-cache' if 'fast' in drive_mounts else '/home/' ~ ansible_user ~ '/.cache/restic' }}"
 # Where the dump.d scripts write database dumps before each backup; the local backup includes this directory.
 service_dumps_dir: "{{ backup_work_dir }}/service-dumps"
+# Where rclone keeps its remote's login. The cloud backup creates it and the backup lists never copy it.
+rclone_config_dir: "/home/{{ ansible_user }}/.config/rclone"
+# The directories the backup must cover: the data of every service this host runs (group_vars/all/services.yml;
+# the `no_backup` ones are left out on purpose), plus the folders in encrypted_folders, which can be anywhere, and the
+# hidden folder next to each that holds its gocryptfs.conf (the backups keep the conf, docs/encryption.md).
+# Used by roles/backup/tasks/check_coverage.yml and the offsite notice in cloud.yml.
+# Example: with Gitea and an encrypted folder /mnt/primary/photos it gives
+# [/mnt/fast/appdata/gitea, /mnt/primary/photos, /mnt/primary/.photos.gocryptfs].
+backup_service_dirs: >-
+  {{ query('ansible.builtin.vars',
+           *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten | select | list
+             + services | selectattr('key', 'in', enabled_service_keys) | map(attribute='keep', default=[]) | flatten | select | list))
+     + encrypted_pairs | map(attribute='mount') | list + encrypted_pairs | map(attribute='cipher') | list }}

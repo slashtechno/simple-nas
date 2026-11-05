@@ -1,0 +1,35 @@
+# Ansible-managed — do not edit directly, edit the scrutiny_* settings and re-deploy.
+# A SMART dashboard for the drives on this host. It has no login of its own, so it must stay behind
+# Tinyauth and Caddy.
+networks:
+  {{ docker_network }}:
+    external: true
+
+services:
+  scrutiny:
+    image: {{ scrutiny_image }}
+    container_name: scrutiny
+    restart: unless-stopped
+{% if scrutiny_port != '' %}
+    ports:
+      - "{{ scrutiny_port }}:8080"
+{% endif %}
+    # SYS_RAWIO lets smartctl read a drive. NVMe, including an NVMe drive in a USB enclosure, also needs SYS_ADMIN.
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN
+    volumes:
+      - /run/udev:/run/udev:ro
+      - {{ scrutiny_config_dir }}:/opt/scrutiny/config
+      - {{ scrutiny_influx_dir }}:/opt/scrutiny/influxdb
+    # The device list is read from the host at deploy time. After plugging in or unplugging a drive, run
+    # `just deploy scrutiny --limit <host>` so the container gets the new list.
+    devices:
+{% for device in scrutiny_devices %}
+      - {{ device }}:{{ device }}
+{% endfor %}
+    environment:
+      TZ: {{ timezone }}
+      COLLECTOR_CRON_SCHEDULE: "{{ scrutiny_collect_schedule }}"
+    networks:
+      - {{ docker_network }}

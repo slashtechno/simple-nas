@@ -1,0 +1,43 @@
+---
+- name: Check Tinyauth has a login name and users
+  ansible.builtin.assert:
+    that:
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+      - tinyauth_subdomain | length > 0
+      - vault_tinyauth_users is defined
+      - vault_tinyauth_users | length > 0
+    fail_msg: >-
+      Tinyauth needs an https name: set caddy_enabled, a caddy_private_domains entry and a tinyauth_subdomain on this
+      host, and vault_tinyauth_users in group_vars/all/vault.yml (or this host's vault.yml, for users of its own;
+      group_vars/all/vault.yml.example says how to make it).
+    quiet: true
+
+# An OAuth provider without a whitelist accepts every account at that provider, and Tinyauth then lets it into every
+# name behind the login.
+- name: Check an OAuth provider has an email whitelist
+  ansible.builtin.assert:
+    that: >-
+      'TINYAUTH_OAUTH_WHITELIST' in tinyauth_environment
+      or tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_PROVIDERS_.*_WHITELIST$') | list | length > 0
+    fail_msg: >-
+      tinyauth_environment sets an OAuth provider but no TINYAUTH_OAUTH_WHITELIST, so every account at that provider
+      could sign in to every name behind this login. Add TINYAUTH_OAUTH_WHITELIST with the email addresses allowed
+      (docs/auth-reference.md).
+    quiet: true
+  when: tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_PROVIDERS_') | list | length > 0
+
+- name: Create the Tinyauth data directory
+  ansible.builtin.file:
+    path: "{{ tinyauth_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Deploy Tinyauth
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: tinyauth
+    compose_service_has_secrets: true

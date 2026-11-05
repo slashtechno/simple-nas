@@ -1,57 +1,89 @@
 # Common commands. Run `just` to list them. Install: brew install just
 # (or run any recipe without installing: uvx --from rust-just just <recipe>)
 
+# Lint tool versions. A new release can fail `just check` with no change in this repo, so they are pinned; raise them on purpose.
+ansible_lint := "ansible-lint==26.10.1"
+shellcheck := "shellcheck-py==0.11.0.1"
+ruff := "ruff==0.17.3"
+
 default:
     @just --list
+
+# List every setting with its default, file and overrides; a word filters by name: `just settings gitea`
+settings word='':
+    @if command -v uv >/dev/null; then uv run --quiet tools/settings.py "{{ word }}"; else python3 tools/settings.py "{{ word }}"; fi
 
 # Install the Ansible collections and roles this repo needs
 deps:
     ansible-galaxy collection install -r requirements.yml
     ansible-galaxy role install -r requirements.yml
 
-# Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the dashboard
-lint:
-    uvx ansible-lint
-    uvx --from shellcheck-py shellcheck --severity=warning roles/*/files/*.sh
-    uvx ruff check --isolated --select F,B roles/backup_status/files
+# (Steps of `check`; private, run one with e.g. `just _lint`.)
+# Style and bug checks: ansible-lint, shellcheck on shipped scripts, ruff on the shipped Python
+_lint:
+    uvx {{ ansible_lint }}
+    uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files
 
 # Both playbooks parse
-syntax:
+_syntax:
     ansible-playbook --syntax-check site.yml teardown.yml
 
 # Render every template with the example vars, then shellcheck the rendered scripts
-test:
+_test:
     #!/usr/bin/env bash
     set -euo pipefail
     out="$(mktemp -d)"
+    python3 -I tests/test_backup_status.py
     ansible-playbook -i tests/inventory.yml tests/render.yml -e "out_dir=$out"
-    find "$out" -name '*.sh' -print0 | xargs -0 uvx --from shellcheck-py shellcheck --severity=warning
+    find "$out" -name '*.sh' -print0 | xargs -0 uvx --from {{ shellcheck }} shellcheck --severity=warning
     echo "Rendered templates are in $out"
 
+# Load a copy of group_vars with Ansible itself and check which file wins: defaults, vars.yml, host_vars, versions.yml
+_precedence:
+    tests/precedence.sh
+
 # Fail if a vault name or a setting with no default is missing from its example file
-vars:
+_vars:
     python3 tools/check_vars.py
 
 # Fail if a `file.md#anchor` reference names a heading that does not exist
-links:
+_links:
     python3 tools/check_links.py
 
+# Check that every pinned image has arm64 and x64 builds (needs docker and network; not part of `check`)
+platforms:
+    python3 tools/check_platforms.py
+
 # Everything CI runs. Run this before committing.
-check: lint syntax vars links test
+check: _lint _syntax _vars _links _precedence _test
 
-# List tags of one image to pick a version, e.g. `just tags copyparty/iv '^1\.'` (newest `count` shown)
-tags image filter='.' count='30':
-    docker run --rm gcr.io/go-containerregistry/crane:v0.22.1 ls {{ image }} | grep -E -- '{{ filter }}' | sort -V | tail -n {{ count }}
-
-# Deploy: `just deploy` for everything, `just deploy crafty` for one service.
-# Extra ansible-playbook flags go after the tags: `just deploy '' --limit pinas -K` (all roles, one host, ask for the sudo password).
-deploy tags='' *flags:
+# Deploy everything, or one service: `just deploy crafty`. Extra flags go after: `just deploy '' --limit pinas -K`
+deploy tags='' *flags: (_tags tags)
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
-# What is running on every server (or `just status pinas` for one): the containers and how long they have been up.
-status limit='servers':
-    ansible {{ limit }} --vault-password-file .vault-pass --become -a "docker ps"
+# Stops a deploy or preview whose tag matches no role: ansible runs nothing for an unknown tag and exits 0.
+_tags tags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [ -n "{{ tags }}" ] || exit 0
+    known=$(ansible-playbook site.yml --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
+    for tag in $(echo "{{ tags }}" | tr ',' ' '); do
+      echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in site.yml. Tags: $known" >&2; exit 1; }
+    done
+
+# Remove services from a host (teardown.yml refuses to run without a host): `just teardown pi4 -e only=garage`
+teardown host *flags:
+    ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
+
+# apt upgrade on every server, or one: `just os-upgrade pinas`. Reboot afterwards if the kernel or firmware changed.
+os-upgrade limit='servers' *flags:
+    ansible {{ limit }} --vault-password-file .vault-pass --become -m ansible.builtin.apt -a "update_cache=yes upgrade=safe" {{ flags }}
+
+# First-run setup for a host: .vault-pass, host_vars/<host>/vars.yml, random vault secrets. Safe to rerun.
+setup host:
+    python3 tools/setup.py {{ host }}
 
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
-preview tags='' *flags:
+preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}

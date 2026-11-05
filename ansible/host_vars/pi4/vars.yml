@@ -5,12 +5,20 @@
 # An ad-hoc app host: Dockge for compose stacks, Caddy for names. Stacks live on the fast drive. It backs up to its
 # own backup drive only: pinas owns the offsite repository, and two hosts must never back up into one.
 dockge_enabled: true
+# Dockge is reached only through Caddy and the Tinyauth login; the deploy then switches Dockge's own login off.
+dockge_port: ""
 caddy_enabled: true
-# Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/networking.md#web-addresses-and-https).
+# Names under pi4.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).
 caddy_private_domains: [pi4.slashtechno.com]
-# The root of the server: https://pi4.slashtechno.com opens Dockge.
-caddy_sites: {pi4.slashtechno.com: {reverse_proxy: "dockge:5001"}}
+# The root of the server: https://pi4.slashtechno.com opens Dockge, behind the Tinyauth login.
+caddy_sites: {pi4.slashtechno.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}}
 backup_local_enabled: true   # daily backup to the `backup` drive
+# A login in front of the web services (Dockge, the backup dashboard); https://auth.pi4.slashtechno.com (docs/services.md#tinyauth-login).
+tinyauth_enabled: true
+# Container logs in the browser, behind the same login: https://logs.pi4.slashtechno.com.
+dozzle_enabled: true
+# Reconnect the Wi-Fi when it stays up but nothing can connect out (docs/networking.md#connectivity-watchdog).
+connectivity_watchdog_enabled: true
 
 # --- Drives ---
 drives:

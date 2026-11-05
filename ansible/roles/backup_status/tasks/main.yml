@@ -7,6 +7,27 @@
       (and a drive in `drives` with the `backup` role). The dashboard reads the local repository.
     quiet: true
 
+# Without the file Docker creates the path as a directory, and the next backup deploy fails writing the password there.
+- name: Check the restic password file exists (deploy the backup role first)
+  ansible.builtin.stat:
+    path: "{{ restic_password_file }}"
+  register: backup_status_password_file
+
+- name: Stop if there is no restic password file
+  ansible.builtin.assert:
+    that: backup_status_password_file.stat.isreg | default(false)
+    fail_msg: "{{ restic_password_file }} is missing: deploy the backup role to this host before backup_status."
+    quiet: true
+
+- name: Check the dashboard has a login in front of it or a port set on purpose
+  ansible.builtin.assert:
+    that: (tinyauth_enabled | bool) or backup_status_port != ''
+    fail_msg: >-
+      The backup dashboard has no login of its own. Switch on tinyauth_enabled (docs/services.md#tinyauth-login) to
+      serve it behind the login, or set backup_status_port in host_vars/{{ inventory_hostname }}/vars.yml to publish it
+      open on the network.
+    quiet: true
+
 - name: Create backup-status compose directory
   ansible.builtin.file:
     path: "{{ services_dir }}/backup-status"
@@ -27,7 +48,6 @@
     - index.html
     - pico.min.css
     - Dockerfile
-  notify: Restart backup-status
 
 - name: Render backup-status docker-compose.yml
   ansible.builtin.template:
@@ -36,8 +56,9 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0640"
-  notify: Restart backup-status
 
+# build: always rebuilds the image from the copied files and compose recreates the container when the image or
+# the compose file changed, so no separate restart is needed.
 - name: Build and start backup-status
   community.docker.docker_compose_v2:
     project_src: "{{ services_dir }}/backup-status"
