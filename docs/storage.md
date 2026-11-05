@@ -2,7 +2,18 @@
 
 Drives are listed per host, in `host_vars/<host>/vars.yml`; a host that lists none has `drives: []`. The `storage` role mounts them: it runs everywhere and `storage_enabled: false` skips it on a host whose drives are mounted another way.
 
-Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext4`), `options` (default `defaults`) and `roles:`, the roles it fills. An entry without a `uuid` is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)). A drive with no `roles` is only mounted. One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name. Which roles a host needs is under [Examples](#examples). Find a drive's UUID on the host with `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS`.
+Each `drives` entry has these fields:
+
+| Field | Meaning |
+|---|---|
+| `mount` | Where the drive is mounted (required) |
+| `uuid` | The drive's UUID: `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS` on the host. An entry without one is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)) |
+| `fstype` | Filesystem, default `ext4` |
+| `options` | Mount options, default `defaults` |
+| `roles` | The roles the drive fills. A drive with no `roles` is only mounted |
+
+- One drive can hold several roles. Each role is claimed by at most one drive per host; the deploy fails on a duplicate claim or an unknown role name.
+- Which roles a host needs is under [Examples](#examples).
 
 | Role | Holds |
 |---|---|
@@ -37,9 +48,7 @@ Mount points below are the [quick start's](./quick-start.md); yours are the `mou
 
 The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use; an unclaimed role fails the deploy with a message naming it, only on a host that enables a service needing it.
 
-- `fast`: Dockge's stacks and data, Caddy's data, and the config and database directories of Immich, Copyparty (config and `hist`), Gitea, pics, Homebridge, Garage, Crafty, ntfy, Tinyauth, Dozzle and Scrutiny.
-- `primary`: Immich's photos, pics' photos and trash, and Copyparty's files and collab folder.
-- `backup`: needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
+- `backup` is needed where `backup_local_enabled` is true ([backups.md](./backups.md)).
 
 Docker's own storage (images, layers) is separate: it stays on the root drive unless `docker_data_root` is set; see [Docker's own storage](#dockers-own-storage).
 
@@ -113,7 +122,11 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 ## Adding, replacing or retiring a drive
 
 To add or replace a drive:
-1. Format a new drive as ext4 (`sudo mkfs.ext4 /dev/sdX1`; find the device with `lsblk`; formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted), then add or point a `drives` entry at it (a new `uuid`, on the same `mount` or a new one, with `roles` updated). If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
+
+1. Prepare the drive and its entry:
+   - Format it as ext4: `sudo mkfs.ext4 /dev/sdX1` (find the device with `lsblk`). Formatting erases everything on it, and a drive bought with exFAT or NTFS will not mount until it is formatted.
+   - Add or point a `drives` entry at it: a new `uuid`, on the same `mount` or a new one, with `roles` updated.
+   - If the mount point stays the same, stop the old drive's units first (`sudo systemctl stop mnt-<name>.automount mnt-<name>.mount`, as in [Detach a drive](#detach-a-drive)) so the new one can take its place.
 2. `just deploy storage --limit <host>`.
 3. Copy the data over, for example `rsync -aHAX`.
 4. Recreate the containers that bind the drive: a container keeps the old mount until it is recreated, and a deploy does not recreate one whose compose file and image are unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
@@ -124,7 +137,10 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 
 ## Checking a drive over USB
 
-A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`), so read it with `smartctl` through the bridge: `sudo smartctl -d sat -a /dev/sdX` (attribute 194 is the temperature). A bridge whose pass-through is broken answers `unsupported field in scsi command`; the fix is a `usb-storage.quirks` kernel option for that bridge, applied at boot (see smartmontools' USB page). Scrutiny reads the same data ([services.md](./services.md)).
+A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`).
+
+- **Read the temperature:** `sudo smartctl -d sat -a /dev/sdX` (attribute 194). Scrutiny reads the same data ([services.md](./services.md)).
+- **If the bridge answers `unsupported field in scsi command`:** its pass-through is broken. The fix is a `usb-storage.quirks` kernel option for that bridge, applied at boot (see smartmontools' USB page).
 
 Check the drive maker's operating range; a hard drive in a closed enclosure can run near its limit, and a fan on the enclosure lowers it by 10 to 15 °C. Reading the temperature wakes a spun-down drive. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`; start it with `systemd-run --unit=<name>`); stopping the unit kills it.
 
