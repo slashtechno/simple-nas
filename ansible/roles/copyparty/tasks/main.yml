@@ -12,12 +12,13 @@
 - name: Check Copyparty's single sign-on is set up
   ansible.builtin.assert:
     that:
-      - copyparty_sso_admins | length > 0
+      - service_users.copyparty | default([]) | length > 0
       - tinyauth_enabled | bool
       - caddy_enabled | bool
       - vault_copyparty_idp_key is defined
     fail_msg: >-
-      copyparty_sso_enabled needs copyparty_sso_admins, a list of Tinyauth user names (roles/copyparty/defaults/main.yml),
+      copyparty_sso_enabled needs service_users.copyparty, the Tinyauth user names that may open Copyparty and get admin access
+      (docs/auth-reference.md#who-may-use-what),
       tinyauth_enabled and caddy_enabled, and vault_copyparty_idp_key in the vault that applies to
       {{ inventory_hostname }} (vault.yml.example says how to make it).
     quiet: true
