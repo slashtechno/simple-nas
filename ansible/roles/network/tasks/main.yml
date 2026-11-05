@@ -30,12 +30,16 @@
   block:
     # Raspberry Pi OS and Ubuntu Desktop run NetworkManager (the link is an nmcli profile). Ubuntu Server runs
     # systemd-networkd, configured through netplan (the link is a netplan file). dnsmasq is the same for both.
-    - name: Check which network manager is running
-      ansible.builtin.service_facts:
+    # Not service_facts: it sets a fact named `services`, which would hide the services list in group_vars.
+    - name: Check whether NetworkManager is running
+      ansible.builtin.systemd:
+        name: NetworkManager.service
+      register: network_nm_state
+      failed_when: false
 
     - name: Note whether NetworkManager is the one running
       ansible.builtin.set_fact:
-        network_uses_nm: "{{ ansible_facts['services']['NetworkManager.service']['state'] | default('') == 'running' }}"
+        network_uses_nm: "{{ network_nm_state.status.ActiveState | default('') == 'active' }}"
 
     - name: Check for netplan
       ansible.builtin.stat:
