@@ -36,15 +36,15 @@ caddy_enabled: true
 tinyauth_enabled: true
 backup_local_enabled: true
 dozzle_enabled: true             # container logs, https://dozzle.home.example.com
-scrutiny_enabled: true           # drive health, https://scrutiny.home.example.com (drives that pass SMART)
+scrutiny_enabled: true           # drive health, https://scrutiny.home.example.com (needs drives that answer SMART)
 caddy_private_domains: [home.example.com]   # apps get https://<app>.home.example.com, on your tailnet only
 
 drives:
   - {uuid: "aaaa-...", mount: /mnt/fast,    roles: [fast]}      # databases, configs, stacks
-  - {uuid: "bbbb-...", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}   # photos, files
-  - {uuid: "cccc-...", mount: /mnt/backup,  fstype: ext4, options: "defaults,nofail", roles: [backup]}    # restic repository
+  - {uuid: "bbbb-...", mount: /mnt/primary, roles: [primary]}   # photos, files
+  - {uuid: "cccc-...", mount: /mnt/backup,  roles: [backup]}    # restic repository
 
-encrypted_folders:               # what each holds: [storage.md](./storage.md#what-lives-where)
+encrypted_folders:               # what each holds: storage.md, What lives where
   - /mnt/fast/appdata
   - /mnt/fast/stacks
   - /mnt/primary/photos

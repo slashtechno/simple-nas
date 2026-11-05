@@ -88,12 +88,12 @@ For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy
 2. Publish no port for the app: a published port skips Caddy and the login.
 3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login. To see the rule Caddy loaded: `docker exec caddy cat /config/caddy/Caddyfile.autosave | grep -A3 app.pi4`. A request without a browser (`curl`) gets 401, not the login page.
 
-The app now sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
+The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
 
 1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment` (`TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS`, `_NAME`, as in `roles/tinyauth/templates/docker-compose.yml.j2`) and give the app the issuer `https://auth.<first private domain>`. Not tested here.
 2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
 3. **It has an off switch (Dockge, which the role switches off itself):** turn the app's login off. Every user then shares one app account.
-4. **Its login is optional (webtop, Homepage):** leave it unset, so Tinyauth is the only login.
+4. **Its login is optional (Homepage):** leave it unset, so Tinyauth is the only login.
 5. **Nothing fits:** the app's own login stays and you sign in twice (Crafty).
 
 Clients that cannot log in through a web page (mobile apps, API tokens, git, WebDAV, webhooks) are stopped by the forwarder with a 401. Leave the label off for those, so the app's own login protects it (as for Immich and Gitea), or give them a second name without the label. A script can also send a Tinyauth user and password as HTTP basic auth, for a user without two-factor.

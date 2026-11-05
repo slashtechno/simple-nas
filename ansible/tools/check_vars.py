@@ -3,6 +3,7 @@
 
   - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example,
   - no setting is written in two of the files that hold defaults (the later file would silently win),
+  - every file in group_vars/all/ is a known one (defaults.yml, defaults-<topic>.yml, vars, vault, derived, services, versions),
   - every shared defaults file in group_vars/all/ sorts before vars.yml (the later file wins), and no version is set in vars.yml,
   - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example.
 """
@@ -15,12 +16,13 @@ VAULT_EXAMPLES = [ANSIBLE / "group_vars/all/vault.yml.example", ANSIBLE / "host_
 VARS_EXAMPLE = ANSIBLE / "group_vars/all/vars.yml.example"
 NOT_DEFAULTS = {"vars.yml", "vault.yml", "versions.yml", "derived.yml", "services.yml"}
 SHARED = sorted((ANSIBLE / "group_vars/all").glob("defaults*.yml"))
-for path in sorted((ANSIBLE / "group_vars/all").glob("*.yml")):
-    if path not in SHARED and path.name not in NOT_DEFAULTS:
-        problems.append(f"{path.relative_to(ANSIBLE)} is not a known file; shared defaults are in defaults.yml or defaults-<topic>.yml")
 DEFAULTS = SHARED + sorted(ANSIBLE.glob("roles/*/defaults/main.yml"))
 
 problems = []
+
+for path in sorted((ANSIBLE / "group_vars/all").glob("*.yml")):
+    if path not in SHARED and path.name not in NOT_DEFAULTS:
+        problems.append(f"{path.relative_to(ANSIBLE)} is not a known file; shared defaults are in defaults.yml or defaults-<topic>.yml")
 
 documented = set()
 for path in VAULT_EXAMPLES:

@@ -24,7 +24,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 ## Services
 
 - **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)).
-- **Caddy name** in the table means `caddy_enabled` with at least one `caddy_private_domains` entry. The address is `<subdomain>.<first private domain>`, for example `dozzle.pi4.example.com`; each service's `<key>_subdomain` is in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml), and the Homepage links every address. Caddy builds its list of names on each deploy, so after switching a service on, deploy it together with Caddy: `just deploy <service>,caddy,homepage --limit <host>`.
+- **Caddy name** in the table means `caddy_enabled` with at least one `caddy_private_domains` entry. The address is `<subdomain>.<first private domain>`, for example `dozzle.pi4.example.com`; each service's `<key>_subdomain` is in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml). Caddy builds its list of names on each deploy, so after switching a service on, deploy it together with Caddy: `just deploy <service>,caddy --limit <host>`; the [Homepage](#homepage) tile follows with its own deploy.
 - **Vault entries** go in `host_vars/<host>/vault.yml` (service secrets) or `group_vars/all/vault.yml` (shared secrets): [ansible/README.md](../ansible/README.md#vault-secrets).
 
 | Service | What it is | Role | Needs | Section |

@@ -137,7 +137,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 - `_lint`: ansible-lint, shellcheck and ruff (skipped rules and reasons are in `.ansible-lint`).
 - `_syntax`: both playbooks parse.
-- `_vars`: a vault name or a setting with no default missing from its example file; a setting with a default in two files; a shared defaults file sorting after `vars.yml`.
+- `_vars`: a vault name or a setting with no default missing from its example file; a setting with a default in two files; a shared defaults file sorting after `vars.yml`; a file in `group_vars/all/` that is not `defaults.yml`, `defaults-<topic>.yml` or one of the fixed files.
 - `_links`: a `file.md#anchor` that names no heading.
 - `_precedence`: Ansible loads a copy of `group_vars` and the test checks that `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after the group-wide `vars.yml`.
 - `_test`: renders every template with the example vars and shellchecks the scripts. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
