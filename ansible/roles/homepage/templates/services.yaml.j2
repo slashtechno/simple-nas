@@ -12,9 +12,9 @@
 - {{ host }}:
 {% endif %}
 {% set sub = hostvars[host][tile.key ~ '_subdomain'] if tile.port is not defined else '' %}
-{# A service with a name under the host's private domain links to that name (HTTPS on port 443); otherwise to host:port. #}
+{# A service with a name under the host's private domain links to that name (HTTPS on port 443), or to the address its tile_url setting holds (services.yml); otherwise to host:port. #}
 {% if has_names and sub != '' %}
-{% set href = 'https://' ~ sub ~ '.' ~ domains[0] %}
+{% set href = (hostvars[host][tile.tile_url] | regex_replace('/$', '')) if tile.tile_url is defined else 'https://' ~ sub ~ '.' ~ domains[0] %}
 {% else %}
 {% set port = tile.port if tile.port is defined else hostvars[host][tile.key ~ '_port'] | default('') %}
 {% set href = (tile.scheme | default('http')) ~ '://' ~ hostvars[host].ansible_host | default(host) ~ ':' ~ port %}

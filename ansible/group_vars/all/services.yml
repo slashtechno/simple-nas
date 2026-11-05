@@ -31,6 +31,9 @@
 #              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
 #   container, container_port
 #              what Caddy proxies to on the services network
+#   tile_url   the name of a setting (not an address) that holds the address the Homepage tile links to, when the
+#              service's sign-in has to start there instead of on its Caddy name (Gitea: gitea_root_url). Read per
+#              host, only on a host with Caddy names for it; a tile without it links to the Caddy name
 #   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
 #   own_login  true when the service has a login or clients of its own (apps, git, WebDAV, push): Tinyauth never sits in
 #              front of its Caddy name, except Copyparty's browser name with copyparty_sso_enabled. Every other web
@@ -53,7 +56,7 @@ services:
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
      data: [gitea_data_dir, gitea_runner_data_dir],
-     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git,
+     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git, tile_url: gitea_root_url,
      oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
      copyparty: {volumes: [{folder: photos, dir: pics_photos_dir, perms: rwm}, {folder: trash, dir: pics_trash_dir, perms: rwmd}]},

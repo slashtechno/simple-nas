@@ -615,6 +615,31 @@
           - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
         quiet: true
 
+    # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
+    - name: Give Gitea a public address of its own
+      ansible.builtin.set_fact:
+        gitea_root_url_before: "{{ gitea_root_url }}"
+        gitea_root_url: https://git.example.org/
+
+    - name: Render the Homepage tiles with it
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/homepage/templates/services.yaml.j2"
+        dest: "{{ out_dir }}/homepage-public-url.yaml"
+        mode: "0644"
+
+    - name: Only Gitea's tile moves to the public address
+      ansible.builtin.assert:
+        that:
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage-public-url.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
+            | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
+            == ['https://immich.pi4.example.com', 'https://git.example.org', 'https://crafty.pi4.example.com']
+        quiet: true
+
+    - name: Put Gitea's address back
+      ansible.builtin.set_fact:
+        gitea_root_url: "{{ gitea_root_url_before }}"
+
     # The two OIDC logins off: no client at Tinyauth, no login source settings for Gitea and no config file for Immich.
     # The login page keeps its name inside the network, because that follows tinyauth_enabled, not these two.
     - name: Make a directory for the render without the two OIDC logins
