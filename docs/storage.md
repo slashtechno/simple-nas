@@ -7,7 +7,7 @@ Each `drives` entry has these fields:
 | Field | Meaning |
 |---|---|
 | `mount` | Where the drive is mounted (required) |
-| `uuid` | The drive's UUID: `lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS` on the host. An entry without one is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)) |
+| `uuid` | The drive's UUID ([how to read it](#preparing-a-drive)). An entry without one is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)) |
 | `fstype` | Filesystem, default `ext4` |
 | `options` | Mount options, default `defaults` |
 | `roles` | The roles the drive fills. A drive with no `roles` is only mounted |
