@@ -506,7 +506,7 @@
           - "'GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: \"false\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.clientSecret == 'immich$secret'"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.pi4.example.com'"
-          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
+          - "not (lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
           - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).passwordLogin.enabled"
           - "'IMMICH_CONFIG_FILE: /immich-config.json' in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "(services_dir ~ '/immich/immich-config.json:/immich-config.json:ro') in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
