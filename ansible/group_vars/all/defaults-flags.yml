@@ -31,7 +31,7 @@ homebridge_enabled: false
 # pics, the photo sharing app.
 pics_enabled: false
 
-# pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs pics_oidc_owner.
+# pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs service_users.pics.
 pics_sso_enabled: false
 
 # Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).

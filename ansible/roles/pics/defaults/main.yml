@@ -9,9 +9,6 @@
 pics_repo: "{{ undef(hint='Set pics_repo (owner/name of the private GitHub repo pics builds from) in group_vars/all/vars.yml') }}"
 # Public URL of pics' guest pages: the Cloudflare hostname that points at pics_public_port.
 pics_public_url: "{{ undef(hint='Set pics_public_url (e.g. https://photos.example.com) in group_vars/all/vars.yml') }}"
-# With pics_sso_enabled: the one Tinyauth user name or email address that may open pics' owner pages. Tinyauth cannot
-# limit a client to some of its users, so without this check every user in vault_tinyauth_users would get in.
-pics_oidc_owner: "{{ undef(hint='Set pics_oidc_owner (the Tinyauth user name or email address that may open pics) in vars.yml') }}"
 # Written into the EXIF of public downloads.
 pics_artist: ""
 # For example "example.com"; watermarked and linked from the home page.

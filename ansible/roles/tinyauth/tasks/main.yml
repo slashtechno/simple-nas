@@ -13,6 +13,26 @@
       group_vars/all/vault.yml.example says how to make it).
     quiet: true
 
+# service_users is shared by every host, so only the services this host runs are held to what Tinyauth can limit.
+- name: Check service_users names real users and services
+  ansible.builtin.assert:
+    that:
+      - unknown_users | length == 0
+      - unknown_services | length == 0
+      - not_limited | length == 0
+    fail_msg: >-
+      service_users must name Tinyauth users from vault_tinyauth_users and services from services.yml, and only
+      services Tinyauth can limit ({{ (protected_service_keys + ['pics']) | join(', ') }}); a service with accounts of
+      its own is decided by them. Unknown users: {{ unknown_users }}. Unknown services: {{ unknown_services }}.
+      Not limited by Tinyauth on this host: {{ not_limited }}.
+    quiet: true
+  vars:
+    unknown_users: "{{ service_users.values() | flatten | unique | difference(vault_tinyauth_users | map(attribute='name') | list) }}"
+    unknown_services: "{{ service_users.keys() | list | difference(services | map(attribute='key') | list) }}"
+    not_limited: >-
+      {{ service_users.keys() | list | select('in', enabled_service_keys)
+         | difference(protected_service_keys + ['pics']) | list }}
+
 # An OAuth provider without a whitelist accepts every account at that provider, and Tinyauth then lets it into every
 # name behind the login.
 - name: Check an OAuth provider has an email whitelist

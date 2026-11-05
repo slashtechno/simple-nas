@@ -139,7 +139,7 @@
         gitea_sso_enabled: true
         immich_sso_enabled: true
         pics_sso_enabled: true
-        pics_oidc_owner: owner@example.com
+        service_users: {pics: [owner, second], dozzle: [owner], backup_status: [owner]}
         vault_pics_oidc_secret: "pics$secret"
         vault_gitea_oidc_secret: "gitea$secret"
         vault_immich_oidc_secret: "immich$secret"
@@ -496,7 +496,11 @@
           - "'TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: \"https://pics.pi4.example.com/api/auth/oidc/callback\"' in tinyauth_compose"
           - "\"HUB_OIDC_ISSUER='https://auth.pi4.example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "\"HUB_OIDC_REDIRECT_URL='https://pics.pi4.example.com/api/auth/oidc/callback'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"HUB_OIDC_OWNER='owner@example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"HUB_OIDC_USERS='owner second'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          # service_users: the app id has dashes, the host is matched exactly, an unlisted service has no rule
+          - "'TINYAUTH_APPS_BACKUP-STATUS_USERS_ALLOW: \"owner\"' in tinyauth_compose"
+          - "'TINYAUTH_APPS_DOZZLE_CONFIG_DOMAIN: \"dozzle.pi4.example.com\"' in tinyauth_compose"
+          - "'TINYAUTH_APPS_CRAFTY' not in tinyauth_compose"
           - "\"HUB_OIDC_CLIENT_SECRET='pics$secret'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
           - >-

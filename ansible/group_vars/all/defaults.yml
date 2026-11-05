@@ -55,3 +55,10 @@ ntfy_topic: alerts
 
 # File on the host holding vault_ntfy_token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
+
+# Who may use a service: {service key: [Tinyauth user names]}. A service not listed is open to every user in
+# vault_tinyauth_users. Tinyauth enforces a list for the services behind the login (protected_service_keys in
+# services.yml), and pics reads its own from here; a service with accounts of its own (Immich, Gitea) is not accepted,
+# because its accounts already decide (docs/auth-reference.md#who-may-use-what).
+# Example: {dozzle: [alice], pics: [alice, bob]}
+service_users: {}

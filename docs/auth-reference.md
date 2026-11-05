@@ -51,7 +51,7 @@ Setup:
 Behaviour:
 
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
-- Every user in `vault_tinyauth_users` is offered to every app: Tinyauth cannot restrict a client to some of its users. An app with accounts of its own decides who may enter. Immich and Gitea create no accounts for a Tinyauth login. pics checks the user itself: `pics_oidc_owner` (a user name or email address) is the one account that may open it.
+- Every user in `vault_tinyauth_users` can sign in to an app, but the app decides who gets in: [Who may use what](#who-may-use-what).
 - **Immich settings:** with `immich_sso_enabled`, Immich reads its settings from a file the deploy writes and refuses to save changes from its settings page. The file carries the OAuth client and the password-login switch, and every other setting is Immich's default.
 
 With more than one domain in `caddy_private_domains`:
@@ -105,21 +105,23 @@ The login and its session cookie belong to the private domain. Tinyauth takes th
 
 A second Tinyauth for another domain does not fit: it needs its own users, container and forwarder snippet by hand. Tailscale Funnel gives another domain (`ts.net`), so the login cannot follow it.
 
-## Who may use what (authorization)
+## Who may use what
 
-Tinyauth checks who you are, and it can also limit each app to some of those users. This repo sets none of it: every user in `vault_tinyauth_users` reaches every protected service. Rules are per app, set as environment variables in `tinyauth_environment` (the labels form needs the Docker socket, which is left off):
+By default every user in `vault_tinyauth_users` reaches every service. `service_users` limits a service to some of them: Tinyauth user names per service key (the keys in `group_vars/all/services.yml`), in `vars.yml` or a host's `vars.yml`.
 
 ```yaml
-tinyauth_environment:
-  TINYAUTH_APPS_DOZZLE_USERS_ALLOW: alice      # only alice reaches dozzle.<domain>
-  TINYAUTH_APPS_DOCKGE_PATH_BLOCK: ^/api       # regex on the path
-  TINYAUTH_APPS_SCRUTINY_IP_ALLOW: 100.64.0.0/10
-  TINYAUTH_AUTH_ACLS_POLICY: deny              # nobody until an app lists them
+service_users:
+  pics: [alice, bob]
+  dozzle: [alice]
 ```
 
-The app name is the subdomain (`dozzle` for `dozzle.pi4.…`). Also available: `USERS_BLOCK`, `PATH_ALLOW` (skips the login for matching paths), `IP_BLOCK`, `IP_BYPASS`, and `OAUTH_WHITELIST` / `OAUTH_GROUPS` for provider logins. A request for a name no rule matches gets no restriction, so set the policy to `deny` if that matters. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A service not listed stays open to every Tinyauth user. How a listed service is limited depends on how it signs people in:
 
-An OIDC client (Gitea, Immich, pics) cannot be limited to some users this way; that is why pics checks `pics_oidc_owner` itself.
+- **Behind the Caddy login** (Dozzle, Scrutiny, Dockge, the backup dashboard and the other services with a login in front): the deploy gives Tinyauth a rule for that service's exact web address, so a user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`.
+- **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
+- **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
+
+Rules beyond a user list (a path, an IP range, `deny` as the default) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api` or `TINYAUTH_AUTH_ACLS_POLICY: deny`; the app name is the subdomain. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 
