@@ -13,14 +13,7 @@ Details for each part are in [services.md](./services.md); this page is the orde
 
 ## 1. Install and add the host
 
-```bash
-brew install ansible just uv      # on a Mac; uv runs the linters
-cd ansible && just deps
-cp inventory/hosts.yml.example inventory/hosts.yml   # add your host: ansible_host, ansible_user, key
-just setup home                   # "home" is the host's nickname in hosts.yml
-```
-
-`just setup` creates the vault password, `host_vars/home/vars.yml` and both vault files, with random values for every secret that can be random. It lists the ones left for you.
+Follow [First-time setup and Add a host](../ansible/README.md#first-time-setup) (steps 1 to 4) in `ansible/README.md`: install the tools, add the host to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname). `just setup` creates the vault password, `host_vars/home/vars.yml` and both vault files, with random values for every secret that can be random, and lists the ones left for you.
 
 ## 2. Fill in your values
 
