@@ -23,7 +23,7 @@ deps:
 _lint:
     uvx {{ ansible_lint }}
     uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
-    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files tools/edit.py
 
 # Both playbooks parse
 _syntax:
@@ -85,8 +85,9 @@ setup host:
     python3 tools/setup.py {{ host }}
 
 # Open a vars or vault file in an editor, asking for what you leave out (needs uv): `just edit vault --host pinas`
+[positional-arguments]
 edit *args:
-    uv run --quiet tools/edit.py {{ args }}
+    uv run --quiet tools/edit.py "$@"
 
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags: (_tags tags)
