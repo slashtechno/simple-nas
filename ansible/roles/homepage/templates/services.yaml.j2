@@ -21,7 +21,8 @@
 {% endif %}
     - {{ tile.name | to_json }}:
         href: {{ href | to_json }}
-        description: {{ tile.description | to_json }}
+{# With more than one host, the description names the host: the search lists tiles by name and description only, so two hosts' Dozzle tiles would look the same. #}
+        description: {{ (tile.description ~ ' · ' ~ host if groups['servers'] | length > 1 else tile.description) | to_json }}
         icon: {{ tile.icon | to_json }}
         siteMonitor: {{ href | to_json }}
 {% endfor %}

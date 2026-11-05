@@ -557,6 +557,10 @@
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
             | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.com:5001', 'http://peer.example.com:8090']
+          # With two hosts, the host is in each tile's description (the Homepage search shows no group).
+          - >-
+            (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
+            | map(attribute='value') | map(attribute='description') | select('search', ' · render-peer$') | list | length == 2
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.description == 'a: b'
           - >-
