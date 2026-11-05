@@ -18,7 +18,7 @@ Mount points below are the [quick start's](./quick-start.md); yours are the `mou
 
 ```
 /mnt/fast/                      fast drive
-├─ docker/<service>/            each service's own data: databases, configs, sessions
+├─ appdata/<service>/           each service's own data: databases, configs, sessions
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
 ├─ fast/                        Copyparty's /fast volume
 └─ restic-cache/                restic's cache
@@ -31,7 +31,6 @@ Mount points below are the [quick start's](./quick-start.md); yours are the `mou
 /var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")
 ```
 
-- `docker/` is the data of the services this repo deploys. It is not Docker's engine storage, which is the last line.
 - Every path is a setting in `group_vars/all/data-dirs.yml`.
 
 ## Examples

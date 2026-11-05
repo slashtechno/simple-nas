@@ -80,10 +80,10 @@
   notify: Reload udev rules
   when: not usb_automount_enabled | bool
 
-# The Docker directory on the fast drive. Each service role creates its own data directories below it; the backup role creates its own.
-- name: Create the Docker directory on the fast drive
+# The service data directory on the fast drive. Each service role creates its own data directories below it; the backup role creates its own.
+- name: Create the appdata directory on the fast drive
   ansible.builtin.file:
-    path: "{{ fast_drive }}/docker"
+    path: "{{ fast_drive }}/appdata"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"

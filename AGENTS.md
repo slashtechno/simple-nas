@@ -25,6 +25,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Assuming the root drive is a microSD. It can be NVMe, USB or SD; say "root drive".
 - Keying behaviour on a group name. Behaviour comes from `<name>_enabled` flags and the `drives` list.
 - Writing a default in two places, or a setting without a comment above it.
+- Keeping a legacy behaviour (an old path, name or setting still accepted) instead of migrating. Unless the owner says otherwise, do a one-time migration when it can be done cleanly: change the code to the new form, write the host steps as a plan in `plans/`, run them, leave no fallback. Keep legacy handling only where the tool is built for backwards compatibility and has a proper place for it, or when the owner asks.
 - "Now", "no longer", "used to be" or other history wording in code, comments and docs.
 - Repeating the same YAML example in several docs. Spell it out once and link to it.
 - Treating `--list-tasks` as proof that a `when:` works. It ignores `when:`; the render test is the check.

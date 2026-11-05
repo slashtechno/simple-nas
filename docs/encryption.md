@@ -56,16 +56,16 @@ List the folders that hold data, not a drive's mount point (`/mnt/data` would pu
 
 ```yaml
 encrypted_folders:
-  - /mnt/data/docker   # the databases and configs of every service this repo deploys (not Docker's engine storage)
+  - /mnt/data/appdata  # the databases and configs of every service this repo deploys
   - /mnt/data/stacks   # Dockge stacks
   - /mnt/data/photos   # Immich's photos
   - /mnt/data/files    # Copyparty's files
   - /mnt/data/apps     # pics' photos and trash, if pics is on
 ```
 
-- `docker` includes every database, Immich's Postgres too. Databases write often, so they are the slowest thing to encrypt: try your real workload first.
+- `appdata` includes every database, Immich's Postgres too. Databases write often, so they are the slowest thing to encrypt: try your real workload first.
 - `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
-- A service added later with its data under `{{ fast_drive }}/docker` is covered automatically. Anything else stays plain.
+- A service added later with its data under `{{ fast_drive }}/appdata` is covered automatically. Anything else stays plain.
 
 ## Dumps and backups
 

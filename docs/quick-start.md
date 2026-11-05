@@ -43,7 +43,7 @@ drives:
   - {uuid: "cccc-...", mount: /mnt/backup,  fstype: ext4, options: "defaults,nofail", roles: [backup]}    # restic repository
 
 encrypted_folders:               # what each folder holds: storage.md#what-lives-where
-  - /mnt/fast/docker
+  - /mnt/fast/appdata
   - /mnt/fast/stacks
   - /mnt/primary/photos
   - /mnt/primary/files
@@ -66,12 +66,12 @@ ssh <user>@<host> sudo tailscale up                     # open the link it print
 
 ## 4. Create the encrypted folders (before any service starts)
 
-`photos` and `files` are your personal data. `docker` (every service's databases and configs) and `stacks` (your Dockge apps' compose files and data) add the rest. With any of them encrypted, the services that use them wait for an unlock after each boot ([encryption.md](./encryption.md#how-it-works)).
+`photos` and `files` are your personal data. `appdata` (every service's databases and configs) and `stacks` (your Dockge apps' compose files and data) add the rest. With any of them encrypted, the services that use them wait for an unlock after each boot ([encryption.md](./encryption.md#how-it-works)).
 
 ```bash
 just deploy encryption,backup --limit home
 ssh -t <user>@<host>
-sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/fast/docker     # once per folder
+sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/fast/appdata     # once per folder
 sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/fast/stacks     # same passphrase each time
 sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/photos  # save each master key in your password manager
 sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/primary/files

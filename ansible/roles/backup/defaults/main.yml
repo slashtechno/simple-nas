@@ -39,7 +39,7 @@ rclone_config_dir: "/home/{{ ansible_user }}/.config/rclone"
 # hidden folder next to each that holds its gocryptfs.conf (the backups keep the conf, docs/encryption.md).
 # Used by roles/backup/tasks/check_coverage.yml and the offsite notice in cloud.yml.
 # Example: with Gitea and an encrypted folder /mnt/primary/photos it gives
-# [/mnt/fast/docker/gitea, /mnt/primary/photos, /mnt/primary/.photos.gocryptfs].
+# [/mnt/fast/appdata/gitea, /mnt/primary/photos, /mnt/primary/.photos.gocryptfs].
 backup_service_dirs: >-
   {{ query('ansible.builtin.vars',
            *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='data', default=[]) | flatten | select | list
