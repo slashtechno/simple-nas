@@ -1,7 +1,7 @@
 #!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["questionary==2.1.0"]
+# dependencies = ["questionary==2.1.1"]
 # ///
 """Open a vars or vault file in an editor: `just edit [vars|vault] [--host NAME | --all] [--editor CMD]`.
 
