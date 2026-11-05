@@ -20,7 +20,10 @@ A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 - Its offsite list is the same short default as any host (the base directory and Copyparty's config). Add the paths you want offsite to `restic_cloud_extra_rules`; restic sends only data that changed, but it reads all of it each run.
 - Its logs and database dumps are kept on the root drive in `/var/lib/backup-work`.
 
-The backups run as the ansible user, and the scripts refuse to run as anyone else: a run as root would leave root-owned files in the repository, which the nightly run could not read. Files only root can read (data owned by a container's user, a file nobody else can open) are skipped, and restic reports them as `error:` lines. The snapshot is saved without them, the old snapshots are still pruned, and then the run fails so the alert fires. A stack whose containers write as root needs its data dumped or its owner changed.
+The backups run as the ansible user, and the scripts refuse to run as anyone else: a run as root leaves root-owned files in the repository that the nightly run cannot read.
+
+- **Unreadable files are skipped.** Files only root can read (data owned by a container's user) are reported by restic as `error:` lines. The snapshot is saved without them, old snapshots are still pruned, and then the run fails so the alert fires.
+- **The fix** for a stack whose containers write as root: dump its data, or change its owner.
 
 Each backup and check run starts with `restic unlock`, which removes only stale locks. Without it a restic killed by a reboot leaves a lock that makes every later prune fail with "repository is already locked", and old snapshots then pile up.
 
@@ -64,7 +67,14 @@ What a host backs up is set by two rules lists: `restic_local_rules` for the dai
 - The restic password is not in any backup. It is in `vault_restic_password` (`group_vars/all/vault.yml`) and in `restic_password_file` on the host, and the vault password is in your password manager ([Disaster recovery](#disaster-recovery-all-drives-fail), step 1).
 - Both repositories always include `service_dumps_dir` as well.
 - With a local backup, the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules` (`roles/backup/tasks/check_coverage.yml`), so moving a service to a drive without a role cannot silently drop it from the backup. To leave a directory out on purpose (data you can lose), add `- <that directory>` to `restic_local_extra_rules`; it then counts as decided. Immich's raw database directory is not checked (it is excluded and reaches the backup through its dump). Encrypted folders are checked the same way. The offsite list is short on purpose and is not enforced; with the cloud backup on, each deploy prints the enabled services' data it leaves out.
-- Always excluded: the encrypted copy of each listed folder except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)), `restic_cache_dir`, the restic repository itself, the `**/.cache` folders, the data drives' `lost+found`, the restic password file and the rclone config (both hold logins), Cloudflare's tunnel token (`services_dir/cloudflared/token`, written from the vault on each deploy), Docker's own storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned by the container and regenerates after a restore), Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory, Crafty's own `backups/` archives, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)). The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
+- **Always excluded:**
+  - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups));
+  - `restic_cache_dir`, the restic repository itself, the `**/.cache` folders and the data drives' `lost+found`;
+  - logins: the restic password file, the rclone config, and Cloudflare's tunnel token (`services_dir/cloudflared/token`, rewritten from the vault on each deploy);
+  - rebuildable data: Docker's storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`, root-owned, regenerates after a restore), Crafty's own `backups/` archives;
+  - files that are unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)).
+  
+  The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
 - Dumps: one script per service with a live database, installed into `service_dump_scripts_dir` by that service's role (`roles/immich/files/dump.sh`, `roles/gitea/files/dump.sh`, `roles/garage/files/dump.sh`). `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files.
 
 ## Choosing what is backed up

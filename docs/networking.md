@@ -24,7 +24,7 @@ nmcli device wifi list         # networks the Pi can see right now
 
 - NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
 - Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale.
-- There is no switch-back automation. If one is needed, the options are a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`, root-owned, run with the interface name and an event such as `up`) or a systemd timer running `nmcli device wifi rescan` and `nmcli con up`.
+- There is no switch-back automation. To add one, use a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`) or a systemd timer running `nmcli`.
 - The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
 
 ## Rules for changing network config

@@ -81,11 +81,19 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 ## Add a host
 
-1. Make sure the host runs a Debian-family OS (Raspberry Pi OS, Debian 12 or newer, Ubuntu; Debian 11 ships restic 0.11, too old for the `- !` backup rules) with SSH and Python, and that your SSH key is on it. Ubuntu Server and Ubuntu Desktop work (Desktop uses more RAM and needs a keyboard-free setup, so install it only if you want one); skip Docker's snap, since the deploy installs Docker from apt and stops if it finds the snap. The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
+1. Check the host:
+   - Debian-family OS: Raspberry Pi OS, Debian 12 or newer, or Ubuntu (Server or Desktop; Desktop uses more RAM). Debian 11 is too old: its restic 0.11 cannot read the `- !` backup rules.
+   - SSH and Python are installed, and your SSH key is on the host.
+   - No Docker snap: the deploy installs Docker from apt and stops if it finds the snap.
+   - The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the root drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
 4. `just setup` also wrote `host_vars/<host>/vault.yml` and `group_vars/all/vault.yml` (the shared secrets: Cloudflare, restic). Add the secrets it listed for the services you enabled ([Vault](#vault-secrets)).
-5. Run `just deploy '' --limit <host> -K`. Join Tailscale once by hand afterwards: `sudo tailscale up`. If the host has `caddy_private_domains`, Caddy stops that first deploy until it has joined: join, then run the deploy again. Reboot the host once (`sudo reboot`): the drive guard (see [docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot. Then set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`): it works from anywhere, and the Homepage and the service links use it.
+5. Deploy and join the tailnet:
+   1. `just deploy '' --limit <host> -K`.
+   2. Join Tailscale once by hand: `sudo tailscale up`. With `caddy_private_domains` set, Caddy stops this first deploy until you have joined: join, then deploy again.
+   3. Reboot once (`sudo reboot`): the drive guard is armed only at boot ([docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)).
+   4. Set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`). It works from anywhere, and Homepage and the service links use it.
 6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
 
 ## Pick what you use
@@ -112,7 +120,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 | Command | Does |
 |---|---|
-| `just check` | Everything CI runs; run before committing. Steps, each runnable alone: `_lint` (ansible-lint, shellcheck, ruff; skipped rules and reasons in `.ansible-lint`), `_syntax` (both playbooks parse), `_vars` (a vault name or a setting with no default missing from its example file, a setting with a default in two files, a shared defaults file sorting after `vars.yml`), `_links` (a `file.md#anchor` naming no heading), `_precedence` (Ansible loads a copy of `group_vars` and the test checks that vars.yml beats the defaults, a host's vars beat vars.yml and versions.yml loads after the group-wide vars.yml), `_test` (renders every template with the example vars and shellchecks the scripts; fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`) |
+| `just check` | Everything CI runs; run before committing. Each step runs alone: `just _lint`, `_syntax`, `_vars`, `_links`, `_precedence`, `_test` ([what they check](#what-just-check-runs)) |
 | `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Uses `uv` for colour when installed (the script, `tools/settings.py`, declares its one dependency in its own header, and a recipe that outgrows a shell line is written the same way); without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
@@ -123,6 +131,15 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just deps` | Installs the Ansible collections and roles in `requirements.yml` |
 
 `--check` does not create directories, so on a first deploy a later step can fail with "not a directory". That is a preview limit, not a bug.
+
+### What `just check` runs
+
+- `_lint`: ansible-lint, shellcheck and ruff (skipped rules and reasons are in `.ansible-lint`).
+- `_syntax`: both playbooks parse.
+- `_vars`: a vault name or a setting with no default missing from its example file; a setting with a default in two files; a shared defaults file sorting after `vars.yml`.
+- `_links`: a `file.md#anchor` that names no heading.
+- `_precedence`: Ansible loads a copy of `group_vars` and the test checks that `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after the group-wide `vars.yml`.
+- `_test`: renders every template with the example vars and shellchecks the scripts. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
 
 ### Tags, `--limit` and `-K`
 

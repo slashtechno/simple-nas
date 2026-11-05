@@ -30,7 +30,7 @@ A playbook is a list of plays. Each play runs roles or tasks against a group of 
 ```
 
 - **`tags`**: run a subset, e.g. `--tags immich` or `--tags backup,storage`.
-- **tailnet**: the private network Tailscale builds between your devices; **MagicDNS** is Tailscale's DNS for it (`pi4.<tailnet>.ts.net`).
+- **tailnet**, **MagicDNS**: [glossary](./glossary.md#names-logins-and-the-web).
 - **`when`**: `immich_enabled | bool` is true only on a host whose `host_vars` set `immich_enabled: true`. Every service flag defaults to false (the base switches `storage_enabled` and `tailscale_enabled` default to true), so a service is skipped unless a host asks for it ([ansible/README.md](../ansible/README.md)).
 - **`import_role` vs `include_role`**: see section 4. This repo uses `import_role` so `--tags` reach inside the role.
 - **`pre_tasks`**: run before the others. `site.yml` uses them to check the OS, that Docker is not a snap that every web service has a port or a name, and that every app that signs in through Tinyauth has Tinyauth, Caddy and its vault secret; they carry `tags: [always]`.

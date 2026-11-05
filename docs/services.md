@@ -6,7 +6,18 @@ Every service is off until a host sets `<name>_enabled: true` in `ansible/host_v
 
 ## Every host
 
-The `common` role runs on every host. It installs base packages (curl, git, vim, jq, python3, ca-certificates, gnupg, python3-docker), sets the timezone, masks sleep and hibernate so a host never suspends, adds `ssh_authorized_keys`, adds the passwordless sudoers file, sets where Docker stores its data (`docker_data_root`), and, unless `terminal_tools_enabled: false`, installs the Ghostty terminfo entry (so `TERM=xterm-ghostty` works over SSH) zellij (a terminal multiplexer; the version and checksums are in `group_vars/all/versions.yml`) zoxide (`cd` jumps to frequently used directories: `cd photos` goes to the best match, `cd /path` and `cd ..` work as before; `cdi` picks from a list) bat (`cat` with syntax colours) and, on Debian 13 or Ubuntu 24.04 and later, eza (`ls` with colours; older hosts keep `ls`). zoxide, bat and eza are set up in the Ansible user's `~/.bashrc` for bash, interactive shells only: scripts, cron and `ssh host command` get the real `cd`, `cat` and `ls`, and `\cat` skips the alias.
+The `common` role runs on every host. It:
+
+- installs the base packages (curl, git, vim, jq, python3, ca-certificates, gnupg, python3-docker);
+- sets the timezone, masks sleep and hibernate so a host never suspends, adds `ssh_authorized_keys` and the passwordless sudoers file, and sets where Docker stores its data (`docker_data_root`);
+- unless `terminal_tools_enabled: false`, installs the terminal tools:
+  - the Ghostty terminfo entry, so `TERM=xterm-ghostty` works over SSH;
+  - zellij, a terminal multiplexer (version and checksums in `group_vars/all/versions.yml`);
+  - zoxide: `cd photos` jumps to the best-matching directory you use, `cd /path` and `cd ..` work as before, `cdi` picks from a list;
+  - bat: `cat` with syntax colours;
+  - eza: `ls` with colours, on Debian 13 or Ubuntu 24.04 and later (older hosts keep `ls`).
+
+zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactive bash only: scripts, cron and `ssh host command` get the real `cd`, `cat` and `ls`, and `\cat` skips an alias.
 
 ## Services
 
@@ -230,7 +241,13 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 ## Ad-hoc app platform
 
-**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. Set `dockge_port: ""` to make the Tinyauth login its only one: the published port skips Caddy and Tinyauth, so Dockge keeps its own login while the port is set ([Tinyauth](#tinyauth-login)). The deploy needs that first account before it can switch Dockge's login off, so create it and deploy again. With `dockge_port: ""` Dockge has no login of its own, so every name that reaches it must import `tinyauth_forwarder`, including a name in `caddy_sites`. With its login off, any container on the `services` network (your own stacks included) can reach Dockge, and so the Docker socket, without a password; only the published port and Caddy are guarded. Keep untrusted containers off that network, or leave `dockge_port` set to keep Dockge's own login. If Tinyauth is down or removed, Dockge has no way in from a browser: set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` to get Dockge's own login back, and use ssh until then. Ansible deploys Dockge only; the stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts (see [storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
+**Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit.
+
+- **Its login.** With a `dockge_port` set, the published port skips Caddy and Tinyauth, so Dockge keeps its own login ([Tinyauth](#tinyauth-login)). Set `dockge_port: ""` to make the Tinyauth login its only one. The deploy needs the first account before it can switch Dockge's login off: create it, then deploy again.
+- **With `dockge_port: ""`**, every name that reaches Dockge must import `tinyauth_forwarder`, including a name in `caddy_sites`.
+- **Risk.** With its login off, any container on the `services` network (your own stacks too) can reach Dockge, and so the Docker socket, without a password. Keep untrusted containers off that network, or leave `dockge_port` set.
+- **If Tinyauth is down or removed**, Dockge has no way in from a browser. Use ssh, or set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` to get its own login back.
+- **Ansible deploys Dockge only.** The stacks are yours and stay when Dockge is removed. A stack keeps its state in bind mounts ([storage.md](./storage.md#dockers-own-storage)), not Docker volumes, so deleting a stack is deleting its directory.
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 

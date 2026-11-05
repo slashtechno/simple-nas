@@ -12,11 +12,11 @@ Each entry has `mount` and usually `uuid`, and optionally `fstype` (default `ext
 | `primary` | Bulk data (photos, files) |
 | `backup` | The restic repo, service dumps, logs |
 
-Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/defaults.yml`. Using a role that no entry claims fails the deploy with a message naming the role. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
+Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives` in `group_vars/all/derived.yml`. Giving a role its own drive later moves that role's paths to the new mount point, and you copy the data there once.
 
 ## Examples
 
-The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it, and only on a host that enables the service that needs it.
+The rule is the same on every host: a drive claims roles, and service paths follow the roles. A host needs a drive for each role its enabled services use; an unclaimed role fails the deploy with a message naming it, only on a host that enables a service needing it.
 
 - `fast`: Dockge's stacks and data, Caddy's data, and the config and database directories of Immich, Copyparty (config and `hist`), Gitea, pics, Homebridge, Garage, Crafty, ntfy, Tinyauth, Dozzle and Scrutiny.
 - `primary`: Immich's photos, pics' photos and trash, and Copyparty's files and collab folder.
