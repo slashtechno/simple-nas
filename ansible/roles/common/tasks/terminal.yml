@@ -54,11 +54,11 @@
 # directory matching "photos"; `cd /some/path` and `cd ..` work as before). `--cmd cd` is what replaces cd.
 # bat is `cat` with syntax colours; Debian and Ubuntu name the program batcat. plain style and no pager keep
 # the output as copyable as cat's, and bat prints plain text by itself when its output is piped.
-# eza is `ls` with colours and a tidier layout (`ls -l`, `-a` and `-h` work as before). It is in apt from Debian 13 and
-# Ubuntu 24.04, so an older host keeps the real ls.
-# Both go at the end of the Ansible user's ~/.bashrc, after Debian's "return unless interactive" line, and
+# eza is `ls` with colours and a tidier layout (`ls -l` and `-a` work as before; sizes are already human-readable,
+# and `-h` adds a header row). It is in apt from Debian 13 and Ubuntu 24.04, so an older host keeps the real ls.
+# They go at the end of the Ansible user's ~/.bashrc, after Debian's "return unless interactive" line, and
 # aliases and shell functions exist only in interactive shells, so scripts, cron, `ssh host command` and sudo
-# still get the real cd and cat (`\cat` skips the alias by hand). blockinfile finds its own markers, so a rerun
+# still get the real cd, cat and ls (`\cat` skips an alias by hand). blockinfile finds its own markers, so a rerun
 # changes nothing.
 - name: Install zoxide and bat
   ansible.builtin.apt:

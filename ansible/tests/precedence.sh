@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Checks the order Ansible loads group_vars/all and host_vars with the real loader: the tracked defaults first, then
-# the owner's vars.yml, then versions.yml (which the owner cannot override), and a host's own vars last of the three.
+# the owner's vars.yml, then versions.yml (so the group-wide vars.yml cannot override a version), and a host's own vars last.
 # Runs on a copy of the tracked files, so it needs no vault and touches nothing real.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -30,4 +30,4 @@ expect g docker_network services         # a tracked default nobody overrode
 expect g timezone Owner/Zone             # vars.yml beats the tracked default
 expect h timezone Host/Zone              # host_vars beat vars.yml
 expect g gitea_enabled True              # vars.yml beats the flag's default (false)
-expect g caddy_version "$(sed -n 's/^caddy_version: *//p' $source_dir/group_vars/all/versions.yml)"   # versions.yml loads last
+expect g caddy_version "$(sed -n 's/^caddy_version: *//p' "$source_dir"/group_vars/all/versions.yml | tr -d "\"'")"   # versions.yml loads after vars.yml
