@@ -169,7 +169,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 3. In the ntfy app, add the server `http://<host-tailscale-name>:8090` with user `alerts` and your password, and subscribe to topic `alerts`. The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
-- The server denies everyone but the `alerts` user and its token, so the published port asks for a login even on the LAN. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
+- The server denies everyone but the `alerts` user and its token, so reading or publishing a topic asks for a login even on the LAN. The web page at `/alerts` loads without one because it is only the app's shell; it shows no messages until you sign in. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
 - `ntfy_alert_url` is the one setting that turns alerts on, in `group_vars/all/vars.yml` for every host or in one host's `vars.yml`. It needs `vault_ntfy_token`. A host without it sends nothing.
   - This repo's ntfy: the server address from step 3 plus the topic (`ntfy_topic`, `alerts`), such as `http://<host-tailscale-name>:8090/alerts` or `https://ntfy.<host>.<your domain>/alerts`.
   - A server this repo does not run: `https://ntfy.sh/<your-topic>`.
