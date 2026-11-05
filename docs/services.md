@@ -53,8 +53,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 Photo library with a machine-learning container. Photos are stored in `immich_upload_location` (primary drive) and its Postgres data in `immich_db_data_location` (fast drive).
 
 - Public access is a `cloudflared_ingress` entry pointing at `http://immich_server:2283`.
-- `immich_sso_enabled: true` lets a Tinyauth login open Immich ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)). Immich then reads its whole configuration from `/opt/services/immich/immich-config.json` and its admin settings page is read-only.
-- To keep a setting you need with SSO on, add it to `roles/immich/templates/immich-config.json.j2` (Administration > Settings shows the key and value to copy). A setting the template does not write gets Immich's default, not the value the page saved.
+- `immich_sso_enabled: true` lets a Tinyauth login open Immich; the deploy sets it through Immich's API, which needs an API key ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)). Immich's settings page stays editable.
 - Postgres is dumped before each backup by `roles/immich/files/dump.sh`, so the database is backed up consistently ([backups.md](./backups.md)).
 - To move `immich_upload_location` to another drive ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
 - Moving Immich to a newer image can run database migrations: read its release notes first ([ansible/README.md](../ansible/README.md#update-service-images)).

@@ -1,6 +1,0 @@
----
-# Immich reads its config file only at startup, so a changed secret needs a restart.
-- name: Restart Immich
-  community.docker.docker_compose_v2:
-    project_src: "{{ services_dir }}/immich"
-    state: restarted

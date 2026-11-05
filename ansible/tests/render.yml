@@ -508,12 +508,6 @@
             == ['auth.pi4.example.com', 'auth.second.example.com']
           - "'GITEA__oauth2_client__OPENID_CONNECT_SCOPES: \"openid email profile\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: \"false\"' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
-          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.clientSecret == 'immich$secret'"
-          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.issuerUrl == 'https://auth.pi4.example.com'"
-          - "not (lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).oauth.autoRegister"
-          - "(lookup('ansible.builtin.file', out_dir ~ '/immich/immich-config.json') | from_json).passwordLogin.enabled"
-          - "'IMMICH_CONFIG_FILE: /immich-config.json' in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
-          - "(services_dir ~ '/immich/immich-config.json:/immich-config.json:ro') in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'DOZZLE_AUTH_PROVIDER: forward-proxy' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'/var/run/docker.sock:/var/run/docker.sock:ro' in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/dozzle/docker-compose.yml')"
@@ -677,14 +671,11 @@
         tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/tinyauth/docker-compose.yml') }}"
         caddy_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/caddy/docker-compose.yml') }}"
         gitea_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/gitea/docker-compose.yml') }}"
-        immich_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/oidc-off/immich/docker-compose.yml') }}"
       ansible.builtin.assert:
         that:
           - "'TINYAUTH_OIDC_CLIENTS' not in tinyauth_compose"
           - "'GITEA__oauth2_client__' not in gitea_compose"
           - "'HUB_OIDC' not in lookup('ansible.builtin.file', out_dir ~ '/oidc-off/pics/pics.env')"
-          - "'IMMICH_CONFIG_FILE' not in immich_compose"
-          - "'immich-config.json' not in immich_compose"
           # The login page keeps its name inside the network whatever apps sign in through it.
           - "'auth.pi4.example.com' in caddy_compose"
         quiet: true

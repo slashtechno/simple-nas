@@ -52,7 +52,7 @@ Behaviour:
 
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
 - Every user in `vault_tinyauth_users` can sign in to an app, but the app decides who gets in: [Who may use what](#who-may-use-what).
-- **Immich settings:** with `immich_sso_enabled`, Immich reads its settings from a file the deploy writes and refuses to save changes from its settings page. The file carries the OAuth client and the password-login switch, and every other setting is Immich's default.
+- **Immich:** the deploy sets the sign-in block of Immich's settings through its API and leaves every other setting to Immich's settings page. It needs a non-empty `immich_port` and `vault_immich_api_key`: once Immich runs (deploy it with `immich_sso_enabled` off first), sign in as an admin, open Account Settings > API Keys > New API Key, tick only `systemConfig.read` and `systemConfig.update`, and put the key in the vault. Turning `immich_sso_enabled` off leaves the block as it is; clear it in Administration > Settings > Authentication.
 
 With more than one domain in `caddy_private_domains`:
 

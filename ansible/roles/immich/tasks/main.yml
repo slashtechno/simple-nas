@@ -1,6 +1,18 @@
 ---
 # Catches a missing or incomplete vault. (An encrypted vault with no password given fails earlier, when
 # Ansible loads the variables: use --vault-password-file .vault-pass or `just deploy`.)
+- name: Check what the Immich sign-in settings need
+  ansible.builtin.assert:
+    that:
+      - vault_immich_api_key is defined
+      - immich_port != ''
+    fail_msg: >-
+      immich_sso_enabled needs vault_immich_api_key (an admin's API key with the permissions systemConfig.read and
+      systemConfig.update) and a non-empty immich_port, because the deploy sets the sign-in through Immich's API on that port
+      (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+    quiet: true
+  when: immich_sso_enabled | bool
+
 - name: Check the Immich database password is in the vault
   ansible.builtin.assert:
     that: vault_immich_db_password is defined
@@ -25,28 +37,6 @@
     group: "999"
     mode: "0700"
 
-- name: Create Immich's compose directory for its config file
-  ansible.builtin.file:
-    path: "{{ services_dir }}/immich"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-  when: immich_sso_enabled | bool
-
-# Immich reads its whole configuration from this file when it is set, and refuses to save settings from its web UI while
-# it is set: a setting the template leaves out gets Immich's default, not the value the settings page saved.
-- name: Render Immich's config file
-  ansible.builtin.template:
-    src: immich-config.json.j2
-    dest: "{{ services_dir }}/immich/immich-config.json"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0640"
-  diff: false   # the client secret would show in --diff
-  notify: Restart Immich
-  when: immich_sso_enabled | bool
-
 - name: Deploy immich
   ansible.builtin.import_role:
     name: compose_service
@@ -63,3 +53,55 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
+
+# The API takes the whole settings object on every write, so read it, change only the sign-in block and write it back.
+# That leaves every other setting, and the fields of this block not named here, as saved in Immich's settings page.
+# Immich stores the settings in its database, so the write happens only when the block differs.
+- name: Set Immich's Tinyauth sign-in
+  when: immich_sso_enabled | bool
+  vars:
+    immich_api: "http://127.0.0.1:{{ immich_port }}/api"
+    immich_oauth: >-
+      {{ immich_settings.json.oauth | combine({
+        'enabled': true,
+        'issuerUrl': 'https://' ~ tinyauth_subdomain ~ '.' ~ caddy_private_domains[0],
+        'clientId': 'immich',
+        'clientSecret': vault_immich_oidc_secret,
+        'scope': 'openid email profile',
+        'signingAlgorithm': 'RS256',
+        'profileSigningAlgorithm': 'none',
+        'tokenEndpointAuthMethod': 'client_secret_post',
+        'storageLabelClaim': 'preferred_username',
+        'buttonText': 'Sign in with Tinyauth',
+        'autoRegister': false
+      }) }}
+  block:
+    - name: Wait for the Immich API
+      ansible.builtin.uri:
+        url: "{{ immich_api }}/server/ping"
+      register: immich_ping
+      until: immich_ping.status == 200
+      retries: 30
+      delay: 5
+      check_mode: false
+
+    - name: Read Immich's settings
+      ansible.builtin.uri:
+        url: "{{ immich_api }}/system-config"
+        headers:
+          x-api-key: "{{ vault_immich_api_key }}"
+      register: immich_settings
+      check_mode: false
+      no_log: true   # the answer holds the client secret
+
+    - name: Write Immich's settings with the sign-in block changed
+      ansible.builtin.uri:
+        url: "{{ immich_api }}/system-config"
+        method: PUT
+        headers:
+          x-api-key: "{{ vault_immich_api_key }}"
+        body_format: json
+        body: "{{ immich_settings.json | combine({'oauth': immich_oauth}) }}"
+      when: immich_settings.json.oauth != immich_oauth
+      changed_when: true   # uri reports a PUT as unchanged
+      no_log: true

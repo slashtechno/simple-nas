@@ -45,6 +45,10 @@ vault_gitea_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 # Only used if immich_sso_enabled is true (vars.yml): the client secret Tinyauth checks for Immich's OpenID Connect
 # login. Any long random string; `openssl rand -hex 24`.
 vault_immich_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
+# Only used if immich_sso_enabled is true (vars.yml): an API key of an Immich admin with exactly the permissions
+# systemConfig.read and systemConfig.update, which the deploy uses to set Immich's sign-in
+# (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Create it in Immich after its first start.
+vault_immich_api_key: "change-me-create-in-immich"
 # Only used if pics_sso_enabled is true (vars.yml): the client secret Tinyauth checks for pics' OpenID Connect login.
 # Any long random string; `openssl rand -hex 24`.
 vault_pics_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
