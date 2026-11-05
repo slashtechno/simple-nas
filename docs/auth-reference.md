@@ -45,7 +45,7 @@ OIDC stands for OpenID Connect, the login standard most apps support. The app se
 Setup:
 
 1. Turn it on for an app on the host: `gitea_sso_enabled: true`, `immich_sso_enabled: true` or `pics_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
-2. Put the client secret in the vault: `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` or `vault_pics_oidc_secret` (`openssl rand -hex 24`).
+2. The client secrets `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and `vault_pics_oidc_secret` are random values that `just setup <host>` adds to the host's vault; rerun it if they are missing.
 3. Deploy: `just deploy tinyauth,gitea,immich,pics --limit <host>`.
 
 Behaviour:
