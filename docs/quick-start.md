@@ -92,7 +92,7 @@ Then reboot once (`sudo reboot`; the drive guard arms at boot) and unlock: `sudo
 
 ## 6. Check it
 
-- `https://dockge.home.example.com`, `https://immich.home.example.com`, `https://copyparty.home.example.com` open after the Tinyauth login (`https://tinyauth.home.example.com`).
+- `https://dockge.home.example.com`, `https://immich.home.example.com`, `https://copyparty.home.example.com` open after the Tinyauth login (`https://auth.home.example.com`).
 - `https://dozzle.home.example.com` ([Dozzle](./services.md#dozzle-container-logs): every container's log) and `https://scrutiny.home.example.com` ([Scrutiny](./services.md#scrutiny-drive-health): each drive's SMART health; the deploy stops if no drive answers SMART).
 - Run a backup by hand (`/opt/services/scripts/backup-restic-local.sh`, [as your user](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).

@@ -51,14 +51,14 @@ copyparty_subdomain: copyparty
 
 # Gitea's name. Gitea builds its links from one address, gitea_root_url, which defaults to this name under the first
 # private domain; the other private domains also reach it.
-gitea_subdomain: gitea
+gitea_subdomain: git
 
 # The one address Gitea puts in links, clone URLs and its Tinyauth sign-in. Default: gitea_subdomain under the first
 # caddy_private_domains entry. Set it when Gitea's address is something else, for example a public name through a tunnel.
 gitea_root_url: >-
   {{ ('https://' ~ gitea_subdomain ~ '.' ~ caddy_private_domains[0] ~ '/')
      if gitea_subdomain != '' and caddy_private_domains | length > 0
-     else undef(hint='Set gitea_root_url (Gitea\'s address, e.g. https://gitea.example.com/) in group_vars/all/vars.yml, or set caddy_private_domains') }}
+     else undef(hint='Set gitea_root_url (Gitea\'s address, e.g. https://git.example.com/) in group_vars/all/vars.yml, or set caddy_private_domains') }}
 
 # pics' owner pages.
 pics_subdomain: pics
@@ -76,7 +76,7 @@ ntfy_subdomain: ntfy
 backup_status_subdomain: backup-status
 
 # Tinyauth's login page.
-tinyauth_subdomain: tinyauth
+tinyauth_subdomain: auth
 
 # Dozzle's name.
 dozzle_subdomain: dozzle

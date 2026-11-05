@@ -63,7 +63,7 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 
 Git hosting with an optional Actions runner.
 
-- **Address:** `gitea_root_url` defaults to `https://<gitea_subdomain>.<first private domain>/` (`https://gitea.pi4.example.com/`). Set it in `group_vars/all/vars.yml` or the host's `vars.yml` for any other address, such as a public name through a tunnel; a host with no `caddy_private_domains` must set it. The other private domains also reach Gitea, but links, clone URLs and Tinyauth sign-in use `gitea_root_url`.
+- **Address:** `gitea_root_url` defaults to `https://<gitea_subdomain>.<first private domain>/` (`https://git.pi4.example.com/`). Set it in `group_vars/all/vars.yml` or the host's `vars.yml` for any other address, such as a public name through a tunnel; a host with no `caddy_private_domains` must set it. The other private domains also reach Gitea, but links, clone URLs and Tinyauth sign-in use `gitea_root_url`.
 - **Names:** `gitea_domain` and `gitea_ssh_domain` default to the host name in `gitea_root_url`. Set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
@@ -180,7 +180,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 ## Tinyauth: login
 
-[Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy asks it about every request to a protected name, so the service needs no login of its own: a browser with a session passes, one without it is redirected (302) to the login page at `https://tinyauth.<first private domain>`, and any other client gets a 401, so scripts and apps fail instead of following a redirect. It suits a homelab, not setups that need roles and fine-grained permissions. Tinyauth and the protected services must run on the same host.
+[Tinyauth](https://tinyauth.app/docs/about/) (`tinyauth_enabled`) is a small login page. Caddy asks it about every request to a protected name, so the service needs no login of its own: a browser with a session passes, one without it is redirected (302) to the login page at `https://auth.<first private domain>`, and any other client gets a 401, so scripts and apps fail instead of following a redirect. It suits a homelab, not setups that need roles and fine-grained permissions. Tinyauth and the protected services must run on the same host.
 
 1. Make a login: add `name` and `password` to the list `vault_tinyauth_users` in `group_vars/all/vault.yml` (shape in `group_vars/all/vault.yml.example`; the deploy hashes the password, so the vault holds it in plain text). A second user is another list entry. Two-factor codes, sign in with GitHub or Google, Tailscale, session length: [auth-reference.md](./auth-reference.md).
 2. On the host, set `tinyauth_enabled: true` in `vars.yml`. It needs Caddy with a private domain: the page only has that https name.
