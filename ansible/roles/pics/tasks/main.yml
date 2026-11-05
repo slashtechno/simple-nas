@@ -17,8 +17,8 @@
   ansible.builtin.assert:
     that: service_users.pics | default([]) | length > 0
     fail_msg: >-
-      pics_sso_enabled needs service_users.pics, the Tinyauth user names that may open pics (without it every user in
-      vault_tinyauth_users would get in). Example: service_users: {pics: [alice]} (docs/auth-reference.md#who-may-use-what).
+      pics_sso_enabled needs service_users.pics: the Tinyauth user names that may open pics, e.g.
+      service_users: {pics: [alice]} (docs/auth-reference.md#who-may-use-what).
     quiet: true
   when: pics_sso_enabled | bool
 

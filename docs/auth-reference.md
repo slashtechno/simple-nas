@@ -63,7 +63,7 @@ With more than one domain in `caddy_private_domains`:
 First login:
 
 - **Immich** matches you by email. Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching Immich account is refused, so an Immich admin creates the account first.
-- **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first. The sign-in has to start on `gitea_root_url`, the address Tinyauth sends the browser back to.
+- **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first.
 
 ## Protect an app of your own
 
@@ -115,13 +115,13 @@ service_users:
   dozzle: [alice]
 ```
 
-A service not listed stays open to every Tinyauth user. How a listed service is limited depends on how it signs people in:
+How a listed service is limited depends on how it signs people in:
 
 - **Behind the Caddy login** (Dozzle, Scrutiny, Dockge, the backup dashboard and the other services with a login in front): the deploy gives Tinyauth a rule for that service's exact web address, so a user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are `copyparty_sso_admins`, not this list; `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-accounts-and-volumes)).
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
-A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by `TINYAUTH_APPS_<ID>_OAUTH_WHITELIST` instead. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. A service the host does not run is ignored. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by `TINYAUTH_APPS_<ID>_OAUTH_WHITELIST` instead. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 

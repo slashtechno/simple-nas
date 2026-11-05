@@ -6,7 +6,7 @@ copyparty_extra_conf: ""
 # Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
 copyparty_extra_ports: []
 # Tinyauth user names that get admin access (A) to /, /collab and /fast when copyparty_sso_enabled is true. A Tinyauth
-# user name is the Copyparty user name, matched exactly; what any other user may do is written in copyparty_extra_conf.
+# user name is the Copyparty user name, matched exactly.
 copyparty_sso_admins: []
 # The Copyparty admin login, from the vault.
 copyparty_user: "{{ vault_copyparty_user }}"

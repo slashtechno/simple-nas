@@ -29,7 +29,7 @@ gitea_sso_enabled: true
 pics_sso_enabled: true
 copyparty_sso_enabled: true
 copyparty_sso_admins: [angad]
-# Who may open pics (each is a full owner); a service not listed is open to every Tinyauth user.
+# Who may open pics (each is a full owner).
 service_users: {pics: [angad]}
 # Names under pinas.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).
 caddy_private_domains: [pinas.slashtechno.com]

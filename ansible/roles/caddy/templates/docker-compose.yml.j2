@@ -39,9 +39,7 @@ services:
       caddy_{{ site.n }}.forward_auth.copy_headers: Remote-User Remote-Name Remote-Email Remote-Groups
 {% set site.n = site.n + 1 %}
 {% endif %}
-      # One wildcard site per private domain. Caddy gets a single wildcard certificate for it and uses that for every
-      # site below, so the public certificate logs list *.<domain> and not each service name. A name nothing serves
-      # answers 404 over a valid certificate.
+      # One wildcard site per private domain (docs/caddy-reference.md#web-addresses-and-https).
 {% for domain in caddy_private_domains %}
       caddy_{{ site.n }}: "*.{{ domain }}"
       caddy_{{ site.n }}.respond: "404"

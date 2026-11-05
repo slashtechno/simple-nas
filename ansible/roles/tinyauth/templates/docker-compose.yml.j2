@@ -30,8 +30,8 @@ services:
       TINYAUTH_ANALYTICS_ENABLED: "false"
 {% set limited = protected_service_keys | select('in', service_users.keys() | list) | select('in', enabled_service_keys) | list %}
 {% if limited | length > 0 %}
-      # Who may use a service (service_users). Tinyauth finds the service by its exact name (CONFIG_DOMAIN), and an app id
-      # may not contain an underscore, so it is the key with dashes.
+      # Tinyauth finds the service by its exact name (CONFIG_DOMAIN), and an app id may not contain an underscore, so it is
+      # the key with dashes.
 {% for key in limited %}
       TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_CONFIG_DOMAIN: "{{ lookup('ansible.builtin.vars', key ~ '_subdomain') }}.{{ caddy_private_domains[0] }}"
       TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_USERS_ALLOW: "{{ service_users[key] | join(',') | replace('$', '$$') }}"
