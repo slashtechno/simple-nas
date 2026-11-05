@@ -140,6 +140,8 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`).
 
 - **Read the temperature:** `sudo smartctl -d sat -a /dev/sdX` (attribute 194). Scrutiny reads the same data ([services.md](./services.md)).
+- **Long self-tests** (`smartctl -t long`) can abort with "Aborted by host" through some bridges. A read-only `badblocks` scan is the alternative.
+- **Waking a sleeping drive:** a plain `smartctl -A` spins it up; `smartctl -n standby -A` skips a drive that is asleep.
 - **If the bridge answers `unsupported field in scsi command`:** its pass-through is broken. The fix is a `usb-storage.quirks` kernel option for that bridge, applied at boot (see smartmontools' USB page).
 
 Check the drive maker's operating range; a hard drive in a closed enclosure can run near its limit, and a fan on the enclosure lowers it by 10 to 15 °C. Reading the temperature wakes a spun-down drive. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`; start it with `systemd-run --unit=<name>`); stopping the unit kills it.
