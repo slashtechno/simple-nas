@@ -41,7 +41,7 @@ All commands below run from `ansible/`.
 | `host_vars/<host>/vars.yml` | yes | One host: its `<name>_enabled` flags, `drives`, data paths, direct link, tunnel hostnames, backup repository | Copy `host_vars/vars.yml.example`, keep only what the host needs |
 | `group_vars/all/vault.yml` | no (secrets) | Secrets shared by hosts: Cloudflare token and account, restic password, rclone token, ntfy token | Copy `vault.yml.example`, fill in, encrypt |
 | `host_vars/<host>/vault.yml` | no (secrets) | One host's service secrets (database passwords, Copyparty logins, Garage keys) | Copy `host_vars/vault.yml.example`, keep the keys its services use, encrypt |
-| `group_vars/all/derived.yml` | yes | Values worked out from the settings (`fast_drive`, `drive_mounts`, ...); not settings, so `just settings` leaves them out | Already there; not edited |
+| `group_vars/all/derived.yml` | yes | Values worked out from the settings and from `services.yml` (`fast_drive`, `drive_mounts`, `enabled_service_keys`, ...); not settings, so `just settings` leaves them out | Already there; not edited |
 | `group_vars/all/versions.yml` | yes | Every image version | Already there |
 | `group_vars/all/services.yml` | yes | One entry per service: its settings' prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container | Already there |
 
