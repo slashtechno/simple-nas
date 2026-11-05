@@ -114,7 +114,7 @@ Keywords any task can carry:
 
 ## 6. Variables and vault
 
-Which file wins, and how secrets are stored and read: [ansible/README.md](../ansible/README.md#change-a-setting) and [Vault](../ansible/README.md#vault-secrets).
+Which file wins, and how secrets are stored and read: [ansible/README.md](../ansible/README.md#which-files-hold-what) and [Vault](../ansible/README.md#vault-secrets).
 
 ## 7. Jinja: the less common expressions
 

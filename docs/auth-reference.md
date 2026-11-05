@@ -65,6 +65,39 @@ First login:
 - **Immich** matches you by email. Tinyauth makes that address `<user>@<private domain>` from the user name unless the user name is already an address, so give the Immich account that email (user `alice` on `pi4.example.com`: `alice@pi4.example.com`). A Tinyauth user with no matching Immich account gets a new one automatically.
 - **Gitea** creates no accounts. It shows its link page once, to attach the Tinyauth login to an existing Gitea account; a login with no account to attach stops there, so an admin creates the Gitea account first.
 
+## Protect an app of your own
+
+For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy with `caddy_private_domains`, and the app on the same host as Tinyauth.
+
+1. Join the `services` network, name the app under the host's first private domain, and add the `tinyauth_forwarder` label ([label syntax](./caddy-reference.md#label-syntax)):
+
+   ```yaml
+   services:
+     app:
+       image: example/app
+       networks: [services]
+       labels:
+         caddy: app.pi4.example.com
+         caddy.import: tinyauth_forwarder
+         caddy.reverse_proxy: "{{upstreams 8080}}"   # the port the app listens on inside the container
+   networks:
+     services:
+       external: true
+   ```
+
+2. Publish no port for the app: a published port skips Caddy and the login.
+3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login. To see the rule Caddy loaded: `docker exec caddy cat /config/caddy/Caddyfile.autosave | grep -A3 app.pi4`. A request without a browser (`curl`) gets 401, not the login page.
+
+The app now sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
+
+1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment` (`TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS`, `_NAME`, as in `roles/tinyauth/templates/docker-compose.yml.j2`) and give the app the issuer `https://auth.<first private domain>`. Not tested here.
+2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
+3. **It has an off switch (Dockge, which the role switches off itself):** turn the app's login off. Every user then shares one app account.
+4. **Its login is optional (webtop, Homepage):** leave it unset, so Tinyauth is the only login.
+5. **Nothing fits:** the app's own login stays and you sign in twice (Crafty).
+
+Clients that cannot log in through a web page (mobile apps, API tokens, git, WebDAV, webhooks) are stopped by the forwarder with a 401. Leave the label off for those, so the app's own login protects it (as for Immich and Gitea), or give them a second name without the label. A script can also send a Tinyauth user and password as HTTP basic auth, for a user without two-factor.
+
 ## Tailscale
 
 Two routes, neither used by the deploy by default and neither tested here:

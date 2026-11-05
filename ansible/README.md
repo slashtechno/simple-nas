@@ -86,7 +86,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
    - No Docker snap: the deploy installs Docker from apt and stops if it finds the snap.
    - The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` (the username you set when you imaged the root drive) and `ansible_ssh_private_key_file`. The key you give it (for example `pinas`) is its nickname and names its `host_vars` directory.
-3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run. A service that stores data needs the drive roles it uses; the deploy stops with a message naming a missing role.
+3. Run `just setup <host>`: it creates `host_vars/<host>/vars.yml` from `host_vars/vars.yml.example` and the vault files (step 4). Set `drives` (each drive's UUID, mount point, filesystem and roles; see [docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags for what the host should run.
 4. `just setup` also wrote `host_vars/<host>/vault.yml` and `group_vars/all/vault.yml` (the shared secrets: Cloudflare, restic). Add the secrets it listed for the services you enabled ([Vault](#vault-secrets)).
 5. Deploy and join the tailnet:
    1. `just deploy '' --limit <host> -K`.

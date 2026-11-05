@@ -132,7 +132,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
   - Names under a `caddy_private_domains` entry get their certificate through the Cloudflare DNS challenge, which needs no open ports ([Web addresses and HTTPS](#web-addresses-and-https)). For a name outside those domains Caddy tries the same challenge; use `tls internal` unless the Cloudflare token covers its zone.
 - **`caddy_sites` values.** Each directive becomes a label `caddy_N.<directive>`, so a value is one string and a dot in the key nests (`header.X-Frame-Options`); `{uri}` takes single braces, and a `$` is written `$$` (Compose reads it first).
 - **Checking a site.** Read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
-- **Docker socket.** The proxy has full control of Docker through it. Anything that can set labels on a container can publish a route.
+- **Docker socket.** Caddy mounts it ([glossary](./glossary.md#drives-and-docker)), so anything that can set labels on a container can publish a route.
 - **Modes.** The role runs the standalone mode (controller and server in one container). The controller/server split is for Swarm clusters.
 
 ## With cloudflared

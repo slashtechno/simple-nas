@@ -38,11 +38,11 @@ backup_local_enabled: true
 caddy_private_domains: [home.example.com]   # apps get https://<app>.home.example.com, on your tailnet only
 
 drives:
-  - {uuid: "aaaa-...", mount: /mnt/fast,    fstype: ext4, options: "defaults,nofail", roles: [fast]}      # databases, configs, stacks
+  - {uuid: "aaaa-...", mount: /mnt/fast,    roles: [fast]}      # databases, configs, stacks
   - {uuid: "bbbb-...", mount: /mnt/primary, fstype: ext4, options: "defaults,nofail", roles: [primary]}   # photos, files
   - {uuid: "cccc-...", mount: /mnt/backup,  fstype: ext4, options: "defaults,nofail", roles: [backup]}    # restic repository
 
-encrypted_folders:               # what each folder holds: storage.md#what-lives-where
+encrypted_folders:               # what each holds: [storage.md](./storage.md#what-lives-where)
   - /mnt/fast/appdata
   - /mnt/fast/stacks
   - /mnt/primary/photos
@@ -91,7 +91,7 @@ Then reboot once (`sudo reboot`; the drive guard arms at boot) and unlock: `sudo
 ## 6. Check it
 
 - `https://dockge.home.example.com`, `https://immich.home.example.com`, `https://copyparty.home.example.com` open after the Tinyauth login (`https://auth.home.example.com`).
-- Run a backup by hand as your user, not root: `/opt/services/scripts/backup-restic-local.sh`. Then `restic ls latest | grep gocryptfs.conf` should print one line per folder ([backups.md](./backups.md)).
+- Run a backup by hand (`/opt/services/scripts/backup-restic-local.sh`, [as your user](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).
 
 ## After every reboot

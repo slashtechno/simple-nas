@@ -23,7 +23,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 
 ## Services
 
-- **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)). A service that needs a role the host has not claimed fails the deploy with a message naming the role.
+- **Drive roles** (`fast`, `primary`, `backup`) are claimed by entries in the host's `drives` ([storage.md](./storage.md)).
 - **Caddy name** in the table means `caddy_enabled` with at least one `caddy_private_domains` entry.
 - **Vault entries** go in `host_vars/<host>/vault.yml` (service secrets) or `group_vars/all/vault.yml` (shared secrets): [ansible/README.md](../ansible/README.md#vault-secrets).
 
@@ -188,19 +188,13 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 - With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
-- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`, next to its other `caddy` labels ([label syntax](./caddy-reference.md#label-syntax)); a name in `caddy_sites` opts in with the same import. The app receives the signed-in user in the `Remote-User`, `Remote-Name` and `Remote-Email` headers. Example: [SilverBullet](https://silverbullet.md/) expects an authentication proxy ([docs](https://edge.silverbullet.md/Authentication)), so leave its `SB_USER` unset.
+- An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`; a name in `caddy_sites` opts in with the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). Example: [SilverBullet](https://silverbullet.md/) expects an authentication proxy ([docs](https://edge.silverbullet.md/Authentication)), so leave its `SB_USER` unset.
 
 ### How an app joins
 
-The label above is the way in for every app; what the app can do next removes the second login. Try these in order:
+How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is described under [Ad-hoc app platform](#ad-hoc-app-platform); Crafty has none, so behind Tinyauth you sign in twice ([Crafty](#crafty-minecraft-servers)).
 
-1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts and permissions ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
-2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.
-3. **It has an off switch, written by the role (Dockge):** the deploy sets `disableAuth` in Dockge's database and opens Dockge straight into the account it already has, so Dockge never asks. Every Dockge account collapses into that one ([Ad-hoc app platform](#ad-hoc-app-platform)).
-4. **Its own login is optional (webtop, Homepage):** leave the app's login unset and Tinyauth is the only one. Check the app's docs for how, and keep its port unpublished, since the port skips Tinyauth.
-5. **Otherwise its own login stays** (`own_login: true`, so Tinyauth is not put in front of it at all). Crafty is not in the list above: it has no off switch or header trust, so behind Tinyauth you sign in twice ([Crafty](#crafty-minecraft-servers)).
-
-Every deploy sets the app's own login in both directions, so turning Tinyauth off, or publishing a port again, brings the app's own login back.
+Every deploy sets an app's own login in both directions, so turning Tinyauth off, or publishing a port again, brings the app's own login back.
 
 ## Dozzle: container logs
 
@@ -273,8 +267,8 @@ A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all y
 
 **Caddy** (`caddy_enabled`) gives apps names from container labels; syntax in [caddy-reference.md](./caddy-reference.md). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)). Without it, apps are reachable over Tailscale at `http://<host>:<port>`. Stacks that want a name join the `services` network.
 
-Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `ansible-playbook teardown.yml -e only=dockge,caddy,cloudflared --limit <host> --vault-password-file .vault-pass`.
+Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)); otherwise reach apps over Tailscale. A stack is reachable from the tunnel when it joins `services`; the ingress `service` is then `http://<container_name>:<port>`. Removal: `just teardown <host> -e only=dockge,caddy,cloudflared` ([teardown](../ansible/README.md#disable-or-remove-a-service)).
 
-Both mount the Docker socket: anyone who can reach their UI or set a label controls Docker on that host.
+Both mount the [Docker socket](./glossary.md#drives-and-docker): anyone who can reach their UI or set a label controls Docker on that host.
 
 Stacks, Dockge's data and Caddy's data sit on the host's `fast` drive, so the host's backup covers them ([backups.md](./backups.md)).

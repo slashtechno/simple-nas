@@ -105,7 +105,7 @@ Deleting files does not erase them from a drive. Re-format a drive that held pla
 
 ### Turning it off
 
-Efficient and safe: like step 4 above, the move deletes each file once copied, so you need room for the largest file plus 1%, not a second copy. Stop the services that use the folder first.
+The same checksum move as step 4, in the other direction. Stop the services that use the folder first.
 
 ```bash
 cd /mnt/data/photos && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt   # the folder must be unlocked
@@ -115,7 +115,7 @@ cd /mnt/data/photos.plain && find . -type f -exec sha256sum {} + | sort -k2 > /t
 diff /tmp/before.txt /tmp/after.txt && echo identical
 ```
 
-If the move stops half way, run the same `rsync` again. When the lists match:
+If it stops half way, run the same `rsync` again. When the lists match:
 
 1. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
 2. `sudo umount /mnt/data/photos && sudo chattr -i /mnt/data/photos`
