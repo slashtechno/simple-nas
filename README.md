@@ -8,8 +8,6 @@ Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD 
 
 Everything except Docker and the base packages is opt-in per host: [ansible/README.md](./ansible/README.md). The services and what each needs: [docs/services.md](./docs/services.md#services). Drive roles: [docs/storage.md](./docs/storage.md).
 
-**Drives and network layout:**
-
 ```
 A host
 ├─ root drive      (OS)
