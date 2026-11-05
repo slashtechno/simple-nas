@@ -46,7 +46,15 @@
   ansible.builtin.set_fact:
     cloudflared_our_target: "{{ cloudflared_tunnel_id ~ cloudflared_tunnel_suffix }}"
     cloudflared_live_targets: "{{ cloudflared_live_tunnels.json.result | map(attribute='id') | product([cloudflared_tunnel_suffix]) | map('join') | list }}"
-    cloudflared_dns_records: "{{ cloudflared_zone_lists.results | map(attribute='json.result') | flatten }}"
+    # Each record gets its zone's id, which the listing does not carry; the delete task needs it.
+    cloudflared_dns_records: >-
+      {%- set records = [] -%}
+      {%- for zone in cloudflared_zone_lists.results -%}
+      {%- for record in zone.json.result -%}
+      {%- set _ = records.append(record | combine({'zone_id': zone.item})) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ records }}
 
 # A second record next to ours also stops the deploy: a name with an A record beside the tunnel's CNAME resolves
 # unpredictably.
