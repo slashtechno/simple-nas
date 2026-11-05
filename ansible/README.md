@@ -93,7 +93,9 @@ Then create the files in the table above and [add each host](#add-a-host). The f
    2. Join Tailscale once by hand: `sudo tailscale up`. With `caddy_private_domains` set, Caddy stops this first deploy until you have joined: join, then deploy again.
    3. Reboot once (`sudo reboot`): the drive guard is armed only at boot ([docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)).
    4. Set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`). It works from anywhere, and Homepage and the service links use it.
-6. Optional, by hand, Raspberry Pi OS only (the `rpi-connect` packages come from the Raspberry Pi repository, not Ubuntu or Debian): Raspberry Pi Connect (remote shell from a browser). Ansible leaves it alone because its sign-in needs a short-lived per-device key. On Lite: `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, and open the URL it prints. To remove it, run `rpi-connect signout` and delete the device on connect.raspberrypi.com.
+6. Optional, by hand: Raspberry Pi Connect (remote shell from a browser), on Raspberry Pi OS only (the `rpi-connect` packages are not in Ubuntu or Debian). Ansible leaves it alone because its sign-in needs a short-lived per-device key.
+   - **Install (Lite):** `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, then open the URL it prints.
+   - **Remove:** `rpi-connect signout`, then delete the device on connect.raspberrypi.com.
 
 ## Pick what you use
 
@@ -120,7 +122,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | Command | Does |
 |---|---|
 | `just check` | Everything CI runs; run before committing. Each step runs alone: `just _lint`, `_syntax`, `_vars`, `_links`, `_precedence`, `_test` ([what they check](#what-just-check-runs)) |
-| `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Uses `uv` for colour when installed (the script, `tools/settings.py`, declares its one dependency in its own header, and a recipe that outgrows a shell line is written the same way); without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
+| `just settings [word]` | Every setting with its default, what it does and whether a host sets it; a word filters by name. Colour needs `uv`; without it, or without `just`, run `python3 tools/settings.py [word]` for the same text in plain |
 | `just setup <host>` | First-run setup for a host: `.vault-pass`, `host_vars/<host>/vars.yml` and random vault secrets ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml` with `--vault-password-file .vault-pass`, optionally `--tags`, e.g. `just deploy immich`. Flags go after the tags: `just deploy '' --limit pinas -K` |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)), e.g. `just teardown pi4 -e only=garage` |
@@ -142,7 +144,8 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ### Tags, `--limit` and `-K`
 
-- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name; `ansible-playbook site.yml --list-tags` lists them. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. `just deploy` and `just preview` stop with the list of tags when one matches no role (a typo, or `backup-status` for `backup_status`); plain `ansible-playbook --tags` would run no role and still exit successfully. A tag only selects a role; a role whose flag is false on the host is still skipped.
+- **Tags** pick which roles run. Each role in `site.yml` has a tag with the role's name; `ansible-playbook site.yml --list-tags` lists them. `just deploy immich,pics` runs only those. The checks at the top of the playbook always run. A tag only selects a role; a role whose flag is false on the host is still skipped.
+- **A tag that matches no role** (a typo, or `backup-status` for `backup_status`): `just deploy` and `just preview` stop and list the tags. Plain `ansible-playbook --tags` would run no role and still exit successfully.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host in `servers`.
 - **`-K`** (`--ask-become-pass`) asks for the host's sudo password. It is needed only for a host's first deploy.
 
@@ -205,7 +208,15 @@ ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass     
 ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
 
-Drive mounts, the restic password and Tailscale state are never touched. Also left: the plaintext service dumps and job logs on the backup drive (`<backup drive>/service-dumps` and `<backup drive>/logs`, or `/var/lib/backup-work` on a host with only the offsite backup; they hold a full database dump and Garage's node key), Docker volumes ([storage.md](../docs/storage.md)), Dockge stacks, the backup snapshots (the data stays restorable until retention prunes them), and your own `cloudflared_ingress` rule for the service, which you delete from `vars.yml`. A repo service's Caddy name goes when its flag is false and `just deploy caddy --limit <host>` has run; an app you run in Dockge carries its own labels. Verify a restore before `remove_data=true`; the paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
+Teardown never touches drive mounts, the restic password or Tailscale state. It also leaves:
+
+- **Dumps and logs on the backup drive:** `<backup drive>/service-dumps` and `<backup drive>/logs` (`/var/lib/backup-work` on a host with only the offsite backup). They hold a full database dump and Garage's node key.
+- **Docker volumes** ([storage.md](../docs/storage.md)) and **Dockge stacks**.
+- **Backup snapshots:** the data stays restorable until retention prunes them.
+- **Your `cloudflared_ingress` rule** for the service: delete it from `vars.yml`.
+- **The Caddy name:** it goes when the flag is false and `just deploy caddy --limit <host>` has run. An app you run in Dockge carries its own labels.
+
+Verify a restore before `remove_data=true`. The paths it deletes are the `data` and `no_backup` settings of the service's entry in `group_vars/all/services.yml`.
 
 Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, if `dockge_port` is `""`, Dockge without a login. To get Dockge's own login back, set `tinyauth_enabled: false` (or publish `dockge_port`) and run `just deploy dockge --limit <host>` ([services.md](../docs/services.md#ad-hoc-app-platform)).
 
