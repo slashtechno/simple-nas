@@ -32,11 +32,11 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 
 ## First backup
 
-The first run into an empty repository reads and hashes everything, so it takes hours for hundreds of GB over USB.
+The first run into an empty repository reads and hashes everything, so it takes hours for hundreds of GB over USB (about 54 minutes for 286 GiB on a Raspberry Pi 4 with a USB backup drive; later runs take under a minute).
 
 - Start it by hand rather than waiting for the cron job, detached so a dropped SSH session does not stop it: `setsid nohup /opt/services/scripts/backup-restic-local.sh > /tmp/first-backup.log 2>&1 < /dev/null &`, as the ansible user.
 - Start it so that it ends before 02:00, when the cron job runs the same script.
-- Files the backup user cannot read are reported as `error:` lines. restic still saves the snapshot, and the run then exits 3 and fires the alert ([Switching backups on](#switching-backups-on)).
+- Files the backup user cannot read are reported as `error:` lines. restic still saves the snapshot (restic exits 3), and the job then exits 1 and fires the alert ([Switching backups on](#switching-backups-on)).
 - Afterwards `restic snapshots` and `restic check` show a good repository ([Connecting](#connecting)).
 
 ## What runs automatically
