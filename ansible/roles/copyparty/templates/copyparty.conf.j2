@@ -1,7 +1,6 @@
 # Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
-{# With single sign-on, each user in service_users.copyparty is the Copyparty user of the same name, with admin access. #}
-{% set sso_admins = service_users.copyparty | default([]) if copyparty_sso_enabled | bool else [] %}
+{% set sso_admins = copyparty_sso_admins if copyparty_sso_enabled | bool else [] %}
 [global]
   e2dsa
   e2ts

@@ -117,7 +117,7 @@ service_users:
 
 A service not listed stays open to every Tinyauth user. How a listed service is limited depends on how it signs people in:
 
-- **Behind the Caddy login** (Dozzle, Scrutiny, Dockge, the backup dashboard and the other services with a login in front): the deploy gives Tinyauth a rule for that service's exact web address, so a user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`, and then needs `service_users.copyparty`: its users are also its admins.
+- **Behind the Caddy login** (Dozzle, Scrutiny, Dockge, the backup dashboard and the other services with a login in front): the deploy gives Tinyauth a rule for that service's exact web address, so a user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are `copyparty_sso_admins`, not this list; `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-accounts-and-volumes)).
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 

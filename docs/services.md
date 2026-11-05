@@ -107,8 +107,18 @@ Keep the password in a vault entry you name yourself.
 
 `copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it.
 
-- It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` (the name of a header only Caddy sends; `openssl rand -hex 24`) and `service_users.copyparty` ([who may use what](./auth-reference.md#who-may-use-what)): the Tinyauth user names that may open the browser name. Each is the Copyparty user of the same name, matched exactly, with admin access to `/`, `/collab` and `/fast`; there are no read-only SSO users. The deploy stops if the list is empty. Tinyauth sends groups only for LDAP and OAuth logins, so Copyparty gets names, not Tinyauth groups.
+- It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` (the name of a header only Caddy sends; `openssl rand -hex 24`) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. A Tinyauth user name is the Copyparty user name, so every other signed-in user has only what `copyparty_extra_conf` grants them (below); `service_users.copyparty` can limit who may open the page at all. Tinyauth sends groups only for LDAP and OAuth logins, so Copyparty gets names, not Tinyauth groups.
 - The browser name is the only lane behind the login. The published port and the Cloudflare tunnel hostname keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
+- **A user with access to one folder only:** give the user a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`, `/fast`). Copyparty refuses the same volume in both the generated and the extra file, so the generated `/`, `/collab` and `/fast` cannot be extended.
+
+  ```yaml
+  copyparty_extra_conf: |
+    [/shared]
+      /files/shared
+      accs:
+        rw: friend      # a Tinyauth user name; r for read-only
+  ```
+
 - A share link on the browser name asks for the Tinyauth login as well. Copyparty's docs expect the share prefix (`/shares`) to be exempt from the login ([shares](https://github.com/9001/copyparty#shares)); hand links out on the published port or the tunnel hostname instead.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`. Image versions are in `ansible/group_vars/all/versions.yml` (see "Update service images" in [ansible/README.md](../ansible/README.md)).

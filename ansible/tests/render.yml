@@ -133,12 +133,13 @@
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
         copyparty_sso_enabled: true
+        copyparty_sso_admins: [sso-admin]
         vault_copyparty_idp_key: "idp$key"
         # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
         gitea_sso_enabled: true
         immich_sso_enabled: true
         pics_sso_enabled: true
-        service_users: {pics: [owner, second], dozzle: [owner], backup_status: [owner], copyparty: [sso-admin]}
+        service_users: {pics: [owner, second], dozzle: [owner], backup_status: [owner]}
         vault_pics_oidc_secret: "pics$secret"
         vault_gitea_oidc_secret: "gitea$secret"
         vault_immich_oidc_secret: "immich$secret"
