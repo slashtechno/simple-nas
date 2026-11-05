@@ -105,7 +105,23 @@ Deleting files does not erase them from a drive. Re-format a drive that held pla
 
 ### Turning it off
 
-For each folder: unlock, `rsync -aHAX` the files to a plain folder, point the service at it, remove the path from `encrypted_folders`, run `just deploy encryption,backup --limit <host>`, then `sudo umount <folder>`, `sudo chattr -i <folder>` and delete both folders. The role removes the scripts when no folder is left; gocryptfs stays installed.
+Efficient and safe: like step 4 above, the move deletes each file once copied, so you need room for the largest file plus 1%, not a second copy. Stop the services that use the folder first.
+
+```bash
+cd /mnt/data/photos && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt   # the folder must be unlocked
+sudo mkdir /mnt/data/photos.plain
+sudo rsync -aHAX --remove-source-files /mnt/data/photos/ /mnt/data/photos.plain/
+cd /mnt/data/photos.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
+diff /tmp/before.txt /tmp/after.txt && echo identical
+```
+
+If the move stops half way, run the same `rsync` again. When the lists match:
+
+1. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
+2. `sudo umount /mnt/data/photos && sudo chattr -i /mnt/data/photos`
+3. `sudo rm -r /mnt/data/photos /mnt/data/.photos.gocryptfs && sudo mv /mnt/data/photos.plain /mnt/data/photos` (the `mv` is instant: same drive), then start the service.
+
+The role removes the scripts when no folder is left; gocryptfs stays installed. The ciphertext you deleted is no longer needed, and neither are the master key and passphrase for that folder.
 
 `teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is a listed folder fails in both states (unlocked it deletes the files, then cannot remove the mount point; locked, the folder is immutable): turn encryption off for it first.
 
