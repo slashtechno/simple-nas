@@ -57,8 +57,8 @@ Behaviour:
 With more than one domain in `caddy_private_domains`:
 
 - Tinyauth itself and its issuer address are on the first domain.
-- **Immich** sends the address you opened it on, so Tinyauth accepts the Immich sign-in on every domain.
-- **pics** (its name under the first domain) and **Gitea** (`gitea_root_url`) send one fixed address, so Tinyauth sign-in works on that name only. Their password login works on every name.
+- **Gitea** (`gitea_root_url`) sends one fixed address, so Tinyauth sign-in works on that name only; its password login works on every name.
+- **pics** returns you to the address you opened it on; list any besides the Caddy names (say `http://<host>:8100`) in `pics_extra_origins`. This needs a pics version where `HUB_OIDC_REDIRECT_URL` is optional.
 
 First login:
 

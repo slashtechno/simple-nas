@@ -22,7 +22,7 @@
 #              at /apps/<key>/<folder> (also its path inside the container), from the directory the setting <dir> names. The admin has full access to it too. Put
 #              no delete (d) in perms where the app must not destroy files: Copyparty then renames instead of overwriting.
 #   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them
-#              (an app that sends the address it was opened on gets one per address it is opened at: immich_extra_origins).
+#              (an app that sends the address it was opened on gets one per address it is opened at: immich_extra_origins, pics_extra_origins).
 #              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: vault_<key>_oidc_secret) on
 #              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
 #              of the account id the app stores, so changing it orphans every linked account. The app's own side
@@ -60,7 +60,8 @@ services:
   - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
      copyparty: {volumes: [{folder: photos, dir: pics_photos_dir, perms: rwm}, {folder: trash, dir: pics_trash_dir, perms: rwmd}]},
      container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
-     oidc: ["https://{{ pics_subdomain }}.{{ caddy_private_domains[0] | default('') }}/api/auth/oidc/callback"]}
+     oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ pics_subdomain ~ '.') | list + pics_extra_origins)
+               | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
      port: 8581, icon: homebridge, description: HomeKit}
   - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
