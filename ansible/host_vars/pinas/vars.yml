@@ -20,9 +20,9 @@ usb_automount_enabled: true   # plug in a card or drive and it shows up under /d
 backup_status_enabled: true   # read-only web dashboard for backup status/snapshots
 homepage_enabled: true   # start page with a tile for every service on every host
 caddy_enabled: true   # names with real certificates for the services here
-tinyauth_enabled: true   # a login in front of every web service here that has no login of its own: https://auth.pinas.slashtechno.com
-dozzle_enabled: true   # container logs: https://logs.pinas.slashtechno.com
-scrutiny_enabled: true   # drive health: https://disks.pinas.slashtechno.com
+tinyauth_enabled: true   # a login in front of every web service here that has no login of its own: https://tinyauth.pinas.slashtechno.com
+dozzle_enabled: true   # container logs: https://dozzle.pinas.slashtechno.com
+scrutiny_enabled: true   # drive health: https://scrutiny.pinas.slashtechno.com
 # Names under pinas.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).
 caddy_private_domains: [pinas.slashtechno.com]
 # The root of the server: https://pinas.slashtechno.com opens the start page.
