@@ -104,7 +104,7 @@ copyparty_extra_conf: |
 
 Keep the password in a vault entry you name yourself.
 
-`copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it.
+`copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it. It adds to Copyparty's own passwords and does not replace them: the same Copyparty answers a Tinyauth user on the browser name and a password on every other address.
 
 - It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. A Tinyauth user name is the Copyparty user name, so every other signed-in user has only what `copyparty_extra_conf` grants them (below); `service_users.copyparty` can limit who may open the page at all.
 - The browser name is the only lane behind the login. The published port and the Cloudflare tunnel hostname keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
@@ -196,7 +196,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 2. On the host, set `tinyauth_enabled: true` in `vars.yml`. It needs Caddy with a private domain: the page only has that https name.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
-- With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
+- With `tinyauth_enabled`, every service this repo deploys that has a Caddy name is behind the login, except the ones marked `own_login: true` in `group_vars/all/services.yml`: Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page, and Tinyauth is its own login. `own_login` means "not behind Tinyauth by default"; Copyparty's browser name is behind the login with `copyparty_sso_enabled` ([Copyparty accounts and volumes](#copyparty-accounts-and-volumes)). To exempt another service, add `own_login: true` to its entry.
 - A protected service is served under the first `caddy_private_domains` entry only: the session cookie covers one parent domain. The published host port, if any, is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`; a name in `caddy_sites` opts in with the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). Example: [SilverBullet](https://silverbullet.md/) expects an authentication proxy ([docs](https://edge.silverbullet.md/Authentication)), so leave its `SB_USER` unset.
 
