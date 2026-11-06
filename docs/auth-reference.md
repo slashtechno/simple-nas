@@ -115,7 +115,7 @@ How a listed service is limited depends on how it signs people in:
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
-A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by the email whitelists above (pics checks its own list by name or email). Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by the email whitelists above (pics checks its own list by name). Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 
@@ -138,13 +138,11 @@ Password, GitHub, Google and Tailscale logins each give the session a different 
 
 ## Access gotchas
 
-- **An email opens the whole login.** Every user with an `email:` can sign in with GitHub or Google, and reaches every service behind the login that has no `service_users` entry. Give an email only to people you trust there, or list them per service.
-- **A service with no `service_users` entry is open** to every user (to the whole tailnet, for a Tailscale login).
-- **A name in a list is trusted for any login that produces it.** `copyparty_sso_admins` and `service_users.pics` match the session name, and a GitHub login is named after its account. Do not give an `email:` to someone whose GitHub login equals another user's name: they would be that user in Copyparty, pics, Immich and Gitea. Only people with an `email:` can sign in with GitHub, so a stranger with that login is refused.
-- **Provider emails are not verified by Tinyauth.** Use GitHub or Google, whose primary email is confirmed. A provider where anyone may register any address lets anyone onto the whitelist.
-- **No two-factor** on GitHub, Google or Tailscale logins; the provider's own security is the protection.
-- **Do not set a whitelist** in `tinyauth_environment`: an empty one lets every account at the provider in (the deploy refuses it).
-- **Renaming a user** gives it a new Immich and Gitea id: relink those accounts.
+- An `email:` opens the login: that person can sign in with GitHub or Google and reach every service without a `service_users` entry. A service with no entry is open to every user (the whole tailnet, for Tailscale).
+- Lists match names. Do not give an `email:` to someone whose GitHub login equals another user's name: they would be that user in Copyparty, pics, Immich and Gitea.
+- Use GitHub or Google. Tinyauth does not verify a provider's emails, so a provider where anyone may register any address lets anyone in.
+- GitHub, Google and Tailscale logins skip two-factor.
+- Renaming a user gives it a new Immich and Gitea id: relink those accounts.
 
 ## Session length
 
