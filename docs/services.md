@@ -217,7 +217,7 @@ The socket is mounted read-only because Dozzle only reads, not because that limi
 
 ## Scrutiny: drive health
 
-[Scrutiny](https://github.com/AnalogJ/scrutiny) (`scrutiny_enabled`) is a dashboard of every drive's SMART health and history. It has no login of its own: it needs `tinyauth_enabled` and Caddy with a `caddy_private_domains` entry, and is served at `https://scrutiny.<private domain>`.
+[Scrutiny](https://github.com/Starosdev/scrutiny) (the Starosdev fork of AnalogJ/scrutiny) (`scrutiny_enabled`) is a dashboard of every drive's SMART health and history. It has no login of its own: it needs `tinyauth_enabled` and Caddy with a `caddy_private_domains` entry, and is served at `https://scrutiny.<private domain>`.
 
 1. On the host, set `scrutiny_enabled: true` and run `just deploy scrutiny --limit <host>`.
 2. The role reads the drive list from `smartctl --scan` at deploy time; set `scrutiny_devices` to a list of device paths when that list is wrong for the host. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".

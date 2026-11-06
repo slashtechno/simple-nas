@@ -56,8 +56,9 @@ tinyauth_image: ghcr.io/tinyauthapp/tinyauth:v5.2.0
 # Dozzle (container logs): https://github.com/amir20/dozzle/releases
 dozzle_image: amir20/dozzle:v11.4.0
 
-# Scrutiny (disk SMART dashboard): https://github.com/AnalogJ/scrutiny/releases
-scrutiny_image: ghcr.io/analogj/scrutiny:v0.10.0-omnibus
+# Scrutiny (disk SMART dashboard), the Starosdev fork of AnalogJ/scrutiny: https://github.com/Starosdev/scrutiny/releases
+# Image tags have no "v". A release tags its image a few minutes after the GitHub release.
+scrutiny_image: ghcr.io/starosdev/scrutiny:1.79.1-omnibus
 
 # pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
 pics_version: main
