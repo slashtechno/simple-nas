@@ -136,6 +136,16 @@ Password, GitHub, Google and Tailscale logins each give the session a different 
 
 `service_users` takes only names from `vault_tinyauth_users` (the deploy checks), so a name that exists only at Tailscale (`you_example.com`) needs that check widened first; neither has been tried together.
 
+## Access gotchas
+
+- **An email opens the whole login.** Every user with an `email:` can sign in with GitHub or Google, and reaches every service behind the login that has no `service_users` entry. Give an email only to people you trust there, or list them per service.
+- **A service with no `service_users` entry is open** to every user (to the whole tailnet, for a Tailscale login).
+- **A name in a list is trusted for any login that produces it.** `copyparty_sso_admins` and `service_users.pics` match the session name, and a GitHub login is named after its account. Do not give an `email:` to someone whose GitHub login equals another user's name: they would be that user in Copyparty, pics, Immich and Gitea. Only people with an `email:` can sign in with GitHub, so a stranger with that login is refused.
+- **Provider emails are not verified by Tinyauth.** Use GitHub or Google, whose primary email is confirmed. A provider where anyone may register any address lets anyone onto the whitelist.
+- **No two-factor** on GitHub, Google or Tailscale logins; the provider's own security is the protection.
+- **Do not set a whitelist** in `tinyauth_environment`: an empty one lets every account at the provider in (the deploy refuses it).
+- **Renaming a user** gives it a new Immich and Gitea id: relink those accounts.
+
 ## Session length
 
 `TINYAUTH_AUTH_SESSIONEXPIRY` is seconds, default one day, and it slides while you use the site. `TINYAUTH_AUTH_SESSIONMAXLIFETIME` caps the total age (default none). Sessions are stored in `tinyauth_data_dir`, so a redeploy keeps them.
