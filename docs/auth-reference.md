@@ -30,7 +30,7 @@ tinyauth_environment:
 ```
 
 - **Who may sign in.** A provider accepts any of its accounts, so the whitelists limit it by email: only the emails of the users in `vault_tinyauth_users` that have an `email:`, and a limited service lets in only the emails of the users `service_users` lists for it. The deploy stops if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
-- **One person or two.** Tinyauth identifies a login by user name, not email, and cannot link two names. A GitHub login is named after the GitHub account (`slashtechno`); a password login is named in `vault_tinyauth_users`. With different names, apps see two people: Copyparty gives each its own account and Immich and Gitea link each separately. With the same name (`{name: slashtechno, password: ..., email: you@example.com}`) they see one. Access does not depend on this: the email whitelist lets either login in. If you keep two names, list the GitHub one wherever it needs rights (`copyparty_sso_admins`).
+- **Name the user after the GitHub login**, with your email: `{name: slashtechno, password: ..., email: you@example.com}` (lower-case letters, digits and `-`). Both logins then give apps the same name, so they see one person. If the names differ: [one person, several names](#one-person-several-names).
 - `google` is the same with `GOOGLE`, but Google gives the user name `you_example.com`, so name the user that to match. Another provider (Pocket ID, Authentik, Keycloak) is any other id plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
 ## Sign in with Tinyauth (OIDC)
@@ -115,7 +115,7 @@ How a listed service is limited depends on how it signs people in:
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
-A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by the email whitelists above. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by the email whitelists above (pics checks its own list by name or email). Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 
@@ -125,6 +125,16 @@ Two routes, neither used by the deploy by default:
 - **[tsidp](https://github.com/tailscale/tsidp)** is a separate small service that makes your tailnet an OpenID Connect provider; Tinyauth then uses it as another provider (the three URLs above, and `TINYAUTH_OAUTH_PROVIDERS_<ID>_CLAIMS_USERNAME: username`). Neither project documents the pair.
 
 A Tailscale login is checked like a password user: by user name against `service_users`, not by the email whitelists, and it skips two-factor. A service without a `service_users` entry is open to the whole tailnet, so list who may use it.
+
+## One person, several names
+
+Password, GitHub, Google and Tailscale logins each give the session a different name, and Tinyauth cannot link them: a name that is not a user in `vault_tinyauth_users` is another person to the apps. Where the same person needs the same access under another name, add that name there too:
+
+- `copyparty_sso_admins` and `service_users.pics`: list both names.
+- Behind the Caddy login: a GitHub or Google login is let in by email, so there is nothing to add. A password or Tailscale login is let in by name, so list that name in `service_users`.
+- Immich and Gitea: the second name is a new login; link it to the same account by hand ([first login](#sign-in-with-tinyauth-oidc)).
+
+`service_users` takes only names from `vault_tinyauth_users` (the deploy checks), so a name that exists only at Tailscale (`you_example.com`) needs that check widened first; neither has been tried together.
 
 ## Session length
 
