@@ -62,7 +62,7 @@ With more than one domain in `caddy_private_domains`:
 
 First login:
 
-- **Immich** returns you to the address you opened it on, so list any address besides the Caddy names (a tunnel hostname) in `immich_extra_origins`. It matches a Tinyauth login to an account by email, and Tinyauth cannot send a custom one: it sends `<user>@<private domain>` unless the user name is already an address. To use your real email, sign in to Immich with its password and link the Tinyauth login in the user settings (the OAuth section); the link replaces the email match. A Tinyauth user with no linked or matching account is refused.
+- **Immich** returns you to the address you opened it on, so list any address besides the Caddy names (a tunnel hostname) in `immich_extra_origins`. It matches a Tinyauth login to an account by email, and Tinyauth makes `<user>@<private domain>` unless the user has an `email` in `vault_tinyauth_users` ([shape](../ansible/group_vars/all/vault.yml.example)); give the Immich account that address. Immich links an account to one Tinyauth login only, so a GitHub login with another user name can be refused for an account already linked to the password login.
 - **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first.
 
 ## Protect an app of your own

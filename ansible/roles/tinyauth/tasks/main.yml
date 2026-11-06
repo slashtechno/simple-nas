@@ -13,6 +13,15 @@
       group_vars/all/vault.yml.example says how to make it).
     quiet: true
 
+# Tinyauth reads the setting name in lower case, so a user name with a capital or a . or _ would get no email.
+- name: Check the Tinyauth users with an email have a plain name
+  ansible.builtin.assert:
+    that: item.name is match('^[a-z0-9]+$')
+    fail_msg: "The Tinyauth user {{ item.name }} has an email, so its name may use only lower-case letters and digits."
+    quiet: true
+  loop: "{{ vault_tinyauth_users | selectattr('email', 'defined') | list }}"
+  loop_control: {label: "{{ item.name }}"}
+
 # service_users is shared by every host, so only the services this host runs are held to what Tinyauth can limit.
 - name: Check service_users names real users and services
   ansible.builtin.assert:

@@ -17,7 +17,8 @@ vault_restic_password: "change-me-generate-with-openssl-rand-base64-32"
 # Google Drive login for the cloud backup: the JSON that `rclone authorize "drive" --drive-scope drive.file`
 # prints on a computer with a browser (docs/backups.md). Optional: leave empty if rclone.conf is set up by hand.
 vault_rclone_gdrive_token: ""
-# Tinyauth logins: a list of name and password, plus an optional totp (a base32 two-factor secret, docs/auth-reference.md).
+# Tinyauth logins: a list of name and password, plus an optional totp (a base32 two-factor secret, docs/auth-reference.md)
+# and an optional email (the address apps see; lower-case letters and digits in the name when set).
 # The deploy hashes the passwords; none is stored hashed. Shared by every host with Tinyauth; per-host logins:
 # docs/auth-reference.md.
 vault_tinyauth_users:
