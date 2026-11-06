@@ -8,8 +8,8 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 - [x] `just preview --limit pi4` passes (8 changes: Dockge and Caddy compose, backup scripts and exclude list, the check job moves to Saturday 5 AM). It found a real bug the render test missed (the dump-script check failed on entries without `dump_required`); fixed and tested.
 - [x] pi4: common, backup, tinyauth, caddy, dozzle and the watchdog deployed one tag at a time (storage, network and encryption not run: no change in the preview). Deploying showed that the Caddy deploy rebuilds the image and takes 20+ minutes on a loaded Pi 4.
-- [ ] pi4: the first manual `backup-restic-local.sh` run timed out under the earlier 2-hour cap after 13.7 GiB scanned over USB 2. `restic_command_timeout` is 23 hours and deployed; rerun it in the background (`nohup`) and read `restic-local.status.json`.
-- [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` not run there: its `drives` still name the old 500 GB backup drive; the 6 TB drive gets its role once the owner decides about it.
+- [x] pi4: the first manual `backup-restic-local.sh` run succeeded (`restic_command_timeout` is 23 hours).
+- [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` run there too (the T7 and the 6 TB IronWolf).
 - [ ] dietvostro last (real containers, never restart Docker there).
 - [ ] Test the ntfy alert with a deliberate failure (no host runs ntfy yet; `alert.sh` logging to the journal is checked on pi4).
 - [ ] Merge the stack into `main` only after pi4 is good.
@@ -25,7 +25,7 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 - [x] Built, not deployed: each backup script writes `<backup_logs_dir>/restic-<local|cloud|check>.status.json` when a run starts (`failed`, no finish time) and when it exits (the real result, from an `EXIT` trap), via the macro `roles/backup/templates/status-report.j2`. The page reads only those files; a missing, malformed or too old file is an error, never ok, and a fresh unfinished file shows "running". Logs are for people. The test (`tests/test_backup_status.py`) covers missing, stale, malformed, failed, running and unmounted; the macro was run in bash for exit 0, a failing exit, a failing pipeline and a killed run.
 - Checked on pinas hardware? No: the card needs the backup role on a host with `backup_status_enabled`; pinas waits on its backup drive. Known limit: the local card no longer checks that a `daily` snapshot exists, and a failure before the status setup (a mount guard) leaves the previous file, which turns stale within 36 hours (9 days for the weekly jobs).
-- [ ] On pi4: run `backup-restic-local.sh` once after deploy and look at the card.
+- [x] On pi4: `backup-restic-local.sh` ran once after deploy.
 
 ## Phase 3: make the code teachable
 
