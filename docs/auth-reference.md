@@ -26,17 +26,12 @@ Make an OAuth app at the provider with the callback URL `https://auth.<first pri
 tinyauth_environment:
   TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTID: "the client id"
   TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "{{ vault_tinyauth_github_secret }}"
-  TINYAUTH_OAUTH_WHITELIST: "you@example.com"
   TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
 ```
 
-- **Always set the whitelist.** The deploy stops if a provider is set without it. A login through a public provider is only as restrictive as this list.
-  - **A regex** for the whole value, wrapped in slashes: `/@example\.com$/`.
-  - **Or a comma-separated list** of exact addresses.
-  - A value that mixes the two matches no regex and only the exact entries.
-- `google` is the same with `GOOGLE` in the names. Another provider (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` in the same pattern ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
-- Password logins stay available next to the provider: the role needs `vault_tinyauth_users`.
-- Only a provider that sends groups puts them in the app's `Remote-Groups` header; GitHub and Google send none.
+- **One person, one user.** Name the user in `vault_tinyauth_users` after the person's GitHub login and give it that account's primary email (`{name: slashtechno, password: ..., email: you@example.com}`; lower-case letters, digits and `-`). The password login and the GitHub login then give apps the same name, email and `sub`, so Copyparty, `service_users`, pics, Immich and Gitea see one person. Tinyauth cannot link two different names.
+- **The whitelists are made for you.** Only the emails of these users may sign in with the provider, and a limited service lets in only the emails of the users `service_users` lists for it. The deploy stops if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
+- `google` is the same with `GOOGLE`, but Google gives the user name `you_example.com`, so name the user that to match. Another provider (Pocket ID, Authentik, Keycloak) is any other id plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
 ## Sign in with Tinyauth (OIDC)
 
@@ -51,18 +46,17 @@ Setup:
 Behaviour:
 
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
-- Every user in `vault_tinyauth_users` can sign in to an app, but the app decides who gets in: [Who may use what](#who-may-use-what).
-- **Immich:** the deploy sets the sign-in block of Immich's settings through its API and leaves every other setting to Immich's settings page. It needs a non-empty `immich_port` and `vault_immich_api_key`: once Immich runs (deploy it with `immich_sso_enabled` off first), sign in as an admin, open Account Settings > API Keys > New API Key, tick only `systemConfig.read` and `systemConfig.update`, and put the key in the vault. Turning `immich_sso_enabled` off leaves the block as it is; clear it in Administration > Settings > Authentication.
+- Every user in `vault_tinyauth_users` can sign in, but the app decides who gets in: [Who may use what](#who-may-use-what).
+- **Immich:** the deploy sets only the sign-in block of Immich's settings, through its API; the settings page stays editable. It needs a non-empty `immich_port` and `vault_immich_api_key`: deploy Immich with `immich_sso_enabled` off first, sign in as an admin, create a key under Account Settings > API Keys with only `systemConfig.read` and `systemConfig.update`, and put it in the vault. Turning `immich_sso_enabled` off leaves the block; clear it under Administration > Settings > Authentication.
 
-With more than one domain in `caddy_private_domains`:
+Addresses an app is opened at (the first private domain is Tinyauth's own):
 
-- Tinyauth itself and its issuer address are on the first domain.
+- **Immich and pics** return you to the address you opened them on: Tinyauth trusts every Caddy name, and `immich_extra_origins` / `pics_extra_origins` add others (a tunnel hostname, `http://<host>:8100`). pics needs a version where `HUB_OIDC_REDIRECT_URL` is optional.
 - **Gitea** (`gitea_root_url`) sends one fixed address, so Tinyauth sign-in works on that name only; its password login works on every name.
-- **pics** returns you to the address you opened it on; list any besides the Caddy names (say `http://<host>:8100`) in `pics_extra_origins`. This needs a pics version where `HUB_OIDC_REDIRECT_URL` is optional.
 
 First login:
 
-- **Immich** returns you to the address you opened it on, so list any address besides the Caddy names (a tunnel hostname) in `immich_extra_origins`. It matches a Tinyauth login to an account by email, and Tinyauth makes `<user>@<private domain>` unless the user has an `email` in `vault_tinyauth_users` ([shape](../ansible/group_vars/all/vault.yml.example)); give the Immich account that address. Immich links an account to one Tinyauth login only, so a GitHub login with another user name can be refused for an account already linked to the password login.
+- **Immich** matches a login to an account by email: the user's `email` in `vault_tinyauth_users`, else `<user>@<private domain>`. Give the Immich account that address.
 - **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first.
 
 ## Protect an app of your own
@@ -71,7 +65,7 @@ For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy
 
 1. Name the app under the host's first private domain and add the `tinyauth_forwarder` label, on the `services` network ([label syntax](./caddy-reference.md#label-syntax)).
 2. Publish no port for the app: a published port skips Caddy and the login.
-3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login. To see the rule Caddy loaded: `docker exec caddy cat /config/caddy/Caddyfile.autosave | grep -A3 app.pi4`. A request without a browser (`curl`) gets 401, not the login page.
+3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login (`curl` gets 401).
 
 The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
 
@@ -121,7 +115,7 @@ How a listed service is limited depends on how it signs people in:
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
-A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by `TINYAUTH_APPS_<ID>_OAUTH_WHITELIST` instead. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
+A list limits the users in `vault_tinyauth_users`; a person who signs in with GitHub or Google is limited by the email whitelists above. Rules beyond a user list (a path, an IP range) are Tinyauth environment variables in `tinyauth_environment`, for example `TINYAUTH_APPS_DOZZLE_PATH_BLOCK: ^/api`. The app id is the service key in capitals with dashes (`BACKUP-STATUS`). Leave `TINYAUTH_AUTH_ACLS_POLICY` at its default: `deny` locks out every service not listed in `service_users`. Details: [Tinyauth access controls](https://tinyauth.app/docs/guides/access-controls/).
 
 ## Tailscale
 
@@ -129,6 +123,8 @@ Two routes, neither used by the deploy by default:
 
 - **Continue with Tailscale** is built into Tinyauth: `TINYAUTH_TAILSCALE_ENABLED: "true"`, `TINYAUTH_TAILSCALE_APITOKEN` (an API token from the Tailscale admin console, in the vault) and `TINYAUTH_TAILSCALE_TAILNET`. It works out who you are from the device your request comes from, so Tinyauth must see the real client IP: also set `TINYAUTH_AUTH_TRUSTEDPROXIES` to the `services` network's subnet (`docker network inspect services`). Tagged devices are not recognised.
 - **[tsidp](https://github.com/tailscale/tsidp)** is a separate small service that makes your tailnet an OpenID Connect provider; Tinyauth then uses it as another provider (the three URLs above, and `TINYAUTH_OAUTH_PROVIDERS_<ID>_CLAIMS_USERNAME: username`). Neither project documents the pair.
+
+A Tailscale login is checked like a password user: by user name against `service_users`, not by the email whitelists, and it skips two-factor. A service without a `service_users` entry is open to the whole tailnet, so list who may use it.
 
 ## Session length
 

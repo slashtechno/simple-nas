@@ -127,8 +127,8 @@
         caddy_sites:
           homepage.pi4.example.com: {reverse_proxy: "homepage:3000"}
           "gh.pi4.example.com": {redir: "https://github.com{uri}"}
-        vault_tinyauth_users: [{name: one, password: "pass$word", email: "one@real.example"}, {name: two, password: second, totp: JBSWY3DPEHPK3PXP}]
-        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret", TINYAUTH_OAUTH_WHITELIST: "me@example.com"}
+        vault_tinyauth_users: [{name: owner, password: "pass$word", email: "owner@real.example"}, {name: second, password: second, totp: JBSWY3DPEHPK3PXP}]
+        tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret"}
         immich_port: ""
         immich_extra_origins: ["https://photos.example.org"]
         copyparty_port: ""
@@ -476,9 +476,13 @@
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
           - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
-          - "'TINYAUTH_AUTH_USERS: ' ~ \"'one:$$2b$$\" in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
-          - "'TINYAUTH_AUTH_USERATTRIBUTES_ONE_EMAIL: \"one@real.example\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
-          - "'USERATTRIBUTES_TWO' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_AUTH_USERS: ' ~ \"'owner:$$2b$$\" in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'TINYAUTH_AUTH_USERATTRIBUTES_OWNER_EMAIL: \"owner@real.example\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          - "'USERATTRIBUTES_SECOND' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
+          # A GitHub login is limited by the emails of the listed users, globally and per limited app.
+          - "'TINYAUTH_OAUTH_WHITELIST: \"owner@real.example\"' in tinyauth_compose"
+          - "'TINYAUTH_APPS_DOZZLE_OAUTH_WHITELIST: \"owner@real.example\"' in tinyauth_compose"
+          - "'TINYAUTH_APPS_BACKUP-STATUS_OAUTH_WHITELIST: \"owner@real.example\"' in tinyauth_compose"
           - "':JBSWY3DPEHPK3PXP\\'' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'pass$word' not in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'TINYAUTH_APPURL: \"https://auth.pi4.example.com\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"

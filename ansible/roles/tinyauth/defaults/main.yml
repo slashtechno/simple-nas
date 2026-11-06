@@ -4,3 +4,6 @@
 # lifetime are set (docs/auth-reference.md). Keep a secret in a vault.yml and refer to it by its name in double braces.
 # Example: {TINYAUTH_AUTH_SESSIONEXPIRY: "604800"} keeps a login for a week.
 tinyauth_environment: {}
+# Whether tinyauth_environment sets an OAuth login (GitHub, Google, ...). Then the email whitelists are made from
+# vault_tinyauth_users and service_users (docs/auth-reference.md#sign-in-with-github-google-or-another-openid-connect-provider).
+tinyauth_oauth_enabled: "{{ tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_PROVIDERS_') | list | length > 0 }}"

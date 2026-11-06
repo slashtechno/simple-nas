@@ -13,11 +13,11 @@
       group_vars/all/vault.yml.example says how to make it).
     quiet: true
 
-# Tinyauth reads the setting name in lower case, so a user name with a capital or a . or _ would get no email.
+# Tinyauth reads the setting name in lower case, so a user name with a capital or an underscore would get no email.
 - name: Check the Tinyauth users with an email have a plain name
   ansible.builtin.assert:
-    that: item.name is match('^[a-z0-9]+$')
-    fail_msg: "The Tinyauth user {{ item.name }} has an email, so its name may use only lower-case letters and digits."
+    that: item.name is match('^[a-z0-9-]+$')
+    fail_msg: "The Tinyauth user {{ item.name }} has an email, so its name may use only lower-case letters, digits and -."
     quiet: true
   loop: "{{ vault_tinyauth_users | selectattr('email', 'defined') | list }}"
   loop_control: {label: "{{ item.name }}"}
@@ -50,19 +50,24 @@
       {{ service_users.keys() | list | select('in', enabled_service_keys)
          | difference(protected_service_keys + ['pics']) | list }}
 
-# An OAuth provider without a whitelist accepts every account at that provider, and Tinyauth then lets it into every
-# name behind the login.
-- name: Check an OAuth provider has an email whitelist
+# An OAuth login accepts every account at the provider unless a whitelist names the allowed emails (an empty one allows
+# all), and Tinyauth then lets it into every name behind the login. The whitelists are made from the users' emails.
+- name: Check an OAuth login can only be used by the people with an email
   ansible.builtin.assert:
-    that: >-
-      'TINYAUTH_OAUTH_WHITELIST' in tinyauth_environment
-      or tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_PROVIDERS_.*_WHITELIST$') | list | length > 0
+    that:
+      - vault_tinyauth_users | selectattr('email', 'defined') | list | length > 0
+      - tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_(WHITELIST|PROVIDERS_.*_WHITELIST)$') | list | length == 0
+      - without_email | length == 0
     fail_msg: >-
-      tinyauth_environment sets an OAuth provider but no TINYAUTH_OAUTH_WHITELIST, so every account at that provider
-      could sign in to every name behind this login. Add TINYAUTH_OAUTH_WHITELIST with the email addresses allowed
-      (docs/auth-reference.md).
+      tinyauth_environment sets an OAuth login, so give each person who may use it an email in vault_tinyauth_users
+      (at least one), name it the same as their GitHub login, and do not set TINYAUTH_OAUTH_WHITELIST or a provider
+      whitelist yourself (docs/auth-reference.md). Users in service_users without an email: {{ without_email }}.
     quiet: true
-  when: tinyauth_environment.keys() | select('match', '^TINYAUTH_OAUTH_PROVIDERS_') | list | length > 0
+  vars:
+    without_email: >-
+      {{ vault_tinyauth_users | rejectattr('email', 'defined') | map(attribute='name')
+         | intersect(service_users.items() | selectattr('0', 'in', protected_service_keys) | map(attribute='1') | flatten | list) | list }}
+  when: tinyauth_oauth_enabled | bool
 
 - name: Create the Tinyauth data directory
   ansible.builtin.file:

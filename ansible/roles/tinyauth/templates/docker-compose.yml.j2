@@ -29,6 +29,10 @@ services:
       # The address apps get for this user (Immich matches accounts by it); without one Tinyauth makes <name>@<private domain>.
       TINYAUTH_AUTH_USERATTRIBUTES_{{ user.name | upper }}_EMAIL: {{ user.email | to_json }}
 {% endfor %}
+{% if tinyauth_oauth_enabled | bool %}
+      # A GitHub or Google login is limited by email, not by user name: the people in vault_tinyauth_users who have one.
+      TINYAUTH_OAUTH_WHITELIST: {{ vault_tinyauth_users | selectattr('email', 'defined') | map(attribute='email') | join(',') | to_json }}
+{% endif %}
       # No Docker socket: per-app rules come from service_users below, not from container labels.
       TINYAUTH_LABELPROVIDER: none
       TINYAUTH_ANALYTICS_ENABLED: "false"
@@ -39,6 +43,9 @@ services:
 {% for key in limited %}
       TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_CONFIG_DOMAIN: "{{ lookup('ansible.builtin.vars', key ~ '_subdomain') }}.{{ caddy_private_domains[0] }}"
       TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_USERS_ALLOW: "{{ service_users[key] | join(',') | replace('$', '$$') }}"
+{% if tinyauth_oauth_enabled | bool %}
+      TINYAUTH_APPS_{{ key | upper | replace('_', '-') }}_OAUTH_WHITELIST: {{ vault_tinyauth_users | selectattr('name', 'in', service_users[key]) | map(attribute='email') | join(',') | to_json }}
+{% endif %}
 {% endfor %}
 {% endif %}
 {% for name, value in tinyauth_environment.items() %}
