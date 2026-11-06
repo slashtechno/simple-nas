@@ -332,6 +332,37 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # teardown.yml trusts `compose`; the roles write their own paths, so a mismatch would leave the real directory behind.
+    - name: Every service's compose directory is the one its role deploys to
+      vars:
+        deployed_by: >-
+          {{ lookup("ansible.builtin.pipe", "grep -rlE 'services_dir }}/" ~ item.compose ~ "([^a-z0-9_-]|$)|compose_service_name: " ~ item.compose
+             ~ "([^a-z0-9_-]|$)' " ~ repo ~ "/roles " ~ repo ~ "/site.yml || true") }}
+      ansible.builtin.assert:
+        that: deployed_by | length > 0
+        fail_msg: "No role or site.yml deploys {{ item.key }} to {{ services_dir }}/{{ item.compose }}: fix `compose` in services.yml."
+        quiet: true
+      loop: "{{ services | selectattr('compose', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # Tinyauth's client id is the service key (roles/tinyauth/templates/docker-compose.yml.j2); each app is told the same
+    # id in its own role, and a changed id orphans the accounts linked to it.
+    - name: Each app uses its service key as its Tinyauth client id
+      vars:
+        app_id_lines:
+          pics: ["roles/pics/templates/pics.env.j2", "HUB_OIDC_CLIENT_ID='pics'"]
+          immich: ["roles/immich/tasks/main.yml", "'clientId': 'immich'"]
+          gitea: ["roles/gitea/tasks/sso.yml", "--key gitea"]
+      ansible.builtin.assert:
+        that:
+          - app_id_lines.keys() | list | sort == services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
+          - app_id_lines[item.key][1] in lookup('ansible.builtin.file', repo + '/' + app_id_lines[item.key][0])
+        quiet: true
+      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
+      loop_control:
+        label: "{{ item.key }}"
+
     # A copy of the repo with no vars.yml of its own has none to check.
     - name: Find every vars.yml (shared and per host)
       ansible.builtin.find:

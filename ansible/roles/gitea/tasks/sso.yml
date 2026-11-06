@@ -30,6 +30,7 @@
 # Gitea fetches Tinyauth's discovery document as it registers the source, so Tinyauth has to be running and reachable
 # from this container by then. site.yml deploys it before Gitea, so the retries only cover the seconds its container
 # needs to start. Only a new source counts as a change: update-oauth writes the same settings again on every deploy.
+# The client secret is an argument of docker exec, so it is visible in the process list while the command runs; no_log only hides it from Ansible's output.
 - name: Add or update the Tinyauth login source
   ansible.builtin.command:
     cmd: >-

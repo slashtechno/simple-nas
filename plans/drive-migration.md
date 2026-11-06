@@ -2,7 +2,7 @@
 
 > **Status: active plan. Delete this file when the migration is done; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Waiting on the owner's steps. The drives are bought (the IronWolf; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` still names the old 500 GB drive. The steps run on pinas.
+Waiting on the owner's steps. The drives are bought (the IronWolf; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` lists the T7 (`fast, primary`) and the IronWolf (`backup`); the P10 is not in it yet. The steps run on pinas.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../docs/storage.md)):
 
@@ -12,7 +12,7 @@ Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles 
 | `primary` | WD_BLACK P10 2TB | `/mnt/main` | photos, files, collab |
 | `backup` | Seagate IronWolf Pro 6TB (used) | `/mnt/backup` | restic repo, service dumps, logs |
 
-Starting layout: the T7 has `roles: [fast, primary]`; the 500GB ST3500418AS has `[backup]`.
+Current layout: the T7 has `roles: [fast, primary]`; the IronWolf has `[backup]`.
 
 ## 0. Vet the new drives
 

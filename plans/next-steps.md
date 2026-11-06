@@ -16,16 +16,9 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 
 ## Phase 1: drives
 
-- [ ] The 500 GB drive is still the `backup` drive in `host_vars/pinas/vars.yml`; the IronWolf swap is [drive-migration.md](./drive-migration.md).
+- [ ] The remaining drive steps (the P10 and the fast/primary split) are in [drive-migration.md](./drive-migration.md).
 - [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
-- [x] Connectivity watchdog (built; deployed on pi4) (opt-in role, switch `connectivity_watchdog_enabled`, default off). pi4 once stayed on wifi with a valid address and working ping while every TCP and DNS lookup failed, so it dropped off Tailscale until `nmcli con down` and `up` fixed it (2026-11-02, cause unknown). Nothing emitted an event, so only an active probe can notice. Design (both Pi reviews agree on the first three):
-  - Probe: a TCP connect to port 443 of 1.1.1.1 and 8.8.8.8 (bash `/dev/tcp` in `timeout`); healthy if either connects. Not ICMP (it passed during the fault), not DNS, not Tailscale health (flaps on control-plane trouble).
-  - Act only after 3 failed probes in a row, at most once per 30 minutes, then reconnect the NetworkManager connection on the default-route interface (`nmcli con down`, `up`; covers wifi and Ethernet and never the direct link, which has no gateway). Stop acting after about 3 hours so a real outage cannot loop; resume on the first success. Never reboot. Hosts without NetworkManager only probe and log.
-  - Log every step with `logger -t connectivity`; send one ntfy alert once the probe succeeds again (ntfy is unreachable mid-outage).
-  - Run it from `cron` like the backups (one scheduling mechanism in the repo), every 2 minutes as root, with its counters in `/run` so a reboot resets them. The reviews proposed a systemd timer; cron keeps one readable task and no unit files.
-  - Needs `alert.sh` and `ntfy_alert_url` outside the backup role, because the watchdog must work with backups off: move `alert.sh` to `common` and the ntfy settings to `group_vars/all/defaults.yml` (cross-role settings live there), as one small commit before the watchdog. `alert.sh` gets an optional tag/title argument, default `backup`.
-  - Render test: both probe addresses present, no `reboot`, no hard-coded interface name, the alert default still renders as before.
-  - Deployed on pi4 (2026-11-02). The manual `nmcli connection down` and `up` of `netplan-wlan0-...` took 7 seconds and kept the route, Tailscale and all containers; the healthy run is silent. A real outage has not occurred, so the reconnect branch is untested in the field.
+- [x] Connectivity watchdog: built and deployed on pi4 ([networking.md](../docs/networking.md#connectivity-watchdog)). A real outage has not occurred, so its reconnect branch is untested.
 - Drive detach and mount stay documented in `docs/storage.md`; a script only if the manual steps turn out to be a frequent task.
 
 ## Phase 2: a proper backup status page

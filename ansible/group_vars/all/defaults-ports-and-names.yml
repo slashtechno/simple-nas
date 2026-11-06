@@ -17,6 +17,10 @@ gitea_port: 3000
 # pics' owner pages (the guest pages never use a host port).
 pics_port: 8100
 
+# Container-internal port of pics' guest pages (never published): the tunnel points here, in cloudflared_ingress. Only pics_port is
+# published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
+pics_public_port: 8001
+
 # Dockge asks for an account on first visit. The published port skips Tinyauth, so Dockge keeps its own login while one is set; "" makes Tinyauth its only one.
 dockge_port: 5001
 
@@ -45,14 +49,6 @@ crafty_port: 28443
 # (docs/caddy-reference.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
 # Immich's name.
 immich_subdomain: immich
-
-# Addresses besides the Caddy names that pics' owner app is opened at, scheme included, e.g. ["http://pinas:8100"]
-# (pics_port), without a trailing slash. pics sends the address it was opened on to Tinyauth, which must trust it.
-pics_extra_origins: []
-
-# Addresses besides the Caddy names that Immich is opened at, scheme included, e.g. a Cloudflare Tunnel hostname:
-# ["https://photos.example.com"], without a trailing slash. Immich sends the address it was opened on to Tinyauth, which must trust it.
-immich_extra_origins: []
 
 # Copyparty's name.
 copyparty_subdomain: copyparty
@@ -101,3 +97,11 @@ homepage_subdomain: homepage
 # This host's private domains; each must contain a domain from cloudflare_zones. Here, not in the caddy role, because the
 # Homepage on another host reads it. What the deploy creates for them (DNS-only records, certificates): docs/caddy-reference.md#web-addresses-and-https.
 caddy_private_domains: []
+
+# Addresses besides the Caddy names that pics' owner app is opened at, scheme included, e.g. ["http://pinas:8100"]
+# (pics_port), without a trailing slash. pics sends the address it was opened on to Tinyauth, which must trust it.
+pics_extra_origins: []
+
+# Addresses besides the Caddy names that Immich is opened at, scheme included, e.g. a Cloudflare Tunnel hostname:
+# ["https://photos.example.com"], without a trailing slash. Immich sends the address it was opened on to Tinyauth, which must trust it.
+immich_extra_origins: []

@@ -57,10 +57,6 @@ gitea_runner_data_dir: "{{ fast_drive }}/appdata/gitea_runner"
 # ntfy's message history and user database; little is lost without it.
 ntfy_data_dir: "{{ fast_drive }}/appdata/ntfy"
 
-# Container-internal port of pics' guest pages (never published): the tunnel points here, in cloudflared_ingress. Only pics_port is
-# published on the host (LAN and tailnet). Container ports cannot collide with other services' ports.
-pics_public_port: 8001
-
 # pics' data directory (fast drive).
 pics_data_dir: "{{ fast_drive }}/appdata/pics"
 

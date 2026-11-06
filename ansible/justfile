@@ -68,6 +68,7 @@ _tags tags:
     set -euo pipefail
     [ -n "{{ tags }}" ] || exit 0
     known=$(ansible-playbook site.yml --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
+    [ -n "$known" ] || { echo "Could not read the tags from 'ansible-playbook --list-tags' (its output format changed?)." >&2; exit 1; }
     for tag in $(echo "{{ tags }}" | tr ',' ' '); do
       echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in site.yml. Tags: $known" >&2; exit 1; }
     done

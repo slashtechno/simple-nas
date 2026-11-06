@@ -134,7 +134,7 @@ Password, GitHub, Google and Tailscale logins each give the session a different 
 - Behind the Caddy login: a GitHub or Google login is let in by email, so there is nothing to add. A password or Tailscale login is let in by name, so list that name in `service_users`.
 - Immich and Gitea: the second name is a new login; link it to the same account by hand ([first login](#sign-in-with-tinyauth-oidc)).
 
-`service_users` takes only names from `vault_tinyauth_users` (the deploy checks), so a name that exists only at Tailscale (`you_example.com`) needs that check widened first; neither has been tried together.
+`service_users` takes only names from `vault_tinyauth_users` (the deploy checks), so a name that exists only at Tailscale (`you_example.com`) needs that check widened first.
 
 ## Access gotchas
 

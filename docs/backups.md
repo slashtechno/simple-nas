@@ -32,7 +32,7 @@ restic keeps its cache in `restic_cache_dir`. It is safe to delete: that only co
 
 ## First backup
 
-The first run into an empty repository reads and hashes everything, so it takes hours for hundreds of GB over USB (one measured run: about 54 minutes for 286 GiB; later runs of that host took 30 seconds to a few minutes).
+The first run into an empty repository reads and hashes everything, so it takes hours for hundreds of GB over USB. Later runs read only what changed.
 
 - Start it by hand rather than waiting for the cron job, detached so a dropped SSH session does not stop it: `setsid nohup /opt/services/scripts/backup-restic-local.sh > /tmp/first-backup.log 2>&1 < /dev/null &`, as the ansible user.
 - Start it so that it ends before 02:00, when the cron job runs the same script.
@@ -136,7 +136,7 @@ To give a new service a database dump, add `files/dump.sh` to its role and insta
 No schedule checks the cloud repository: a full check reads all of it over the network. Run it now and then, as the ansible user on the host, with the cloud repository from [Connecting](#connecting):
 
 ```bash
-restic -o rclone.args="serve restic --stdio --tpslimit=10" check
+restic -o rclone.args="<restic_cloud_rclone_args>" check
 ```
 
 Add `--read-data-subset=5%` to also read a sample of the stored data. For an SFTP repository leave out the `-o rclone.args` option.
@@ -182,7 +182,7 @@ export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (restic_repo_path)
 ```
 
-For the Google Drive repo instead: `export RESTIC_REPOSITORY="<your restic_cloud_repository>"`, and add `-o rclone.args="serve restic --stdio --tpslimit=10"` to each restic command.
+For the Google Drive repo instead: `export RESTIC_REPOSITORY="<your restic_cloud_repository>"`, and add `-o rclone.args="<restic_cloud_rclone_args>"` (the value of that setting, default `serve restic --stdio --tpslimit=10`) to each restic command.
 
 ## Offline copy on a second drive
 
@@ -221,14 +221,7 @@ tail -50 /mnt/backup/logs/backup-cron.log          # recent combined cron log (b
 
 ## Inspecting a snapshot
 
-Get an ID from `restic snapshots` (or the dashboard). `latest` works in place of an ID too.
-
-```bash
-restic ls <snapshot-id>                                   # list everything it contains
-restic diff <snapshot-id-1> <snapshot-id-2>                # what changed between two snapshots
-restic find <pattern>                                      # which snapshot(s) contain a file (globs OK)
-restic dump <snapshot-id> <path-in-snapshot> > recovered-file   # extract one file
-```
+Get an ID from `restic snapshots` (or the dashboard); `latest` works in place of an ID. Browse and extract with restic's [`ls`, `diff`, `find` and `dump`](https://restic.readthedocs.io/en/stable/045_working_with_repos.html).
 
 ## Restore: files
 
@@ -293,7 +286,7 @@ sudo cp /tmp/garage-restore/node_key /tmp/garage-restore/node_key.pub /tmp/garag
 docker compose start garage
 ```
 
-This restore has not been rehearsed on a real host. Try it once into a scratch Garage before relying on it, and keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
+Keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
 
 ## If the backup drive disconnects
 
@@ -306,8 +299,8 @@ Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl sta
 1. Get the vault password from your password manager first; without it nothing below works. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and that password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
 2. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)), then pull from the cloud repository, with the cloud repository set as in [Connecting](#connecting). With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)), so those come back only from an [offline copy](#offline-copy-on-a-second-drive). It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
-   restic -o rclone.args="serve restic --stdio --tpslimit=10" snapshots --group-by path
-   restic -o rclone.args="serve restic --stdio --tpslimit=10" restore <snapshot-id> --target /      # once per group
+   restic -o rclone.args="<restic_cloud_rclone_args>" snapshots --group-by path
+   restic -o rclone.args="<restic_cloud_rclone_args>" restore <snapshot-id> --target /      # once per group
    ```
 3. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 2 (see Restore: Immich database, Restore: Gitea and Restore: Garage above, using the restored `service-dumps` folder).
 

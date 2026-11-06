@@ -2,8 +2,8 @@
 # Full deployment playbook.
 # Run with: ansible-playbook site.yml --vault-password-file .vault-pass
 #
-# One play over every server. The base roles (drives, packages, Docker, Tailscale, network) run
-# everywhere; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
+# One play over every server. The base roles (common, network) run everywhere, and so do storage and Tailscale unless their switches
+# (storage_enabled, tailscale_enabled; default true) are off; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
 # (default: false, in group_vars/all/defaults-flags.yml).
 # To deploy one host only:     --limit pi4
 # To deploy one service only:  --tags immich

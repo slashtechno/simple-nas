@@ -2,9 +2,9 @@
 
 Ansible playbooks that turn a Raspberry Pi, or any Debian-family machine, into a home server running Docker services, with their data on the drives plugged into it.
 
-Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop; not yet deployed end to end on one). Every pinned image has both builds; `just platforms` in `ansible/` checks that after a version change.
+Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD PCs (a mini PC, an old laptop). Every pinned image has both builds; `just platforms` in `ansible/` checks that after a version change.
 
-**New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server .
+**New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server.
 
 Every part is switched on per host except `common` and `network`, which always run: [ansible/README.md](./ansible/README.md). The services and what each needs: [docs/services.md](./docs/services.md#services). Drive roles: [docs/storage.md](./docs/storage.md).
 

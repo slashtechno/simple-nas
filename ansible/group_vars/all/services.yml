@@ -35,9 +35,10 @@
 #   tile_url   the name of a setting (not an address) that holds the address the Homepage tile links to, when the
 #              service's sign-in has to start there instead of on its Caddy name (Gitea: gitea_root_url).
 #   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
-#   own_login  true when the service has a login or clients of its own (apps, git, WebDAV, push): Tinyauth never sits in
-#              front of its Caddy name, except Copyparty's browser name with copyparty_sso_enabled. Every other web
-#              service is behind Tinyauth on a host that has tinyauth_enabled.
+#   own_login  true when Tinyauth must not sit in front of the Caddy name, because the service's clients cannot sign in
+#              through a web page (apps, git, WebDAV, push) or it is the login itself; Copyparty's browser name is
+#              behind it with copyparty_sso_enabled. Every other web service is behind Tinyauth on a host that has
+#              tinyauth_enabled, even one with a login page of its own (Crafty).
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
   # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
