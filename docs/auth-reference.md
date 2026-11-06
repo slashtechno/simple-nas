@@ -29,8 +29,8 @@ tinyauth_environment:
   TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
 ```
 
-- **One person, one user.** Name the user in `vault_tinyauth_users` after the person's GitHub login and give it that account's primary email (`{name: slashtechno, password: ..., email: you@example.com}`; lower-case letters, digits and `-`). The password login and the GitHub login then give apps the same name, email and `sub`, so Copyparty, `service_users`, pics, Immich and Gitea see one person. Tinyauth cannot link two different names.
-- **The whitelists are made for you.** Only the emails of these users may sign in with the provider, and a limited service lets in only the emails of the users `service_users` lists for it. The deploy stops if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
+- **Who may sign in.** A provider accepts any of its accounts, so the whitelists limit it by email: only the emails of the users in `vault_tinyauth_users` that have an `email:`, and a limited service lets in only the emails of the users `service_users` lists for it. The deploy stops if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
+- **One identity or two.** Apps recognise a person by user name (Copyparty, pics) or by an id made from it (Immich, Gitea), and Tinyauth cannot link two names. A GitHub login is a user named after the GitHub login. To make it the same person as a password user, give that user the GitHub login as its name (lower-case letters, digits and `-`) and the account's email: `{name: slashtechno, password: ..., email: you@example.com}`. Otherwise list the GitHub name wherever it needs access.
 - `google` is the same with `GOOGLE`, but Google gives the user name `you_example.com`, so name the user that to match. Another provider (Pocket ID, Authentik, Keycloak) is any other id plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
 ## Sign in with Tinyauth (OIDC)

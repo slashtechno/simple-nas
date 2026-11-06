@@ -60,7 +60,7 @@
       - without_email | length == 0
     fail_msg: >-
       tinyauth_environment sets an OAuth login, so give each person who may use it an email in vault_tinyauth_users
-      (at least one), name it the same as their GitHub login, and do not set TINYAUTH_OAUTH_WHITELIST or a provider
+      (at least one), and do not set TINYAUTH_OAUTH_WHITELIST or a provider
       whitelist yourself (docs/auth-reference.md). Users in service_users without an email: {{ without_email }}.
     quiet: true
   vars:
