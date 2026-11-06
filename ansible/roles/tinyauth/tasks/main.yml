@@ -66,7 +66,7 @@
   vars:
     without_email: >-
       {{ vault_tinyauth_users | rejectattr('email', 'defined') | map(attribute='name')
-         | intersect(service_users.items() | selectattr('0', 'in', protected_service_keys) | map(attribute='1') | flatten | list) | list }}
+         | intersect(service_users | dict2items | selectattr('key', 'in', protected_service_keys) | map(attribute='value') | flatten | list) | list }}
   when: tinyauth_oauth_enabled | bool
 
 - name: Create the Tinyauth data directory

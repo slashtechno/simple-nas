@@ -47,11 +47,11 @@ crafty_port: 28443
 immich_subdomain: immich
 
 # Addresses besides the Caddy names that pics' owner app is opened at, scheme included, e.g. ["http://pinas:8100"]
-# (pics_port). pics sends the address it was opened on to Tinyauth, which must trust it.
+# (pics_port), without a trailing slash. pics sends the address it was opened on to Tinyauth, which must trust it.
 pics_extra_origins: []
 
 # Addresses besides the Caddy names that Immich is opened at, scheme included, e.g. a Cloudflare Tunnel hostname:
-# ["https://photos.example.com"]. Immich sends the address it was opened on to Tinyauth, which must trust it.
+# ["https://photos.example.com"], without a trailing slash. Immich sends the address it was opened on to Tinyauth, which must trust it.
 immich_extra_origins: []
 
 # Copyparty's name.

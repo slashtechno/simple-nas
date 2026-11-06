@@ -131,6 +131,7 @@
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret"}
         immich_port: ""
         immich_extra_origins: ["https://photos.example.org"]
+        pics_extra_origins: ["http://nas:8100"]
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
         copyparty_sso_enabled: true
@@ -503,7 +504,7 @@
           - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"
           - >-
             ('TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: "https://pics.pi4.example.com/api/auth/oidc/callback,'
-            ~ 'https://pics.second.example.com/api/auth/oidc/callback"') in tinyauth_compose
+            ~ 'https://pics.second.example.com/api/auth/oidc/callback,http://nas:8100/api/auth/oidc/callback"') in tinyauth_compose
           - "\"HUB_OIDC_ISSUER='https://auth.pi4.example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'HUB_OIDC_REDIRECT_URL' not in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "\"HUB_OIDC_USERS='owner second'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"

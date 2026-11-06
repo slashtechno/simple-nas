@@ -152,7 +152,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 ## Change a setting
 
-Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, Immich (a rotated SSO secret), pics, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (the fstab change and the USB udev rule).
+Edit the file that owns the setting (below), then `just deploy <tag>`. Only changed services restart: compose-only services are recreated when their rendered file changes, and handlers cover Copyparty, Garage, pics, cloudflared (new token), Homepage, containerd, the direct-link dnsmasq, netplan and storage (the fstab change and the USB udev rule).
 
 | Setting | File |
 |---|---|

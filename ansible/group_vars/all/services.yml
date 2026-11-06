@@ -41,7 +41,7 @@
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
 services:
   # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
-  # it was opened on), and the phone apps' fixed callback. pics and Gitea send one fixed address, so they list one.
+  # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one; pics sends the address it was opened on, like Immich.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_upload_location], no_backup: [immich_db_data_location],
      container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,

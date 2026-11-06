@@ -92,7 +92,17 @@
           x-api-key: "{{ vault_immich_api_key }}"
       register: immich_settings
       check_mode: false
+      failed_when: false   # the check below names the cause; no_log would hide it
       no_log: true   # the answer holds the client secret
+
+    - name: Check Immich answered with its settings
+      ansible.builtin.assert:
+        that: immich_settings.status == 200
+        fail_msg: >-
+          GET {{ immich_api }}/system-config answered {{ immich_settings.status }}, not 200. Check that vault_immich_api_key
+          is a valid key of an Immich admin with the permissions systemConfig.read and systemConfig.update
+          (docs/auth-reference.md#sign-in-with-tinyauth-oidc) and that immich_port is Immich's.
+        quiet: true
 
     - name: Write Immich's settings with the sign-in block changed
       ansible.builtin.uri:
@@ -102,6 +112,17 @@
           x-api-key: "{{ vault_immich_api_key }}"
         body_format: json
         body: "{{ immich_settings.json | combine({'oauth': immich_oauth}) }}"
+      register: immich_write
       when: immich_settings.json.oauth != immich_oauth
       changed_when: true   # uri reports a PUT as unchanged
+      failed_when: false   # the check below names the cause; no_log would hide it
       no_log: true
+
+    - name: Check Immich accepted the settings
+      ansible.builtin.assert:
+        that: immich_write.status == 200
+        fail_msg: >-
+          PUT {{ immich_api }}/system-config answered {{ immich_write.status }}, not 200. The key needs the permission
+          systemConfig.update (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+        quiet: true
+      when: immich_write is not skipped

@@ -33,7 +33,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 | Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_password`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
 | Gitea | Git server | `roles/gitea` | `fast` drive role; `caddy_private_domains` or `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
-| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
+| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password`, `vault_pics_alert_urls` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; a Caddy name; `tinyauth_enabled`; `vault_garage_rpc_secret`, `vault_garage_admin_token` | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
@@ -135,7 +135,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname in the host's `vars.yml`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
    - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
-2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password`. Use values without single quotes.
+2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) `vault_pics_copyparty_password` and `vault_pics_alert_urls` (Apprise URLs for alerts, `""` for none). Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `pics` account and its volumes first.
 4. Optional: sign in with Tinyauth instead of the password (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay. pics' Caddy name is not behind Tinyauth: pics has its own login and the sign-in goes through it.
 

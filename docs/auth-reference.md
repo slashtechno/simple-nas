@@ -51,12 +51,12 @@ Behaviour:
 
 Addresses an app is opened at (the first private domain is Tinyauth's own):
 
-- **Immich and pics** return you to the address you opened them on: Tinyauth trusts every Caddy name, and `immich_extra_origins` / `pics_extra_origins` add others (a tunnel hostname, `http://<host>:8100`). pics needs a version where `HUB_OIDC_REDIRECT_URL` is optional.
+- **Immich and pics** return you to the address you opened them on: Tinyauth trusts every Caddy name, and `immich_extra_origins` / `pics_extra_origins` add others (a tunnel hostname, `http://<host>:8100`). pics needs a build where `HUB_OIDC_REDIRECT_URL` is optional (`pics_version`).
 - **Gitea** (`gitea_root_url`) sends one fixed address, so Tinyauth sign-in works on that name only; its password login works on every name.
 
 First login:
 
-- **Immich** matches a login to an account by email: the user's `email` in `vault_tinyauth_users`, else `<user>@<private domain>`. Give the Immich account that address.
+- **Immich** matches a login to an account by email: the user's `email` in `vault_tinyauth_users`, else `<user>@<private domain>`. Give the Immich account that address; a login with no matching account is refused, so an admin creates it first.
 - **Gitea** creates no accounts. It shows its link page once, where you enter an existing Gitea account's user name and password to attach the Tinyauth login to it; after that the Tinyauth button signs in to that account. A login with no account to attach stops there, so an admin creates the Gitea account first.
 
 ## Protect an app of your own
