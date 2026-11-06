@@ -1,4 +1,20 @@
 ---
+# The compose file runs Gitea as uid and gid 1000 (docker-compose.yml.j2); the data directories belong to ansible_user.
+# The facts are gathered as root (become), so the user's ids come from the passwd database.
+- name: Look up the Ansible user
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ ansible_user }}"
+
+- name: Check the Ansible user is uid and gid 1000
+  ansible.builtin.assert:
+    that: getent_passwd[ansible_user][1:3] == ['1000', '1000']
+    fail_msg: >-
+      Gitea runs as uid and gid 1000 but {{ ansible_user }} is uid {{ getent_passwd[ansible_user][1] }}, gid
+      {{ getent_passwd[ansible_user][2] }}, so Gitea could not write its data directories. Change USER_UID and
+      USER_GID in roles/gitea/templates/docker-compose.yml.j2.
+    quiet: true
+
 - name: Create Gitea data directories
   ansible.builtin.file:
     path: "{{ item }}"

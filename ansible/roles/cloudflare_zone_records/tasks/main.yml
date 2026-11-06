@@ -1,0 +1,19 @@
+---
+# Reads every DNS record of cloudflare_zones into cloudflare_zone_lists, one result per zone with the records in
+# `json.result`. Shared by the roles that plan DNS changes (caddy, cloudflared); call it inside a block whose
+# module_defaults set the Authorization header:
+#   - ansible.builtin.import_role: {name: cloudflare_zone_records}
+- name: Read every DNS record of the zones
+  ansible.builtin.uri:
+    url: "{{ cloudflare_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
+  check_mode: false
+  changed_when: false
+  loop: "{{ cloudflare_zones.values() | unique | list }}"
+  register: cloudflare_zone_lists
+
+# A plan trusts these lists to be complete, so a second page stops the deploy.
+- name: Stop if a zone has more than one page of records
+  ansible.builtin.assert:
+    that: cloudflare_zone_lists.results | map(attribute='json.result_info.total_pages') | select('gt', 1) | list | length == 0
+    fail_msg: A zone has more than 5000 DNS records. This reads one page only.
+    quiet: true

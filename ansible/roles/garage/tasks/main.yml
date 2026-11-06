@@ -11,15 +11,12 @@
 
 # The web UI holds the admin token and has no login of its own, so it is served only behind Tinyauth, never on a
 # host port or a tunnel name.
-- name: Check the web UI is behind Tinyauth and Caddy
-  ansible.builtin.assert:
-    that:
-      - tinyauth_enabled | bool
-      - caddy_enabled | bool
-    fail_msg: >-
-      Garage's web UI has no login of its own: switch on tinyauth_enabled (docs/services.md#tinyauth-login) and
-      caddy_enabled with a caddy_private_domains entry.
-    quiet: true
+- name: Require Tinyauth and Caddy
+  ansible.builtin.import_role:
+    name: compose_service
+    tasks_from: require_tinyauth
+  vars:
+    compose_service_name: garage
 
 - name: Create Garage compose directory
   ansible.builtin.file:

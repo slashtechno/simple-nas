@@ -19,15 +19,5 @@
         job: /bin/bash {{ (scripts_dir ~ '/connectivity-watchdog.sh') | quote }}
 
 - name: Remove the connectivity watchdog when it is off
+  ansible.builtin.import_tasks: remove.yml
   when: not connectivity_watchdog_enabled | bool
-  block:
-    - name: Remove the connectivity watchdog cron job
-      ansible.builtin.cron:
-        name: connectivity-watchdog
-        user: root
-        state: absent
-
-    - name: Remove the connectivity watchdog script
-      ansible.builtin.file:
-        path: "{{ scripts_dir }}/connectivity-watchdog.sh"
-        state: absent

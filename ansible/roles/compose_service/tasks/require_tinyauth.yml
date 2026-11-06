@@ -1,0 +1,13 @@
+---
+# For a service whose web page has no login of its own: stops the deploy unless Tinyauth and Caddy are on. Used with
+#   ansible.builtin.import_role: {name: compose_service, tasks_from: require_tinyauth}
+#   vars: {compose_service_name: <role>}
+- name: Check {{ compose_service_name }} is behind Tinyauth and Caddy
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+    fail_msg: >-
+      {{ compose_service_name | capitalize }} has no login of its own: switch on tinyauth_enabled
+      (docs/services.md#tinyauth-login) and caddy_enabled with a caddy_private_domains entry.
+    quiet: true

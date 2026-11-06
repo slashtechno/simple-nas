@@ -141,7 +141,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 - `_vars`: a vault name or a setting with no default missing from its example file; a setting with a default in two files; a shared defaults file sorting after `vars.yml`; a file in `group_vars/all/` that is not `defaults.yml`, `defaults-<topic>.yml` or one of the fixed files.
 - `_links`: a `file.md#anchor` that names no heading.
 - `_precedence`: Ansible loads a copy of `group_vars` and the test checks that `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after the group-wide `vars.yml`.
-- `_test`: renders every template with the example vars and shellchecks the scripts. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
+- `_test`: renders every template with the example vars and shellchecks the scripts (`tests/render.yml`), then checks each drive layout (`tests/layouts.yml`). It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
 
 ### Tags, `--limit` and `-K`
 
@@ -225,7 +225,7 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
 2. `templates/docker-compose.yml.j2`: join the external `services` network. Take the image from a variable defined in `versions.yml`, one line such as `myservice_image: owner/myservice:1.2.3` (pin a version, or a digest if upstream has no versioned tag). Give the container a `container_name` and use that name for `container` in its `services.yml` entry and for a `cloudflared_ingress` service; set `restart: unless-stopped`; check the image has arm64 and x64 builds (`just platforms`).
-3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that restarts on config changes (like `copyparty`) writes its own tasks and handlers instead.
+3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice`. Copy `roles/gitea`. A service that builds its own image from files in its role (`caddy`, `copyparty`, `garage`, `backup_status`, `pics`) or restarts on config changes writes its own tasks (create the directory, copy the files, render the compose file, `docker_compose_v2` with `build: always`) instead; copy `roles/backup_status` for the smallest example.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/`: `myservice_enabled: false` in `defaults-flags.yml`, the data directory settings in `defaults-data-dirs.yml` and, for a web UI, `myservice_port` and `myservice_subdomain` in `defaults-ports-and-names.yml`, each with a comment. Values with no sensible default go in `vars.yml.example`.
 6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}` (a service with no data directories leaves `data` out). It lists the data directories (the backup must cover them, and teardown deletes them with `remove_data=true`) and, for a web UI, the Homepage tile and Caddy container. The comment at the top of the file describes each field.

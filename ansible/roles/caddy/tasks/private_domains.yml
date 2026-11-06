@@ -52,24 +52,12 @@
         Authorization: "Bearer {{ cloudflare_api_token }}"
   block:
     - name: Read every DNS record of the zones
-      ansible.builtin.uri:
-        url: "{{ cloudflare_api_url }}/zones/{{ item }}/dns_records?per_page=5000"
-      check_mode: false
-      changed_when: false
-      loop: "{{ cloudflare_zones.values() | unique | list }}"
-      register: caddy_zone_lists
-
-    # roles/cloudflared/tasks/dns.yml reads the records the same way; change the paging in both.
-    # The plan trusts these lists to be complete, so a second page stops the deploy.
-    - name: Stop if a zone has more than one page of records
-      ansible.builtin.assert:
-        that: caddy_zone_lists.results | map(attribute='json.result_info.total_pages') | select('gt', 1) | list | length == 0
-        fail_msg: A zone has more than 5000 DNS records. This role reads one page only.
-        quiet: true
+      ansible.builtin.import_role:
+        name: cloudflare_zone_records
 
     - name: Work out what to change
       vars:
-        records: "{{ caddy_zone_lists.results | map(attribute='json.result') | flatten }}"
+        records: "{{ cloudflare_zone_lists.results | map(attribute='json.result') | flatten }}"
         ip: "{{ caddy_tailscale_ip.stdout | default('') | trim }}"
       block:
         - name: Pair each name with its record

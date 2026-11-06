@@ -2,6 +2,8 @@
 # Deploys roles/<compose_service_name>/templates/docker-compose.yml.j2 to {{ services_dir }}/<compose_service_name>.
 # `state: present` recreates containers whose definition changed, so these services need no restart handler.
 # A service whose compose file holds a secret sets `compose_service_has_secrets: true`, which keeps the file out of --diff.
+# Not for a service that builds an image from files in its role (caddy, copyparty, garage, backup_status, pics): those
+# write their own tasks, which also need `build: always`.
 # Call it with import_role:
 #   - ansible.builtin.import_role: {name: compose_service}
 #     vars: {compose_service_name: <role>}

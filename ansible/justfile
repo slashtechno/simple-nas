@@ -36,6 +36,7 @@ _test:
     out="$(mktemp -d)"
     python3 -I tests/test_backup_status.py
     ansible-playbook -i tests/inventory.yml tests/render.yml -e "out_dir=$out"
+    ansible-playbook -i tests/inventory.yml tests/layouts.yml -e "out_dir=$out"
     find "$out" -name '*.sh' -print0 | xargs -0 uvx --from {{ shellcheck }} shellcheck --severity=warning
     echo "Rendered templates are in $out"
 

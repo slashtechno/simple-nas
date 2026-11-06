@@ -1,5 +1,5 @@
 ---
-# Hosts for tests/render.yml. No group carries behaviour; `layouts` only tells the test which hosts
+# Hosts for tests/render.yml and tests/layouts.yml. No group carries behaviour; `layouts` only tells the test which hosts
 # are drive-layout fixtures. Each fixture sets `fixture_drives` (the host's `drives`) and `expect`.
 all:
   vars:

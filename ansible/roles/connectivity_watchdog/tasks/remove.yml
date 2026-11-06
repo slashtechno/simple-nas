@@ -1,0 +1,12 @@
+---
+# Removes what the connectivity_watchdog role installs. Used by the role (switched off) and by teardown.yml.
+- name: Remove the connectivity watchdog cron job
+  ansible.builtin.cron:
+    name: connectivity-watchdog
+    user: root
+    state: absent
+
+- name: Remove the connectivity watchdog script
+  ansible.builtin.file:
+    path: "{{ scripts_dir }}/connectivity-watchdog.sh"
+    state: absent

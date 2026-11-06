@@ -1,14 +1,11 @@
 ---
 # Scrutiny has no login of its own, so it needs Tinyauth to protect it and Caddy to route to it.
-- name: Check Scrutiny is behind Tinyauth and Caddy
-  ansible.builtin.assert:
-    that:
-      - tinyauth_enabled | bool
-      - caddy_enabled | bool
-    fail_msg: >-
-      Scrutiny has no login of its own: switch on tinyauth_enabled (docs/services.md#tinyauth-login) and
-      caddy_enabled with a caddy_private_domains entry.
-    quiet: true
+- name: Require Tinyauth and Caddy
+  ansible.builtin.import_role:
+    name: compose_service
+    tasks_from: require_tinyauth
+  vars:
+    compose_service_name: scrutiny
 
 - name: Read the drives from the host unless they are set
   ansible.builtin.import_tasks: devices.yml
