@@ -30,6 +30,11 @@
 # only share links made with the old file-key salt stop working.
 {{ copyparty_config_dir }}/copyparty
 {% endif %}
+{% if tinyauth_enabled | bool %}
+# Root-owned by the Tinyauth container (its OIDC signing keys): the backup user cannot read it, so without this line
+# every local run fails with restic exit 3. Tinyauth makes new keys when the folder is missing.
+{{ tinyauth_data_dir }}/oidc
+{% endif %}
 # Owned by the Cloudflare container's user, mode 400: the backup user cannot read it, so without this line every
 # run fails with restic exit 3. It stays on disk when cloudflared_enabled is turned off, so the line is unconditional.
 # A deploy writes it again from Cloudflare.
