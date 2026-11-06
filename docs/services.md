@@ -77,6 +77,8 @@ Git hosting with an optional Actions runner.
 Apps that store files in Copyparty (pics) get an account named after the app, with the password `vault_<app>_copyparty_password`, and their own volumes at `/apps/<app>/<folder>` from directories of their own (for pics, `pics_photos_dir` and `pics_trash_dir`). They are declared in the app's `copyparty` field in `group_vars/all/services.yml`; the field comment says how to give another app one.
 
 - The volumes are not part of `copyparty_files_dir`, so the admin's file listing does not show them. The admin has full access to them at their own addresses.
+- `perms` are Copyparty permission letters: `r` read, `w` write, `m` move, `d` delete.
+- To give another app volumes: add a `copyparty` field to its entry in `services.yml`, add a directory setting per volume to `defaults-data-dirs.yml` and list it in the entry's `data` (so backup and teardown cover it), put `vault_<key>_copyparty_password` in the vault, and point the app at `/apps/<key>/<folder>` through Copyparty (pics: `COPYPARTY_ROOT` and `COPYPARTY_TRASH_ROOT` in its env file). The app does not mount the folders itself.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
 `/drives` shows the USB drives and cards plugged into the host when `usb_automount_enabled: true`, read-only unless `usb_automount_writable` ([storage.md](./storage.md#plugged-in-usb-drives-drives)).
