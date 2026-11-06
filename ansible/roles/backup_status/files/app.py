@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Read-only backup status dashboard (the "Snapshot Deck").
+"""Read-only backup status dashboard.
 
-Serves index.html plus two JSON endpoints, /api/status and /api/snapshots,
-built from `restic --no-lock` and the status files the backup scripts write. The repo and
+Serves index.html plus the JSON endpoints /api/status and /api/snapshots, and /api/ls and /api/diff so a local
+snapshot's files and changes can be read in the page. Built from `restic --no-lock` and the status files the backup scripts write. The repo and
 password file are mounted read-only, so nothing here can change a backup;
 destructive actions are only shown in the UI as SSH commands to run by hand.
 
@@ -15,11 +15,13 @@ import datetime
 import http.server
 import json
 import os
+import posixpath
 import re
 import shutil
 import subprocess
 import threading
 import time
+import urllib.parse
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,6 +42,11 @@ WEEKLY_STALE_AFTER_SECONDS = 9 * 24 * 3600  # weekly jobs — allow a missed wee
 # A run that has not finished is still working until this long after it started: the local run makes three restic
 # calls, each allowed restic_command_timeout (23 hours by default), so a first backup can legitimately take days.
 RUNNING_STALE_AFTER_SECONDS = 72 * 3600
+
+SNAPSHOT_ID = re.compile(r"[0-9a-f]{8}")  # restic's short id
+MAX_DIFF_ENTRIES = 2000  # a snapshot after a big move can differ in hundreds of thousands of files
+DIFF_TIMEOUT_SECONDS = 300
+LS_TIMEOUT_SECONDS = 120  # restic loads the repository index first, which is slow on a large repo on a hard disk
 
 # One file per job in BACKUP_LOGS_DIR, written by the backup scripts when a run starts and when it ends.
 JOB_STATUS_FILES = {
@@ -252,6 +259,34 @@ def build_snapshots():
     return {"snapshots": result}
 
 
+def build_ls(snapshot, path):
+    """The entries directly inside `path` of a local snapshot, folders first."""
+    path = posixpath.normpath("/" + path.lstrip("/"))
+    lines = restic_output(["ls", "--json", snapshot, path], timeout=LS_TIMEOUT_SECONDS).splitlines()
+    # The first line is the snapshot itself; `ls` also lists the folder asked for.
+    nodes = [json.loads(line) for line in lines[1:] if line.strip()]
+    entries = [
+        {"name": n["name"], "path": n["path"], "type": n["type"], "size": n.get("size"), "mtime": n["mtime"][:16].replace("T", " ")}
+        for n in nodes if n["path"] != path
+    ]
+    entries.sort(key=lambda e: (e["type"] != "dir", e["name"].lower()))
+    return {"path": path, "entries": entries}
+
+
+def build_diff(older, newer):
+    """What changed between two local snapshots: `restic diff` as a capped list plus its totals."""
+    lines = restic_output(["diff", "--json", older, newer], timeout=DIFF_TIMEOUT_SECONDS).splitlines()
+    messages = [json.loads(line) for line in lines if line.strip()]
+    changes = [{"path": m["path"], "change": m["modifier"]} for m in messages if m["message_type"] == "change"]
+    totals = next((m for m in messages if m["message_type"] == "statistics"), {})
+    return {
+        "changes": changes[:MAX_DIFF_ENTRIES],
+        "total_changes": len(changes),
+        "added_bytes": totals.get("added", {}).get("bytes", 0),
+        "removed_bytes": totals.get("removed", {}).get("bytes", 0),
+    }
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass  # no per-request logging
@@ -278,9 +313,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
         html = html.replace("__HOST_CONFIG__", config_json)
         self._send(html.encode(), "text/html; charset=utf-8")
 
+    def _browse(self, query, names, build):
+        """Serve a read of one local snapshot; `names` are the query parameters that are snapshot ids."""
+        values = [query.get(n, [""])[0] for n in names]
+        if not all(SNAPSHOT_ID.fullmatch(v) for v in values):
+            return self.send_error(400)
+        if not repo_mounted():
+            return self.send_error(404)
+        self._json(build(query))
+
     def do_GET(self):
+        url = urllib.parse.urlsplit(self.path)
+        query = urllib.parse.parse_qs(url.query)
         try:
-            if self.path == "/" or self.path == "/index.html":
+            if url.path == "/api/ls":
+                path = query.get("path", ["/"])[0]
+                self._browse(query, ["snapshot"], lambda q: cached(f"ls {q['snapshot'][0]} {path}", lambda: build_ls(q["snapshot"][0], path)))
+            elif url.path == "/api/diff":
+                self._browse(query, ["from", "to"], lambda q: cached(f"diff {q['from'][0]} {q['to'][0]}", lambda: build_diff(q["from"][0], q["to"][0])))
+            elif self.path == "/" or self.path == "/index.html":
                 self._index()
             elif self.path == "/pico.min.css":
                 self._file(os.path.join(BASE_DIR, "pico.min.css"), "text/css")

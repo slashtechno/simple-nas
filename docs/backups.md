@@ -90,7 +90,7 @@ With the defaults on a NAS:
   - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups));
   - `restic_cache_dir`, the restic repository itself, the `**/.cache` folders and the data drives' `lost+found`;
   - logins: the restic password file, the rclone config, and Cloudflare's tunnel token (`services_dir/cloudflared/token`, rewritten from the vault on each deploy);
-  - rebuildable data: Docker's storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`) and Copyparty's salts and certificate (`copyparty_config_dir/copyparty`), both root-owned and regenerated after a restore, Crafty's own `backups/` archives;
+  - rebuildable data: Docker's storage when `docker_data_root` is set, Caddy's certificate storage (`caddy_data_dir/caddy`), Tinyauth's OIDC signing keys (`tinyauth_data_dir/oidc`) and Copyparty's salts and certificate (`copyparty_config_dir/copyparty`), all root-owned and regenerated after a restore, Crafty's own `backups/` archives;
   - files that are unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist` directory, and Garage's metadata directory (carried as a dump instead, see [Restore: Garage](#restore-garage)).
 
   The lists are `roles/backup/templates/restic-excludes-local.txt.j2`, `restic-excludes-cloud.txt.j2` and `restic-excludes-services.txt.j2`.
@@ -166,10 +166,11 @@ Set `restic_cloud_repository: "sftp:backup@host:/srv/restic"`. restic uses the h
 
 The `backup_status` role deploys a read-only dashboard with job status, the drive's mount state, a warning when a restic lock is left on the repository, and the snapshot list for both repositories. It needs `backup_local_enabled`; switch it on with `backup_status_enabled`.
 
-It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and a host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network. The deploy stops if the host has neither, so the dashboard never comes up without a login or a port you chose.
+It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login), and a host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network, file names of the local snapshots included. The deploy stops if the host has neither, so the dashboard never comes up without a login or a port you chose.
 
 - The container mounts the repository, logs and password file read-only, so it cannot write to or delete a backup.
-- Each action shows the exact SSH command to copy and run yourself.
+- A local snapshot's files open as a folder tree with file sizes (folders show none: restic does not total them), and its changes since the previous snapshot are listed on request. Both are read-only views of the local repository.
+- Everything else (running a job, restoring, deleting, and the cloud snapshots) shows the exact SSH command to copy and run yourself.
 
 ## Connecting
 

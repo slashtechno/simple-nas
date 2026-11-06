@@ -110,5 +110,25 @@ with tempfile.TemporaryDirectory() as tmp:
     s = status_of(work, False, "local_daily")
     assert s["ok"] is False and "not mounted" in s["detail_human"], s
 
+    # The file tree and the change list read restic's JSON (--json output captured from restic 0.19).
+    fake_restic.write_text('''#!/bin/sh
+case "$*" in
+  *" ls "*) echo '{"message_type":"snapshot","short_id":"aaaaaaaa"}'
+    echo '{"name":"d","type":"dir","path":"/d","mtime":"2026-11-06T12:22:58.89-06:00"}'
+    echo '{"name":"z.txt","type":"file","path":"/d/z.txt","size":3,"mtime":"2026-11-06T12:22:58.89-06:00"}'
+    echo '{"name":"a","type":"dir","path":"/d/a","mtime":"2026-11-06T12:22:58.89-06:00"}' ;;
+  *" diff "*) echo '{"message_type":"change","path":"/d/f","modifier":"-"}'
+    echo '{"message_type":"change","path":"/d/g","modifier":"+"}'
+    echo '{"message_type":"statistics","added":{"bytes":10},"removed":{"bytes":4}}' ;;
+esac
+''')
+    (work / "repo/config").touch()
+    a = load_app(work, False)
+    ls = a.build_ls("aaaaaaaa", "/d")
+    # The folder asked for is not listed in itself; folders come first.
+    assert [e["name"] for e in ls["entries"]] == ["a", "z.txt"] and ls["entries"][1]["size"] == 3, ls
+    diff = a.build_diff("aaaaaaaa", "bbbbbbbb")
+    assert diff["total_changes"] == 2 and diff["added_bytes"] == 10 and diff["removed_bytes"] == 4, diff
+
 print("backup_status: job status comes from the status files; missing, stale and malformed are errors")
 sys.exit(0)

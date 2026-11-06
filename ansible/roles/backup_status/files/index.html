@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Snapshot Deck</title>
+<title>Backup dashboard</title>
 <link rel="stylesheet" href="pico.min.css">
 <style>
   :root {
@@ -62,13 +62,27 @@
   .pill.crit { background: var(--crit-soft); color: var(--crit); }
 
   figure { overflow-x: auto; }
+
+  /* File tree in the snapshot dialog: folders are <details>, files are rows with their size on the right. */
+  .tree details { border: 0; margin: 0; padding: 0; }
+  .tree summary { margin: 0; padding: .15rem 0; font-size: .9rem; cursor: pointer; }
+  .tree summary::after { display: none; }
+  .tree summary::before { content: '▸ '; color: var(--pico-muted-color); }
+  .tree details[open] > summary::before { content: '▾ '; }
+  #localViews h6 { margin-top: 1rem; }
+  #localViews small { display: block; margin-top: .25rem; }
+  .tree .children { margin-left: 1rem; padding-left: .5rem; border-left: 1px solid var(--pico-muted-border-color); }
+  .tree .row { display: flex; justify-content: space-between; gap: 1rem; padding: .15rem 0; font-size: .9rem; }
+  .tree .size { color: var(--pico-muted-color); white-space: nowrap; }
+  .tree-scroll { max-height: 50vh; overflow: auto; }
+  .change { font-family: var(--pico-font-family-monospace); font-size: .85rem; word-break: break-all; }
 </style>
 
 <main class="container">
 
   <hgroup>
-    <h1>Snapshot Deck <small>/ <span id="hostLabel">&hellip;</span></small></h1>
-    <p>Read-only view of restic backups. Nothing on this page runs a command for you.</p>
+    <h1>Backup dashboard <small>/ <span id="hostLabel">&hellip;</span></small></h1>
+    <p>Read-only view of restic backups. Local snapshots can be browsed here; anything that changes a backup is only shown as a command.</p>
   </hgroup>
 
   <article>
@@ -91,7 +105,7 @@
   </article>
 
   <blockquote>
-    Every command on this page — run a job, preview a prune, inspect or delete a snapshot — is shown for you to
+    Every command that runs a job, previews a prune, restores or deletes a snapshot is shown for you to
     copy and run over SSH yourself. The dashboard has no SSH key, no restic password beyond a read-only mount,
     and no code path that can write to a repository.
   </blockquote>
@@ -138,6 +152,13 @@
       <p id="modalSub"><small>&hellip;</small></p>
     </header>
     <p><small>Run on <span id="modalHost">&hellip;</span> over SSH</small></p>
+    <div id="localViews">
+      <h6>Files in this snapshot</h6>
+      <div class="tree-scroll"><div class="tree" id="modalTree"></div></div>
+      <small>Folders open on click; only files show a size.</small>
+      <h6>Changes since the previous snapshot</h6>
+      <div id="modalChanges"></div>
+    </div>
     <div id="modalBody"></div>
     <footer>
       <button class="secondary" id="cancelBtn">Close</button>
@@ -206,6 +227,93 @@
       cmd: `ssh ${target} '${localBase} restic find &lt;pattern&gt;'` },
   ], 'opSearch');
 
+  function humanBytes(n) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let i = 0;
+    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+    return i === 0 ? `${n} B` : `${n.toFixed(1)} ${units[i]}`;
+  }
+
+  // Elements are built with textContent: file names come from the backed-up machine and are never trusted as HTML.
+  function el(tag, text, className) {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (className) e.className = className;
+    return e;
+  }
+
+  async function getJson(url) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  }
+
+  // One folder's entries, fetched when it is first opened.
+  async function fillFolder(container, snapshot, path) {
+    container.replaceChildren(el('small', 'Loading…'));
+    try {
+      const data = await getJson(`/api/ls?snapshot=${snapshot}&path=${encodeURIComponent(path)}`);
+      container.replaceChildren(...(data.entries.length ? data.entries.map((e) => {
+        if (e.type === 'dir') {
+          const d = el('details');
+          d.dataset.path = e.path;
+          d.append(el('summary', e.name + '/'), el('div', undefined, 'children'));
+          return d;
+        }
+        const row = el('div', undefined, 'row');
+        row.append(el('span', e.name), el('span', e.size === null || e.size === undefined ? '' : humanBytes(e.size), 'size'));
+        return row;
+      }) : [el('small', 'Empty')]));
+    } catch (err) {
+      container.replaceChildren(el('small', `Couldn't load: ${err.message}`));
+    }
+  }
+
+  const modalTree = document.getElementById('modalTree');
+  let treeSnapshot = null;
+  function showTree(snapshot) {
+    treeSnapshot = snapshot;
+    fillFolder(modalTree, snapshot, '/');
+  }
+  // `toggle` does not bubble, so listen in the capture phase.
+  modalTree.addEventListener('toggle', (e) => {
+    const d = e.target;
+    const children = d.querySelector(':scope > .children');
+    if (d.open && children && !children.hasChildNodes()) fillFolder(children, treeSnapshot, d.dataset.path);
+  }, true);
+
+  const CHANGE_LABELS = { '+': ['added', 'ok'], '-': ['removed', 'crit'], 'M': ['changed', 'warn'], 'U': ['type changed', 'warn'], 'T': ['type changed', 'warn'] };
+  // A diff reads the whole tree, so it runs when asked for.
+  function showChanges(prevId, id) {
+    const box = document.getElementById('modalChanges');
+    if (!prevId || prevId === 'null') {
+      box.replaceChildren(el('small', 'This is the oldest snapshot.'));
+      return;
+    }
+    const btn = el('button', `Show changes since ${prevId}`, 'outline secondary');
+    btn.addEventListener('click', async () => {
+      box.replaceChildren(el('small', 'Comparing… this can take a minute on a large backup.'));
+      try {
+        const d = await getJson(`/api/diff?from=${prevId}&to=${id}`);
+        const head = el('p', `${d.total_changes} changes · +${humanBytes(d.added_bytes)} added · −${humanBytes(d.removed_bytes)} removed`);
+        const rows = d.changes.map((c) => {
+          const [label, cls] = CHANGE_LABELS[c.change] || [c.change, 'warn'];
+          const r = el('div', undefined, 'row');
+          r.append(el('span', c.path, 'change'), el('span', label, `pill ${cls}`));
+          return r;
+        });
+        const more = d.total_changes > d.changes.length
+          ? [el('small', `Showing the first ${d.changes.length}. For the rest: ssh ${target} '${localBase} restic diff ${prevId} ${id}'`)] : [];
+        const list = el('div', undefined, 'tree tree-scroll');
+        list.append(...rows);
+        box.replaceChildren(head, list, ...more);
+      } catch (err) {
+        box.replaceChildren(el('small', `Couldn't compare: ${err.message}`));
+      }
+    });
+    box.replaceChildren(btn);
+  }
+
   function openModal(row) {
     const id = row.dataset.id;
     const prevId = row.dataset.prevId;
@@ -215,16 +323,22 @@
     modalTitle.textContent = `Snapshot ${id}`;
     modalSub.textContent = `${row.dataset.when} · ${row.dataset.tag} · ${row.dataset.repo}`;
 
-    const blocks = [
-      { note: 'List every file this snapshot contains',
-        cmd: `ssh ${target} '${resticCmd} ls ${id}'` },
-    ];
-    if (prevId && prevId !== 'null') {
-      blocks.push({ note: `What changed since the previous snapshot (${prevId})`,
-        cmd: `ssh ${target} '${resticCmd} diff ${prevId} ${id}'` });
+    const blocks = [];
+    // The dashboard can read only the local repository; a cloud snapshot is browsed with the commands.
+    const local = row.dataset.repo !== 'cloud';
+    document.getElementById('localViews').style.display = local ? '' : 'none';
+    if (local) {
+      showTree(id);
+      showChanges(prevId, id);
+    } else {
+      blocks.push({ note: 'List every file this snapshot contains', cmd: `ssh ${target} '${resticCmd} ls ${id}'` });
+      if (prevId && prevId !== 'null') {
+        blocks.push({ note: `What changed since the previous snapshot (${prevId})`,
+          cmd: `ssh ${target} '${resticCmd} diff ${prevId} ${id}'` });
+      }
     }
     blocks.push(
-      { note: 'Extract a single file — replace &lt;path&gt; with one from `restic ls` above; prints to stdout',
+      { note: 'Extract a single file — replace &lt;path&gt; with the path of a file (from the tree above, or `restic ls`); prints to stdout',
         cmd: `ssh ${target} '${resticCmd} dump ${id} &lt;path&gt;'` },
       { note: 'Restore into &lt;path&gt; (leaves originals untouched) — pick somewhere with room: ' +
         '/tmp is tmpfs (RAM, only a couple GB) and / is often nearly full, so prefer a spot on ' +
