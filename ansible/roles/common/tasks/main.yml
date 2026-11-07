@@ -60,6 +60,27 @@
     key: "{{ item }}"
   loop: "{{ ssh_authorized_keys }}"
 
+# Keep the system log across reboots, so a host that froze or reset leaves a record. Raspberry Pi OS ships
+# 40-rpi-volatile-storage.conf (Storage=volatile); this file sorts after it and wins. Where logs are already
+# persistent it changes nothing. journald caps its own disk use. The restart handler applies it now: without it the
+# setting waits for the next reboot, which is often the one worth logging.
+- name: Create the journald drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Keep the system log across reboots
+  ansible.builtin.copy:
+    content: "[Journal]\nStorage=persistent\n"
+    dest: /etc/systemd/journald.conf.d/50-persistent.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart journald
+
 - name: Set up failure alerts
   ansible.builtin.import_tasks: alerts.yml
 

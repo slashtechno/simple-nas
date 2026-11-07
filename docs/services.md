@@ -11,6 +11,7 @@ Every service is off until a host sets `<name>_enabled: true` in `ansible/host_v
 The `common` role runs on every host. It:
 
 - installs the base packages (curl, git, vim, jq, python3, ca-certificates, gnupg, python3-docker);
+- keeps the system log across reboots (Raspberry Pi OS keeps it in memory by default), so a host that froze or reset leaves a record in `journalctl -b -1`;
 - sets the timezone, masks sleep and hibernate so a host never suspends, adds `ssh_authorized_keys` and the passwordless sudoers file, and sets where Docker stores its data (`docker_data_root`);
 - unless `terminal_tools_enabled: false`, installs the terminal tools:
   - the Ghostty terminfo entry, so `TERM=xterm-ghostty` works over SSH;
