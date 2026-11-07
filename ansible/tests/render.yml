@@ -119,8 +119,7 @@
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
         pics_artist: Render Test
-        pics_website: https://example.com
-        pics_instagram: render_test
+        pics_links: [{text: example.com, url: "https://example.com", watermark: true}]
         caddy_private_domains: [pi4.example.com, second.example.com]
         caddy_sites:
           homepage.pi4.example.com: {reverse_proxy: "homepage:3000"}
@@ -602,8 +601,7 @@
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.com'
           - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'HUB_WEBSITE' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'HUB_INSTAGRAM' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "'HUB_LINKS=' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
         quiet: true
 
     # Copyparty's own login is the default: no IdP lines in its config and nothing in front of its Caddy name.
