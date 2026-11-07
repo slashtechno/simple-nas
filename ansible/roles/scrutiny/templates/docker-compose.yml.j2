@@ -33,5 +33,9 @@ services:
       COLLECTOR_CRON_SCHEDULE: "{{ scrutiny_collect_schedule }}"
       # Names this host in the dashboard. Unset, it comes from the container hostname, which changes when the container is recreated.
       COLLECTOR_HOST_ID: "{{ inventory_hostname }}"
+{% if vault_scrutiny_alert_urls | default('') | length > 0 %}
+      # Where Scrutiny sends its alerts (docs/services.md#scrutiny-drive-health); the value can hold a token, so it is in the vault.
+      SCRUTINY_NOTIFY_URLS: {{ vault_scrutiny_alert_urls | replace('$', '$$') | to_json }}
+{% endif %}
     networks:
       - {{ docker_network }}

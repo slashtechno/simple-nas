@@ -17,7 +17,7 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 ## Phase 1: drives
 
 - [ ] The remaining drive steps (the P10 and the fast/primary split) are in [drive-migration.md](./drive-migration.md).
-- [ ] smartd: a rendered `/etc/smartd.conf` and a short script that posts to ntfy, behind a default-off switch. First check `smartctl -a` works through the actual USB enclosures (many bridges need `-d sat`). If SMART does not pass through, drop this item.
+- [ ] Drive alerts come from Scrutiny's notifications, not smartd (`vault_scrutiny_alert_urls`, [services.md](../docs/services.md#scrutiny-drive-health)). Built; waits for the owner to put the ntfy URL in the vault, deploy `scrutiny`, and send the test notification.
 - [x] Connectivity watchdog: built and deployed on pi4 ([networking.md](../docs/networking.md#connectivity-watchdog)). A real outage has not occurred, so its reconnect branch is untested.
 - Drive detach and mount stay documented in `docs/storage.md`; a script only if the manual steps turn out to be a frequent task.
 

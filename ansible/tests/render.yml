@@ -118,6 +118,7 @@
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_pics_alert_urls: "ntfy://example"
+        vault_scrutiny_alert_urls: "ntfy://:tk_a$b@host:8090/alerts?scheme=http"
         pics_artist: Render Test
         pics_links: [{text: example.com, url: "https://example.com", watermark: true}]
         caddy_private_domains: [pi4.example.com, second.example.com]
@@ -560,6 +561,10 @@
           - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
+          # The alert URL reaches the container with its `$` escaped for compose.
+          - >-
+            'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_a$$b@host:8090/alerts?scheme=http"'
+            in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"

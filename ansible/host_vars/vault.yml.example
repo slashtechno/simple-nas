@@ -37,6 +37,8 @@ vault_pics_password: "change-me-12-characters-minimum"
 vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
 # Optional Apprise URLs for pics' alerts, space-separated.
 vault_pics_alert_urls: ""
+# Optional: where Scrutiny sends drive alerts, Shoutrrr URLs separated by commas (ntfy://:<token>@host:port/<topic>?scheme=http). Leave it out for none.
+vault_scrutiny_alert_urls: ""
 # Optional; leave empty to skip the Gitea runner.
 vault_gitea_runner_token: ""
 # Only used if gitea_sso_enabled is true (vars.yml): the client secret Tinyauth checks for Gitea's OpenID Connect login.

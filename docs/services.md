@@ -224,6 +224,7 @@ The socket is mounted read-only because Dozzle only reads, not because that limi
 1. On the host, set `scrutiny_enabled: true` and run `just deploy scrutiny --limit <host>`.
 2. The role reads the drive list from `smartctl --scan` at deploy time; set `scrutiny_devices` to a list of device paths when that list is wrong for the host. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".
 3. After plugging in or unplugging a drive, run `just deploy scrutiny --limit <host>` again so the container gets the new list.
+4. For alerts, put `vault_scrutiny_alert_urls` in the host's vault: [Shoutrrr](https://containrrr.dev/shoutrrr/) URLs separated by commas (for this repo's ntfy: `ntfy://:<token>@<host>:<ntfy_port>/<topic>?scheme=http`). Left out, nothing is sent. Scrutiny alerts when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives; a stopped Scrutiny sends nothing. Send a test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
 
 The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scrutiny_config_dir` is covered.
 
