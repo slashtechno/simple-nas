@@ -40,6 +40,11 @@ docker_log_opts:
   max-size: "10m"
   max-file: "3"
 
+# Where journald keeps the system log: persistent (on disk, kept across reboots, so a host that froze or reset leaves a
+# record) or volatile (in memory only, which spares a microSD root drive the writes). Raspberry Pi OS defaults to
+# volatile. Other values are in `man journald.conf`.
+journal_storage: persistent
+
 # Where Docker and containerd keep images and layers. Empty keeps /var/lib/docker on the root drive; set it per host to a
 # directory on a mounted drive (docs/storage.md#dockers-own-storage).
 # CAUTION: changing it hides existing images and containers until they are pulled/created again.

@@ -24,6 +24,7 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 
 - Splitting a login: a user name and its password go together in the vault as `vault_<service>_user` and `vault_<service>_password`, never one in a setting and one in the vault.
 - Assuming the root drive is a microSD. It can be NVMe, USB or SD; say "root drive".
+- Detecting the board (Raspberry Pi or not) or adding a `pi/auto` setting. A feature that only works on one kind of hardware (Pi `config.txt`, EEPROM) gets its own `<name>_enabled` flag and one assert that the file or tool it touches exists, like the `/etc/cloud/cloud.cfg.d` check in `roles/network`. Add a shared board fact only when two features need it.
 - Keying behaviour on a group name. Behaviour comes from `<name>_enabled` flags and the `drives` list.
 - Writing a default in two places, or a setting without a comment above it.
 - Keeping a legacy behaviour (an old path, name or setting still accepted) instead of migrating. Unless the owner says otherwise, do a one-time migration when it can be done cleanly: change the code to the new form, write the host steps as a plan in `plans/`, run them, leave no fallback. Keep legacy handling only where the tool is built for backwards compatibility and has a proper place for it, or when the owner asks.
