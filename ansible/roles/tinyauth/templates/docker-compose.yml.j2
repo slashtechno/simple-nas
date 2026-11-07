@@ -57,7 +57,7 @@ services:
       # Connect server. The redirect URIs must match the app's exactly (oidc in services.yml).
 {% for app in services | selectattr('key', 'in', oidc_service_keys) %}
       TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_CLIENTID: "{{ app.key }}"
-      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_CLIENTSECRET: '{{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_oidc_secret') | replace("$", "$$") }}'
+      TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_CLIENTSECRET: '{{ lookup('ansible.builtin.vars', app.oidc_secret) | replace("$", "$$") }}'
       TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_TRUSTEDREDIRECTURIS: "{{ app.oidc | join(',') }}"
       TINYAUTH_OIDC_CLIENTS_{{ app.key | upper }}_NAME: "{{ app.name }}"
 {% endfor %}

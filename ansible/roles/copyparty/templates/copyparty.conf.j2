@@ -44,7 +44,7 @@
 {% endfor %}
 {% endif %}
 {% for app in copyparty_clients %}
-  {{ app.key }}: {{ lookup('ansible.builtin.vars', 'vault_' ~ app.key ~ '_copyparty_password') }}
+  {{ app.key }}: {{ lookup('ansible.builtin.vars', app.copyparty.password) }}
 {% endfor %}
 
 [/]

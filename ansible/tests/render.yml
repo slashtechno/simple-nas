@@ -247,22 +247,16 @@
       loop_control:
         label: "{{ item.key }}"
 
-    # Names built from a service's key cannot be found by a text search, so check them here.
-    - name: A service with oidc or copyparty has its switch and its vault lines in the example files
+    # The vault names are written out in services.yml, so tools/check_vars.py checks they are documented; the switch
+    # name is built from the key, so check it here.
+    - name: A service with oidc has its sso switch in the shared defaults files
       vars:
         shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
-        vault_example: "{{ lookup('ansible.builtin.file', repo + '/host_vars/vault.yml.example') | from_yaml }}"
-        needed: >-
-          {{ ([item.key ~ '_sso_enabled'] if item.oidc is defined else [])
-             + (['vault_' ~ item.key ~ '_oidc_secret'] if item.oidc is defined else [])
-             + (['vault_' ~ item.key ~ '_copyparty_password'] if item.copyparty is defined else []) }}
       ansible.builtin.assert:
-        that: needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) | length == 0
-        fail_msg: >-
-          {{ item.key }} needs {{ needed | difference(shared_defaults.keys() | list + vault_example.keys() | list) }}
-          in the shared defaults files or vault.yml.example.
+        that: item.key ~ '_sso_enabled' in shared_defaults
+        fail_msg: "{{ item.key }} has oidc, so {{ item.key }}_sso_enabled must be in the shared defaults files."
         quiet: true
-      loop: "{{ services | selectattr('oidc', 'defined') | list + services | selectattr('copyparty', 'defined') | list }}"
+      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
