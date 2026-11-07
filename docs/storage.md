@@ -54,7 +54,10 @@ Docker's own storage (images, layers) is separate: it stays on the root drive un
 
 A host that keeps its apps in a folder on the root drive lists it without a `uuid` ([Using the root drive](#using-the-root-drive-for-fast-or-primary)).
 
-A host with one USB drive for apps and backups (`[fast, backup]`), or for everything including photos (`[fast, primary, backup]`). The backup drive must have a `uuid`. A backup on the drive that holds the data is lost with it; that is fine for data you can replace, and `backup_cloud_enabled: true` ([backups.md](./backups.md)) adds an offsite copy.
+A host with one USB drive for apps and backups (`[fast, backup]`), or for everything including photos (`[fast, primary, backup]`):
+
+- The backup drive must have a `uuid`.
+- A backup on the drive that holds the data is lost with it. That is fine for data you can replace; `backup_cloud_enabled: true` ([backups.md](./backups.md)) adds an offsite copy.
 
 ```yaml
 drives:
