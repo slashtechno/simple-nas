@@ -133,7 +133,7 @@ To change anything else, edit `copyparty.conf.j2` or the variables, then `just d
 
 ## pics: photo culling and sharing
 
-The `pics` role clones the private repo named in `pics_repo`, builds the image on the Pi (several minutes the first time; later runs rebuild only when the repo's commit changed) and runs it on `services`. It uses the Copyparty account `pics` and its two volumes (`/apps/pics/photos` with no delete, `/apps/pics/trash` where it may delete).
+The `pics` role clones the private repo named in `pics_repo`, builds the image on the host (about 10 minutes on a Pi 5; later runs rebuild only when the repo's commit changed) and runs it on `services`. The build needs memory on top of the running services: on a host with 4 GB of RAM, deploy a changed `pics` while Immich and Crafty are idle, and check `free -m` and `journalctl -k | grep -i oom` afterwards. It uses the Copyparty account `pics` and its two volumes (`/apps/pics/photos` with no delete, `/apps/pics/trash` where it may delete).
 
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname in the host's `vars.yml`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
