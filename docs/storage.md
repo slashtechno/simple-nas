@@ -110,16 +110,15 @@ The `backup` role needs an entry with a `uuid`, or the deploy fails: a backup on
 
 ## Plugged-in USB drives (`/drives`)
 
-Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and any USB drive or card reader you plug in appears in Copyparty under `/drives/<label>`. A camera's SD card in a reader works. The host mounts it at `/run/media/system/<label>`.
+Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and any USB drive or card reader you plug in appears in Copyparty under `/drives/<label>`. A camera's SD card in a reader works. Re-deploy to apply: `just deploy storage,copyparty`.
 
-- It is read-only. To change or delete files on it, set `usb_automount_writable: true`.
-- Programs on it cannot be run (mounted `nosuid,nodev,noexec`).
-- With `usb_automount_writable: true` the drive is checked (`fsck -y`, repairing what it finds) before it mounts, so it appears in `/drives` only when the check ends, which can take a long time on a large drive. Read-only, it is not checked.
-- Copyparty runs as root, so files it creates on an ext4 drive belong to root; exFAT, FAT and NTFS drives store no owners.
+- **Host path:** `/run/media/system/<label>`.
+- **Read-only** unless `usb_automount_writable: true`. Nothing on it can run (`nosuid,nodev,noexec`).
+- **Writable drives are checked first** (`fsck -y`, which repairs what it finds) and appear only when the check ends. Read-only drives are not checked.
+- **Unmount before unplugging**, or a writable drive can corrupt: `sudo systemctl stop 'run-media-system-<label>.mount'` (`systemctl list-units 'run-media-*'` shows the name), then power off as in step 4 of [Detach a drive](#detach-a-drive). The drive's empty folder stays until the next reboot.
+- **Owners:** Copyparty runs as root, so files it creates on an ext4 drive belong to root. exFAT, FAT and NTFS store no owners.
 - Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
-- After unplugging, its empty folder stays until the next reboot. Unplugging a writable drive without unmounting can corrupt it.
 - On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts plugged-in drives.
-- Re-deploy to apply: `just deploy storage,copyparty`.
 
 ## Preparing a drive
 
