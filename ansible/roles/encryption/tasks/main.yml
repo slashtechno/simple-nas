@@ -2,12 +2,24 @@
 # Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
 # (init-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
 # tools and both scripts. With no encrypted folder it removes the scripts again (remove.yml).
-- name: Check every encrypted folder is an absolute path
+- name: Check every encrypted folder is an absolute path below the root
   ansible.builtin.assert:
-    that: item is match('/')
-    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/primary/photos."
+    that: item is match('/') and (item | regex_replace('/+$', '')) != ''
+    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/data/photos."
     quiet: true
   loop: "{{ encrypted_folders }}"
+
+# A folder inside another would put its encrypted files inside the outer one, hidden by the outer mount.
+- name: Check no encrypted folder is listed twice or inside another
+  ansible.builtin.assert:
+    that: >-
+      encrypted_pairs | map(attribute='mount') | select('match', (item.mount | regex_escape) ~ '/') | list | length == 0
+      and (encrypted_pairs | map(attribute='mount') | select('equalto', item.mount) | list | length) == 1
+    fail_msg: "{{ item.mount }} is listed twice or holds another listed folder. List each folder once, and none inside another."
+    quiet: true
+  loop: "{{ encrypted_pairs }}"
+  loop_control:
+    label: "{{ item.mount }}"
 
 # overlay2, which Docker's storage uses, does not run on a FUSE filesystem; Docker would not start.
 - name: Check Docker's storage is not in an encrypted folder

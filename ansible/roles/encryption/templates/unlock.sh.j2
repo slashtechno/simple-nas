@@ -13,7 +13,7 @@ MOUNTED=0
 ask_passphrase() {
   if [ -z "$PASS" ]; then
     # Input from a pipe without a final newline still sets PASS, but read returns failure.
-    read -rsp "gocryptfs passphrase: " PASS || true
+    IFS= read -rsp "gocryptfs passphrase: " PASS || true
     echo
     if [ -z "$PASS" ]; then
       echo "ERROR: no passphrase given." >&2
@@ -51,6 +51,15 @@ if [ -e {{ (folder.cipher ~ '/gocryptfs.conf') | quote }} ]; then
   chown {{ ansible_user | quote }} {{ (folder.cipher ~ '/gocryptfs.conf') | quote }}
 fi
 if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
+  # Checked before the prompt, so a folder that was never set up, or whose drive is not mounted, says so.
+  if [ ! -d {{ folder.cipher | quote }} ]; then
+    echo "ERROR: {{ folder.cipher }} does not exist, so {{ folder.mount }} was never set up. Run init-encrypted-folder.sh (docs/encryption.md#set-up-a-folder)." >&2
+    exit 1
+  fi
+  if [ ! -d {{ folder.mount | quote }} ]; then
+    echo "ERROR: {{ folder.mount }} does not exist. Is {{ folder.mount | dirname }} mounted?" >&2
+    exit 1
+  fi
   ask_passphrase
   echo "Unlocking {{ folder.mount }}"
   # The folder must be empty: files left in it would be hidden by the mount. Move them away first (docs/encryption.md).

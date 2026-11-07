@@ -45,7 +45,7 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 | `/mnt/data/.photos.gocryptfs` | The encrypted files, on the same filesystem. |
 
 - **Locked folder:** an empty folder marked immutable (`chattr +i`), so a container or deploy that runs too early fails with "Operation not permitted" instead of filling the drive. It needs ext4, xfs or btrfs (elsewhere `unlock.sh` warns and mounts anyway). Root can remove the flag: a safety net, not a security boundary.
-- **Containers do not wait:** one with data in a locked folder fails or sees an empty folder until `unlock.sh` restarts Docker (`00-docker.sh`), which stops every container for up to 10 seconds.
+- **Containers do not wait:** one with data in a locked folder fails or sees an empty folder until `unlock.sh` restarts Docker (`00-docker.sh`), which stops every container while Docker restarts.
 - **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order. Add your own to start other software (`systemctl restart myapp`). A failing script does not stop the others; the unlock then exits with an error.
 - **Docker's storage** (`docker_data_root`) cannot be in a listed folder (overlay2 does not run on FUSE); the deploy fails if it is. `sshd` and Tailscale run on the host, so you can still log in to unlock.
 - **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. It is fixed at creation and recorded in the conf, so a folder opens on any CPU. Another machine needs gocryptfs 2.2+ for XChaCha20 (`brew install gocryptfs` and `brew install --cask macfuse`). To see which: `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20.
@@ -63,6 +63,7 @@ encrypted_folders:
   - /mnt/data/apps     # pics' photos and trash, if pics is on
 ```
 
+- A listed folder must not sit inside another listed folder; the deploy fails if one does.
 - `appdata` includes every database, Immich's Postgres too. Databases write often, so they are the slowest thing to encrypt: try your real workload first.
 - `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
 - A service added later with its data under `{{ fast_drive }}/appdata` is covered automatically. Anything else stays plain.
@@ -75,10 +76,10 @@ encrypted_folders:
 
 ## Set up a folder
 
-Do this **before the service first starts**, or it writes plain files into the folder. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. Step 4 applies only to a folder that already holds data: back up first, because it deletes the source files as it goes.
+Do this **before the service first starts**, or it writes plain files into the folder. If the folder already holds data, run a backup before step 1: once the path is listed, both backups refuse to run until the folder is unlocked. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. Step 4 applies only to a folder that already holds data: back up first, because it deletes the source files as it goes.
 
 1. Add the paths to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
-2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one with `init-encrypted-folder.sh`, in a terminal: it prints the master key only there. To run it straight from your computer, give it one: `ssh -t <host> sudo /opt/services/scripts/init-encrypted-folder.sh <folder>`.
+2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one with `init-encrypted-folder.sh`, in a terminal: it prints the master key only there. To run it straight from your computer, give it a terminal: `ssh -t <host> sudo /opt/services/scripts/init-encrypted-folder.sh <folder>`.
 
 ```bash
 sudo mv /mnt/data/photos /mnt/data/photos.plain      # skip if the folder does not exist yet

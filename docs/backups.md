@@ -230,6 +230,8 @@ Get an ID from `restic snapshots` (or the dashboard); `latest` works in place of
 
 `--target` needs real free space. `/tmp` can be a RAM disk and the root drive can be small, so use a path on a data drive such as `/mnt/data` or `/mnt/backup`.
 
+On a host with encrypted folders, run `unlock.sh` first ([encryption.md](./encryption.md)): a locked folder is immutable, so a restore into it stops with "Operation not permitted".
+
 ```bash
 # Restore into a scratch path to inspect first (safe: doesn't touch originals)
 restic restore latest --include /mnt/data/files --target /mnt/data/restore-scratch
