@@ -245,7 +245,7 @@ One container runs every server. All data is under `crafty_data_dir` (`servers/ 
 
 - Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Crafty makes this password itself and has no setting for it. Behind Tinyauth it is the second login, so change it in the panel to something short, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
-- `crafty_memory_limit` (default 3g) caps all servers combined. On a 4 GB Pi it competes with Immich if both run on the host.
+- `crafty_memory_limit` (default 3g) caps all servers combined. On a host with 4 GB of RAM it competes with Immich if both run there; size the two so together they leave room for the rest.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
 - The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [backups.md](./backups.md)).
 
@@ -254,7 +254,7 @@ One container runs every server. All data is under `crafty_data_dir` (`servers/ 
 Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `services` and not in `cloudflared_ingress`.
 
 - Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale does not replace it: off home Wi-Fi the Home app shows the bridge offline even with Tailscale connected.
-- The admin UI is reachable over Tailscale at `http://<pi-tailscale-ip>:8581` (plain HTTP).
+- The admin UI is reachable over Tailscale at `http://<tailscale-ip>:8581` (plain HTTP).
 
 The role only deploys the container; the image creates `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. The HomeKit PIN and plugins are set in the UI and persist across deploys.
 

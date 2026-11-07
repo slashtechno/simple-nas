@@ -82,6 +82,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 1. Check the host:
    - Debian-family OS: Raspberry Pi OS, Debian 12 or newer, or Ubuntu (Server or Desktop; Desktop uses more RAM). Debian 11 is too old: its restic 0.11 cannot read the `- !` backup rules.
+   - Enough RAM for what you switch on: Immich, Crafty and Gitea are the largest, and a build (pics, Caddy) needs more than the running service. On a 4 GB host leave some off or lower `crafty_memory_limit`, and check `free -m` after a deploy.
    - SSH and Python are installed, and your SSH key is on the host.
    - No Docker snap: the deploy installs Docker from apt and stops if it finds the snap.
    - The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).

@@ -5,7 +5,7 @@ data_dir = "/var/lib/garage/data"
 
 # Engine for the metadata database. lmdb is the recommended embedded option.
 db_engine = "lmdb"
-# A larger map ran out of memory on a Pi 4 with 4 GB RAM
+# 1 GiB is enough for one node's metadata; a larger map ran out of memory on a 4 GB host
 lmdb_map_size = "1G"
 
 # One node, no replication.

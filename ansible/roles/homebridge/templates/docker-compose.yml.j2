@@ -4,7 +4,7 @@
 # Homebridge must appear on the same L2 segment as your iOS devices. This means it
 # cannot join the services bridge network and is not reachable by container
 # name from cloudflared; it is intentionally left out of cloudflared_ingress.
-# Reach the UI over Tailscale instead: http://<pi-tailscale-ip>:8581
+# Reach the UI over Tailscale instead: http://<tailscale-ip>:8581
 services:
   homebridge:
     image: {{ homebridge_image }}

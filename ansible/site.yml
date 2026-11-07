@@ -113,7 +113,7 @@
       ansible.builtin.meta: flush_handlers
 
     # Before the services: an app that signs in through Tinyauth fetches the login page's settings as it starts
-    # (roles/gitea/tasks/sso.yml), and Caddy's first build takes 20+ minutes on a Pi.
+    # (roles/gitea/tasks/sso.yml), and Caddy's first build compiles Caddy and takes 20+ minutes on a small host.
     - name: Deploy caddy
       ansible.builtin.import_role:
         name: caddy

@@ -23,7 +23,7 @@ if [ -n "$(ls -A "$FOLDER")" ]; then
 fi
 
 # The cipher cannot be changed later. A CPU with AES instructions is fastest with the default (AES-GCM);
-# one without (Raspberry Pi 4) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
+# one without (a Raspberry Pi 4, for example) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
 if grep -qw aes /proc/cpuinfo; then
   CIPHER_OPTION=""
 else

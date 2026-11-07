@@ -226,7 +226,7 @@ Get an ID from `restic snapshots` (or the dashboard); `latest` works in place of
 
 ## Restore: files
 
-`--target` needs real free space. `/tmp` is in RAM and `/` is small, so use a path on a data drive such as `/mnt/data` or `/mnt/backup`.
+`--target` needs real free space. `/tmp` can be a RAM disk and the root drive can be small, so use a path on a data drive such as `/mnt/data` or `/mnt/backup`.
 
 ```bash
 # Restore into a scratch path to inspect first (safe: doesn't touch originals)
