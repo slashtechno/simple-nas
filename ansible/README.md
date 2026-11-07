@@ -14,7 +14,7 @@ All commands below run from `ansible/`.
 |---|---|---|
 | Deploy everything to one host | nothing | `just deploy '' --limit <host> -K` |
 | Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>`; with Caddy names also `caddy,homepage` (they read the flags, so a service enabled without them has no name) |
-| Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
+| Stop deploying a service | set the flag to `false` (or delete it) | `just teardown <host> -e only=<name>` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
 | Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `python3 tools/settings.py <part>`, or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
 | Add or change a secret | `just edit vault` (or `ansible-vault edit host_vars/<host>/vault.yml`, `group_vars/all/vault.yml`) | `just deploy <tag>` |
@@ -57,7 +57,7 @@ A vault file is a YAML file encrypted with `ansible-vault`. Secrets live in `vau
 - **Names:** a login's user name sits in the vault beside its password, so one place holds the whole login: `vault_<service>_user` and `vault_<service>_password` (`vault_ntfy_user`, `vault_ntfy_password`). Other secrets are `_token`, `_key` or `_oidc_secret`.
 - **First-time setup:** `just setup <host>` creates `.vault-pass` with a random password and `host_vars/<host>/vars.yml` from the example. It writes both vault files with random values for every generated secret (database passwords, the ntfy token, the restic password), encrypts them, never prints a secret, and on a later run adds only what is missing. It then lists every other secret in the examples (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`); add the ones your services use.
 - **By hand instead:** put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_vars/<host>/vault.yml` (and `group_vars/all/vault.yml.example` to `group_vars/all/vault.yml`), keep the keys your services use, and run `ansible-vault encrypt --vault-password-file .vault-pass <file>`.
-- **Check:** a vault file you forget to encrypt still deploys, with its secrets in plain text on your computer. Make sure it starts with `$ANSIBLE_VAULT`.
+- **Check:** a vault file you forget to encrypt still deploys, with its secrets in plain text on your computer. Make sure `head -1 <file>` prints a line starting with `$ANSIBLE_VAULT`.
 - **Git and precedence:** `.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git. A name in both a host's vault and the shared vault takes the host's value.
 - **Flat names:** `vault_ntfy_token`, not `vault.ntfy.token`. Ansible replaces a dict instead of merging it, so a host file holding one key of an app's dict would hide the others from the shared file, and one app's secrets are split that way (ntfy's token is shared, its password is per host).
 - **Where to look:** what each service needs is in [docs/services.md](../docs/services.md); names and meanings are in `group_vars/all/vault.yml.example` and `host_vars/vault.yml.example`.
