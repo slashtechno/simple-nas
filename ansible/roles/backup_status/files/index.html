@@ -76,6 +76,7 @@
   .tree .size { color: var(--pico-muted-color); white-space: nowrap; }
   .tree-scroll { max-height: 50vh; overflow: auto; }
   .change { font-family: var(--pico-font-family-monospace); font-size: .85rem; word-break: break-all; }
+  .tree .count { margin-left: .5rem; color: var(--pico-muted-color); font-size: .8rem; }
 </style>
 
 <main class="container">
@@ -283,6 +284,50 @@
   }, true);
 
   const CHANGE_LABELS = { '+': ['added', 'ok'], '-': ['removed', 'crit'], 'M': ['changed', 'warn'], 'U': ['type changed', 'warn'], 'T': ['type changed', 'warn'] };
+  // The changed paths as nested folders: { folders: Map(name -> node), files: [{name, change}], count }.
+  function changeTree(changes) {
+    const newNode = () => ({ folders: new Map(), files: [], count: 0 });
+    const root = newNode();
+    for (const c of changes) {
+      const parts = c.path.split('/').filter(Boolean);
+      const name = parts.pop();
+      let node = root;
+      node.count++;
+      for (const part of parts) {
+        if (!node.folders.has(part)) node.folders.set(part, newNode());
+        node = node.folders.get(part);
+        node.count++;
+      }
+      node.files.push({ name, change: c.change });
+    }
+    return root;
+  }
+
+  // Folders are collapsed and fill when first opened; a folder holding only one folder is joined with it (mnt/t7/appdata/).
+  function fillChanges(container, node) {
+    const items = [];
+    for (let [name, kid] of node.folders) {
+      while (kid.folders.size === 1 && kid.files.length === 0) {
+        const [next, nextKid] = kid.folders.entries().next().value;
+        name += '/' + next;
+        kid = nextKid;
+      }
+      const d = el('details');
+      const children = el('div', undefined, 'children');
+      d.append(el('summary', name + '/'), children);
+      d.firstChild.append(el('span', `${kid.count} change${kid.count === 1 ? '' : 's'}`, 'count'));
+      d.addEventListener('toggle', () => { if (d.open && !children.hasChildNodes()) fillChanges(children, kid); });
+      items.push(d);
+    }
+    for (const f of node.files) {
+      const [label, cls] = CHANGE_LABELS[f.change] || [f.change, 'warn'];
+      const r = el('div', undefined, 'row');
+      r.append(el('span', f.name, 'change'), el('span', label, `pill ${cls}`));
+      items.push(r);
+    }
+    container.replaceChildren(...items);
+  }
+
   // A diff reads the whole tree, so it runs when asked for.
   function showChanges(prevId, id) {
     const box = document.getElementById('modalChanges');
@@ -296,16 +341,10 @@
       try {
         const d = await getJson(`/api/diff?from=${prevId}&to=${id}`);
         const head = el('p', `${d.total_changes} changes · +${humanBytes(d.added_bytes)} added · −${humanBytes(d.removed_bytes)} removed`);
-        const rows = d.changes.map((c) => {
-          const [label, cls] = CHANGE_LABELS[c.change] || [c.change, 'warn'];
-          const r = el('div', undefined, 'row');
-          r.append(el('span', c.path, 'change'), el('span', label, `pill ${cls}`));
-          return r;
-        });
         const more = d.total_changes > d.changes.length
           ? [el('small', `Showing the first ${d.changes.length}. For the rest: ssh ${target} '${localBase} restic diff ${prevId} ${id}'`)] : [];
         const list = el('div', undefined, 'tree tree-scroll');
-        list.append(...rows);
+        fillChanges(list, changeTree(d.changes));
         box.replaceChildren(head, list, ...more);
       } catch (err) {
         box.replaceChildren(el('small', `Couldn't compare: ${err.message}`));

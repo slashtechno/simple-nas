@@ -44,7 +44,7 @@ WEEKLY_STALE_AFTER_SECONDS = 9 * 24 * 3600  # weekly jobs — allow a missed wee
 RUNNING_STALE_AFTER_SECONDS = 72 * 3600
 
 SNAPSHOT_ID = re.compile(r"[0-9a-f]{8}")  # restic's short id
-MAX_DIFF_ENTRIES = 2000  # a snapshot after a big move can differ in hundreds of thousands of files
+MAX_DIFF_ENTRIES = 20000  # the page groups them into folders, so a cap that cuts a normal day in half would give wrong folder counts; a snapshot after a big move can differ in hundreds of thousands of files
 DIFF_TIMEOUT_SECONDS = 300
 LS_TIMEOUT_SECONDS = 120  # restic loads the repository index first, which is slow on a large repo on a hard disk
 
