@@ -78,7 +78,7 @@ encrypted_folders:
 Do this **before the service first starts**, or it writes plain files into the folder. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. Step 4 applies only to a folder that already holds data: back up first, because it deletes the source files as it goes.
 
 1. Add the paths to `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
-2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one (in a terminal, `ssh -t <host>`: the master key prints only there):
+2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one. Run it over `ssh -t <host>`: the master key prints only in a terminal.
 
 ```bash
 sudo mv /mnt/data/photos /mnt/data/photos.plain      # skip if the folder does not exist yet
