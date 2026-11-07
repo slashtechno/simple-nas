@@ -10,7 +10,7 @@ Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs
 Each host chooses its backups with two flags in `host_vars/<host>/vars.yml`:
 
 - `backup_local_enabled: true` backs up daily to a drive and checks that repository weekly. The host needs a `drives` entry with the `backup` role and a `uuid` ([storage.md](./storage.md)). The deploy stops with a message if it has none.
-- `backup_cloud_enabled: true` backs up weekly to `restic_cloud_repository`. Set that per host in `host_vars/<host>/vars.yml`, with a path no other host uses: hosts that share a repository prune each other's snapshots. The deploy stops with a message if it is empty.
+- `backup_cloud_enabled: true` backs up weekly to `restic_cloud_repository`. **Each host needs its own path:** hosts that share a repository prune each other's snapshots. Set it per host in `host_vars/<host>/vars.yml`; the deploy stops with a message if it is empty.
 - A host can set either flag or both. The restic password comes from `vault_restic_password` in `group_vars/all/vault.yml`.
 - The web dashboard (`backup_status_enabled`) reads the local repository, so it needs `backup_local_enabled`.
 
@@ -208,7 +208,9 @@ restic -r /mnt/offline/restic-repo copy \
 
 ## Checking backup status
 
-The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and again when it ends. A missing, unreadable or too old file shows as an error, never as ok; the `.log` files are for reading. `cat /mnt/backup/logs/restic-local.status.json` shows what the last run did. A run that stops before writing the file (a mount guard, such as a dropped backup drive) leaves the previous result in place, so a card can still say ok for up to 36 hours (9 days for the weekly jobs) after the first such failure; the alert is what reports it.
+The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and again when it ends. A missing, unreadable or too old file shows as an error, never as ok; the `.log` files are for reading. `cat <backup_logs_dir>/restic-local.status.json` shows what the last run did.
+
+A run that stops before writing the file (a mount guard, such as a dropped backup drive) leaves the previous result in place, so a card can still say ok for up to 36 hours (9 days for the weekly jobs) after the first such failure; the alert is what reports it.
 
 A failed job is written to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set (and `just deploy common`), sent to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
@@ -297,12 +299,15 @@ Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl sta
 
 ## Disaster recovery (all drives fail)
 
-1. Get the vault password from your password manager first; without it nothing below works. Re-flash the OS, then run `just deploy` from `ansible/`. This needs the vault files and that password: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
-2. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)), then pull from the cloud repository, with the cloud repository set as in [Connecting](#connecting). With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)), so those come back only from an [offline copy](#offline-copy-on-a-second-drive). It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
+1. Get the vault password from your password manager first; without it nothing below works. Then get the two vault files: `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`. They exist only on your own machine, and without them no restic repository can be opened. Keep a copy of both somewhere that is not the host.
+2. Re-flash the OS, then run `just deploy` from `ansible/`.
+3. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)).
+4. Set the cloud repository as in [Connecting](#connecting), then pull from it. It holds one snapshot group per path, and `latest` restores only one snapshot, so restore each:
    ```bash
    restic -o rclone.args="<restic_cloud_rclone_args>" snapshots --group-by path
    restic -o rclone.args="<restic_cloud_rclone_args>" restore <snapshot-id> --target /      # once per group
    ```
-3. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 2 (see Restore: Immich database, Restore: Gitea and Restore: Garage above, using the restored `service-dumps` folder).
+   With the default rules it holds no photos or Copyparty files ([What is backed up where](#what-is-backed-up-where)); those come back only from an [offline copy](#offline-copy-on-a-second-drive).
+5. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 4 (see Restore: Immich database, Restore: Gitea and Restore: Garage above, using the restored `service-dumps` folder).
 
 If the host uses [encryption](./encryption.md), the backup scripts refuse to run while a listed folder is locked; unlock first.
