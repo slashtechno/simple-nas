@@ -24,6 +24,10 @@ dozzle_enabled: true
 # Reconnect the Wi-Fi when it stays up but nothing can connect out (docs/networking.md#connectivity-watchdog).
 connectivity_watchdog_enabled: true
 
+copyparty_enabled: true
+usb_automount_enabled: true
+usb_automount_writable: true
+
 # --- Drives ---
 drives:
   - uuid: "652f3034-fd03-4a7e-b39a-a7d5262c371a"   # 128 GB USB stick, label primary → /mnt/apps
