@@ -17,7 +17,7 @@
     content: |
       # Ansible-managed (roles/network). Networking is configured by Ansible, not cloud-init.
       network: {config: disabled}
-    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    dest: "{{ cloud_init_network_dropin }}"
     owner: root
     group: root
     mode: "0644"

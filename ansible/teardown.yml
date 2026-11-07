@@ -25,7 +25,7 @@
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
-#   ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass
+#   ansible-playbook teardown.yml --limit pi4 -e remove_data=true -e confirm_remove_data=pi4 --vault-password-file .vault-pass
 
 - name: Tear down services
   hosts: servers
@@ -33,6 +33,8 @@
 
   vars:
     remove_data: false   # override with -e remove_data=true to also delete data dirs
+    # remove_data=true also needs -e confirm_remove_data=<the host's inventory name>, typed on purpose.
+    confirm_remove_data: ""
     # Comma-separated service keys (-e only=copyparty,garage) to remove just those; empty removes everything.
     only: ""
     only_keys: "{{ only.split(',') if only | length > 0 else services | map(attribute='key') | list }}"
@@ -44,6 +46,35 @@
         that: ansible_limit is defined
         fail_msg: "Pass --limit <host>: without it this would run on every server."
         quiet: true
+      tags: [always]
+
+    # Data deletion has no undo, so it takes the host's name as well as the flag, and it stops before deleting anything
+    # if a data folder is an encrypted folder or holds one: an unlocked mount would lose its files before the mount
+    # point itself failed to go, and a locked one is immutable (docs/encryption.md).
+    - name: Check that remove_data was confirmed with the host name
+      ansible.builtin.assert:
+        that: confirm_remove_data == inventory_hostname
+        fail_msg: >-
+          remove_data=true deletes the data of {{ only_keys | join(', ') }} on {{ inventory_hostname }} with no undo.
+          Add -e confirm_remove_data={{ inventory_hostname }} to go ahead.
+        quiet: true
+      when: remove_data | bool
+      tags: [always]
+
+    - name: Check no data folder to delete is, or holds, an encrypted folder
+      vars:
+        selected: "{{ services | selectattr('key', 'in', only_keys) | list }}"
+        names: "{{ (selected | map(attribute='data', default=[]) | flatten + selected | map(attribute='no_backup', default=[]) | flatten) | select | list }}"
+        paths: "{{ query('ansible.builtin.vars', *names) }}"
+      ansible.builtin.assert:
+        that: not (item[0] == item[1] or item[0].startswith(item[1] ~ '/') or item[1].startswith(item[0] ~ '/'))
+        fail_msg: >-
+          {{ item[0] }} is, or holds, the encrypted folder {{ item[1] }}. Turn encryption off for it first
+          (docs/encryption.md#turning-it-off); nothing was deleted.
+        quiet: true
+      loop: "{{ paths | product(encrypted_folders) | list if remove_data | bool else [] }}"
+      loop_control:
+        label: "{{ item[0] }}"
       tags: [always]
 
     # ── Services ───────────────────────────────────────────────────────────
@@ -83,6 +114,21 @@
               loop:
                 - "{{ scripts_dir }}/alert.sh"
                 - "{{ ntfy_token_file }}"
+
+        # What the common and network roles wrote outside our directories. cloud-init gets the network back and journald
+        # returns to the OS default; both take effect at the next boot. SSH keys, the sudoers file, packages and the
+        # timezone stay: removing them could lock Ansible out or cannot be undone.
+        - name: Remove the journald drop-in
+          tags: [journal]
+          ansible.builtin.file:
+            path: "{{ journald_dropin }}"
+            state: absent
+
+        - name: Remove the cloud-init network drop-in
+          tags: [network]
+          ansible.builtin.file:
+            path: "{{ cloud_init_network_dropin }}"
+            state: absent
 
         - name: Remove the connectivity watchdog
           tags: [connectivity_watchdog]

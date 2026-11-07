@@ -206,12 +206,16 @@ Set `<name>_enabled: false` in `host_vars/<host>/vars.yml` (or delete the line) 
 
 ```bash
 ansible-playbook teardown.yml --limit pi4 -e only=garage --vault-password-file .vault-pass      # one service, data kept (names: the keys in group_vars/all/services.yml)
-ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass                     # everything, data kept
-ansible-playbook teardown.yml --limit pi4 -e remove_data=true --vault-password-file .vault-pass # also wipes data: no undo without a backup
+ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass                     # everything the repo deployed, data kept
+ansible-playbook teardown.yml --limit pi4 -e remove_data=true -e confirm_remove_data=pi4 --vault-password-file .vault-pass # also wipes data: no undo without a backup
 ```
+
+`remove_data=true` stops unless `confirm_remove_data` is the host's inventory name, and unless no data folder to delete is, or holds, an [encrypted folder](../docs/encryption.md#turning-it-off); it checks both before deleting anything.
 
 Teardown never touches drive mounts, the restic password or Tailscale state. It also leaves:
 
+- **Base host setup:** SSH keys, the sudoers file, installed packages, the timezone and the sleep masks. Removing them could lock Ansible out or cannot be undone. Without `only`, teardown does remove the journald and cloud-init drop-ins the roles wrote (they take effect at the next boot).
+- **Encrypted folders:** the ciphertext, `gocryptfs.conf`, the master key and your after-unlock scripts ([encryption.md](../docs/encryption.md)).
 - **Dumps and logs on the backup drive:** `<backup drive>/service-dumps` and `<backup drive>/logs` (`/var/lib/backup-work` on a host with only the offsite backup). They hold a full database dump and Garage's node key.
 - **Docker volumes** ([storage.md](../docs/storage.md)) and **Dockge stacks**.
 - **Backup snapshots:** the data stays restorable until retention prunes them.

@@ -123,7 +123,7 @@ If it stops half way, run the same `rsync` again. When the lists match:
 
 The role removes the scripts when no folder is left; gocryptfs stays installed. The ciphertext you deleted is no longer needed, and neither are the master key and passphrase for that folder.
 
-`teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is a listed folder fails in both states (unlocked it deletes the files, then cannot remove the mount point; locked, the folder is immutable): turn encryption off for it first.
+`teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is, or holds, a listed folder stops before it deletes anything (unlocked, the files would go and the mount point could not; locked, the folder is immutable): turn encryption off for it first.
 
 ## Unlocking
 
