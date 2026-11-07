@@ -13,7 +13,7 @@ All commands below run from `ansible/`.
 | I want to | Edit | Then run |
 |---|---|---|
 | Deploy everything to one host | nothing | `just deploy '' --limit <host> -K` |
-| Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>` |
+| Turn a service on for a host | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus the drive roles and vault entries the service needs ([services](../docs/services.md)) | `just deploy <name> --limit <host>`; with Caddy names also `caddy,homepage` (they read the flags, so a service enabled without them has no name) |
 | Stop deploying a service | set the flag to `false` (or delete it) | `ansible-playbook teardown.yml -e only=<name> --limit <host> --vault-password-file .vault-pass` ([remove a service](#disable-or-remove-a-service)) |
 | Change a setting | the file that owns it ([change a setting](#change-a-setting)) | `just deploy <tag>` |
 | Look up a setting, its default and every override | nothing | `just settings <part of the name>` (or `python3 tools/settings.py <part>`, or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
