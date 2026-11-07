@@ -29,7 +29,8 @@ tinyauth_environment:
   TINYAUTH_OAUTH_AUTOREDIRECT: github   # optional: skip the login page and go straight to GitHub
 ```
 
-- **Who may sign in.** A provider accepts any of its accounts, so the whitelists limit it by email: only the emails of the users in `vault_tinyauth_users` that have an `email:`, and a limited service lets in only the emails of the users `service_users` lists for it. The deploy stops if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
+- **Who may sign in.** A provider accepts any of its accounts, so the whitelists limit it by email: only the emails of the users in `vault_tinyauth_users` that have an `email:`, and a limited service lets in only the emails of the users `service_users` lists for it.
+- **The deploy stops** if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
 - **Name the user after the GitHub login**, with your email: `{name: slashtechno, password: ..., email: you@example.com}` (lower-case letters, digits and `-`). Both logins then give apps the same name, so they see one person. If the names differ: [one person, several names](#one-person-several-names).
 - `google` is the same with `GOOGLE`, but Google gives the user name `you_example.com`, so name the user that to match. Another provider (Pocket ID, Authentik, Keycloak) is any other id plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
