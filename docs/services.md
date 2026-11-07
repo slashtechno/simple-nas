@@ -63,7 +63,8 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 
 Git hosting with an optional Actions runner.
 
-- **Address:** `gitea_root_url` defaults to `https://<gitea_subdomain>.<first private domain>/` (`https://git.pi4.example.com/`). Set it in `group_vars/all/vars.yml` or the host's `vars.yml` for any other address, such as a public name through a tunnel; a host with no `caddy_private_domains` must set it. The other private domains also reach Gitea, but links, clone URLs and Tinyauth sign-in use `gitea_root_url`.
+- **Address:** `gitea_root_url` defaults to `https://<gitea_subdomain>.<first private domain>/` (`https://git.pi4.example.com/`). A host with no `caddy_private_domains` must set it.
+- **Another address**, such as a public name through a tunnel: set `gitea_root_url` in `group_vars/all/vars.yml` or the host's `vars.yml`. The other private domains also reach Gitea, but links, clone URLs and Tinyauth sign-in use `gitea_root_url`.
 - **Names:** `gitea_domain` and `gitea_ssh_domain` default to the host name in `gitea_root_url`. Set `gitea_ssh_domain` when SSH clones need another name, because a Cloudflare tunnel carries only HTTP.
 - Web UI on `gitea_port` (3000), SSH for clones on `gitea_ssh_port` (2222). Public access is a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - The runner starts only when `vault_gitea_runner_token` is not empty.
@@ -79,7 +80,11 @@ Apps that store files in Copyparty (pics) get an account named after the app, wi
 
 - The volumes are not part of `copyparty_files_dir`, so the admin's file listing does not show them. Every admin (`copyparty_user` and, with SSO, `copyparty_sso_admins`) has full access to them. `/apps/` opens read-only and lists each app's folders; it is not indexed.
 - `perms` are Copyparty permission letters: `r` read, `w` write, `m` move, `d` delete.
-- To give another app volumes: add a `copyparty` field to its entry in `services.yml`, add a directory setting per volume to `defaults-data-dirs.yml` and list it in the entry's `data` (so backup and teardown cover it), name the password's vault variable in `copyparty.password` and put it in the vault, and point the app at `/apps/<key>/<folder>` through Copyparty (pics: `COPYPARTY_ROOT` and `COPYPARTY_TRASH_ROOT` in its env file). The app does not mount the folders itself.
+- To give another app volumes:
+  1. Add a `copyparty` field to its entry in `services.yml`.
+  2. Add a directory setting per volume to `defaults-data-dirs.yml` and list it in the entry's `data`, so backup and teardown cover it.
+  3. Name the password's vault variable in `copyparty.password` and put it in the vault.
+  4. Point the app at `/apps/<key>/<folder>` through Copyparty (pics: `COPYPARTY_ROOT` and `COPYPARTY_TRASH_ROOT` in its env file). The app does not mount the folders itself.
 - Leave out `d` unless the app must delete. Without `d` Copyparty also refuses overwrites, so the app can't destroy anything.
 
 `/drives` shows the USB drives and cards plugged into the host when `usb_automount_enabled: true`, read-only unless `usb_automount_writable` ([storage.md](./storage.md#plugged-in-usb-drives-drives)).
@@ -109,7 +114,9 @@ Keep the password in a vault entry you name yourself.
 
 `copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login, so one login opens it. It adds to Copyparty's own passwords and does not replace them: the same Copyparty answers a Tinyauth user on the browser name and a password on every other address.
 
-- It needs `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`: the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. A Tinyauth user name is the Copyparty user name, so every other signed-in user has only what `copyparty_extra_conf` grants them (below); `service_users.copyparty` can limit who may open the page at all. Tinyauth sets `Remote-User` for a GitHub or Google login too (the provider's username, which it does not map to a Tinyauth user), so with `TINYAUTH_OAUTH_*` providers on, no whitelisted account may have a provider username equal to a name in `copyparty_sso_admins`.
+- **Needs:** `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`.
+- **Admins:** `copyparty_sso_admins` lists the Tinyauth user names, matched exactly, that get admin access to `/`, `/collab` and `/fast`. A Tinyauth user name is the Copyparty user name, so every other signed-in user has only what `copyparty_extra_conf` grants them (below); `service_users.copyparty` can limit who may open the page at all.
+- **Provider logins:** Tinyauth sets `Remote-User` for a GitHub or Google login too (the provider's username, which it does not map to a Tinyauth user). With `TINYAUTH_OAUTH_*` providers on, no whitelisted account may have a provider username equal to a name in `copyparty_sso_admins`.
 - The browser name is the only lane behind the login. The published port and the Cloudflare tunnel hostname keep Copyparty's own passwords: WebDAV, rclone and phone apps use `http://<host>:<copyparty_port>` with their account. A tunnel hostname that points at Copyparty bypasses Caddy, so it keeps the password login too.
 - **A user with access to one folder only:** give the user a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`, `/fast`).
 
@@ -133,7 +140,9 @@ To change anything else, edit `copyparty.conf.j2` or the variables, then `just d
 
 ## pics: photo culling and sharing
 
-The `pics` role clones the private repo named in `pics_repo`, builds the image on the host (about 10 minutes on a Pi 5; later runs rebuild only when the repo's commit changed) and runs it on `services`. The build needs memory on top of the running services: on a host with 4 GB of RAM, deploy a changed `pics` while Immich and Crafty are idle, and check `free -m` and `journalctl -k | grep -i oom` afterwards. It uses the Copyparty account `pics` and its two volumes (`/apps/pics/photos` with no delete, `/apps/pics/trash` where it may delete).
+The `pics` role clones the private repo named in `pics_repo`, builds the image on the host (about 10 minutes on a Pi 5; later runs rebuild only when the repo's commit changed) and runs it on `services`. It uses the Copyparty account `pics` and its two volumes (`/apps/pics/photos` with no delete, `/apps/pics/trash` where it may delete).
+
+- **Memory:** the build needs memory on top of the running services. On a host with 4 GB of RAM, deploy a changed `pics` while Immich and Crafty are idle, then check `free -m` and `journalctl -k | grep -i oom`.
 
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname in the host's `vars.yml`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
@@ -178,7 +187,8 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 1. Make the secrets: a login (a user name and a password) and a token (token: `docker run --rm binwiederhier/ntfy token generate`; password: `openssl rand -base64 24`). The user and password go in `vault_ntfy_user` and `vault_ntfy_password` (`host_vars/<host>/vault.yml`) and the token in `vault_ntfy_token` (`group_vars/all/vault.yml`). The deploy hashes the password into the compose file (mode 0640), so the vault holds the plain password.
 2. On the host that runs ntfy, set `ntfy_enabled: true` in its `vars.yml`, then `just deploy ntfy,caddy --limit <host>` (Caddy adds `ntfy.<private domain>`). Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
-3. In the ntfy app, add the server `http://<host-tailscale-name>:<ntfy_port>` with the user and password from the vault (`vault_ntfy_user`, `vault_ntfy_password`: `just edit vault --host <host>`), and subscribe to the topic in `ntfy_topic` (default `alerts`). The phone must be on Tailscale. With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works; set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
+3. In the ntfy app, add the server `http://<host-tailscale-name>:<ntfy_port>` with the user and password from the vault (`vault_ntfy_user`, `vault_ntfy_password`: `just edit vault --host <host>`), and subscribe to the topic in `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
+   With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it in the host's `vars.yml` so links and iOS push use that address, and add that server in the app instead.
    Web: open `https://ntfy.<host>.<your domain>`, sign in, subscribe to the topic and allow notifications when the browser asks. Browsers show notifications only from an `https://` address, so the plain `http://` address lists messages but does not pop them up.
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
@@ -262,7 +272,8 @@ The role only deploys the container; the image creates `config.json` and `auth.j
 
 A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all your servers. Run it on one host: it shows a group of tiles for every host in the inventory, one tile per service that host has switched on and that has a host port or a Caddy name, each with a green or red dot for whether the page answers. It follows the device's light or dark setting, in Catppuccin Latte and Mocha colours (`roles/homepage/files/custom.css`).
 
-- With `tinyauth_enabled` and `caddy_private_domains` it is at `https://<homepage_subdomain>.<first private domain>` behind the login, and publishes no port. Without Tinyauth, set `homepage_port` (for example 3001) and open `http://<homepage_host>:<homepage_port>`; anyone on the network can then open it. `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name); the page also answers on the inventory name. Any other address gets a host validation error: set `homepage_host` to the one you use.
+- With `tinyauth_enabled` and `caddy_private_domains` it is at `https://<homepage_subdomain>.<first private domain>` behind the login, and publishes no port. Without Tinyauth, set `homepage_port` (for example 3001) and open `http://<homepage_host>:<homepage_port>`; anyone on the network can then open it.
+- **The address must match.** `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name); the page also answers on the inventory name. Any other address gets a host validation error: set `homepage_host` to the one you use.
 - Each host's tiles link to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)), and otherwise to that host's `ansible_host` and port settings. The page changes when the Homepage host is deployed, so after switching a service on or off elsewhere, run `just deploy homepage --limit <homepage host>`.
 - The tiles are the entries of `services` in `group_vars/all/services.yml` that have an `icon`, with a comment on each field; add an entry to add a tile. Caddy and Cloudflare Tunnel have no tile (no icon). Without a Caddy name, Crafty's panel uses a self-signed certificate and the browser warns.
 - `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app you made in Dockge (link its Caddy name, with `monitor: true` for an up/down dot), any page. The format and examples are in `roles/homepage/defaults/main.yml`; run `just deploy homepage --limit <the host that runs the Homepage>` to show a change.
