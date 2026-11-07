@@ -655,6 +655,26 @@
           - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
         quiet: true
 
+    # set_fact outranks task vars, so the flag is switched off for one render and back on.
+    - name: Render Copyparty's config with no app that has volumes
+      ansible.builtin.set_fact:
+        pics_enabled: false
+
+    - name: Write it
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/copyparty/templates/copyparty.conf.j2"
+        dest: "{{ out_dir }}/sso-off/copyparty-no-apps.conf"
+        mode: "0644"
+
+    - name: Without an app that has volumes, there is no /apps volume
+      ansible.builtin.assert:
+        that: "'[/apps' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-apps.conf')"
+        quiet: true
+
+    - name: Switch pics back on
+      ansible.builtin.set_fact:
+        pics_enabled: true
+
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
     - name: Give Gitea a public address of its own
       ansible.builtin.set_fact:
