@@ -1,6 +1,7 @@
 # Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
-{% set sso_admins = copyparty_sso_admins if copyparty_sso_enabled | bool else [] %}
+{# Every admin has full access to every volume: the password admin and the people Tinyauth signs in as admins. #}
+{% set admins = [copyparty_user] + (copyparty_sso_admins if copyparty_sso_enabled | bool else []) %}
 [global]
   e2dsa
   e2ts
@@ -49,18 +50,32 @@
 [/]
   /files
   accs:
-    A: {{ copyparty_user }}
-{% for u in sso_admins %}
+{% for u in admins %}
     A: {{ u }}
 {% endfor %}
 
+{% if copyparty_clients | length > 0 %}
+{# The container's own /apps folder holds the bind mounts below, so /apps and /apps/<key> open as folders listing each app's volumes.
+   Read-only: a file written here would live in the container, not on a drive. Not indexed: the photos are indexed by their own volume. #}
+[/apps]
+  /apps
+  accs:
+{% for u in admins %}
+    r: {{ u }}
+{% endfor %}
+  flags:
+    -e2d
+
+{% endif %}
 {# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /apps/<key>/<folder>. #}
 {% for app in copyparty_clients %}
 {% for v in app.copyparty.volumes %}
 [/apps/{{ app.key }}/{{ v.folder }}]
   /apps/{{ app.key }}/{{ v.folder }}
   accs:
-    A: {{ copyparty_user }}
+{% for u in admins %}
+    A: {{ u }}
+{% endfor %}
     {{ v.perms }}: {{ app.key }}
 
 {% endfor %}
@@ -69,8 +84,7 @@
 [/collab]
   /collab
   accs:
-    A: {{ copyparty_user }}
-{% for u in sso_admins %}
+{% for u in admins %}
     A: {{ u }}
 {% endfor %}
 {% for u in vault_copyparty_collab_users %}
@@ -82,8 +96,7 @@
 [/fast]
   /fast
   accs:
-    A: {{ copyparty_user }}
-{% for u in sso_admins %}
+{% for u in admins %}
     A: {{ u }}
 {% endfor %}
 
@@ -93,7 +106,9 @@
 [/drives]
   /host/usb
   accs:
-    {{ 'A' if usb_automount_writable | bool else 'r' }}: {{ copyparty_user }}
+{% for u in admins %}
+    {{ 'A' if usb_automount_writable | bool else 'r' }}: {{ u }}
+{% endfor %}
   flags:
     -e2d
 {% endif %}

@@ -491,11 +491,15 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to /, /collab and /fast, the volumes that exist in this render.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 3"
+          # Admin access to /, /collab, /fast and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 5"
+          - >-
+            '[/apps]\n  /apps\n  accs:\n    r: yourusername\n    r: sso-admin\n  flags:\n    -e2d\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          - "'    r: sso-admin' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
           # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
           - >-
-            '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    rwm: pics\n'
+            '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwm: pics\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
