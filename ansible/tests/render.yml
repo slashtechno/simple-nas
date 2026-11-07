@@ -59,7 +59,7 @@
     repo: "{{ playbook_dir }}/.."
     # Normally set by the inventory or by a task at deploy time.
     ansible_user: pi
-    ansible_mounts: []   # a fact, gathered on a real host
+    ansible_facts: {mounts: []}   # gathered on a real host
   tasks:
     - name: Find every role's defaults and templates
       ansible.builtin.find:
@@ -592,6 +592,7 @@
           - "(garage_data_dir ~ '/meta') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(caddy_data_dir ~ '/caddy') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(copyparty_config_dir ~ '/copyparty') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "'--fsck=' in lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')"
           - >-
             drives | map(attribute='uuid') | map('lower') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
             | length == 0

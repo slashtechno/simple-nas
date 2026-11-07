@@ -114,6 +114,8 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 
 - It is read-only. To change or delete files on it, set `usb_automount_writable: true`.
 - Programs on it cannot be run (mounted `nosuid,nodev,noexec`).
+- With `usb_automount_writable: true` the drive is checked (`fsck -y`, repairing what it finds) before it mounts, so it appears in `/drives` only when the check ends, which can take a long time on a large drive. Read-only, it is not checked.
+- Copyparty runs as root, so files it creates on an ext4 drive belong to root; exFAT, FAT and NTFS drives store no owners.
 - Drives listed in `drives` never appear here. A wrong `uuid` there means that drive is also mounted a second time.
 - After unplugging, its empty folder stays until the next reboot. Unplugging a writable drive without unmounting can corrupt it.
 - On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts plugged-in drives.
