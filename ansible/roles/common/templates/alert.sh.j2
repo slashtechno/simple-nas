@@ -5,7 +5,9 @@ logger -t "${2:-backup}" "$1"
 {% if ntfy_alert_url | length > 0 %}
 # The send must never fail the job or hang it: --max-time stops a stuck connection, `|| true` ignores errors.
 curl --silent --show-error --max-time 15 \
+{% if vault_ntfy_token | default('') | length > 0 %}
   -H "Authorization: Bearer $(cat {{ ntfy_token_file | quote }})" \
+{% endif %}
   -H "Title: {{ inventory_hostname }}: ${3:-backup failed}" -H "Priority: high" \
   -d "$1" {{ ntfy_alert_url | quote }} || true
 {% endif %}

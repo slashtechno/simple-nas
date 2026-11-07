@@ -117,8 +117,8 @@
         homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
-        vault_pics_alert_urls: "ntfy://example"
-        vault_scrutiny_alert_urls: "ntfy://:tk_a$b@host:8090/alerts?scheme=http"
+        ntfy_alert_url: "http://pi4:8090/alerts"
+        vault_ntfy_token: "tk_a$b"
         pics_artist: Render Test
         pics_links: [{text: example.com, url: "https://example.com", watermark: true}]
         caddy_private_domains: [pi4.example.com, second.example.com]
@@ -561,10 +561,11 @@
           - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
-          # The alert URL reaches the container with its `$` escaped for compose.
+          # ntfy_alert_url and the token reach both apps in their own URL syntax; the compose file escapes the `$`.
           - >-
-            'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_a$$b@host:8090/alerts?scheme=http"'
+            'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_a$$b@pi4:8090/alerts?scheme=http"'
             in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')
+          - "\"HUB_ALERT_URLS='ntfy://tk_a$b@pi4:8090/alerts'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
@@ -679,6 +680,33 @@
     - name: Switch pics back on
       ansible.builtin.set_fact:
         pics_enabled: true
+
+    # A hosted ntfy with no login: https, no token. set_fact outranks task vars; the values are put back afterwards.
+    - name: Use a hosted ntfy topic with no token
+      ansible.builtin.set_fact:
+        ntfy_alert_url: "https://ntfy.sh/my-topic"
+        vault_ntfy_token: ""
+
+    - name: Render the two apps' files with it
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}"
+        dest: "{{ out_dir }}/sso-off/hosted-{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop:
+        - scrutiny/templates/docker-compose.yml.j2
+        - pics/templates/pics.env.j2
+
+    - name: The hosted topic keeps its https scheme and carries no token
+      ansible.builtin.assert:
+        that:
+          - "'SCRUTINY_NOTIFY_URLS: \"ntfy://ntfy.sh/my-topic?scheme=https\"' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/hosted-docker-compose.yml')"
+          - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/my-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/hosted-pics.env')"
+        quiet: true
+
+    - name: Put the ntfy settings back
+      ansible.builtin.set_fact:
+        ntfy_alert_url: "http://pi4:8090/alerts"
+        vault_ntfy_token: "tk_a$b"
 
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
     - name: Give Gitea a public address of its own

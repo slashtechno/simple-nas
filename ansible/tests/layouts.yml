@@ -287,3 +287,22 @@
               - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
               - "'|| true' in (alert_scripts.results[1].content | b64decode)"
               - "'logger -t \"${2:-backup}\"' in (alert_scripts.results[0].content | b64decode)"
+              - "'Authorization: Bearer' in (alert_scripts.results[1].content | b64decode)"
+
+        # A hosted topic with no login: an empty token gives a script with no Authorization header.
+        - name: Leave the ntfy token out
+          ansible.builtin.set_fact:
+            vault_ntfy_token: ""
+
+        - name: Render alert.sh with no token
+          ansible.builtin.template:
+            src: "{{ repo }}/roles/common/templates/alert.sh.j2"
+            dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert-no-token.sh"
+            mode: "0644"
+
+        - name: Without a token the script sends no Authorization header
+          ansible.builtin.assert:
+            that:
+              - "'curl' in lookup('ansible.builtin.file', out_dir ~ '/layouts/' ~ inventory_hostname ~ '/alert-no-token.sh')"
+              - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/layouts/' ~ inventory_hostname ~ '/alert-no-token.sh')"
+            quiet: true

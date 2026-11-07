@@ -33,7 +33,7 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 | Copyparty | File sharing | `roles/copyparty` | `primary` and `fast` drive roles; `vault_copyparty_user`, `vault_copyparty_password`; `vault_copyparty_collab_users` with `copyparty_collab_enabled` | [Accounts and volumes](#copyparty-accounts-and-volumes) |
 | Gitea | Git server | `roles/gitea` | `fast` drive role; `caddy_private_domains` or `gitea_root_url`; `vault_gitea_runner_token` is optional | [Gitea](#gitea) |
 | Homebridge | HomeKit bridge | `roles/homebridge` | `fast` drive role | [Homebridge](#homebridge) |
-| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password`, `vault_pics_alert_urls` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
+| pics | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles; Copyparty; `pics_repo`, `pics_public_url`; `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` | [pics](#pics-photo-culling-and-sharing), [Private GitHub repo](#clone-a-private-github-repo) |
 | Garage | S3-compatible object storage | `roles/garage` | `fast` drive role; a Caddy name; `tinyauth_enabled`; `vault_garage_rpc_secret`, `vault_garage_admin_token` | [Garage](#garage-s3) |
 | Crafty | Minecraft servers | `roles/crafty` | `fast` drive role; RAM headroom | [Crafty](#crafty-minecraft-servers) |
 | ntfy | Push alerts for failed backups | `roles/ntfy` | `fast` drive role; `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` | [ntfy: failure alerts](#ntfy-failure-alerts) |
@@ -137,7 +137,7 @@ The `pics` role clones the private repo named in `pics_repo`, builds the image o
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname in the host's `vars.yml`. Two ports:
    - Owner app (cull UI, password-gated): `pics_port` (default 8100), the only published port. LAN: `http://<pi>:<pics_port>`; tailnet: `http://<pi-tailscale-ip>:<pics_port>`.
    - Guest surface (share pages, portfolio, no owner routes): `pics_public_port` (8001), inside Docker only. The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule is needed.
-2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) `vault_pics_copyparty_password` and `vault_pics_alert_urls` (Apprise URLs for alerts, `""` for none). Use values without single quotes.
+2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password`. Use values without single quotes.
 3. `just deploy copyparty,pics,cloudflared --limit <host>`. `copyparty` creates the `pics` account and its volumes first.
 4. Optional: sign in with Tinyauth instead of the password (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay. pics' Caddy name is not behind Tinyauth: pics has its own login and the sign-in goes through it.
 
@@ -182,10 +182,11 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 4. Test the chain: on the host run `bash /opt/services/scripts/alert.sh "test"` and check the phone gets it.
 
 - The server denies everyone but that user and its token, so reading or publishing a topic asks for a login even on the LAN. The web page at `/alerts` loads without one because it is only the app's shell; it shows no messages until you sign in. The user and token are set from the compose file at every start; the data directory holds the message history and the user database.
-- `ntfy_alert_url` is the one setting that turns alerts on, in `group_vars/all/vars.yml` for every host or in one host's `vars.yml`. It needs `vault_ntfy_token`. A host without it sends nothing.
+- `ntfy_alert_url` is the one setting that turns alerts on, in `group_vars/all/vars.yml` for every host or in one host's `vars.yml`: the full URL of a topic. A host without it sends nothing. `vault_ntfy_token` is the login and is optional: leave it out for a topic with no login.
   - This repo's ntfy: the server address from step 3 plus the topic (`ntfy_topic`), such as `http://<host-tailscale-name>:<ntfy_port>/alerts` or `https://ntfy.<host>.<your domain>/alerts`.
-  - A server this repo does not run: `https://ntfy.sh/<your-topic>`.
+  - A server this repo does not run: `https://ntfy.sh/<your-topic>`, with no token, or with the token of your own account.
   - One ntfy server serves the whole homelab.
+  - Scrutiny and pics send their alerts to the same topic with the same token, each in its own URL syntax, so they need no setting of their own (`just deploy scrutiny,pics --limit <host>` after changing it).
 - `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers; it writes to the system log under the tag it is given (`journalctl -t backup` for the backup jobs, `-t connectivity` for the watchdog) and sends to ntfy only if `ntfy_alert_url` is set. A failed send is ignored and times out after 15 seconds, so alerting cannot fail or stall a backup.
 - It cannot report the host being down or a backup that never started (cron not running, host off).
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends ntfy.sh the message ID and a hash of the topic URL, not the message. Android needs no relay.
@@ -224,7 +225,7 @@ The socket is mounted read-only because Dozzle only reads, not because that limi
 1. On the host, set `scrutiny_enabled: true` and run `just deploy scrutiny --limit <host>`.
 2. The role reads the drive list from `smartctl --scan` at deploy time; set `scrutiny_devices` to a list of device paths when that list is wrong for the host. SMART passes through a USB bridge only for some enclosures; when no drive answers, the deploy stops with "no drive on this host answers SMART; Scrutiny has nothing to show".
 3. After plugging in or unplugging a drive, run `just deploy scrutiny --limit <host>` again so the container gets the new list.
-4. For alerts, put `vault_scrutiny_alert_urls` in the host's vault: [Shoutrrr](https://containrrr.dev/shoutrrr/) URLs separated by commas (for this repo's ntfy: `ntfy://:<token>@<host>:<ntfy_port>/<topic>?scheme=http`). Left out, nothing is sent. Scrutiny alerts when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives; a stopped Scrutiny sends nothing. Send a test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
+4. With `ntfy_alert_url` set ([ntfy](#ntfy-failure-alerts)), Scrutiny sends its alerts there. It alerts when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives; a stopped Scrutiny sends nothing. Send a test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
 
 The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scrutiny_config_dir` is covered.
 
