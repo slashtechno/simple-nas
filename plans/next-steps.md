@@ -11,13 +11,13 @@ Goal: a CS or homelab newcomer can run the setup, and can read, change, remove a
 - [x] pi4: the first manual `backup-restic-local.sh` run succeeded (`restic_command_timeout` is 23 hours).
 - [x] pinas: tinyauth, dozzle, scrutiny, caddy and homepage deployed with `--limit pinas`; Copyparty untouched (an upload was running). `storage` and `backup` run there too (the T7 and the 6 TB IronWolf).
 - [ ] dietvostro last (real containers, never restart Docker there).
-- [ ] Test the ntfy alert with a deliberate failure (no host runs ntfy yet; `alert.sh` logging to the journal is checked on pi4).
+- [ ] Test `alert.sh` and a pics alert with a deliberate failure (Scrutiny's test notification is delivered through the ntfy on pi4).
 - [ ] Merge the stack into `main` only after pi4 is good.
 
 ## Phase 1: drives
 
 - [ ] The remaining drive steps (the P10 and the fast/primary split) are in [drive-migration.md](./drive-migration.md).
-- [ ] Drive alerts come from Scrutiny's notifications, not smartd (they follow `ntfy_alert_url`, [services.md](../docs/services.md#scrutiny-drive-health)). Built; waits for a deploy of `common,scrutiny,pics` on pinas and the Scrutiny test notification.
+- [x] Drive alerts come from Scrutiny's notifications, not smartd (they follow `ntfy_alert_url`, [services.md](../docs/services.md#scrutiny-drive-health)). Deployed on pinas; the test notification (`POST /api/health/notify`) is delivered.
 - [x] Connectivity watchdog: built and deployed on pi4 ([networking.md](../docs/networking.md#connectivity-watchdog)). A real outage has not occurred, so its reconnect branch is untested.
 - Drive detach and mount stay documented in `docs/storage.md`; a script only if the manual steps turn out to be a frequent task.
 

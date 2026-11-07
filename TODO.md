@@ -12,6 +12,10 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 
 ## Clean-up after a deploy
 
+- Check pinas after its unclean reset: `restic check` on the backup repo, Immich and Gitea open and show their data, and the next local backup succeeds. Waiting for: a quiet hour.
+- Open `/apps/` and `/apps/pics/` in Copyparty as an admin, and the backup dashboard's changes tree. Waiting for: a look in the browser.
+- Deploy `pics` on pinas (the built image is already there). Waiting for: [plans/pics-prebuilt-image.md](./plans/pics-prebuilt-image.md), because the build can stall a 4 GB host.
+
 - Delete the stale `pi-nas-runner` entry in Gitea. Waiting for: a few minutes in Gitea's admin page.
 - Waiting for: the next Sunday offsite backup. Then `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)).
 
