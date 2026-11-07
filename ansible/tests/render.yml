@@ -324,23 +324,29 @@
       loop_control:
         label: "{{ item.key }}"
 
-    # teardown.yml refuses remove_data when a data folder is, or holds, an encrypted folder (docs/encryption.md#turning-it-off):
-    # the same selection of data settings, with one of them listed as encrypted.
-    - name: Teardown finds a data folder that is an encrypted folder
+    # teardown.yml refuses remove_data when a data folder is, or holds, an encrypted folder (docs/encryption.md#turning-it-off).
+    # The same selection of data settings and the same comparison, with the folder above pics' photos listed with a trailing slash.
+    - name: List the folder above pics' photos as encrypted, with a trailing slash
+      ansible.builtin.set_fact:
+        encrypted_folders: ["{{ pics_photos_dir | dirname }}/"]
+
+    - name: Teardown finds pics' photos inside it
       vars:
-        encrypted_folders: ["{{ pics_photos_dir }}"]
         selected: "{{ services | selectattr('key', 'in', ['pics']) | list }}"
         names: "{{ (selected | map(attribute='data', default=[]) | flatten + selected | map(attribute='no_backup', default=[]) | flatten) | select | list }}"
-        hits: >-
-          {{ query('ansible.builtin.vars', *names) | product(encrypted_folders)
-             | selectattr('0', 'equalto', pics_photos_dir) | list }}
+        paths: "{{ query('ansible.builtin.vars', *names) | map('regex_replace', '/+$', '') | list }}"
       ansible.builtin.assert:
-        that:
-          - hits | length == 1
-          - pics_photos_dir in query('ansible.builtin.vars', *names)
+        that: item[0] == item[1] or item[0].startswith(item[1] ~ '/') or item[1].startswith(item[0] ~ '/')
         quiet: true
+      loop: "{{ paths | product(encrypted_pairs | map(attribute='mount') | list) | list }}"
+      loop_control:
+        label: "{{ item[0] }}"
+      when: item[0] == pics_photos_dir
 
-    # teardown.yml trusts `compose`; the roles write their own paths, so a mismatch would leave the real directory behind.
+    - name: Put the encrypted folder of the fixture back
+      ansible.builtin.set_fact:
+        encrypted_folders: [/mnt/primary/immich/]
+
     - name: Every service's compose directory is the one its role deploys to
       vars:
         deployed_by: >-

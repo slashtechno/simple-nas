@@ -65,14 +65,15 @@
       vars:
         selected: "{{ services | selectattr('key', 'in', only_keys) | list }}"
         names: "{{ (selected | map(attribute='data', default=[]) | flatten + selected | map(attribute='no_backup', default=[]) | flatten) | select | list }}"
-        paths: "{{ query('ansible.builtin.vars', *names) }}"
+        paths: "{{ query('ansible.builtin.vars', *names) | map('regex_replace', '/+$', '') | list }}"
       ansible.builtin.assert:
         that: not (item[0] == item[1] or item[0].startswith(item[1] ~ '/') or item[1].startswith(item[0] ~ '/'))
         fail_msg: >-
           {{ item[0] }} is, or holds, the encrypted folder {{ item[1] }}. Turn encryption off for it first
           (docs/encryption.md#turning-it-off); nothing was deleted.
         quiet: true
-      loop: "{{ paths | product(encrypted_folders) | list if remove_data | bool else [] }}"
+      # encrypted_pairs (derived.yml) has the trailing slashes stripped, like paths above.
+      loop: "{{ paths | product(encrypted_pairs | map(attribute='mount') | list) | list if remove_data | bool else [] }}"
       loop_control:
         label: "{{ item[0] }}"
       tags: [always]
