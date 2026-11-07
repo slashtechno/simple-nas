@@ -74,7 +74,7 @@
 - name: Set where the system log is kept
   ansible.builtin.copy:
     content: "[Journal]\nStorage={{ journal_storage }}\n"
-    dest: /etc/systemd/journald.conf.d/50-persistent.conf
+    dest: /etc/systemd/journald.conf.d/50-journal-storage.conf
     owner: root
     group: root
     mode: "0644"
