@@ -105,9 +105,13 @@ services:
     labels:
       caddy: whoami.example.com                    # site address
       caddy.reverse_proxy: "{{upstreams 80}}"      # port the app listens on inside the container
+
+networks:
+  services:
+    external: true                                 # made by the host, not by this stack
 ```
 
-A container of this repo carries no labels: its name comes from its `services.yml` entry or from `caddy_sites` ([above](#names-for-apps-caddy_private_domains)). For a name behind the login, add `caddy.import: tinyauth_forwarder` next to the other labels ([Tinyauth](./services.md#tinyauth-login)).
+A container of this repo carries no labels: its name comes from its `services.yml` entry or from `caddy_sites` ([above](#names-for-apps-caddy_private_domains)). For a name behind the login, add `caddy.import: tinyauth_forwarder` next to the other labels ([example](./auth-reference.md#protect-an-app-of-your-own)).
 
 | Label | Becomes |
 |---|---|
