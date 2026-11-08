@@ -297,7 +297,7 @@ Keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
 
 What happens with a drive missing is in [storage.md](./storage.md#with-a-drive-missing). The backup scripts and the `restic-check` job run `mountpoint -q <mount>/.` on the backup drive first, and the backup scripts also on every data drive (role `fast` or `primary`) and every folder in `encrypted_folders` ([why the `/.`](./storage.md#how-a-drive-is-mounted)), so they never save a snapshot of an empty folder. A missing drive makes the script exit without writing anything, and the cron line logs the failure to `journalctl -t backup`. The next run mounts a returned drive.
 
-Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage'` show whether the power supply, cable or hub is at fault (Raspberry Pi).
+Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If backups fail because the drive keeps dropping out, `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage|over-current'` show whether the power supply, cable or hub is at fault (Raspberry Pi). `over-current` is the USB ports' own limit, which `get_throttled` does not report.
 
 ## Disaster recovery (all drives fail)
 

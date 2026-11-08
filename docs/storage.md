@@ -99,6 +99,18 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's
 - **Unplugged while running:** systemd unmounts the drive. If a process still holds it, the unmount fails and every access returns an I/O error until `sudo umount -l <mount>` or a reboot; the automount does not help there.
 - **Backup drive only:** the services keep running. The backup scripts refuse to run until it is back.
 
+## A drive that will not mount
+
+`systemctl status mnt-<name>.mount` says `probably corrupted filesystem` and `dmesg | grep EXT4` shows `error loading journal`, usually after the drive dropped off the USB bus mid-write. systemd then gives up the automount ([Remount by hand](#how-a-drive-is-mounted)), so the mount point is a plain folder and containers that start write to the root drive. Run on the host:
+
+1. **Stop the containers** that use the drive: `docker stop $(docker ps -q)`.
+2. **Check without changing anything:** `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>`.
+3. **Repair:** `sudo e2fsck -fy /dev/disk/by-uuid/<uuid>`. A journal that fails its checksum is discarded, so writes since the last good mount are lost. If step 2 reports damage beyond that, restore from the backup instead ([backups.md](./backups.md)).
+4. **Mount:** `sudo systemctl reset-failed mnt-<name>.mount mnt-<name>.automount && sudo systemctl restart mnt-<name>.automount`, then `ls <mount>`.
+5. **Recreate the containers**, as in step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive). Whatever a container wrote to the root drive in the meantime sits under the mount point and can be deleted after `umount`.
+
+exFAT drives have no journal: `fsck.exfat -n /dev/sdX1` (or `diskutil verifyVolume` on a Mac) only reads.
+
 ## Using the root drive for fast or primary
 
 A `drives` entry with no `uuid` is a folder on the root drive (the drive the OS boots from: an SD card, USB or NVMe drive). It is created, and nothing goes in fstab:
