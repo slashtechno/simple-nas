@@ -24,8 +24,9 @@
 
           [Zram]
           RamMultiplier={{ zram_ram_fraction }}
-          # Empty removes rpi-swap's 2048 MiB cap, so zram_ram_fraction alone sets the size.
-          MaxSizeMiB=
+          # rpi-swap caps zram at 2048 MiB unless told otherwise. Its documented "empty means no cap" does not work (its config tool
+          # drops empty values), so a number far above any RAM size stands for no cap and zram_ram_fraction alone sets the size.
+          MaxSizeMiB=1048576
         dest: "{{ zram_swap_dropin }}"
         owner: root
         group: root
