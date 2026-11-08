@@ -47,6 +47,8 @@ zoxide, bat and eza are set up in the Ansible user's `~/.bashrc`, for interactiv
 | Dockge, Caddy | Dockge: web UI for your own compose stacks. Caddy: reverse proxy that gives each app a name from its container labels | `roles/dockge`, `roles/caddy` | `fast` drive role | [Ad-hoc app platform](#ad-hoc-app-platform) |
 | Backups | Daily local and weekly cloud backups, a weekly integrity check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) | [backups.md](./backups.md) |
 | Connectivity watchdog | Reconnects the network when TCP stops working | `roles/connectivity_watchdog` | NetworkManager to reconnect | [networking.md](./networking.md#connectivity-watchdog) |
+| Raspberry Pi tuning | Memory cgroup, so container memory limits work | `roles/pi` | a Raspberry Pi | [memory.md](./memory.md#memory-limits) |
+| zram swap | Compressed swap in RAM | `roles/zram` | none | [memory.md](./memory.md#swap) |
 | Direct Ethernet link | Cable from a Pi to a laptop for fast transfers | `roles/network` | none | [networking.md](./networking.md#direct-ethernet-link) |
 
 ## Immich
@@ -57,6 +59,7 @@ Photo library with a machine-learning container. Photos are stored in `immich_up
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich; the deploy sets it through Immich's API, which needs an API key ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)). Immich's settings page stays editable.
 - Postgres is dumped before each backup by `roles/immich/files/dump.sh`, so the database is backed up consistently ([backups.md](./backups.md)).
 - To move `immich_upload_location` to another drive ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload` and others). Immich checks those files at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
+- On a small host, lower the job concurrency and check the video transcoding policy ([memory.md](./memory.md#immich)).
 - Moving Immich to a newer image can run database migrations: read its release notes first ([ansible/README.md](../ansible/README.md#update-service-images)).
 
 ## Gitea
@@ -255,7 +258,7 @@ One container runs every server. All data is under `crafty_data_dir` (`servers/ 
 
 - Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Crafty makes this password itself and has no setting for it. Behind Tinyauth it is the second login, so change it in the panel to something short, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
-- `crafty_memory_limit` (default 3g) caps all servers combined. On a host with 4 GB of RAM it competes with Immich if both run there; size the two so together they leave room for the rest.
+- `crafty_memory_limit` caps all servers combined. On a Raspberry Pi it is enforced only with `pi_enabled` ([memory.md](./memory.md#memory-limits)). On a host with 4 GB of RAM it competes with Immich if both run there; size the two so together they leave room for the rest.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
 - The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [backups.md](./backups.md)).
 

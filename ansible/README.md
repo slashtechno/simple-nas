@@ -82,7 +82,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 1. Check the host:
    - Debian-family OS: Raspberry Pi OS, Debian 12 or newer, or Ubuntu (Server or Desktop; Desktop uses more RAM). Debian 11 is too old: its restic 0.11 cannot read the `- !` backup rules.
-   - Enough RAM for what you switch on: Immich, Crafty and Gitea are the largest, and a build (pics, Caddy) needs more than the running service. On a 4 GB host leave some off or lower `crafty_memory_limit`, and check `free -m` after a deploy.
+   - Enough RAM for what you switch on: Immich, Crafty and Gitea are the largest, and a build (pics, Caddy) needs more than the running service. On a 4 GB host leave some off or lower `crafty_memory_limit`, and check `free -m` after a deploy ([memory.md](../docs/memory.md)).
    - SSH and Python are installed, and your SSH key is on the host.
    - No Docker snap: the deploy installs Docker from apt and stops if it finds the snap.
    - The direct link works with NetworkManager or netplan ([docs/networking.md](../docs/networking.md)).
@@ -190,7 +190,7 @@ Pin a floating tag to the version running on the host once it works: `docker ins
 | What | How |
 |---|---|
 | Operating system packages: Docker Engine, Tailscale, restic, rclone, gocryptfs, the kernel, a Raspberry Pi's firmware | `just os-upgrade` (all hosts) or `just os-upgrade pinas`; add `-K` if the host asks for the sudo password. Deploys never upgrade these, so they change only when you run this |
-| Reboot after a kernel or firmware upgrade | `sudo reboot` on the host. A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
+| Reboot after a kernel or firmware upgrade, or after `pi_enabled` or `zram_max_mib` changes | `sudo reboot` on the host. A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
 | Zellij | Its version and checksum in `group_vars/all/versions.yml`, then `just deploy common` |
 | Docker images | [Update service images](#update-service-images) |
 | Stacks you run in Dockge | Dockge's own pull and update buttons; Ansible does not manage them |
@@ -214,7 +214,7 @@ ansible-playbook teardown.yml --limit pi4 -e remove_data=true -e confirm_remove_
 
 Teardown never touches drive mounts, the restic password or Tailscale state. It also leaves:
 
-- **Base host setup:** SSH keys, the sudoers file, installed packages, the timezone and the sleep masks. Removing them could lock Ansible out or cannot be undone. Without `only`, teardown does remove the journald and cloud-init drop-ins the roles wrote (they take effect at the next boot).
+- **Base host setup:** SSH keys, the sudoers file, installed packages, the timezone, the sleep masks and the Raspberry Pi kernel command line. Removing them could lock Ansible out or cannot be undone. Without `only`, teardown does remove the journald, cloud-init and zram drop-ins the roles wrote (they take effect at the next boot).
 - **Encrypted folders:** the ciphertext, `gocryptfs.conf`, the master key and your after-unlock scripts ([encryption.md](../docs/encryption.md)).
 - **Dumps and logs on the backup drive:** `<backup drive>/service-dumps` and `<backup drive>/logs` (`/var/lib/backup-work` on a host with only the offsite backup). They hold a full database dump and Garage's node key.
 - **Docker volumes** ([storage.md](../docs/storage.md)) and **Dockge stacks**.
