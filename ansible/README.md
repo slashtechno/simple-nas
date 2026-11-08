@@ -2,9 +2,9 @@
 
 Each service is a role with its own Docker Compose project at `/opt/services/<compose dir>/` on the host, all on the shared Docker network `services` except Homebridge, which runs on the host network for HomeKit discovery. Ansible runs on your Mac and SSHes into each host, which only needs SSH and Python. New to Ansible? Read [docs/ansible-terms.md](../docs/ansible-terms.md) first.
 
-Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
+Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers, the restic password file, the Pi kernel command line `cmdline.txt`, the zram swap drop-ins and the terminal-tools block in `.bashrc`). Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults-flags.yml` defaults to false; the switches for base parts there default on: `storage_enabled` (mounts the drives), `tailscale_enabled`, and `pi_enabled` (`auto`: Raspberry Pi tuning on a Pi, skipped elsewhere). Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Every service is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults-flags.yml` defaults to false; the switches for base parts there default on: `storage_enabled` (mounts the drives), `tailscale_enabled`, and `pi_enabled` (`auto`: Raspberry Pi tuning on a Pi, skipped elsewhere). Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -100,7 +100,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 
 ## Pick what you use
 
-Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs ([what it does](../docs/services.md#every-host)). The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
+Every part is a switch in `host_vars/<host>/vars.yml`; a service you leave off is not touched (on a Raspberry Pi, `pi_enabled: auto` still edits the kernel command line; set it to `false` to skip). The `common` role always runs ([what it does](../docs/services.md#every-host)). The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
 - **Bare minimum:** `tailscale_enabled: true` (the default; `pi_enabled` is `auto`, so a Pi also gets its memory cgroup), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.

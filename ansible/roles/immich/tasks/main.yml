@@ -122,6 +122,7 @@
           immich_job_concurrency names {{ immich_job_concurrency.keys() | difference(immich_settings.json.job.keys()) }}, which
           Immich has no job queue for. Its queues are: {{ immich_settings.json.job.keys() | join(', ') }}
         quiet: true
+      when: immich_job_concurrency | length > 0
 
     - name: Write Immich's settings
       ansible.builtin.uri:
