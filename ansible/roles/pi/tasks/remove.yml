@@ -11,11 +11,19 @@
   register: pi_remove_cmdline
   when: pi_remove_stat.stat.exists
 
-- name: Remove the memory cgroup arguments (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+- name: Change the command line only if it holds the arguments
   vars:
     pi_words: "{{ (pi_remove_cmdline.content | b64decode).split() }}"
-  ansible.builtin.copy:
-    content: "{{ pi_words | reject('in', pi_cmdline_args) | join(' ') }}\n"
-    dest: "{{ pi_cmdline_file }}"
-    backup: true
   when: pi_remove_stat.stat.exists and (pi_words | select('in', pi_cmdline_args) | list | length > 0)
+  block:
+    # FAT cannot store the names copy's backup option makes, so the old file is kept as cmdline.txt.bak.
+    - name: Keep the old command line beside it  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+      ansible.builtin.copy:
+        src: "{{ pi_cmdline_file }}"
+        dest: "{{ pi_cmdline_file }}.bak"
+        remote_src: true
+
+    - name: Remove the memory cgroup arguments (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+      ansible.builtin.copy:
+        content: "{{ pi_words | reject('in', pi_cmdline_args) | join(' ') }}\n"
+        dest: "{{ pi_cmdline_file }}"

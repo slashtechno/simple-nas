@@ -35,19 +35,26 @@
 
     # Pi firmware passes cgroup_disable=memory to the kernel, so Docker cannot enforce mem_limit. Adding the arguments in
     # pi_cmdline_args to the file's single line turns the controller on at the next boot. The file is one line: a stray
-    # newline can stop the Pi booting, so the arguments are joined with spaces and one newline ends the line; backup keeps
-    # the old file beside it. Arguments already there are not added twice.
+    # newline can stop the Pi booting, so the arguments are joined with spaces and one newline ends the line; the old file is kept
+    # beside it as cmdline.txt.bak (FAT cannot store the names copy's backup option makes). Arguments already there are not added twice.
     - name: Read the firmware command line
       ansible.builtin.slurp:
         src: "{{ pi_cmdline_file }}"
       register: pi_cmdline
 
-    - name: Turn on the memory cgroup (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+    - name: Change the command line only if an argument is missing
       vars:
         pi_words: "{{ (pi_cmdline.content | b64decode).split() }}"
         pi_missing: "{{ pi_cmdline_args | difference(pi_words) }}"
-      ansible.builtin.copy:
-        content: "{{ (pi_words + pi_missing) | join(' ') }}\n"
-        dest: "{{ pi_cmdline_file }}"
-        backup: true
       when: pi_missing | length > 0
+      block:
+        - name: Keep the old command line beside it  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+          ansible.builtin.copy:
+            src: "{{ pi_cmdline_file }}"
+            dest: "{{ pi_cmdline_file }}.bak"
+            remote_src: true
+
+        - name: Turn on the memory cgroup (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+          ansible.builtin.copy:
+            content: "{{ (pi_words + pi_missing) | join(' ') }}\n"
+            dest: "{{ pi_cmdline_file }}"

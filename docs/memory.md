@@ -22,7 +22,7 @@ Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgr
 - **A limit below the app's need kills the app inside its container.** Crafty's servers must fit in `crafty_memory_limit` together.
 - **Turn off:** `pi_enabled: false`, deploy, then `just teardown <host> --tags pi` to take the arguments out again. Both apply after a reboot.
 - **Teardown cannot tell** the two arguments from ones you added by hand; `--tags pi` removes them either way.
-- **Backup of the file:** every change leaves the old file beside it as `cmdline.txt.<id>~`. If the Pi does not boot, put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
+- **Backup of the file:** every change leaves the old file beside it as `cmdline.txt.bak`. If the Pi does not boot, put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
 
 ## Swap
 
