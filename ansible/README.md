@@ -4,7 +4,7 @@ Each service is a role with its own Docker Compose project at `/opt/services/<co
 
 Files Ansible manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) are overwritten on the next run, so change them here. Everything else on the host is yours and Ansible leaves it alone, except the system files a role documents (fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers and the restic password file). Restarting a container by hand is fine.
 
-Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults-flags.yml` defaults to false; the two switches for base parts there, `storage_enabled` (mounts the drives) and `tailscale_enabled`, default to true. Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
+Everything is opt-in. A service runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Every service flag in `group_vars/all/defaults-flags.yml` defaults to false; the switches for base parts there default on: `storage_enabled` (mounts the drives), `tailscale_enabled`, and `pi_enabled` (`auto`: Raspberry Pi tuning on a Pi, skipped elsewhere). Groups never carry behaviour: hosts are listed under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
 All commands below run from `ansible/`.
 
@@ -92,7 +92,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 5. Deploy and join the tailnet:
    1. `just deploy '' --limit <host> -K`.
    2. Join Tailscale once by hand: `sudo tailscale up`. With `caddy_private_domains` set, Caddy stops this first deploy until you have joined: join, then deploy again.
-   3. Reboot once (`sudo reboot`): the drive guard is armed only at boot ([docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)).
+   3. Reboot once (`sudo reboot`): the drive guard is armed only at boot, and on a Raspberry Pi so is the memory cgroup ([docs/memory.md](../docs/memory.md)) ([docs/storage.md](../docs/storage.md#how-a-drive-is-mounted)).
    4. Set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`). It works from anywhere, and Homepage and the service links use it.
 6. Optional, by hand: Raspberry Pi Connect (remote shell from a browser), on Raspberry Pi OS only (the `rpi-connect` packages are not in Ubuntu or Debian). Ansible leaves it alone because its sign-in needs a short-lived per-device key.
    - **Install (Lite):** `sudo apt install rpi-connect-lite`, `loginctl enable-linger`, `rpi-connect on`, `rpi-connect signin`, then open the URL it prints.
@@ -103,7 +103,7 @@ Then create the files in the table above and [add each host](#add-a-host). The f
 Every part is a switch in `host_vars/<host>/vars.yml`; nothing you leave off is touched. The `common` role always runs ([what it does](../docs/services.md#every-host)). The `network` role (the shared Docker network and the direct link) also always runs. Three example hosts:
 
 - **Everything:** turn on the services in [../docs/services.md](../docs/services.md).
-- **Bare minimum:** `tailscale_enabled: true` (the default), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
+- **Bare minimum:** `tailscale_enabled: true` (the default; `pi_enabled` is `auto`, so a Pi also gets its memory cgroup), `backup_local_enabled: true` and `drives:`. No service containers; run your own software however you like and still get the drives, remote access and backups.
 - **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, a `drives` entry with the `fast` role (Dockge keeps its stacks there) and `backup_local_enabled: true` with a drive whose roles include `backup`. You write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
 
 To add your own service as a fork, follow [Add a new service](#add-a-new-service).
@@ -190,7 +190,7 @@ Pin a floating tag to the version running on the host once it works: `docker ins
 | What | How |
 |---|---|
 | Operating system packages: Docker Engine, Tailscale, restic, rclone, gocryptfs, the kernel, a Raspberry Pi's firmware | `just os-upgrade` (all hosts) or `just os-upgrade pinas`; add `-K` if the host asks for the sudo password. Deploys never upgrade these, so they change only when you run this |
-| Reboot after a kernel or firmware upgrade, or after `pi_enabled` or `zram_max_mib` changes | `sudo reboot` on the host; containers with a memory limit need recreating after `pi_enabled` ([memory.md](../docs/memory.md#memory-limits)). A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
+| Reboot after a kernel or firmware upgrade, or after a change to the Pi or zram settings | `sudo reboot` on the host; containers with a memory limit then need `-e docker_recreate=always` ([memory.md](../docs/memory.md#memory-limits)). A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
 | Zellij | Its version and checksum in `group_vars/all/versions.yml`, then `just deploy common` |
 | Docker images | [Update service images](#update-service-images) |
 | Stacks you run in Dockge | Dockge's own pull and update buttons; Ansible does not manage them |
@@ -214,7 +214,7 @@ ansible-playbook teardown.yml --limit pi4 -e remove_data=true -e confirm_remove_
 
 Teardown never touches drive mounts, the restic password or Tailscale state. It also leaves:
 
-- **Base host setup:** SSH keys, the sudoers file, installed packages, the timezone, the sleep masks and the Raspberry Pi kernel command line. Removing them could lock Ansible out or cannot be undone. Without `only`, teardown does remove the journald, cloud-init and zram drop-ins the roles wrote (they take effect at the next boot).
+- **Base host setup:** SSH keys, the sudoers file, installed packages, the timezone, the sleep masks, and Docker's and containerd's configuration (including `data-root`). Removing them could lock Ansible out or cannot be undone. Without `only`, teardown does remove the journald, cloud-init and zram drop-ins the roles wrote, the memory cgroup arguments from a Raspberry Pi's kernel command line, and the terminal tools (zellij, the Ghostty terminfo, the `.bashrc` block); the first three take effect at the next boot.
 - **Encrypted folders:** the ciphertext, `gocryptfs.conf`, the master key and your after-unlock scripts ([encryption.md](../docs/encryption.md)).
 - **Dumps and logs on the backup drive:** `<backup drive>/service-dumps` and `<backup drive>/logs` (`/var/lib/backup-work` on a host with only the offsite backup). They hold a full database dump and Garage's node key.
 - **Docker volumes** ([storage.md](../docs/storage.md)) and **Dockge stacks**.
