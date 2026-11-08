@@ -220,7 +220,19 @@
 
     - name: Every role is a service in services.yml or a role that is not a service
       vars:
-        not_services: [backup, cloudflare_zone_records, common, compose_service, connectivity_watchdog, encryption, github_clone, network, storage, tailscale]
+        not_services:
+          - backup
+          - cloudflare_zone_records
+          - common
+          - compose_service
+          - connectivity_watchdog
+          - encryption
+          - github_clone
+          - network
+          - pi
+          - storage
+          - tailscale
+          - zram
         role_dir_names: "{{ role_dirs.files | map(attribute='path') | map('basename') | list }}"
         unlisted: "{{ role_dir_names | difference(services | map(attribute='key') | list) | difference(not_services) }}"
       ansible.builtin.assert:

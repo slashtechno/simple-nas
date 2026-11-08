@@ -5,6 +5,12 @@
 # Tailscale is installed by default; set false on a host that reaches the network another way.
 tailscale_enabled: true
 
+# Raspberry Pi tuning: turns on the memory cgroup so a container's mem_limit works. Pi hosts only; stops on anything else (docs/memory.md#memory-limits).
+pi_enabled: false
+
+# zram swap: compressed swap in RAM, sized by zram_max_mib. Any Debian-family host (docs/memory.md#swap).
+zram_enabled: false
+
 # Every service is off until a host sets `<name>_enabled: true`; to remove one see teardown.yml (ansible/README.md, docs/services.md).
 
 # Immich photo library with machine learning.

@@ -1,0 +1,50 @@
+# zram swap (zram_enabled), on any Debian-family host. Raspberry Pi OS sets zram up through rpi-swap, which owns the device;
+# elsewhere systemd-zram-generator does. Both read a drop-in directory, so the file written here is the only change.
+- name: Look for rpi-swap
+  ansible.builtin.stat:
+    path: /etc/rpi/swap.conf
+  register: zram_rpi_swap
+
+- name: Size zram through rpi-swap (applies after a reboot)
+  when: zram_rpi_swap.stat.exists
+  block:
+    - name: Create the rpi-swap drop-in directory
+      ansible.builtin.file:
+        path: "{{ zram_swap_dropin | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Set the largest zram size for rpi-swap
+      ansible.builtin.copy:
+        content: "[Zram]\nMaxSizeMiB={{ zram_max_mib }}\n"
+        dest: "{{ zram_swap_dropin }}"
+        owner: root
+        group: root
+        mode: "0644"
+
+- name: Size zram through systemd-zram-generator (applies after a reboot)
+  when: not zram_rpi_swap.stat.exists
+  block:
+    - name: Install systemd-zram-generator
+      ansible.builtin.apt:
+        name: systemd-zram-generator
+        state: present
+        update_cache: true
+
+    - name: Create the zram-generator drop-in directory
+      ansible.builtin.file:
+        path: "{{ zram_generator_dropin | dirname }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Set the zram size for systemd-zram-generator
+      ansible.builtin.copy:
+        content: "[zram0]\nzram-size = min(ram, {{ zram_max_mib }})\n"
+        dest: "{{ zram_generator_dropin }}"
+        owner: root
+        group: root
+        mode: "0644"

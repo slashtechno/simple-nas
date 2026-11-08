@@ -1,0 +1,4 @@
+---
+# The firmware's kernel command line: one line of arguments. /boot/firmware on Raspberry Pi OS and on Ubuntu 22.04 and later;
+# /boot/cmdline.txt on Raspberry Pi OS before Bookworm.
+pi_cmdline_file: /boot/firmware/cmdline.txt

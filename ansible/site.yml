@@ -87,6 +87,18 @@
         name: common
       tags: [common]
 
+    - name: Tune a Raspberry Pi
+      ansible.builtin.import_role:
+        name: pi
+      tags: [pi]
+      when: pi_enabled | bool
+
+    - name: Set up zram swap
+      ansible.builtin.import_role:
+        name: zram
+      tags: [zram]
+      when: zram_enabled | bool
+
     - name: Install Tailscale
       ansible.builtin.import_role:
         name: tailscale

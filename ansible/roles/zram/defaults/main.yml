@@ -1,0 +1,4 @@
+---
+# Largest zram swap in MiB; a host with less RAM gets its RAM size. zram holds compressed pages in RAM (about 3 to 1 on typical
+# data), so a full device costs roughly a third of this in memory. Takes effect after a reboot (docs/memory.md#swap).
+zram_max_mib: 3072

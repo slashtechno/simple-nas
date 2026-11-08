@@ -3,9 +3,11 @@
 # jobs). Not settings: change the inputs, not these.
 # Here, not in a role, because several roles and teardown.yml read them.
 
-# Files the common and network roles write outside our directories; teardown.yml removes them.
+# Files the common, network and zram roles write outside our directories; teardown.yml removes them.
 journald_dropin: /etc/systemd/journald.conf.d/50-journal-storage.conf
 cloud_init_network_dropin: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+zram_swap_dropin: /etc/rpi/swap.conf.d/50-zram.conf
+zram_generator_dropin: /etc/systemd/zram-generator.conf.d/50-zram.conf
 
 # The zone IDs of the cloudflare_zones domains that zone_name equals or ends with after a dot (not any domain that merely
 # appears inside it: example.com must not match ample.com). Set zone_name where you read this; exactly one ID is a match.

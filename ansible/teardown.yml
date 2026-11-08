@@ -9,6 +9,7 @@
 #   - The restic encryption password (~/.restic-password) — deleting it would
 #     make the existing backup repo permanently unreadable.
 #   - Tailscale login — this playbook doesn't touch tailnet membership.
+#   - The Raspberry Pi kernel command line (pi role) — a boot-critical file, and the memory cgroup is harmless left on.
 #
 # Every host runs every block, whatever it has enabled, so --limit is required: one command must
 # never reach all of them. Removing a service that was never deployed does nothing.
@@ -130,6 +131,16 @@
           ansible.builtin.file:
             path: "{{ cloud_init_network_dropin }}"
             state: absent
+
+        # The zram size returns to the OS default at the next boot; the package stays installed.
+        - name: Remove the zram size drop-ins
+          tags: [zram]
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "{{ zram_swap_dropin }}"
+            - "{{ zram_generator_dropin }}"
 
         - name: Remove the connectivity watchdog
           tags: [connectivity_watchdog]
