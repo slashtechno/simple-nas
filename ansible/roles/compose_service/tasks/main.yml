@@ -29,3 +29,4 @@
     project_src: "{{ services_dir }}/{{ compose_service_name }}"
     state: present
     pull: "{{ docker_pull_policy }}"
+    recreate: "{{ docker_recreate }}"

@@ -9,7 +9,6 @@
 #   - The restic encryption password (~/.restic-password) — deleting it would
 #     make the existing backup repo permanently unreadable.
 #   - Tailscale login — this playbook doesn't touch tailnet membership.
-#   - The Raspberry Pi kernel command line (pi role) — a boot-critical file, and the memory cgroup is harmless left on.
 #
 # Every host runs every block, whatever it has enabled, so --limit is required: one command must
 # never reach all of them. Removing a service that was never deployed does nothing.
@@ -22,7 +21,8 @@
 #   # Remove specific services only (the keys in group_vars/all/services.yml)
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
-#   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, or the USB rule
+#   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, the USB rule,
+#   # the zram drop-ins (--tags zram), the Pi kernel arguments (--tags pi) or the terminal tools (--tags terminal)
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
@@ -125,6 +125,15 @@
           ansible.builtin.file:
             path: "{{ journald_dropin }}"
             state: absent
+
+        - name: Remove the terminal tools
+          tags: [terminal]
+          ansible.builtin.import_tasks: roles/common/tasks/terminal_remove.yml
+
+        # Boot-critical, so the task rewrites the one line and keeps the old file beside it. Applies at the next boot.
+        - name: Take the Raspberry Pi memory cgroup arguments out of the kernel command line
+          tags: [pi]
+          ansible.builtin.import_tasks: roles/pi/tasks/remove.yml
 
         - name: Remove the cloud-init network drop-in
           tags: [network]

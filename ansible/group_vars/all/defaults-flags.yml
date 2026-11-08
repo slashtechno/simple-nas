@@ -1,14 +1,16 @@
 ---
-# Which parts run on a host. Every part is off until a host sets `<name>_enabled: true` in host_vars/<host>/vars.yml.
+# Which parts run on a host. Every part is off until a host sets `<name>_enabled: true` in host_vars/<host>/vars.yml,
+# except storage, tailscale (true) and pi (auto: on a Raspberry Pi only).
 # Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
 
 # Tailscale is installed by default; set false on a host that reaches the network another way.
 tailscale_enabled: true
 
-# Raspberry Pi tuning: turns on the memory cgroup so a container's mem_limit works. Pi hosts only; stops on anything else (docs/memory.md#memory-limits).
-pi_enabled: false
+# Raspberry Pi tuning (memory cgroup, so a container's mem_limit works). auto: runs on a Raspberry Pi and skips other hosts;
+# true: stops on a host that is not a Pi; false: off (docs/memory.md#memory-limits).
+pi_enabled: auto
 
-# zram swap: compressed swap in RAM, sized by zram_max_mib. Any Debian-family host (docs/memory.md#swap).
+# zram swap: compressed swap in RAM, sized by zram_ram_fraction. Any Debian-family host (docs/memory.md#swap).
 zram_enabled: false
 
 # Every service is off until a host sets `<name>_enabled: true`; to remove one see teardown.yml (ansible/README.md, docs/services.md).

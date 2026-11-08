@@ -1,0 +1,21 @@
+# Takes the arguments the pi role added out of the firmware command line. Used by teardown.yml, which runs it on every host:
+# a host without the file, or without the arguments, is left alone.
+- name: Look for the firmware command line file
+  ansible.builtin.stat:
+    path: "{{ pi_cmdline_file }}"
+  register: pi_remove_stat
+
+- name: Read the firmware command line
+  ansible.builtin.slurp:
+    src: "{{ pi_cmdline_file }}"
+  register: pi_remove_cmdline
+  when: pi_remove_stat.stat.exists
+
+- name: Remove the memory cgroup arguments (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+  vars:
+    pi_words: "{{ (pi_remove_cmdline.content | b64decode).split() }}"
+  ansible.builtin.copy:
+    content: "{{ pi_words | reject('in', pi_cmdline_args) | join(' ') }}\n"
+    dest: "{{ pi_cmdline_file }}"
+    backup: true
+  when: pi_remove_stat.stat.exists and (pi_words | select('in', pi_cmdline_args) | list | length > 0)

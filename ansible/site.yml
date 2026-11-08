@@ -91,7 +91,7 @@
       ansible.builtin.import_role:
         name: pi
       tags: [pi]
-      when: pi_enabled | bool
+      when: pi_enabled | string | lower != 'false'
 
     - name: Set up zram swap
       ansible.builtin.import_role:

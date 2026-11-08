@@ -36,9 +36,10 @@ caddy_private_domains: [pinas.slashtechno.com]
 caddy_sites: {pinas.slashtechno.com: {import: tinyauth_forwarder, reverse_proxy: "homepage:3000"}}
 homepage_host: pinas.slashtechno.com   # Homepage refuses any address but this one, the inventory name and the tailnet name
 
-# 4 GB of RAM: container memory limits and a larger compressed swap. Deploy `pi,zram` alone first, then reboot (docs/memory.md).
-pi_enabled: true
+# 4 GB of RAM: compressed swap (docs/memory.md#swap). The Pi's memory cgroup is on by default (pi_enabled: auto).
 zram_enabled: true
+# Job concurrency in Immich, set on every deploy (docs/memory.md#immich).
+immich_job_concurrency: {thumbnailGeneration: 1, metadataExtraction: 1, smartSearch: 1, faceDetection: 1, videoConversion: 1}
 
 # Direct Ethernet link, a cable from the Pi to a laptop (explained in group_vars/all/defaults-direct-link.yml).
 direct_link_enabled: true

@@ -1,17 +1,17 @@
 ---
 # Catches a missing or incomplete vault. (An encrypted vault with no password given fails earlier, when
 # Ansible loads the variables: use --vault-password-file .vault-pass or `just deploy`.)
-- name: Check what the Immich sign-in settings need
+- name: Check what the Immich API settings need
   ansible.builtin.assert:
     that:
       - vault_immich_api_key is defined
       - immich_port != ''
     fail_msg: >-
-      immich_sso_enabled needs vault_immich_api_key (an admin's API key with the permissions systemConfig.read and
-      systemConfig.update) and a non-empty immich_port, because the deploy sets the sign-in through Immich's API on that port
-      (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+      immich_sso_enabled and immich_job_concurrency need vault_immich_api_key (an admin's API key with the permissions
+      systemConfig.read and systemConfig.update) and a non-empty immich_port, because the deploy sets them through Immich's
+      API on that port (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/memory.md#immich).
     quiet: true
-  when: immich_sso_enabled | bool
+  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0
 
 - name: Check the Immich database password is in the vault
   ansible.builtin.assert:
@@ -54,11 +54,12 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-# The API takes the whole settings object on every write, so read it, change only the sign-in block and write it back.
-# That leaves every other setting, and the fields of this block not named here, as saved in Immich's settings page.
-# Immich stores the settings in its database, so the write happens only when the block differs.
-- name: Set Immich's Tinyauth sign-in
-  when: immich_sso_enabled | bool
+# The API takes the whole settings object on every write, so read it, change only what this deploy owns and write it back:
+# the sign-in block (immich_sso_enabled) and the concurrency of the queues named in immich_job_concurrency. That leaves every
+# other setting, and the fields of these blocks not named here, as saved in Immich's settings page.
+# Immich stores the settings in its database, so the write happens only when they differ.
+- name: Set Immich's settings through its API
+  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0
   vars:
     immich_api: "http://127.0.0.1:{{ immich_port }}/api"
     immich_oauth: >-
@@ -75,6 +76,16 @@
         'buttonText': 'Sign in with Tinyauth',
         'autoRegister': false
       }) }}
+    immich_job: >-
+      {%- set merged = {} -%}
+      {%- for queue, value in immich_settings.json.job.items() -%}
+      {%- set _ = merged.update({queue: value | combine({'concurrency': immich_job_concurrency[queue]}) if queue in immich_job_concurrency else value}) -%}
+      {%- endfor -%}
+      {{ merged }}
+    immich_wanted: >-
+      {{ immich_settings.json
+         | combine({'oauth': immich_oauth} if immich_sso_enabled | bool else {})
+         | combine({'job': immich_job} if immich_job_concurrency | length > 0 else {}) }}
   block:
     - name: Wait for the Immich API
       ansible.builtin.uri:
@@ -104,16 +115,24 @@
           (docs/auth-reference.md#sign-in-with-tinyauth-oidc) and that immich_port is Immich's.
         quiet: true
 
-    - name: Write Immich's settings with the sign-in block changed
+    - name: Check every queue in immich_job_concurrency is one Immich has
+      ansible.builtin.assert:
+        that: immich_job_concurrency.keys() | difference(immich_settings.json.job.keys()) | length == 0
+        fail_msg: >-
+          immich_job_concurrency names {{ immich_job_concurrency.keys() | difference(immich_settings.json.job.keys()) }}, which
+          Immich has no job queue for. Its queues are: {{ immich_settings.json.job.keys() | join(', ') }}
+        quiet: true
+
+    - name: Write Immich's settings
       ansible.builtin.uri:
         url: "{{ immich_api }}/system-config"
         method: PUT
         headers:
           x-api-key: "{{ vault_immich_api_key }}"
         body_format: json
-        body: "{{ immich_settings.json | combine({'oauth': immich_oauth}) }}"
+        body: "{{ immich_wanted }}"
       register: immich_write
-      when: immich_settings.json.oauth != immich_oauth
+      when: immich_settings.json != immich_wanted
       changed_when: true   # uri reports a PUT as unchanged
       failed_when: false   # the check below names the cause; no_log would hide it
       no_log: true

@@ -1,4 +1,5 @@
-# Raspberry Pi only (pi_enabled). Each task edits a firmware file that exists only on a Pi; add a new Pi-only tweak as a task here.
+# Raspberry Pi tweaks (pi_enabled). auto, the default, runs them on a Pi and skips any other host; true stops on a host that
+# is not a Pi; false never gets here. Add a new Pi-only tweak as a task in the block below.
 - name: Read the board model
   ansible.builtin.command: cat /proc/device-tree/model
   register: pi_model
@@ -6,32 +7,50 @@
   failed_when: false
   check_mode: false
 
-- name: Look for the firmware command line file
-  ansible.builtin.stat:
-    path: "{{ pi_cmdline_file }}"
-  register: pi_cmdline_stat
+- name: Note whether this host is a Raspberry Pi
+  ansible.builtin.set_fact:
+    pi_is_raspberry: "{{ 'Raspberry Pi' in pi_model.stdout }}"
 
-- name: Refuse to run on anything but a Raspberry Pi
+- name: Refuse pi_enabled true on anything but a Raspberry Pi
   ansible.builtin.assert:
-    that:
-      - "'Raspberry Pi' in pi_model.stdout"
-      - pi_cmdline_stat.stat.exists
+    that: pi_is_raspberry
     fail_msg: >-
-      {{ inventory_hostname }} is not a Raspberry Pi running with {{ pi_cmdline_file }}. Set pi_enabled to false for
-      this host (docs/memory.md).
+      {{ inventory_hostname }} is not a Raspberry Pi, and pi_enabled is true. Set pi_enabled to auto or false for this host
+      (docs/memory.md).
     quiet: true
+  when: pi_enabled | string | lower == 'true'
 
-# Pi firmware passes cgroup_disable=memory to the kernel, so Docker cannot enforce mem_limit. Adding these two arguments to
-# the file's single line turns the controller on at the next boot. The file is one line: a stray newline can stop the Pi booting,
-# so the line is trimmed and one newline added; backup keeps the old file beside it.
-- name: Read the firmware command line
-  ansible.builtin.slurp:
-    src: "{{ pi_cmdline_file }}"
-  register: pi_cmdline
+- name: Tune a Raspberry Pi
+  when: pi_is_raspberry
+  block:
+    - name: Look for the firmware command line file
+      ansible.builtin.stat:
+        path: "{{ pi_cmdline_file }}"
+      register: pi_cmdline_stat
 
-- name: Turn on the memory cgroup (applies after a reboot)  # noqa: risky-file-permissions (the boot partition is FAT: its mount options set owner and mode)
-  ansible.builtin.copy:
-    content: "{{ pi_cmdline.content | b64decode | trim }} cgroup_enable=memory cgroup_memory=1\n"
-    dest: "{{ pi_cmdline_file }}"
-    backup: true
-  when: "'cgroup_enable=memory' not in (pi_cmdline.content | b64decode).split()"
+    - name: Check the firmware command line file exists
+      ansible.builtin.assert:
+        that: pi_cmdline_stat.stat.exists
+        fail_msg: >-
+          {{ inventory_hostname }} is a Raspberry Pi without {{ pi_cmdline_file }}. Set pi_cmdline_file to where its image keeps
+          the file, or pi_enabled to false (docs/memory.md).
+        quiet: true
+
+    # Pi firmware passes cgroup_disable=memory to the kernel, so Docker cannot enforce mem_limit. Adding the arguments in
+    # pi_cmdline_args to the file's single line turns the controller on at the next boot. The file is one line: a stray
+    # newline can stop the Pi booting, so the arguments are joined with spaces and one newline ends the line; backup keeps
+    # the old file beside it. Arguments already there are not added twice.
+    - name: Read the firmware command line
+      ansible.builtin.slurp:
+        src: "{{ pi_cmdline_file }}"
+      register: pi_cmdline
+
+    - name: Turn on the memory cgroup (applies after a reboot)  # noqa: risky-file-permissions (FAT boot partition: mount options set the mode)
+      vars:
+        pi_words: "{{ (pi_cmdline.content | b64decode).split() }}"
+        pi_missing: "{{ pi_cmdline_args | difference(pi_words) }}"
+      ansible.builtin.copy:
+        content: "{{ (pi_words + pi_missing) | join(' ') }}\n"
+        dest: "{{ pi_cmdline_file }}"
+        backup: true
+      when: pi_missing | length > 0

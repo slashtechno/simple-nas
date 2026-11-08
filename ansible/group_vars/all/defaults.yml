@@ -32,6 +32,13 @@ docker_network: services
 # "always" pulls newer images on every run, see ansible/README.md#update-service-images.
 docker_pull_policy: missing
 
+# Whether a deploy recreates containers whose compose definition did not change. Allowed: auto, always. Default: auto.
+# "always" is for a change outside the compose file, such as the memory cgroup (docs/memory.md#memory-limits).
+docker_recreate: auto
+
+# The Raspberry Pi firmware's kernel command line: one line of arguments (the pi role edits it, teardown.yml reverts it).
+pi_cmdline_file: /boot/firmware/cmdline.txt
+
 # Log rotation for every container: json-file keeps 3 files of 10m per container. Docker's default
 # never rotates, and logs fill the root drive. Allowed: json-file options (strings).
 # CAUTION: applies only to containers created after the change; recreate the rest with

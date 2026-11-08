@@ -1,0 +1,6 @@
+---
+# Job concurrency to set in Immich on every deploy: queue name (as in Immich's settings: thumbnailGeneration, metadataExtraction,
+# smartSearch, faceDetection, videoConversion, ...) to the number of jobs that run at once. Only the queues named here are
+# set; every other setting stays as saved in Immich. Empty leaves job settings alone. Needs vault_immich_api_key
+# (docs/memory.md#immich). Example: {thumbnailGeneration: 1, smartSearch: 1}
+immich_job_concurrency: {}

@@ -16,9 +16,15 @@
         group: root
         mode: "0755"
 
-    - name: Set the largest zram size for rpi-swap
+    - name: Set the zram size and writeback for rpi-swap
       ansible.builtin.copy:
-        content: "[Zram]\nMaxSizeMiB={{ zram_max_mib }}\n"
+        content: |
+          [Main]
+          Mechanism={{ 'zram+file' if zram_writeback_enabled | bool else 'zram' }}
+
+          [Zram]
+          RamMultiplier={{ zram_ram_fraction }}
+          MaxSizeMiB=
         dest: "{{ zram_swap_dropin }}"
         owner: root
         group: root
@@ -43,7 +49,7 @@
 
     - name: Set the zram size for systemd-zram-generator
       ansible.builtin.copy:
-        content: "[zram0]\nzram-size = min(ram, {{ zram_max_mib }})\n"
+        content: "[zram0]\nzram-size = ram * {{ zram_ram_fraction }}\n"
         dest: "{{ zram_generator_dropin }}"
         owner: root
         group: root

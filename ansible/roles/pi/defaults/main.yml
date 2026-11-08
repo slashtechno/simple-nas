@@ -1,3 +1,0 @@
----
-# The firmware's kernel command line: one line of arguments.
-pi_cmdline_file: /boot/firmware/cmdline.txt

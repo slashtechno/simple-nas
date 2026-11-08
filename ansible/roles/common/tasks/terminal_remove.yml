@@ -1,0 +1,17 @@
+# Removes what terminal.yml installed outside apt. Used by teardown.yml. The apt packages (zoxide, bat, eza) stay, like every
+# installed package.
+- name: Remove the terminal tools block from the Ansible user's shell
+  ansible.builtin.blockinfile:
+    path: "/home/{{ ansible_user }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED: terminal tools"
+    state: absent
+
+- name: Remove zellij and the Ghostty terminfo entry
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/bin/zellij
+    - /opt/zellij
+    - /usr/local/share/xterm-ghostty.terminfo
+    - /etc/terminfo/x/xterm-ghostty

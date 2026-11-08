@@ -6,6 +6,8 @@
 # Files the common, network and zram roles write outside our directories; teardown.yml removes them.
 journald_dropin: /etc/systemd/journald.conf.d/50-journal-storage.conf
 cloud_init_network_dropin: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+# The kernel arguments the pi role adds to pi_cmdline_file, and teardown.yml takes out again.
+pi_cmdline_args: [cgroup_enable=memory, cgroup_memory=1]
 zram_swap_dropin: /etc/rpi/swap.conf.d/50-zram.conf
 zram_generator_dropin: /etc/systemd/zram-generator.conf.d/50-zram.conf
 

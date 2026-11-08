@@ -1,4 +1,8 @@
 ---
-# Largest zram swap in MiB; a host with less RAM gets its RAM size. zram holds compressed pages in RAM (about 3 to 1 on typical
-# data), so a full device costs roughly a third of this in memory. Takes effect after a reboot (docs/memory.md#swap).
-zram_max_mib: 3072
+# Size of the zram swap as a fraction of RAM. zram holds compressed pages in RAM (about 3 to 1 on typical data), so a full
+# device costs about a third of this fraction of RAM; it uses no RAM while empty. Above 2 is not advised. Takes effect after
+# a reboot (docs/memory.md#swap).
+zram_ram_fraction: 0.75
+# Raspberry Pi OS only (rpi-swap): let zram write idle pages to a file on the root drive, first a few hours after boot, then
+# daily. That frees RAM but writes to the root drive; false keeps everything in RAM. Other hosts have no writeback and ignore it.
+zram_writeback_enabled: true
