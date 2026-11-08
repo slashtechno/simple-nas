@@ -258,7 +258,7 @@ One container runs every server. All data is under `crafty_data_dir` (`servers/ 
 
 - Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (the container log names the file). Crafty makes this password itself and has no setting for it. Behind Tinyauth it is the second login, so change it in the panel to something short, then delete that file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575); set it when creating the server.
-- `crafty_memory_limit` caps all servers combined. On a Raspberry Pi it is enforced only with `pi_enabled` ([memory.md](./memory.md#memory-limits)). On a host with 4 GB of RAM it competes with Immich if both run there; size the two so together they leave room for the rest.
+- `crafty_memory_limit` caps all servers combined. On a Raspberry Pi it is enforced only with `pi_enabled` ([memory.md](./memory.md#memory-limits)). On a host with little RAM it competes with Immich if both run there; size the two so together they leave room for the rest.
 - Not behind Cloudflare Tunnel. Players join over the LAN, a router port-forward of the game port, or Tailscale. The panel and game ports are published on all interfaces, so don't forward the panel port.
 - The live `servers/` directory is in the daily restic backup; Crafty's own `backups/` archives are not (see [backups.md](./backups.md)).
 

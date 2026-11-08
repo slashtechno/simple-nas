@@ -190,7 +190,7 @@ Pin a floating tag to the version running on the host once it works: `docker ins
 | What | How |
 |---|---|
 | Operating system packages: Docker Engine, Tailscale, restic, rclone, gocryptfs, the kernel, a Raspberry Pi's firmware | `just os-upgrade` (all hosts) or `just os-upgrade pinas`; add `-K` if the host asks for the sudo password. Deploys never upgrade these, so they change only when you run this |
-| Reboot after a kernel or firmware upgrade, or after `pi_enabled` or `zram_max_mib` changes | `sudo reboot` on the host. A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
+| Reboot after a kernel or firmware upgrade, or after `pi_enabled` or `zram_max_mib` changes | `sudo reboot` on the host; containers with a memory limit need recreating after `pi_enabled` ([memory.md](../docs/memory.md#memory-limits)). A host with `encrypted_folders` then needs `sudo /opt/services/scripts/unlock.sh` ([../docs/encryption.md](../docs/encryption.md)) |
 | Zellij | Its version and checksum in `group_vars/all/versions.yml`, then `just deploy common` |
 | Docker images | [Update service images](#update-service-images) |
 | Stacks you run in Dockge | Dockge's own pull and update buttons; Ansible does not manage them |
