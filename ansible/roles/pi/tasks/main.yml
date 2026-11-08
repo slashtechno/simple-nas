@@ -1,5 +1,5 @@
-# Raspberry Pi tweaks (pi_enabled). auto, the default, runs them on a Pi and skips any other host; true stops on a host that
-# is not a Pi; false never gets here. Add a new Pi-only tweak as a task in the block below.
+# Raspberry Pi tweaks (pi_enabled). auto, the default, runs them on a Pi and skips any other host; false never gets here.
+# Add a new Pi-only tweak as a task in the block below.
 - name: Read the board model
   ansible.builtin.command: cat /proc/device-tree/model
   register: pi_model
@@ -10,15 +10,6 @@
 - name: Note whether this host is a Raspberry Pi
   ansible.builtin.set_fact:
     pi_is_raspberry: "{{ 'Raspberry Pi' in pi_model.stdout }}"
-
-- name: Refuse pi_enabled true on anything but a Raspberry Pi
-  ansible.builtin.assert:
-    that: pi_is_raspberry
-    fail_msg: >-
-      {{ inventory_hostname }} is not a Raspberry Pi, and pi_enabled is true. Set pi_enabled to auto or false for this host
-      (docs/memory.md).
-    quiet: true
-  when: pi_enabled | string | lower == 'true'
 
 - name: Tune a Raspberry Pi
   when: pi_is_raspberry

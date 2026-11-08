@@ -16,7 +16,7 @@ A host can run out of RAM when its services add up to more than it has (Immich's
 
 Raspberry Pi firmware starts the kernel with the memory cgroup off. Docker then ignores `mem_limit` (such as `crafty_memory_limit`) and one container can take all the RAM.
 
-- **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. Other hosts are skipped. `true` stops on a host that is not a Pi; `false` turns it off.
+- **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. Other hosts are skipped. `false` turns it off.
 - **Apply:** deploy, `sudo reboot`, then recreate the containers that have a `mem_limit`: `just deploy <service> -e docker_recreate=always`. A container created while the cgroup was off stored no limit, and a reboot keeps it that way. A host with `encrypted_folders` needs `unlock.sh` after the reboot ([encryption.md](./encryption.md)).
 - **Check:** `memory` is in `cat /sys/fs/cgroup/cgroup.controllers`, `docker info` no longer says `No memory limit support`, and the container's `HostConfig.Memory` is not `0`.
 - **A limit below the app's need kills the app inside its container.** Crafty's servers must fit in `crafty_memory_limit` together.

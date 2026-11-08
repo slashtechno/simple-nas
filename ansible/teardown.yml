@@ -22,7 +22,8 @@
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
 #   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, the USB rule,
-#   # the zram drop-ins (--tags zram), the Pi kernel arguments (--tags pi) or the terminal tools (--tags terminal)
+#   # the zram drop-ins (--tags zram), the Pi kernel arguments (--tags pi), the terminal tools (--tags terminal),
+#   # the sleep masks (--tags sleep) or Tailscale's apt source (--tags tailscale)
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
@@ -125,6 +126,24 @@
           ansible.builtin.file:
             path: "{{ journald_dropin }}"
             state: absent
+
+        # Sleep returns to the OS default (unmasked).
+        - name: Allow suspend and hibernate again
+          tags: [sleep]
+          ansible.builtin.systemd:
+            name: "{{ item }}"
+            masked: false
+          loop: [sleep.target, suspend.target, hibernate.target, hybrid-sleep.target]
+
+        # The package and the login stay; without the source, apt no longer updates Tailscale.
+        - name: Remove the Tailscale apt source and key
+          tags: [tailscale]
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /etc/apt/sources.list.d/tailscale.sources
+            - /etc/apt/keyrings/tailscale.gpg
 
         - name: Remove the terminal tools
           tags: [terminal]

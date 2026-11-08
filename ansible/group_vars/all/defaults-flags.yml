@@ -7,7 +7,7 @@
 tailscale_enabled: true
 
 # Raspberry Pi tuning (memory cgroup, so a container's mem_limit works). auto: runs on a Raspberry Pi and skips other hosts;
-# true: stops on a host that is not a Pi; false: off (docs/memory.md#memory-limits).
+# false: off (docs/memory.md#memory-limits).
 pi_enabled: auto
 
 # zram swap: compressed swap in RAM, sized by zram_ram_fraction. Any Debian-family host (docs/memory.md#swap).
