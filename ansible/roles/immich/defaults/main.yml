@@ -4,3 +4,7 @@
 # set; every other setting stays as saved in Immich. Empty leaves job settings alone. Needs vault_immich_api_key
 # (docs/memory.md#immich). Example: {thumbnailGeneration: 1, smartSearch: 1}
 immich_job_concurrency: {}
+# Memory limit for Immich's machine-learning container (smart search, face detection), such as 1g. Empty sets no limit.
+# On a Raspberry Pi it is enforced once the memory cgroup is on (docs/memory.md#memory-limits). Too low a limit kills the
+# container during a job, which Docker then restarts.
+immich_machine_learning_memory_limit: ""

@@ -12,6 +12,8 @@ cloudflared_enabled: true
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
+# A backlog of smart search or face detection can otherwise take all the RAM (docs/memory.md#memory-limits).
+immich_machine_learning_memory_limit: 1g
 crafty_memory_limit: 2g   # all servers together; applies after the container is recreated post-reboot (docs/memory.md#memory-limits)
 backup_local_enabled: true   # daily backup to the `backup` drive
 usb_automount_enabled: true   # plug in a card or drive and it shows up under /drives in Copyparty

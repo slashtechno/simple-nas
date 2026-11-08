@@ -19,6 +19,7 @@ Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgr
 - **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. Other hosts are skipped. `false` turns it off.
 - **Apply:** deploy, `sudo reboot`, then recreate the containers that have a `mem_limit`: `just deploy <service> -e docker_recreate=always`. A container created while the cgroup was off stored no limit, and a reboot keeps it that way. A host with `encrypted_folders` needs `unlock.sh` after the reboot ([encryption.md](./encryption.md)).
 - **Check:** `memory` is in `cat /sys/fs/cgroup/cgroup.controllers`, `docker info` does not say `No memory limit support`, and the container's `HostConfig.Memory` is not `0`.
+- **Other limits:** `immich_machine_learning_memory_limit` caps Immich's machine-learning container, the usual cause of a load spike after an import.
 - **A limit below the app's need kills the app inside its container.** Crafty's servers must fit in `crafty_memory_limit` together.
 - **Turn off:** `pi_enabled: false`, deploy, then `just teardown <host> --tags pi` to take the arguments out again. Both apply after a reboot.
 - **Teardown cannot tell** the two arguments from ones you added by hand; `--tags pi` removes them either way.
