@@ -32,7 +32,7 @@ docker_network: services
 # "always" pulls newer images on every run, see ansible/README.md#update-service-images.
 docker_pull_policy: missing
 
-# Whether a deploy recreates containers whose compose definition did not change. Allowed: auto, always. Default: auto.
+# Whether a deploy recreates containers whose compose definition did not change (services deployed through roles/compose_service). Allowed: auto, always. Default: auto.
 # "always" is for a change outside the compose file, such as the memory cgroup (docs/memory.md#memory-limits).
 docker_recreate: auto
 
@@ -48,7 +48,7 @@ docker_log_opts:
   max-file: "3"
 
 # Where journald keeps the system log: persistent (on disk, kept across reboots, so a host that froze or reset leaves a
-# record) or volatile (in memory only, which spares a microSD root drive the writes). Raspberry Pi OS defaults to
+# record) or volatile (in memory only, which spares the root drive the writes). Raspberry Pi OS defaults to
 # volatile. Other values are in `man journald.conf`.
 journal_storage: persistent
 

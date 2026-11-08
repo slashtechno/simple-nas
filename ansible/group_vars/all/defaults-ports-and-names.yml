@@ -5,7 +5,7 @@
 # Set here because the Homepage links to them. Each listens on every interface: http://<host-tailscale-name>:<port>
 # (HTTPS: docs/caddy-reference.md). Set one to "" to publish no host port; the service is then
 # reachable only through its Caddy name, which the deploy checks is set up.
-# Immich's web UI and API (the mobile app connects here).
+# Immich's web UI and API (the mobile app connects here). Keep it set when immich_sso_enabled or immich_job_concurrency is used: the deploy calls the API on it.
 immich_port: 2283
 
 # Copyparty's web UI and WebDAV.

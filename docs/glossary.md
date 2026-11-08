@@ -37,6 +37,12 @@ Each word is defined once, here. The other docs link to this page instead of exp
 - **Hash and salt.** A hash is a one-way scramble of a password, so a config file can hold something that checks a login without holding the password. A salt is extra random input mixed in so equal passwords give different hashes. This repo uses a fixed salt for some hashes so the file does not change on every deploy.
 - **S3, bucket and access key.** S3 is Amazon's storage API, which many tools use; Garage answers the same commands. A bucket is a named container for stored objects. An access key is the id and secret an app signs in with.
 
+## Memory
+
+- **zram and swap.** Swap is disk space used as overflow RAM. zram is swap kept compressed in RAM itself: fast, no disk wear, but it still takes some RAM. Writeback moves its idle pages to a file on disk.
+- **Memory cgroup and `mem_limit`.** A cgroup is the kernel's way to account for and cap a group of processes. With the memory cgroup on, Docker can enforce a container's `mem_limit`; with it off, the limit is ignored.
+- **OOM kill.** When RAM and swap run out, the kernel kills a process to free memory. `journalctl -k` records it as "Out of memory".
+
 ## Ansible
 
 - **Handler.** A task that runs only when something changed earlier in the same deploy, such as restarting a service whose config file was just rewritten. A deploy that changes nothing restarts nothing.

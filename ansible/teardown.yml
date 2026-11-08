@@ -26,6 +26,8 @@
 #   # the sleep masks (--tags sleep) or Tailscale's apt source (--tags tailscale)
 #   ansible-playbook teardown.yml --limit pi4 --tags backup --vault-password-file .vault-pass
 #
+#   # --list-tags names every tag
+#
 #   # Also wipe data directories (DESTRUCTIVE - no recovery without a backup)
 #   ansible-playbook teardown.yml --limit pi4 -e remove_data=true -e confirm_remove_data=pi4 --vault-password-file .vault-pass
 

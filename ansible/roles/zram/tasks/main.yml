@@ -24,6 +24,7 @@
 
           [Zram]
           RamMultiplier={{ zram_ram_fraction }}
+          # Empty removes rpi-swap's 2048 MiB cap, so zram_ram_fraction alone sets the size.
           MaxSizeMiB=
         dest: "{{ zram_swap_dropin }}"
         owner: root

@@ -108,9 +108,9 @@
 
     - name: Check Immich answered with its settings
       ansible.builtin.assert:
-        that: immich_settings.status == 200
+        that: immich_settings.status | default(0) == 200
         fail_msg: >-
-          GET {{ immich_api }}/system-config answered {{ immich_settings.status }}, not 200. Check that vault_immich_api_key
+          GET {{ immich_api }}/system-config answered {{ immich_settings.status | default('nothing') }}, not 200. Check that vault_immich_api_key
           is a valid key of an Immich admin with the permissions systemConfig.read and systemConfig.update
           (docs/auth-reference.md#sign-in-with-tinyauth-oidc) and that immich_port is Immich's.
         quiet: true
@@ -140,9 +140,9 @@
 
     - name: Check Immich accepted the settings
       ansible.builtin.assert:
-        that: immich_write.status == 200
+        that: immich_write.status | default(0) == 200
         fail_msg: >-
-          PUT {{ immich_api }}/system-config answered {{ immich_write.status }}, not 200. The key needs the permission
-          systemConfig.update (docs/auth-reference.md#sign-in-with-tinyauth-oidc).
+          PUT {{ immich_api }}/system-config answered {{ immich_write.status | default('nothing') }}, not 200. Check the key has the permission
+          systemConfig.update (docs/auth-reference.md#sign-in-with-tinyauth-oidc) and that the values in immich_job_concurrency are whole numbers.
         quiet: true
       when: immich_write is not skipped

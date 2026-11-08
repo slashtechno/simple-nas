@@ -4,5 +4,5 @@
 # a reboot (docs/memory.md#swap).
 zram_ram_fraction: 0.75
 # Raspberry Pi OS only (rpi-swap): let zram write idle pages to a file on the root drive, first a few hours after boot, then
-# daily. That frees RAM but writes to the root drive; false keeps everything in RAM. Other hosts have no writeback and ignore it.
+# daily. That frees RAM at a few writes a day, and is rpi-swap's own default; false keeps everything in RAM. Other hosts have no writeback and ignore it.
 zram_writeback_enabled: true

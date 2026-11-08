@@ -7,6 +7,11 @@
 # Services: turn one on for this host with `<name>_enabled: true` (the flags are listed in
 # group_vars/all/defaults-flags.yml, what each needs in docs/services.md). Flags are set per host, here.
 
+# --- Memory (docs/memory.md) ---
+# A Raspberry Pi gets its memory cgroup by default (pi_enabled: auto); false skips it. For a host short of RAM:
+# zram_enabled: true
+# immich_job_concurrency: {thumbnailGeneration: 1, smartSearch: 1}
+
 # --- Drives ---
 # Drives are listed per host. Each entry is mounted through fstab and says which roles it fills with
 # `roles:` (a list: one drive can fill several roles, or none). A host with no drives leaves the

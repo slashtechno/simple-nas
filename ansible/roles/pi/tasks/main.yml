@@ -1,5 +1,11 @@
 # Raspberry Pi tweaks (pi_enabled). auto, the default, runs them on a Pi and skips any other host; false never gets here.
 # Add a new Pi-only tweak as a task in the block below.
+- name: Check pi_enabled is auto or false
+  ansible.builtin.assert:
+    that: pi_enabled | string | lower == 'auto'
+    fail_msg: "pi_enabled is {{ pi_enabled }}; use auto, or false to skip the Pi tweaks (docs/memory.md)."
+    quiet: true
+
 - name: Read the board model
   ansible.builtin.command: cat /proc/device-tree/model
   register: pi_model

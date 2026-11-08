@@ -42,6 +42,7 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | [docs/glossary.md](./docs/glossary.md) | Plain definitions of the backup, Docker, drive, login and web terms the docs use |
 | [docs/ansible-terms.md](./docs/ansible-terms.md) | The Ansible terms and files this repo uses |
 | [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
+| [docs/memory.md](./docs/memory.md) | A host short of RAM: Raspberry Pi memory cgroup, zram swap, Immich job settings |
 | [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
 | [docs/encryption.md](./docs/encryption.md) | Folders stored encrypted with gocryptfs: what they protect, first setup, unlocking after a boot, backups while locked |
 | [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
