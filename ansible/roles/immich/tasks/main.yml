@@ -11,7 +11,7 @@
       systemConfig.read and systemConfig.update) and a non-empty immich_port, because the deploy sets them through Immich's
       API on that port (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/memory.md#immich).
     quiet: true
-  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0
+  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0 or immich_transcode_required_only | bool
 
 - name: Check the Immich database password is in the vault
   ansible.builtin.assert:
@@ -55,11 +55,12 @@
     mode: "0755"
 
 # The API takes the whole settings object on every write, so read it, change only what this deploy owns and write it back:
-# the sign-in block (immich_sso_enabled) and the concurrency of the queues named in immich_job_concurrency. That leaves every
-# other setting, and the fields of these blocks not named here, as saved in Immich's settings page.
+# the sign-in block (immich_sso_enabled), the concurrency of the queues named in immich_job_concurrency and the transcode
+# policy (immich_transcode_required_only). That leaves every other setting, and the fields of these blocks not named here,
+# as saved in Immich's settings page.
 # Immich stores the settings in its database, so the write happens only when they differ.
 - name: Set Immich's settings through its API
-  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0
+  when: immich_sso_enabled | bool or immich_job_concurrency | length > 0 or immich_transcode_required_only | bool
   vars:
     immich_api: "http://127.0.0.1:{{ immich_port }}/api"
     immich_oauth: >-
@@ -82,10 +83,12 @@
       {%- set _ = merged.update({queue: value | combine({'concurrency': immich_job_concurrency[queue]}) if queue in immich_job_concurrency else value}) -%}
       {%- endfor -%}
       {{ merged }}
+    immich_ffmpeg: "{{ immich_settings.json.ffmpeg | combine({'transcode': 'required'}) }}"
     immich_wanted: >-
       {{ immich_settings.json
          | combine({'oauth': immich_oauth} if immich_sso_enabled | bool else {})
-         | combine({'job': immich_job} if immich_job_concurrency | length > 0 else {}) }}
+         | combine({'job': immich_job} if immich_job_concurrency | length > 0 else {})
+         | combine({'ffmpeg': immich_ffmpeg} if immich_transcode_required_only | bool else {}) }}
   block:
     - name: Wait for the Immich API
       ansible.builtin.uri:
