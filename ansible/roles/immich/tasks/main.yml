@@ -7,7 +7,8 @@
       - vault_immich_api_key is defined
       - immich_port != ''
     fail_msg: >-
-      immich_sso_enabled and immich_job_concurrency need vault_immich_api_key (an admin's API key with the permissions
+      The Immich API settings (immich_sso_enabled, immich_job_concurrency, immich_transcode_required_only,
+      immich_accepted_video_codecs) need vault_immich_api_key (an admin's API key with the permissions
       systemConfig.read and systemConfig.update) and a non-empty immich_port, because the deploy sets them through Immich's
       API on that port (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/memory.md#immich).
     quiet: true

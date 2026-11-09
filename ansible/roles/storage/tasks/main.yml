@@ -13,6 +13,20 @@
       Current `drives`: {{ drives }}
     quiet: true
 
+# reserved_percent (tune2fs -m) works only on an ext2/3/4 drive that is in fstab, so a `uuid` is required, and tune2fs allows 0 to 50.
+- name: Validate reserved_percent on the drives that set it
+  ansible.builtin.assert:
+    that:
+      - item.uuid is defined
+      - item.fstype | default('ext4') in ['ext2', 'ext3', 'ext4']
+      - item.reserved_percent | float >= 0
+      - item.reserved_percent | float <= 50
+    fail_msg: "reserved_percent on {{ item.mount }} needs a uuid, an ext2/3/4 fstype and a value from 0 to 50 (docs/storage.md#reserved-space)."
+    quiet: true
+  loop: "{{ drives | selectattr('reserved_percent', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.mount }}"
+
 # A `drives` entry without `uuid` is a folder on the root drive: created, never put in fstab.
 # A backup there would die with the root drive, so the backup role needs an entry with a `uuid`.
 - name: Validate that the backup role is on a mounted drive
