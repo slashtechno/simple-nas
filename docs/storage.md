@@ -9,6 +9,7 @@ Each `drives` entry has these fields:
 | `mount` | Where the drive is mounted (required) |
 | `uuid` | The drive's UUID ([how to read it](#preparing-a-drive)). An entry without one is a folder on the root drive ([below](#using-the-root-drive-for-fast-or-primary)) |
 | `fstype` | Filesystem, default `ext4` |
+| `reserved_percent` | Optional, ext2/3/4 only. The share of the drive kept for root, set with `tune2fs -m` (ext4's default is 5). Left out, the drive is not touched. On a data drive, `1` is usual: a database running as another user gets "No space left" once free space falls below the reserve, while `df` still shows some free ([what the number means](#reserved-space)) |
 | `options` | Mount options, default `defaults` |
 | `roles` | The roles the drive fills. A drive with no `roles` is only mounted |
 
@@ -91,6 +92,16 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's
 - **In `systemctl status`:** `mnt-data.automount` is `active (waiting)` and `mnt-data.mount` is inactive until something opens the path. `df` shows the drive only after that.
 - **Remount by hand:** `sudo systemctl restart mnt-data.automount`, if systemd gave up on a drive. It does after five failed mount attempts within 10 seconds, which a fast failure such as a broken filesystem reaches; the mount point is then a plain folder until you restart it.
 - **Backups:** the backup scripts run `mountpoint -q <mount>/.` before they write anything. The trailing `/.` opens the path: that mounts the drive, or fails after up to 30 seconds so the script refuses to run. Without it `mountpoint` succeeds on the placeholder of a missing drive.
+
+## Reserved space
+
+An ext4 drive keeps a share of its blocks for root. When free space falls below that share, programs running as other users (a database in a container) fail with "No space left on device", while root and `df` still see free space. `df` shows `Avail` 0 and `Use%` 100%.
+
+- **The number** is a percentage of the whole drive. 5 (ext4's default, from the drive's creation) keeps 5%, about 23 GiB of 458 GB; 1 keeps 1%, about 4.7 GiB; 0 keeps nothing.
+- **Which value:** a data drive holds no system files, so 1 is enough; a drive that holds the system keeps the default. The reserve also leaves room for root to clean up after a drive fills.
+- **Read the current value:** `sudo tune2fs -l /dev/disk/by-uuid/<uuid> | grep -i "block count"` (reserved blocks divided by block count).
+- **Set it with `reserved_percent`** on the drive's entry (the fields table at the top of this page); the deploy changes it only when it differs. It takes effect at once, with no remount, and setting 5 puts it back.
+- **A full drive is the problem, not the reserve:** a lower reserve gives back only the margin. Free space as well.
 
 ## With a drive missing
 

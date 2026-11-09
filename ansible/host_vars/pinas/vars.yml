@@ -55,6 +55,7 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [fast, primary]   # one SSD fills both roles (docs/storage.md#examples)
+    reserved_percent: 1      # Postgres, running as another user, fails once free space falls below the 5% default (docs/storage.md#reserved-space)
   - uuid: "d3c015db-9c24-4da3-a127-4ae02ef498b6"   # Seagate IronWolf Pro 6TB → /mnt/backup
     mount: /mnt/backup
     fstype: ext4

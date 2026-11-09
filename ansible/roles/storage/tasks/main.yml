@@ -50,6 +50,29 @@
   loop: "{{ mounted_drives }}"
   changed_when: false
 
+# ext4 keeps a share of each drive (5% unless set) for root alone, so a program running as another user, such as a database
+# in a container, fails with "No space left" while df still shows free space. `reserved_percent` on a drive sets the share
+# (tune2fs -m); a drive without it is left as it is. The write happens only when the reserved blocks differ.
+- name: Read the reserved blocks of the drives that set reserved_percent
+  ansible.builtin.command: tune2fs -l /dev/disk/by-uuid/{{ item.uuid }}
+  loop: "{{ mounted_drives | selectattr('reserved_percent', 'defined') | list }}"
+  loop_control:
+    label: "{{ item.mount }}"
+  register: drive_fs
+  changed_when: false
+  check_mode: false
+
+- name: Set the reserved share of those drives
+  vars:
+    drive_blocks: "{{ item.stdout | regex_search('Block count:\\s+(\\d+)', '\\1') | first | int }}"
+    drive_reserved: "{{ item.stdout | regex_search('Reserved block count:\\s+(\\d+)', '\\1') | first | int }}"
+  ansible.builtin.command: tune2fs -m {{ item.item.reserved_percent }} /dev/disk/by-uuid/{{ item.item.uuid }}
+  loop: "{{ drive_fs.results }}"
+  loop_control:
+    label: "{{ item.item.mount }}"
+  when: drive_reserved | int != (drive_blocks | int * item.item.reserved_percent / 100) | int
+  changed_when: true   # it runs only when the value differs
+
 - name: Set ownership of mounted drives to ansible user  # noqa: risky-file-permissions (mode is left as the filesystem's)
   ansible.builtin.file:
     path: "{{ item.mount }}"
