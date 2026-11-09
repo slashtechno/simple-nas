@@ -13,6 +13,8 @@ pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
 # A backlog of smart search or face detection can otherwise take all the RAM (docs/memory.md#memory-limits).
+# Phones and current browsers play these as they are, so Immich makes no copy of them.
+immich_accepted_video_codecs: [h264, hevc, vp9, av1]
 immich_transcode_required_only: true
 immich_machine_learning_memory_limit: 1g
 crafty_memory_limit: 2g   # all servers together; applies after the container is recreated post-reboot (docs/memory.md#memory-limits)
