@@ -12,10 +12,9 @@ cloudflared_enabled: true
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
 crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
+# No second copy of any video: Immich is a mirror and photo dump here, and the copies were 38 GB of HDR phone video.
+immich_transcode_policy: disabled
 # A backlog of smart search or face detection can otherwise take all the RAM (docs/memory.md#memory-limits).
-# Phones and current browsers play these as they are, so Immich makes no copy of them.
-immich_accepted_video_codecs: [h264, hevc, vp9, av1]
-immich_transcode_required_only: true
 immich_machine_learning_memory_limit: 1g
 crafty_memory_limit: 2g   # all servers together; applies after the container is recreated post-reboot (docs/memory.md#memory-limits)
 backup_local_enabled: true   # daily backup to the `backup` drive

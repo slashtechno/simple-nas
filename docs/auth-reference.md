@@ -48,7 +48,7 @@ Behaviour:
 
 - The app's own password login stays, so a Tinyauth problem does not lock you out.
 - Every user in `vault_tinyauth_users` can sign in, but the app decides who gets in: [Who may use what](#who-may-use-what).
-- **Immich:** the deploy sets only the sign-in block and the settings `immich_job_concurrency`, `immich_transcode_required_only` and `immich_accepted_video_codecs` name, through Immich's API; the settings page stays editable. It needs a non-empty `immich_port` and `vault_immich_api_key`: deploy Immich with `immich_sso_enabled` off first, sign in as an admin, create a key under Account Settings > API Keys with only `systemConfig.read` and `systemConfig.update`, and put it in the vault. Turning `immich_sso_enabled` off leaves the block; clear it under Administration > Settings > Authentication.
+- **Immich:** the deploy sets only the sign-in block and the settings `immich_job_concurrency`, `immich_transcode_policy` and `immich_accepted_video_codecs` name, through Immich's API; the settings page stays editable. It needs a non-empty `immich_port` and `vault_immich_api_key`: deploy Immich with `immich_sso_enabled` off first, sign in as an admin, create a key under Account Settings > API Keys with only `systemConfig.read` and `systemConfig.update`, and put it in the vault. Turning `immich_sso_enabled` off leaves the block; clear it under Administration > Settings > Authentication.
 
 Addresses an app is opened at (the first private domain is Tinyauth's own):
 

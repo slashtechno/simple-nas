@@ -4,12 +4,14 @@
 # set; every other queue stays as saved in Immich. Empty leaves job settings alone. Needs vault_immich_api_key
 # (docs/memory.md#immich). Example: {thumbnailGeneration: 1, smartSearch: 1}
 immich_job_concurrency: {}
-# Transcode only the videos a browser cannot play (Immich's "required" policy), set on every deploy. Immich's own default is
-# required, but a changed or older setting can transcode every video into a second copy that fills the drive. The next
-# Transcode Videos job (Administration → Jobs) deletes the copies the policy no longer needs. false leaves the policy as saved.
-# Needs vault_immich_api_key (docs/memory.md#immich).
-immich_transcode_required_only: false
-# Video codecs Immich plays as they are, without making a transcoded copy (the "required" policy transcodes the rest).
+# Immich's transcode policy, set on every deploy: disabled (no second copy of any video), required (only videos that will
+# not play as they are: an unaccepted codec, HDR, an unaccepted audio codec), optimal, bitrate or all. Immich's own
+# default is required. Empty leaves the policy as saved. The next Transcode Videos job (Administration → Jobs) deletes the
+# copies the new policy no longer needs. disabled sends HDR phone video as it is, which browsers other than Safari may
+# show washed out. Needs vault_immich_api_key (docs/memory.md#immich).
+immich_transcode_policy: ""
+# Video codecs Immich plays as they are, without making a transcoded copy (the "required" policy transcodes the rest;
+# "disabled" ignores this list).
 # Any codec the browsers and phones you use can play: h264 plays everywhere; hevc (iPhone and many Android videos) and av1
 # are smaller but need a recent browser or phone; vp9 plays in every current browser. Allowed: h264, hevc, vp9, av1.
 # Empty leaves the list as saved in Immich. Needs vault_immich_api_key (docs/memory.md#immich).
