@@ -35,8 +35,10 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [fast, primary]
+    reserved_percent: 1   # ext4 holds 5% back by default (docs/storage.md#reserved-space)
   - uuid: "14d25e81-68c6-4b00-96b4-a1a6b5b81ede"   # 128 GB PNY USB stick (USB 2 port), label backup → /mnt/backup
     mount: /mnt/backup
     fstype: ext4
     options: defaults,nofail
     roles: [backup]
+    reserved_percent: 1   # ext4 holds 5% back by default (docs/storage.md#reserved-space)

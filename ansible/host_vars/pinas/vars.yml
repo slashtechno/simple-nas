@@ -63,6 +63,7 @@ drives:
     fstype: ext4
     options: defaults,nofail
     roles: [backup]
+    reserved_percent: 1   # ext4 holds 5% back by default: 300 GB of this drive (docs/storage.md#reserved-space)
 
 # Weekly offsite copy to Google Drive (docs/backups.md).
 backup_cloud_enabled: true
