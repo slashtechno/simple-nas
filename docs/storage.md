@@ -112,15 +112,15 @@ An ext4 drive keeps a share of its blocks for root. When free space falls below 
 
 ## A drive that will not mount
 
-`systemctl status mnt-<name>.mount` says `probably corrupted filesystem` and `dmesg | grep EXT4` shows `error loading journal`, usually after the drive dropped off the USB bus mid-write. systemd then gives up the automount ([Remount by hand](#how-a-drive-is-mounted)), so the mount point is a plain folder and containers that start write to the root drive. Run on the host:
+Signs: `systemctl status mnt-<name>.mount` says `probably corrupted filesystem`, and `dmesg | grep EXT4` shows `error loading journal`, usually after the drive dropped off USB mid-write. systemd then gives up the automount ([Remount by hand](#how-a-drive-is-mounted)), so the mount point is a plain folder and containers write to the root drive. On the host:
 
-1. **Stop the containers** that use the drive: `docker stop $(docker ps -q)`.
-2. **Check without changing anything:** `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>`.
-3. **Repair:** `sudo e2fsck -fy /dev/disk/by-uuid/<uuid>`. A journal that fails its checksum is discarded, so writes since the last good mount are lost. If step 2 reports damage beyond that, restore from the backup instead ([backups.md](./backups.md)).
-4. **Mount:** `sudo systemctl reset-failed mnt-<name>.mount mnt-<name>.automount && sudo systemctl restart mnt-<name>.automount`, then `ls <mount>`.
-5. **Recreate the containers**, as in step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive). Whatever a container wrote to the root drive in the meantime sits under the mount point and can be deleted after `umount`.
+1. Stop the containers that use the drive.
+2. Check read-only: `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>`.
+3. Repair: the same with `-fy`. A journal that fails its checksum is discarded, losing writes since the last good mount. For worse damage, [restore from backup](./backups.md).
+4. Mount: `sudo systemctl reset-failed mnt-<name>.mount mnt-<name>.automount && sudo systemctl restart mnt-<name>.automount`.
+5. Recreate the containers ([step 4 here](#adding-replacing-or-retiring-a-drive)). What they wrote to the root drive sits under the mount point; delete it after `umount`.
 
-exFAT drives have no journal: `fsck.exfat -n /dev/sdX1` (or `diskutil verifyVolume` on a Mac) only reads.
+exFAT has no journal: `fsck.exfat -n /dev/sdX1` (or `diskutil verifyVolume` on a Mac) only reads.
 
 ## Using the root drive for fast or primary
 

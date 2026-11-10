@@ -241,6 +241,8 @@ The socket is mounted read-only because Dozzle only reads, not because that limi
 3. After plugging in or unplugging a drive, run `just deploy scrutiny --limit <host>` again so the container gets the new list.
 4. With `ntfy_alert_url` set ([ntfy](#ntfy-failure-alerts)), Scrutiny sends its alerts there. It alerts when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives; a stopped Scrutiny sends nothing. Send a test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
 
+Scrutiny can show a drive as failed while `smartctl -H` says PASSED: it also fails an attribute, such as `Current_Pending_Sector` (197), that Backblaze's fleet data ties to a high failure rate.
+
 The InfluxDB history in `scrutiny_influx_dir` is left out of the backup; `scrutiny_config_dir` is covered.
 
 ## Garage (S3)
