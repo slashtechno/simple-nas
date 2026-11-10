@@ -193,6 +193,21 @@ A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`driv
 
 Check the drive maker's operating range; a hard drive in a closed enclosure can run near its limit, and a fan on the enclosure lowers it by 10 to 15 °C. Reading the temperature wakes a spun-down drive. To pause a long job such as `badblocks` while a drive cools, freeze its systemd unit (`systemctl freeze` and `thaw`; start it with `systemd-run --unit=<name>`); stopping the unit kills it.
 
+## Drive damage and wear
+
+Read the counters with `sudo smartctl -A -d sat /dev/disk/by-id/<drive>`; [Scrutiny](./services.md#scrutiny-drive-health) graphs them.
+
+- **Damage:** `Reallocated_Sector_Ct` (5), `Current_Pending_Sector` (197) or `Offline_Uncorrectable` (198) above 0 are sectors the drive could not read. A count that keeps rising, new bad blocks after a repair or a failed `smartctl -t long` mean replace the drive. `UDMA_CRC_Error_Count` (199) points at the cable or USB bridge.
+- **Wear:** `Load_Cycle_Count` (193) divided by `Power_On_Hours` (9) is the head-parking rate; about 15 an hour or less is normal. The maker's datasheet gives the rated total (often 300,000 to 600,000 on a 2.5" drive). If the rate is high, `hdparm -B 254` stops aggressive parking; some USB bridges ignore it.
+- **Power:** several drives dropping off USB together (`over-current` in `dmesg`) is the usual cause of a corrupt filesystem on a bus-powered host ([If the backup drive disconnects](./backups.md#if-the-backup-drive-disconnects)).
+
+To find and repair bad sectors:
+
+1. **Scan read-only** with the drive unmounted: `sudo systemd-run --unit=scan $(command -v badblocks) -b 4096 -sv -o /var/tmp/bad.txt /dev/disk/by-id/<drive>`. Never `-w`. It takes hours on a 2 TB drive; `systemd-run` keeps it running when SSH ends. Each number is a 4 KiB block counted from the start of the whole disk.
+2. **Find the files they hit before repairing.** Mount the drive read-only and read everything: `find <mount> -xdev -type f -exec cat {} + >/dev/null`. An unreadable file prints its path; restore it from backup. A clean pass shows every file can be read, not that its content is right: compare `sha256sum` lists with a second copy and test archives with `7z t` or `unzip -t`.
+3. **Overwrite each bad block no file needs:** `sudo dd if=/dev/zero of=/dev/disk/by-id/<drive> bs=4096 seek=<block> count=1 oflag=direct conv=notrunc`. The drive then repairs or remaps the sector, and what was in the block is gone. Then run `smartctl -t long` (hours; a pass means the whole surface reads).
+4. **Keep watching the counters**, and keep nothing on a drive with defects that exists nowhere else ([backups.md](./backups.md)).
+
 ## Move one service's data
 
 Each service's data directories are settings listed in `ansible/group_vars/all/defaults-data-dirs.yml`. To move a service to another drive:
