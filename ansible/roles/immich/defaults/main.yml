@@ -4,11 +4,14 @@
 # set; every other queue stays as saved in Immich. Empty leaves job settings alone. Needs vault_immich_api_key
 # (docs/memory.md#immich). Example: {thumbnailGeneration: 1, smartSearch: 1}
 immich_job_concurrency: {}
-# Immich's transcode policy, set on every deploy: disabled (no second copy of any video), required (only videos that will
-# not play as they are: an unaccepted codec, HDR, an unaccepted audio codec), optimal, bitrate or all. Immich's own
-# default is required. Empty leaves the policy as saved. The next Transcode Videos job (Administration → Jobs) deletes the
-# copies the new policy no longer needs. disabled sends HDR phone video as it is, which browsers other than Safari may
-# show washed out. Needs vault_immich_api_key (docs/memory.md#immich).
+# Immich's transcode policy, set on every deploy (Immich's own default is required). Empty leaves it as saved.
+#   disabled  no second copy of any video; HDR phone video plays as it is (washed out outside Safari)
+#   required  a copy only for videos that will not play as they are: an unaccepted video or audio codec, or HDR
+#   optimal   required, plus a copy of anything above the target resolution
+#   bitrate   required, plus a copy of anything above the max bitrate
+#   all       a copy of every video
+# The next Transcode Videos job (Administration → Jobs) deletes the copies the new policy no longer needs.
+# Needs vault_immich_api_key (docs/memory.md#immich).
 immich_transcode_policy: ""
 # Video codecs Immich plays as they are, without making a transcoded copy (the "required" policy transcodes the rest;
 # "disabled" ignores this list).
