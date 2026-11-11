@@ -84,14 +84,22 @@ Per folder, easiest first:
 3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
    1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
    2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
-   3. Copy the files in: `rsync -aHAX <scratch>/<path of the folder>/ <the folder>/`.
+   3. Copy the files in: `sudo rsync -aHAX <scratch>/<path of the folder>/ <the folder>/` ([flags](./glossary.md#commands)).
 
    This works only if the backup includes the folder. On a host with a local backup the deploy checks that every listed folder is in it, so it always does. On a host with only a cloud backup nothing checks: look in `restic_cloud_rules` and `restic_cloud_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where)).
 
 <details>
 <summary>Not sure which cipher option was used</summary>
 
-Try each on a scratch mount: `gocryptfs -ro [-xchacha] -masterkey=stdin <the .gocryptfs folder> <empty folder>`, key on stdin. The wrong option lists the file names but `sha256sum` on a file fails with an input/output error. The right one reads it. Unmount with `fusermount -u`.
+Try each on a scratch mount:
+
+```bash
+gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>   # then paste the master key and press Enter
+```
+
+- `-ro` opens it read-only, so a wrong guess cannot change anything. `-masterkey=stdin` takes the key from the keyboard, so it is not saved in your shell history.
+- Drop `-xchacha` to try the other option. The wrong option still lists the file names, but reading a file fails (`sha256sum <a file>` prints an input/output error). The right one reads it.
+- Unmount with `fusermount -u <empty folder>`.
 
 </details>
 
@@ -169,26 +177,16 @@ Send the backup alerts to another ntfy with `host_alert_url`, so a locked host c
 
 ### Turning it off
 
-The same checksum move as in step 3, in the other direction. Stop the services that use the folder first.
+1. Stop the containers that use the folder (`docker stop <name>`; the script lists any still running).
+2. Run the script in a terminal (`ssh -t <host>`). It unlocks the folder, moves the files out, compares checksums, and puts them back in the folder as plain files:
 
-<details>
-<summary>The commands</summary>
+   ```bash
+   sudo /opt/services/scripts/remove-encrypted-folder.sh /mnt/data/photos
+   ```
 
-```bash
-cd /mnt/data/photos && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt   # the folder must be unlocked
-sudo mkdir /mnt/data/photos.plain
-sudo rsync -aHAX --remove-source-files /mnt/data/photos/ /mnt/data/photos.plain/
-cd /mnt/data/photos.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
-diff /tmp/before.txt /tmp/after.txt && echo identical
-```
-
-</details>
-
-If it stops half way, run the same `rsync` again. When the lists match:
-
-1. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
-2. `sudo umount /mnt/data/photos && sudo chattr -i /mnt/data/photos`
-3. `sudo rm -r /mnt/data/photos /mnt/data/.photos.gocryptfs && sudo mv /mnt/data/photos.plain /mnt/data/photos`, then start the service.
+   After a lost connection, run the same command again. If a checksum differs it deletes nothing. It keeps the encrypted files.
+3. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. Start the containers.
+4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 
 The role removes the scripts when no folder remains. gocryptfs stays installed. You can drop the old ciphertext, master key and passphrase for that folder.
 

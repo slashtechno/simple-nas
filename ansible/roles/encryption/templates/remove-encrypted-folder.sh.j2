@@ -1,0 +1,66 @@
+#!/bin/bash
+# Ansible-managed (roles/encryption). Turns one encrypted folder back into a plain folder, files included:
+#   sudo {{ scripts_dir }}/remove-encrypted-folder.sh <folder>
+# Run it in a terminal (ssh -t). Stop the containers that use the folder first. If it stops half way, run the same command
+# again. It keeps the encrypted files (the .gocryptfs folder) until you delete them. See docs/encryption.md#turning-it-off.
+set -euo pipefail
+
+FOLDER="${1:?Usage: $0 <folder from encrypted_folders>}"
+case "${FOLDER%/}" in
+{% for folder in encrypted_pairs %}
+  {{ folder.mount | quote }}) FOLDER={{ folder.mount | quote }}; CIPHER={{ folder.cipher | quote }} ;;
+{% endfor %}
+  *) echo "ERROR: $FOLDER is not in encrypted_folders." >&2; exit 1 ;;
+esac
+PLAIN="$FOLDER.plain"          # where the files go while they move out
+SUMS="$FOLDER.plain.sha256"    # their checksums, taken before the move
+
+[ -t 0 ] || { echo "ERROR: run this in a terminal (ssh -t <host> sudo ...): it asks for the passphrase." >&2; exit 1; }
+[ -d "$CIPHER" ] || { echo "ERROR: $CIPHER does not exist, so there is nothing to decrypt. Is its drive mounted?" >&2; exit 1; }
+
+# A container that has the folder open would keep using it after the files move. Stop it first.
+if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
+  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER") || true   # no Docker answer: carry on
+  if [ -n "$BUSY" ]; then
+    echo "ERROR: stop these containers first (docker stop <name>):" >&2
+    echo "$BUSY" >&2
+    exit 1
+  fi
+fi
+
+# 1. Unlock it (unlock.sh asks for the passphrase).
+if ! mountpoint -q "$FOLDER/."; then
+  {{ (scripts_dir ~ '/unlock.sh') | quote }}
+fi
+mountpoint -q "$FOLDER/." || { echo "ERROR: $FOLDER is not mounted." >&2; exit 1; }
+
+# 2. Move the files out into $PLAIN, then compare checksums. --remove-source-files means no second copy of the data is
+# needed, and the same command finishes an interrupted move. The checksums are taken once, before the first move.
+[ -e "$SUMS" ] || { echo "Taking checksums of $FOLDER (this reads every file once)"; (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"; }
+mkdir -p "$PLAIN"
+chown --reference="$FOLDER" "$PLAIN"
+chmod --reference="$FOLDER" "$PLAIN"
+echo "Moving the files out of $FOLDER"
+rsync -aHAX --inplace --remove-source-files "$FOLDER/" "$PLAIN/"
+echo "Comparing checksums"
+if ! diff "$SUMS" <(cd "$PLAIN" && find . -type f -exec sha256sum {} + | sort -k2) >/dev/null; then
+  echo "ERROR: the files in $PLAIN do not match the checksums in $SUMS. Nothing is deleted. Run this again." >&2
+  exit 1
+fi
+
+# 3. Lock the folder and put the plain files in its place. Only empty folders are left in $FOLDER; anything else stays.
+find "$FOLDER" -depth -mindepth 1 -type d -empty -delete
+if [ -n "$(ls -A "$FOLDER")" ]; then
+  echo "WARNING: $FOLDER still holds files the move did not take. Look at them. Nothing more was done." >&2
+  exit 1
+fi
+umount "$FOLDER"
+chattr -i "$FOLDER" 2>/dev/null || true
+rmdir "$FOLDER"
+mv "$PLAIN" "$FOLDER"
+rm -f "$SUMS"
+
+echo "$FOLDER is a plain folder again. Next:"
+echo "  1. Remove it from encrypted_folders and run: just deploy encryption,backup --limit <host>"
+echo "  2. Start the containers that use it."
+echo "  3. When everything works, delete the encrypted files: sudo rm -r $CIPHER"

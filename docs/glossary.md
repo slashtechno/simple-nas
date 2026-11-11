@@ -37,6 +37,19 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 - **Hash and salt.** A hash is a one-way scramble of a password, so a config file can check a login without holding the password. A salt is random input so equal passwords hash differently. Some hashes here use a fixed salt, so the file does not change on every deploy.
 - **S3, bucket and access key.** S3 is Amazon's storage API, which Garage also answers. A bucket is a named container for objects. An access key is the id and secret an app signs in with.
 
+## Commands
+
+- **`rsync -aHAX <from>/ <to>/`.** Copies a folder and keeps everything about its files. Run it with `sudo`, so it can keep owners. If it stops half way, run the same command again: it copies only what is missing or changed.
+
+  | Part | What it does |
+  |---|---|
+  | `-a` | Keeps owner, permissions, dates and symbolic links |
+  | `-H`, `-A`, `-X` | Also keep hard links, access lists and extended attributes |
+  | `/` at the end of `<from>/` | Copies what is inside the folder. Without it, rsync makes a folder called `<from>` inside `<to>`. |
+  | `-n` (dry run) | Shows what it would copy and copies nothing. Add `-v` to list the files. |
+  | `--progress` | Shows each file as it copies |
+  | `--remove-source-files` | Deletes each source file after it copied. Empty folders stay. |
+
 ## Memory
 
 - **zram and swap.** Swap is disk used as overflow RAM. zram is swap kept compressed in RAM: fast, no disk wear, but it takes some RAM. Writeback moves idle pages to a file.

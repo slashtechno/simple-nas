@@ -23,7 +23,7 @@
     owner: root
     group: root
     mode: "0750"
-  loop: [unlock.sh, setup-encrypted-folder.sh]
+  loop: [unlock.sh, setup-encrypted-folder.sh, remove-encrypted-folder.sh]
   when: encrypted_folders | length > 0
 
 - name: Create the after-unlock scripts directory
