@@ -1,8 +1,8 @@
 # Quick start: a complete home server
 
-From a fresh clone to one host running **Immich**, **Copyparty**, **Dockge** for your own apps behind a **Tinyauth** login and **Caddy** names, daily **backups**, and **encrypted** data folders, on **three drives**. About an hour, plus the time the drives take to format.
+From a fresh clone to one host running **Immich**, **Copyparty** and **Dockge** for your own apps, behind a **Tinyauth** login. It has **Caddy** names, daily **backups** and **encrypted** data folders on **three drives**. About an hour, plus the time the drives take to format.
 
-Each step links to the doc that explains it. Not every part is needed: skip step 4 and leave out `encrypted_folders` for no encryption, and drop any flag in step 2 you do not want ([pick what you use](../ansible/README.md#pick-what-you-use)).
+Each step links to the doc that explains it. You do not need every part. Skip step 4 and leave out `encrypted_folders` for no encryption, and drop any flag in step 2 you do not want ([pick what you use](../ansible/README.md#pick-what-you-use)).
 
 ## You need
 
@@ -13,7 +13,7 @@ Each step links to the doc that explains it. Not every part is needed: skip step
 
 ## 1. Install and add the host
 
-Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), then follow steps 1 to 3 of [Add a host](../ansible/README.md#add-a-host): check the host, add it to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname). Stop before its step 4: the first deploy comes in step 3 below.
+Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), then follow steps 1 to 3 of [Add a host](../ansible/README.md#add-a-host): check the host, add it to `inventory/hosts.yml`, then `just setup home`. "home" is the host's nickname. Stop before its step 4: the first deploy comes in step 3 below.
 
 ## 2. Fill in your values
 
@@ -61,7 +61,7 @@ Reboot once (`sudo reboot`) and [unlock](./encryption.md#unlocking).
 
 ## 6. Check it
 
-- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login; so do [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health).
+- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login. [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health) do too.
 - Run a backup by hand ([backups.md](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).
 

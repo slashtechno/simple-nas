@@ -1,6 +1,6 @@
 # Memory on a small host
 
-A host can run out of RAM when its services add up to more than it has (Immich's machine learning, Crafty and a build are the largest). Signs: load average far above the core count, SSH that stalls, kills in `journalctl -k | grep -i "out of memory"`. Check `free -m` after a deploy.
+A host can run out of RAM when its services add up to more than it has. Immich's machine learning, Crafty and a build are the largest. Signs: load average far above the core count, SSH that stalls, kills in `journalctl -k | grep -i "out of memory"`. Check `free -m` after a deploy.
 
 | Problem | Fix |
 |---|---|
@@ -20,9 +20,9 @@ A host can run out of RAM when its services add up to more than it has (Immich's
 
 ## Memory limits
 
-Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgroup_disable=memory` itself, so that argument never appears in `cmdline.txt`; the `cgroup_enable=memory` the deploy adds overrides it). Docker then ignores `mem_limit` (such as `crafty_memory_limit`) and one container can take all the RAM.
+Raspberry Pi firmware starts the kernel with the memory cgroup off. It adds `cgroup_disable=memory` itself, so that argument never appears in `cmdline.txt`, and the `cgroup_enable=memory` that the deploy adds overrides it. Docker then ignores `mem_limit` (such as `crafty_memory_limit`) and one container can take all the RAM.
 
-- **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. Other hosts are skipped. `false` turns it off.
+- **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. The role skips other hosts. `false` turns it off.
 - **Apply:** deploy, `sudo reboot`, then recreate the containers that have a `mem_limit`: `just deploy <service> -e docker_recreate=always`. A container created while the cgroup was off stored no limit, and a reboot keeps it that way. A host with `encrypted_folders` needs `unlock.sh` after the reboot ([encryption.md](./encryption.md)).
 - **Check:** `memory` is in `cat /sys/fs/cgroup/cgroup.controllers`, `docker info` does not say `No memory limit support`, and the container's `HostConfig.Memory` is not `0`.
 - **Other limits:** `immich_machine_learning_memory_limit` caps Immich's machine-learning container, the usual cause of a load spike after an import.
@@ -34,34 +34,34 @@ Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgr
 
 - **Turn on:** `zram_enabled: true`, deploy, then `sudo reboot`. `zram_ram_fraction` sets the size as a fraction of RAM.
 - **Turn off:** `zram_enabled: false`, deploy, then `just teardown <host> --tags zram` to remove the drop-in, then `sudo reboot`.
-- **Needed when** `free -m` shows the host using swap under normal load; a host with spare RAM can leave it off.
+- **Needed when** `free -m` shows the host using swap under normal load. A host with spare RAM can leave it off.
 - **Limits of swap:** more swap delays kills but does not help when the working set is larger than RAM. Memory limits and the Immich settings below do.
 
 <details>
 <summary>Which tool, cost, writeback</summary>
 
-- **Which tool:** Raspberry Pi OS sizes zram through `rpi-swap` (drop-in in `/etc/rpi/swap.conf.d/`); other hosts get `systemd-zram-generator` (drop-in in `/etc/systemd/zram-generator.conf.d/`). Teardown removes the drop-in.
+- **Which tool:** Raspberry Pi OS sizes zram through `rpi-swap` (drop-in in `/etc/rpi/swap.conf.d/`). Other hosts get `systemd-zram-generator` (drop-in in `/etc/systemd/zram-generator.conf.d/`). Teardown removes the drop-in.
 - **Cost:** zram keeps compressed pages in RAM, so a full device uses a fraction of its size in memory (the `COMPR` column of `zramctl`). Poorly compressible data costs more.
-- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` (default on) lets `rpi-swap` move idle pages to `/var/swap` on the root drive (up to 2 GiB), at a few writes a day. `false` keeps everything in RAM and `rpi-swap` deletes that file. Options: `man swap.conf`.
+- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` (default on) lets `rpi-swap` move idle pages to `/var/swap` on the root drive (up to 2 GiB), at a few writes a day. `false` keeps everything in RAM and `rpi-swap` removes that file. Options: `man swap.conf`.
 
 </details>
 
 ## Immich
 
-Job settings are stored in Immich's database, so the backup dump keeps them.
+Immich keeps job settings in its database, so the backup dump saves them.
 
-- **Set them from the repo:** `immich_job_concurrency` maps a queue name to how many jobs run at once, for example `{thumbnailGeneration: 1, smartSearch: 1}`. Every deploy sets those queues and leaves all other Immich settings as saved. Empty (the default) sets nothing. It needs `vault_immich_api_key` (the key the [sign-in setup](./auth-reference.md#sign-in-with-tinyauth-oidc) also uses); with Immich down, a full deploy stops at this step. A queue name Immich does not have stops the deploy and lists the real ones.
+- **Set them from the repo:** `immich_job_concurrency` maps a queue name to how many jobs run at once, for example `{thumbnailGeneration: 1, smartSearch: 1}`. Every deploy sets those queues and leaves all other Immich settings as saved. Empty (the default) sets nothing. It needs `vault_immich_api_key` (the key the [sign-in setup](./auth-reference.md#sign-in-with-tinyauth-oidc) also uses). With Immich down, a full deploy stops at this step. A queue name Immich does not have stops the deploy and lists the real ones.
 - **Or in the UI:** Administration → Settings → Job Settings. The next deploy overwrites a queue named in `immich_job_concurrency`.
 - **Heaviest:** smart search and face detection (machine learning). Pause them on Administration → Jobs during a large import and resume afterwards.
-- **Transcode policy:** `immich_transcode_policy` is set on every deploy. `disabled` makes no second copy of any video; `required` copies only videos that will not play as they are. Transcoding runs `ffmpeg` on the CPU, so a policy that converts every video keeps the host busy for hours.
+- **Transcode policy:** every deploy sets `immich_transcode_policy`. `disabled` makes no second copy of any video. `required` copies only videos that will not play as they are. Transcoding runs `ffmpeg` on the CPU, so a policy that converts every video keeps the host busy for hours.
 - **An import resumes all paused jobs at once** when it ends. Expect a burst of load then.
 
 <details>
 <summary>Transcode policy details</summary>
 
-- `required` copies a video with an unaccepted video or audio codec, or HDR (tone-mapped to SDR). `optimal`, `bitrate` and `all` are described in `roles/immich/defaults/main.yml`.
-- A policy change frees nothing by itself: run Transcode Videos on All (Administration → Jobs) once, and Immich deletes the copies it no longer needs.
-- Under `required`, `immich_accepted_video_codecs` lists the codecs played as they are, so listing `hevc` and `av1` stops copies of phone video; HDR and uncompressed audio still get one.
+- `required` copies a video with an unaccepted video or audio codec, or HDR (tone-mapped to SDR). `roles/immich/defaults/main.yml` describes `optimal`, `bitrate` and `all`.
+- A policy change frees nothing by itself: run Transcode Videos on All (Administration → Jobs) once, and Immich removes the copies it does not need.
+- Under `required`, `immich_accepted_video_codecs` lists the codecs played as they are, so listing `hevc` and `av1` stops copies of phone video. HDR and uncompressed audio still get one.
 - `disabled` sends HDR as it is, which browsers other than Safari may show washed out.
 - A resolution or bitrate cap makes copies of videos that already play only under `optimal` and `bitrate`.
 - The same settings are in the UI at Administration → Settings → Video Transcoding.

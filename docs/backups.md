@@ -1,12 +1,12 @@
 # Backups
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_alert_url`). Defaults for every setting named here are in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) and `ansible/group_vars/all/defaults-backups.yml` (repositories, retention, logs).
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_alert_url`). Defaults for every setting here are in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) and `ansible/group_vars/all/defaults-backups.yml` (repositories, retention, logs).
 
 **Something went wrong?**
 
 | Situation | Go to |
 |---|---|
-| Lost or deleted files | [Restore: files](#restore-files) |
+| Lost or removed files | [Restore: files](#restore-files) |
 | Immich, Gitea or Garage data is broken | [Immich](#restore-immich-database), [Gitea](#restore-gitea), [Garage](#restore-garage) |
 | All drives gone | [Disaster recovery](#disaster-recovery-all-drives-fail) |
 | Backups fail or the backup drive dropped out | [If the backup drive disconnects](#if-the-backup-drive-disconnects), [Checking backup status](#checking-backup-status) |
@@ -15,31 +15,31 @@ Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs
 
 ## Switching backups on
 
-Two flags per host in `host_vars/<host>/vars.yml`; a host can set either or both. The restic password is `vault_restic_password` in `group_vars/all/vault.yml`.
+Two flags per host in `host_vars/<host>/vars.yml`. A host can set either or both. The restic password is `vault_restic_password` in `group_vars/all/vault.yml`.
 
-- `backup_local_enabled: true`: daily to a drive, plus a weekly check of that repository. The host needs a `drives` entry with the `backup` role and a `uuid` ([storage.md](./storage.md)); the deploy stops with a message if it has none.
+- `backup_local_enabled: true`: daily to a drive, plus a weekly check of that repository. The host needs a `drives` entry with the `backup` role and a `uuid` ([storage.md](./storage.md)). The deploy stops with a message if it has none.
 - `backup_cloud_enabled: true`: weekly to `restic_cloud_repository`. **Each host needs its own path**: hosts sharing a repository prune each other's snapshots. The deploy stops if it is empty.
 - The web dashboard (`backup_status_enabled`) reads the local repository, so it needs `backup_local_enabled`.
 
-The scripts run as the ansible user and refuse to run as anyone else (a root run leaves root-owned files the nightly run cannot read). Files only root can read (data owned by a container's user) are skipped and reported as `error:` lines: restic still saves the snapshot (exit 3), old snapshots are still pruned, then the run fails so the alert fires. For such a stack, dump its data or change its owner.
+The scripts run as the ansible user and refuse to run as anyone else (a root run leaves root-owned files the nightly run cannot read). Restic skips files that only root can read (data owned by a container's user) and reports them as `error:` lines. It still saves the snapshot (exit 3) and prunes old snapshots, then the run fails so the alert fires. For such a stack, dump its data or change its owner.
 
 <details>
 <summary>A cloud-only host, locks and the cache</summary>
 
 A cloud-only host (`backup_cloud_enabled` without `backup_local_enabled`):
 
-- cannot report a job that never runs (host off, cron stopped): alerts fire only when a job runs and fails;
-- has no automatic integrity check: the weekly `restic check` exists only for the local repository ([check the cloud repo by hand](#checking-the-cloud-repo-manual));
-- has the short default offsite list ([below](#what-is-backed-up-where)): add what you want to `restic_cloud_extra_rules` (restic sends only changed data but reads all of it each run);
+- cannot report a job that never runs (host off, cron stopped): alerts fire only when a job runs and fails.
+- has no automatic integrity check: the weekly `restic check` exists only for the local repository ([check the cloud repo by hand](#checking-the-cloud-repo-manual)).
+- has the short default offsite list ([below](#what-is-backed-up-where)): add what you want to `restic_cloud_extra_rules` (restic sends only changed data but reads all of it each run).
 - keeps its logs and dumps in `/var/lib/backup-work` on the root drive.
 
-Each run starts with `restic unlock`, which removes only stale locks: a restic killed by a reboot otherwise leaves a lock that makes every later prune fail. restic's cache (`restic_cache_dir`) is safe to delete; that only costs speed.
+Each run starts with `restic unlock`, which removes only stale locks: a restic killed by a reboot otherwise leaves a lock that makes every later prune fail. The restic cache (`restic_cache_dir`) is safe to remove. That only costs speed.
 
 </details>
 
 ## First backup
 
-The first run into an empty repository reads and hashes everything: hours for hundreds of GB over USB. Start it by hand, detached so a dropped SSH session does not stop it, as the ansible user and so it ends before 02:00 (when cron runs the same script):
+The first run into an empty repository reads and hashes everything: hours for hundreds of GB over USB. Start it by hand as the ansible user, detached so a dropped SSH session does not stop it. Start it early enough that it ends before 02:00, when cron runs the same script:
 
 ```bash
 setsid nohup /opt/services/scripts/backup-restic-local.sh > /tmp/first-backup.log 2>&1 < /dev/null &
@@ -55,25 +55,25 @@ Afterwards `restic snapshots` and `restic check` show a good repository ([Connec
 | `backup-cloud` | Sunday 04:00 | Runs the service dumps, then backs up to the cloud repository |
 | `restic-check` | Saturday 05:00 | `restic check` on the local repository, reading a 5% sample |
 
-- Jobs exist only for the flags that are on; turning one off removes its jobs on the next deploy. With both off the role is skipped: remove the jobs with `just teardown <host> --tags backup` ([teardown](../ansible/README.md#disable-or-remove-a-service)).
+- Jobs exist only for the flags that are on. Turning one off removes its jobs on the next deploy. With both off Ansible skips the role: remove the jobs with `just teardown <host> --tags backup` ([teardown](../ansible/README.md#disable-or-remove-a-service)).
 - The local repository is `restic_repo_path` (`<backup drive mount>/restic-repo` unless set). Retention is `restic_local_retention` and `restic_cloud_retention`.
-- Dumps are in `service_dumps_dir` (the last 3 of each type kept) and logs in `backup_logs_dir` (one file per job per day, plus `backup-cron.log`): on the backup drive with a local backup, otherwise in `/var/lib/backup-work`.
+- Dumps are in `service_dumps_dir` (the last 3 of each type kept), logs in `backup_logs_dir` (one file per job per day, plus `backup-cron.log`). They sit on the backup drive with a local backup, otherwise in `/var/lib/backup-work`.
 - The local backup refuses to start when the backup drive is 95% full or more, because `restic forget --prune` needs free room to clean up. The alert fires and the log says how full it is.
 
 <details>
 <summary>Changing times, the timeout, the alert path</summary>
 
-- **Times** are the `hour`, `minute` and `weekday` lines of the cron tasks in `roles/backup/tasks/local.yml` and `cloud.yml`, not settings. Edit one and `just deploy backup` (a job is matched by name, so the old time is replaced). Cron uses the host's `timezone`; keep the check away from the backup.
-- **Timeout:** every restic call has `restic_command_timeout` (default 23 hours, enough for a first backup over a slow link or USB 2), so a stalled network pipe fails the run instead of holding the lock. A run that hits it is killed and alerts; raise it in `host_vars/<host>/vars.yml` for a larger repository.
+- **Times** are the `hour`, `minute` and `weekday` lines of the cron tasks in `roles/backup/tasks/local.yml` and `cloud.yml`, not settings. Edit one and `just deploy backup` (Ansible matches a job by name, so it replaces the old time). Cron uses the host's `timezone`. Keep the check away from the backup.
+- **Timeout:** every restic call has `restic_command_timeout`, default 23 hours, enough for a first backup over a slow link or USB 2. So a stalled network pipe fails the run instead of holding the lock. A run that hits the timeout stops and alerts. Raise it in `host_vars/<host>/vars.yml` for a larger repository.
 - **Alerts:** a failed job goes to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set and `just deploy common`, to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 </details>
 
-Paths below use `/mnt/backup` for the backup drive and `/mnt/data` for the fast and primary drive; use your own mounts from `drives`.
+Paths below use `/mnt/backup` for the backup drive and `/mnt/data` for the fast and primary drive. Use your own mounts from `drives`.
 
 ## What is backed up where
 
-Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`): `restic_local_rules` (daily) is the mounted `primary` and `fast` drives, or the ansible user's home on a host with neither; `restic_cloud_rules` (weekly) is `services_dir` and, if Copyparty runs, its config. To add to a default use `restic_local_extra_rules` or `restic_cloud_extra_rules`; setting the main list replaces the default. Both repositories also include `service_dumps_dir`.
+Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`). `restic_local_rules` (daily) is the mounted `primary` and `fast` drives, or the ansible user's home on a host with neither. `restic_cloud_rules` (weekly) is `services_dir` and, if Copyparty runs, its config. To add to a default use `restic_local_extra_rules` or `restic_cloud_extra_rules`. Setting the main list replaces the default. Both repositories also include `service_dumps_dir`.
 
 | Data | Local (daily, backup drive) | Cloud (Sunday) |
 |---|---|---|
@@ -82,31 +82,31 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`): `resti
 | Compose files, scripts, the credentials written into them (`services_dir`) | No | Yes |
 | Immich database | Dump only (raw Postgres directory excluded) | Dump only |
 | Gitea database and repositories | Dump, plus raw data (SSH host keys excluded) | Dump only |
-| Garage metadata | Dump only (`<garage_data_dir>/meta` excluded); data blocks are plain files | Dump only |
+| Garage metadata | Dump only (`<garage_data_dir>/meta` excluded). Data blocks are plain files | Dump only |
 | Restic password | No | No |
 
 The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager.
 
-- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`, so moving a service to a drive without a role cannot silently drop it from the backup (the one exception is Immich's raw Postgres directory, which is dumped instead). Encrypted folders are checked too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
-- **Not enforced (offsite):** the offsite list is short on purpose; with the cloud backup on, each deploy prints the data it leaves out.
-- **Dumps:** one script per service with a live database (`roles/<service>/files/dump.sh` for Immich, Gitea, Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's), its files starting with `<service>-`; for software this repo does not run, put an executable `<name>.sh` in `service_dump_scripts_dir` by hand.
+- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The one exception is Immich's raw Postgres directory, which a dump covers instead. The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
+- **Not enforced (offsite):** the offsite list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
+- **Dumps:** one script per service with a live database (`roles/<service>/files/dump.sh` for Immich, Gitea, Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's), its files starting with `<service>-`. For software this repo does not run, put an executable `<name>.sh` in `service_dump_scripts_dir` by hand.
 
 <details>
 <summary>Always excluded, and why</summary>
 
-- the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups));
-- `restic_cache_dir`, the restic repository itself, `**/.cache` folders and the data drives' `lost+found`;
-- logins: the restic password file, the rclone config and Cloudflare's tunnel token (rewritten from the vault each deploy);
-- rebuildable, root-owned data regenerated after a restore: Docker's storage when `docker_data_root` is set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate, and Crafty's own `backups/` archives;
+- the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)).
+- `restic_cache_dir`, the restic repository itself, `**/.cache` folders and the data drives' `lost+found`.
+- logins: the restic password file, the rclone config and Cloudflare's tunnel token (rewritten from the vault each deploy).
+- rebuildable, root-owned data regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
 - unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist`, and Garage's metadata (carried as a dump, see [Restore: Garage](#restore-garage)).
 
-The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt.j2`. **Crafty:** to keep its `backups/` archives add `- !<crafty_data_dir>/backups`; worlds are copied while the server runs, so a world written mid-backup can be inconsistent, and `teardown.yml -e remove_data=true` deletes the archives too.
+The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt.j2`. **Crafty:** to keep its `backups/` archives add `- !<crafty_data_dir>/backups`. Restic copies worlds while the server runs, so a world written mid-backup can be inconsistent. `teardown.yml -e remove_data=true` removes the archives too.
 
 </details>
 
 ## Choosing what is backed up
 
-Each rules list holds one rule per line, after `just deploy backup`: `/path` backs a path up; `- pattern` leaves it out (the dash and space are part of the line; restic's pattern syntax, `**` matches any number of folders); `- !pattern` puts back something an earlier `- ` line left out.
+Each rules list holds one rule per line, after `just deploy backup`. `/path` backs a path up. `- pattern` leaves it out: keep the dash and space on the line, and in restic's pattern syntax `**` matches any number of folders. `- !pattern` puts back something an earlier `- ` line left out.
 
 ```yaml
 restic_local_extra_rules:
@@ -115,13 +115,13 @@ restic_local_extra_rules:
   - "- !/mnt/data/downloads/keep.iso"    # but keep this one
 ```
 
-Quote the `- ` lines in YAML. The `_extra_rules` lists add to the default; setting `restic_local_rules` or `restic_cloud_rules` itself replaces it, so the default drives drop out unless you list them. The deploy fails if a line is none of the three forms.
+Quote the `- ` lines in YAML. The `_extra_rules` lists add to the default. Setting `restic_local_rules` or `restic_cloud_rules` itself replaces it, so the default drives drop out unless you list them. The deploy fails if a line is none of the three forms.
 
 <details>
 <summary>Rule details and snapshot groups</summary>
 
-- `- ` lines run after the built-in exclude lists, so `- !` can undo a default; the cloud list works the same way and its `- ` lines apply to every path in it. A `- !` line cannot bring back a file inside a folder that a `- ` line left out whole: exclude that folder's other contents by pattern instead. `- !` needs restic 0.13.0 or newer (Debian bookworm ships 0.14). [restic's syntax](https://restic.readthedocs.io/en/stable/040_backup.html) is not gitignore's.
-- restic groups snapshots by host and paths. Adding or removing a `/path` line starts a new group; the old one stops growing but keeps its last snapshots until you remove them by hand: `restic snapshots --group-by host,paths`, then `restic forget <snapshot-id> --prune`. A `- ` line never splits a group, so tune with those first. In the cloud repository each path is its own group.
+- `- ` lines run after the built-in exclude lists, so `- !` can undo a default. The cloud list works the same way, and its `- ` lines apply to every path in it. A `- !` line cannot bring back a file inside a folder that a `- ` line left out whole: exclude that folder's other contents by pattern instead. `- !` needs restic 0.13.0 or newer (Debian bookworm ships 0.14). [restic's syntax](https://restic.readthedocs.io/en/stable/040_backup.html) is not gitignore's.
+- restic groups snapshots by host and paths. Adding or removing a `/path` line starts a new group. The old one stops growing but keeps its last snapshots until you remove them by hand: `restic snapshots --group-by host,paths`, then `restic forget <snapshot-id> --prune`. A `- ` line never splits a group, so tune with those first. In the cloud repository each path is its own group.
 
 </details>
 
@@ -138,7 +138,7 @@ For the cloud repository: `export RESTIC_REPOSITORY="<your restic_cloud_reposito
 
 ## Inspecting a snapshot
 
-Get an ID from `restic snapshots` (or the dashboard); `latest` works in place of one. Browse and extract with restic's [`ls`, `diff`, `find` and `dump`](https://restic.readthedocs.io/en/stable/045_working_with_repos.html).
+Get an ID from `restic snapshots` (or the dashboard). `latest` works in place of one. Browse and extract with restic's [`ls`, `diff`, `find` and `dump`](https://restic.readthedocs.io/en/stable/045_working_with_repos.html).
 
 ## Restore: files
 
@@ -165,7 +165,7 @@ ssh your-user@your-host 'RESTIC_PASSWORD_FILE=~/.restic-password RESTIC_REPOSITO
 tar -xf /Volumes/YourDrive/snapshot.tar -C /Volumes/YourDrive/restored/
 ```
 
-Speed over Tailscale depends on `tailscale status` showing `direct`, not `relay`. exFAT/FAT32 destinations lose Unix permissions and symlinks; use APFS or ext4 if that matters.
+Speed over Tailscale depends on `tailscale status` showing `direct`, not `relay`. exFAT/FAT32 destinations lose Unix permissions and symlinks. Use APFS or ext4 if that matters.
 
 </details>
 
@@ -178,7 +178,7 @@ cd /opt/services/immich && docker compose stop immich_server
 docker compose start immich_server
 ```
 
-The dump holds only the `immich` database, and the restore replays it into the `immich` database Postgres creates on first start, so it also works on a fresh container after a disk loss. A dump of the whole Postgres cluster (named `immich-db-*`, with `\connect immich` lines inside) cannot be replayed this way: open it with `gunzip -c`, copy the part between `\connect immich` and the next `\connect` into a new file, and restore that.
+The dump holds only the `immich` database. The restore replays it into the `immich` database Postgres creates on first start, so it also works on a fresh container after a disk loss. A dump of the whole Postgres cluster (named `immich-db-*`, with `\connect immich` lines inside) cannot be replayed this way. Open it with `gunzip -c`, copy the part between `\connect immich` and the next `\connect` into a new file, and restore that.
 
 ## Restore: Gitea
 
@@ -190,7 +190,7 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ## Restore: Garage
 
-Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database, so `<garage_data_dir>/meta` is excluded from the file backup and reaches it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`; the data blocks under `<garage_data_dir>/data` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when `data` has files and `meta` is empty (Garage would start a new empty cluster beside the old blocks): put the metadata back first.
+Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database. The file backup leaves out `<garage_data_dir>/meta` and carries it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`. The data blocks under `<garage_data_dir>/data` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when `data` has files and `meta` is empty: Garage would start a new empty cluster beside the old blocks. Put the metadata back first.
 
 ```bash
 cd /opt/services/garage && docker compose stop garage
@@ -208,7 +208,7 @@ Keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
 
 ## Disaster recovery (all drives fail)
 
-1. Get the vault password from your password manager first; without it nothing below works. Then get the two vault files, `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`: they exist only on your own machine, and no restic repository opens without them. Keep a copy of both somewhere that is not the host.
+1. Get the vault password from your password manager first. Without it nothing below works. Then get the two vault files, `group_vars/all/vault.yml` (holds `vault_restic_password`) and `host_vars/<host>/vault.yml`: they exist only on your own machine, and no restic repository opens without them. Keep a copy of both somewhere that is not the host.
 2. Re-flash the OS, then run `just deploy` from `ansible/`.
 3. Format the replacement drives and put their `uuid` values in `drives` ([storage.md](./storage.md)).
 4. Set the cloud repository as in [Connecting](#connecting) and pull from it. It holds one snapshot group per path and `latest` restores only one snapshot, so restore each:
@@ -216,16 +216,16 @@ Keep `db.lmdb.old` until buckets and keys show up correctly in the web UI.
    restic -o rclone.args="<restic_cloud_rclone_args>" snapshots --group-by path
    restic -o rclone.args="<restic_cloud_rclone_args>" restore <snapshot-id> --target /      # once per group
    ```
-   With the default rules it holds no photos or Copyparty files ([above](#what-is-backed-up-where)); those come back only from an [offline copy](#offline-copy-on-a-second-drive).
+   With the default rules it holds no photos or Copyparty files ([above](#what-is-backed-up-where)). Those come back only from an [offline copy](#offline-copy-on-a-second-drive).
 5. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 4 (the Restore sections above, using the restored `service-dumps` folder).
 
-On a host with [encryption](./encryption.md) the backup scripts refuse to run while a listed folder is locked; unlock first.
+On a host with [encryption](./encryption.md) the backup scripts refuse to run while a listed folder stays locked. Unlock first.
 
 ## If the backup drive disconnects
 
-What happens with a drive missing: [storage.md](./storage.md#with-a-drive-missing). The backup scripts and `restic-check` run `mountpoint -q <mount>/.` on the backup drive first, and the backup scripts also on every data drive (`fast` or `primary`) and every `encrypted_folders` folder ([why the `/.`](./storage.md#how-a-drive-is-mounted)), so they never save a snapshot of an empty folder. A missing drive makes the script exit without writing, the cron line logs the failure to `journalctl -t backup`, and the next run mounts a returned drive.
+A missing drive: [storage.md](./storage.md#with-a-drive-missing). The backup scripts and `restic-check` run `mountpoint -q <mount>/.` on the backup drive first. The backup scripts also run it on every data drive (`fast` or `primary`) and every `encrypted_folders` folder ([why the `/.`](./storage.md#how-a-drive-is-mounted)). So they never save a snapshot of an empty folder. A missing drive makes the script exit without writing, the cron line logs the failure to `journalctl -t backup`, and the next run mounts a returned drive.
 
-Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If it keeps dropping out, on a Raspberry Pi `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage|over-current'` show whether the power supply, cable or hub is at fault (`over-current` is the USB ports' own limit, which `get_throttled` does not report).
+Check with `mountpoint /mnt/backup/.`, `journalctl -t backup` and `systemctl status mnt-backup.automount`. If it keeps dropping out, on a Raspberry Pi `vcgencmd get_throttled` and `dmesg | grep -iE 'sdb|voltage|over-current'` show whether the power supply, cable or hub is at fault. `over-current` is the USB ports' own limit, which `get_throttled` does not report.
 
 ## Checking backup status
 
@@ -235,11 +235,11 @@ tail -50 /mnt/backup/logs/backup-cron.log           # recent combined cron log (
 /bin/bash /opt/services/scripts/backup-restic-local.sh   # run a job by hand; or backup-restic-cloud.sh, restic-check.sh
 ```
 
-The dashboard does not check that a `daily` snapshot exists, only that the job ran. The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and when it ends. A missing, unreadable or too old file shows as an error, never ok; `cat` it to see what the last run did. A run that stops before writing it (a mount guard, such as a dropped drive) leaves the previous result, so a card can say ok for up to 36 hours (9 days for weekly jobs) after the first such failure: the alert is what reports it.
+The dashboard does not check that a `daily` snapshot exists, only that the job ran. The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and when it ends. A missing, unreadable or too old file shows as an error, never ok. `cat` it to see what the last run did. A run that stops before writing it (a mount guard, such as a dropped drive) leaves the previous result. A card can then say ok for up to 36 hours (9 days for weekly jobs) after the first such failure. The alert is what reports it.
 
 ### Checking the cloud repo (manual)
 
-No schedule checks the cloud repository (a full check reads all of it over the network). Run it now and then as the ansible user, with the cloud repository from [Connecting](#connecting):
+No schedule checks the cloud repository (a full check reads all of it over the network). Run it occasionally as the ansible user, with the cloud repository from [Connecting](#connecting):
 
 ```bash
 restic -o rclone.args="<restic_cloud_rclone_args>" check
@@ -249,34 +249,34 @@ Add `--read-data-subset=5%` to also read a sample of the stored data. For an SFT
 
 ## Offsite repository (`restic_cloud_repository`)
 
-The URL scheme picks the backend. The deploy runs `restic init` on it and fails if that fails (no rclone remote, bad credentials, unreachable server); an existing repository is left alone.
+The URL scheme picks the backend. The deploy runs `restic init` on it and fails if that fails (no rclone remote, bad credentials, unreachable server). It leaves an existing repository alone.
 
 **Google Drive** goes through rclone, which the deploy installs for `rclone:` repositories. Its login needs a browser, so the token comes from the vault:
 
-1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`, sign in; it prints a JSON token.
+1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`, sign in. It prints a JSON token.
 2. Put it in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
 3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive` remote only if the file does not exist (rclone writes refreshed tokens back into it).
 
-To replace a broken login, delete `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
+To replace a broken login, remove `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
 
 <details>
 <summary>Google quotas and token expiry, and SFTP</summary>
 
-- The remote uses rclone's default Google OAuth client, shared by all rclone users, which can return `403 RATE_LIMIT_EXCEEDED` on a large first backup. `restic_cloud_rclone_args` throttles requests; to use your own client, `rclone config`, edit `gdrive`, set the client ID and secret.
+- The remote uses rclone's default Google OAuth client, shared by all rclone users, which can return `403 RATE_LIMIT_EXCEEDED` on a large first backup. `restic_cloud_rclone_args` throttles requests. To use your own client, `rclone config`, edit `gdrive`, set the client ID and secret.
 - Google expires the refresh token after 7 days for an app in "Testing" status and after 6 months unused. If cloud backups stop with an auth error, redo step 1 and replace `rclone.conf`.
-- **SFTP:** `restic_cloud_repository: "sftp:backup@host:/srv/restic"` uses the host's SSH client. Set up by hand as the ansible user that runs cron: a passphrase-less key in `~/.ssh` and the server's host key in `~/.ssh/known_hosts` (`ssh-keyscan host >> ~/.ssh/known_hosts`, checked against the fingerprint); without the host key the cron run waits on a prompt and fails. The rclone throttle does not apply.
+- **SFTP:** `restic_cloud_repository: "sftp:backup@host:/srv/restic"` uses the host's SSH client. Set it up by hand as the ansible user that runs cron. It needs a passphrase-less key in `~/.ssh` and the server's host key in `~/.ssh/known_hosts` (`ssh-keyscan host >> ~/.ssh/known_hosts`, checked against the fingerprint). Without the host key the cron run waits on a prompt and fails. The rclone throttle does not apply.
 
 </details>
 
 ## Web dashboard (read-only)
 
-The `backup_status` role (`backup_status_enabled`, needs `backup_local_enabled`) deploys a read-only dashboard: job status, the drive's mount state, a warning when a restic lock is left, and the snapshot list for both repositories. A local snapshot's files open as a folder tree with sizes, and its changes since the previous snapshot are listed on request. Running a job, restoring, deleting and the cloud snapshots show the exact SSH command to copy and run yourself.
+The `backup_status` role (`backup_status_enabled`, needs `backup_local_enabled`) deploys a read-only dashboard. It shows job status, the drive's mount state, a warning when a restic lock remains, and the snapshot list for both repositories. A local snapshot's files open as a folder tree with sizes, and the dashboard lists its changes since the previous snapshot on request. Running a job, restoring, removing and the cloud snapshots show the exact SSH command to copy and run yourself.
 
-It is served at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login). A host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network, local snapshot file names included. The deploy stops if the host has neither, so it never comes up without a login or a port you chose. The container mounts the repository, logs and password file read-only, so it cannot write to or delete a backup.
+It runs at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login). A host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network, local snapshot file names included. The deploy stops if the host has neither, so it never comes up without a login or a port you chose. The container mounts the repository, logs and password file read-only, so it cannot write to or remove a backup.
 
 ## Offline copy on a second drive
 
-`restic copy` copies snapshots into a second repository, for example on a drive you unplug and store elsewhere. The destination is `-r` and the source is `--from-repo`; each repository needs its own password option. Create it once, with the source's chunker settings so the copy deduplicates:
+`restic copy` copies snapshots into a second repository, for example on a drive you unplug and store elsewhere. The destination is `-r` and the source is `--from-repo`. Each repository needs its own password option. Create it once, with the source's chunker settings so the copy deduplicates:
 
 ```bash
 restic -r /mnt/offline/restic-repo init \
@@ -285,7 +285,7 @@ restic -r /mnt/offline/restic-repo init \
   --copy-chunker-params
 ```
 
-Copy new snapshots (already-copied ones are skipped):
+Copy new snapshots (restic skips ones already copied):
 
 ```bash
 restic -r /mnt/offline/restic-repo copy \
