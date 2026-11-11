@@ -31,24 +31,27 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 
 ## Docs
 
-| Doc | Covers |
+| Start here | |
 |---|---|
-| [docs/quick-start.md](./docs/quick-start.md) | A fresh clone to a complete server, in order |
-| [ansible/README.md](./ansible/README.md) | Task index, which files hold what, adding a host, `just` commands, vault, updating images, adding a service |
-| [TODO.md](./TODO.md) | The owner's list: work that waits for time or hardware |
-| `ansible/roles/` | One role per service, plus the base and shared task roles |
-| `ansible/group_vars/`, `ansible/host_vars/` | Shared defaults (`defaults.yml` and the topic files beside it), the owner's values (`vars.yml`), image versions (`versions.yml`), secrets (`vault.yml`, not in git). The `vars.yml` files hold the owner's values: replace them if you copy the repo ([ansible/README.md](./ansible/README.md#using-this-repo-for-your-own-hosts)) |
-| `ansible/tests/`, `.github/workflows/` | The render test and the CI that runs `just check` |
-| [docs/glossary.md](./docs/glossary.md) | Plain definitions of the backup, Docker, drive, login and web terms the docs use |
-| [docs/ansible-terms.md](./docs/ansible-terms.md) | The Ansible terms and files this repo uses |
-| [docs/services.md](./docs/services.md) | Per-service setup and gotchas, including the ad-hoc app platform |
-| [docs/memory.md](./docs/memory.md) | A host short of RAM: Raspberry Pi memory cgroup, zram swap, Immich job settings |
-| [docs/storage.md](./docs/storage.md) | Drive roles, adding or replacing a drive, Docker's data root, plugged-in USB drives |
-| [docs/encryption.md](./docs/encryption.md) | Folders stored encrypted with gocryptfs: what they protect, first setup, unlocking after a boot, backups while locked |
-| [docs/networking.md](./docs/networking.md) | Recovering a Pi that dropped off the network, how it picks a network, the direct Ethernet link |
-| [docs/caddy-reference.md](./docs/caddy-reference.md) | The optional Caddy reverse proxy: names, ports, HTTPS and label syntax |
-| [docs/auth-reference.md](./docs/auth-reference.md) | The optional Tinyauth login: users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale, sessions |
-| [docs/backups.md](./docs/backups.md) | Schedules, restore, backup-drive failures |
+| [docs/quick-start.md](./docs/quick-start.md) | A fresh clone to a complete server |
+| [ansible/README.md](./ansible/README.md) | Task index, files, `just` commands, vault, adding a host or service |
+| [docs/services.md](./docs/services.md) | Each service: what it needs and its gotchas |
+
+| When something happens | |
+|---|---|
+| [docs/backups.md](./docs/backups.md) | Schedules, restore, a dead or disconnected backup drive |
+| [docs/storage.md](./docs/storage.md) | Add or replace a drive, a drive that will not mount, drive wear |
+| [docs/networking.md](./docs/networking.md) | A Pi that dropped off the network |
+| [docs/memory.md](./docs/memory.md) | A host short of RAM |
+| [docs/encryption.md](./docs/encryption.md) | Encrypted folders: set up, unlock after a boot |
+
+| Reference | |
+|---|---|
+| [docs/glossary.md](./docs/glossary.md) | The words the docs use, plus the Ansible parts you meet when editing |
+| [docs/caddy-reference.md](./docs/caddy-reference.md) | Caddy: names, ports, HTTPS, label syntax |
+| [docs/auth-reference.md](./docs/auth-reference.md) | Tinyauth: users, 2FA, sign in with GitHub or Google, OIDC |
+| [TODO.md](./TODO.md) | The owner's list of work waiting on time or hardware |
+| `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service; shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)); the render test |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-Active plans are in `plans/` and research notes go in `docs/research/` ([settings-structure.md](./docs/research/settings-structure.md) is the first). Finished plans are deleted and stay in git history: `git log --diff-filter=D --name-only -- 'plans/*' 'docs/plans/*'`. They record decisions for work that is not built, are not kept current with the code, and say so at the top. Everything else under `docs/` describes how the repo works.
+Plans for work not finished are in `plans/`; research notes are in `docs/research/`. Both say at the top that they are not kept current. Everything else under `docs/` describes how the repo works.
