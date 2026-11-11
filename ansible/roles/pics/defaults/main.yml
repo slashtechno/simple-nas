@@ -15,3 +15,7 @@ pics_artist: ""
 # start with http:// or https://; `watermark: false` keeps the text off photos.
 # For example [{text: example.com, url: "https://example.com", watermark: true}]. Links saved in pics' Settings are used when this is empty.
 pics_links: []
+# Where pics sends its drive alerts, and the token that server accepts. The defaults are the shared ntfy_alert_url and
+# vault_ntfy_token (docs/services.md#ntfy-failure-alerts).
+pics_alert_url: "{{ ntfy_alert_url }}"
+pics_alert_token: "{{ vault_ntfy_token | default('') }}"

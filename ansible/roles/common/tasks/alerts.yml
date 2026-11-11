@@ -8,19 +8,19 @@
     group: "{{ ansible_user }}"
     mode: "0755"
 
-# alert.sh reads the token from this file; with no ntfy_alert_url or no token the file is removed.
+# alert.sh reads the token from this file; with no host_alert_url or no token the file is removed.
 - name: Write the ntfy token file
   ansible.builtin.copy:
-    content: "{{ vault_ntfy_token }}"
+    content: "{{ host_alert_token }}"
     dest: "{{ ntfy_token_file }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true
-  when: ntfy_alert_url | length > 0 and vault_ntfy_token | default('') | length > 0
+  when: host_alert_url | length > 0 and host_alert_token | length > 0
 
 - name: Remove the ntfy token file when alerts are off
   ansible.builtin.file:
     path: "{{ ntfy_token_file }}"
     state: absent
-  when: ntfy_alert_url | length == 0 or vault_ntfy_token | default('') | length == 0
+  when: host_alert_url | length == 0 or host_alert_token | length == 0

@@ -744,6 +744,46 @@
         ntfy_alert_url: "http://pi4:8090/alerts"
         vault_ntfy_token: "tk_a$b"
 
+    # Each sender has its own URL and token; a token of "" means no login for that sender whatever vault_ntfy_token is.
+    - name: Give each sender its own ntfy
+      ansible.builtin.set_fact:
+        scrutiny_alert_url: "https://ntfy.example.org/scrutiny"
+        scrutiny_alert_token: "tk_scrutiny"
+        pics_alert_url: "https://ntfy.sh/pics-topic"
+        pics_alert_token: ""
+        host_alert_url: "https://ntfy.sh/host-topic"
+        host_alert_token: ""
+
+    - name: Render the senders' files with them
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}"
+        dest: "{{ out_dir }}/sso-off/own-{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop:
+        - scrutiny/templates/docker-compose.yml.j2
+        - pics/templates/pics.env.j2
+        - common/templates/alert.sh.j2
+
+    - name: Each sender uses its own URL and token
+      ansible.builtin.assert:
+        that:
+          - >-
+            'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_scrutiny@ntfy.example.org/scrutiny?scheme=https"'
+            in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-docker-compose.yml')
+          - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/pics-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-pics.env')"
+          - "'https://ntfy.sh/host-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+        quiet: true
+
+    - name: Put the senders back on the shared ntfy
+      ansible.builtin.set_fact:
+        scrutiny_alert_url: "{{ ntfy_alert_url }}"
+        scrutiny_alert_token: "{{ vault_ntfy_token }}"
+        pics_alert_url: "{{ ntfy_alert_url }}"
+        pics_alert_token: "{{ vault_ntfy_token }}"
+        host_alert_url: "{{ ntfy_alert_url }}"
+        host_alert_token: "{{ vault_ntfy_token }}"
+
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
     - name: Give Gitea a public address of its own
       ansible.builtin.set_fact:

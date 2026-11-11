@@ -165,7 +165,7 @@ encrypted_folders:
 
 The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. This is true with or without Tinyauth: with Tinyauth off, only the other rows apply. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
 
-`vault_ntfy_token` goes to whatever server `ntfy_alert_url` names, so it suits an ntfy you run, not ntfy.sh.
+Send the backup alerts to another ntfy with `host_alert_url`, so a locked host can still alert ([services.md](./services.md#ntfy-failure-alerts)).
 
 ### Turning it off
 

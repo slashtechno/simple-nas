@@ -15,4 +15,3 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md) — waits for: the new drive passing its vetting.
 - Encryption at rest ([encryption.md](./docs/encryption.md)): open the folder on a Mac (gocryptfs and macFUSE) before real data goes in — waits for: a spare drive.
 - Open items of [plans/next-steps.md](./plans/next-steps.md) — waits for: each item's own condition.
-- One alert URL per sender (backup alerts, Scrutiny, pics): [plans/alert-urls.md](./plans/alert-urls.md). Waiting for: the owner's go; it is a refactor, on a branch.
