@@ -6,6 +6,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 |---|---|
 | Unlock after a reboot | [Unlocking](#unlocking) |
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
+| Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
 | Stop encrypting a folder | [Turning it off](#turning-it-off) |
 | Know what is and is not protected | [What it protects](#what-it-protects) |
@@ -21,10 +22,11 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
-- A wrong passphrase stops it at that folder and says which. A locked folder that is not empty stops it too (move the files away first).
+- A wrong passphrase stops it. A folder it cannot unlock (never set up, not empty: move the files away first) is reported, and the others still unlock.
+- `sudo .../unlock.sh --status` lists each folder as locked or unlocked, and the containers waiting on a locked one. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, encrypted services stay down and **no backup runs**. A locked host can alert only if the ntfy that receives the alerts is up: keep that ntfy's data out of every listed folder, for example `ntfy_data_dir: /mnt/apps/ntfy` beside a listed `/mnt/apps/appdata` (ntfy sets its users and token at every start, so only its message history is not carried over), or point `ntfy_alert_url` at an ntfy on another host that stays up. `ntfy_alert_url` is one URL for every alert; `vault_ntfy_token` goes to whatever server it names, so it suits an ntfy you run, not ntfy.sh.
-- To lock again: stop the containers that use the folder, then `sudo umount <folder>`.
+- To lock again: stop the containers that use the folder (`--status` lists them once it is locked; before that, `docker ps` and the compose file show them), then `sudo umount <folder>`.
 
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
@@ -49,12 +51,27 @@ Unlock:
 sudo chown <ansible user> /mnt/data/.photos.gocryptfs/gocryptfs.conf    # gocryptfs makes it root-only; the backups run as this user
 sudo chattr +i /mnt/data/photos                                         # optional: nothing can be written into the empty folder while locked
 sudo gocryptfs -allow_other /mnt/data/.photos.gocryptfs /mnt/data/photos # asks for the passphrase; -allow_other lets containers read it
-sudo systemctl restart docker                                           # or restart just the containers that use the folder
+sudo docker restart <the containers that use the folder>
 ```
 
 Lock again with `sudo umount /mnt/data/photos`.
 
 </details>
+
+## Containers and locked folders
+
+Docker, SSH and Tailscale live on the root drive, so they run while folders are locked. A container sees what is at its mount when it starts.
+
+| Container | While locked | After you unlock |
+|---|---|---|
+| Mounts the locked folder, or one above it | Starts and sees it empty; writes fail with "Operation not permitted" | Restarted |
+| Mounts a folder inside it (`appdata/<service>`) | Never starts: Docker cannot create the folder (state `created`) | Started |
+| Mounts no listed folder, including your own `docker run` | Runs normally | Not touched |
+| Stopped on purpose | Stays stopped | Stays stopped |
+
+`00-containers.sh` (in `after-unlock.d`) does the restarting, whatever a container's restart policy, and prints each name. `unlock.sh --status` lists the waiting containers without changing anything.
+
+**Docker's own storage** (`docker_data_root`: images, layers, logs, named volumes) cannot be in a listed folder: overlay2 does not run on FUSE, and the deploy fails if you try. It holds public images and whatever a container writes outside a bind mount. The repo keeps service data in bind mounts (its one named volume is Immich's public model cache), so listing the data folders covers it. For a service of your own, use a bind mount for private data.
 
 ## If gocryptfs.conf is lost
 
@@ -175,14 +192,12 @@ The role removes the scripts when no folder remains. gocryptfs stays installed. 
 Each listed folder is a live decrypted view. The ciphertext sits beside it in a hidden `.<name>.gocryptfs` folder on the same drive.
 
 <details>
-<summary>Folders, scripts, cipher and Docker (what to know before changing anything)</summary>
+<summary>Folders, scripts and cipher (what to know before changing anything)</summary>
 
 Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits beside it in a hidden folder (`encrypted_pairs` in `group_vars/all/derived.yml`). `/mnt/data/photos` is the decrypted view that `unlock.sh` mounts (services and backups use this path, so no data setting changes). `/mnt/data/.photos.gocryptfs` holds the encrypted files on the same filesystem.
 
 - **Locked folder:** empty and marked immutable (`chattr +i`). A container or deploy that runs too early fails with "Operation not permitted" instead of filling the drive. It needs ext4, xfs or btrfs (elsewhere `unlock.sh` warns and mounts anyway). Root can remove the flag: a safety net, not a security boundary.
-- **Containers do not wait:** one with data in a locked folder fails or sees an empty folder until `unlock.sh` restarts Docker. That restart stops every container while it runs.
-- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order. `00-docker.sh` (the Docker restart) comes first. Add your own to start other software. A failing script does not stop the others. The unlock then exits with an error.
-- **Docker's storage** (`docker_data_root`) cannot be in a listed folder (overlay2 does not run on FUSE). The deploy fails if it is. `sshd` and Tailscale run on the host, so you can still log in to unlock.
+- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order, and gives each the folders it just mounted as arguments. `00-containers.sh` ([above](#containers-and-locked-folders)) comes first. Add your own to start other software. A failing script does not stop the others. The unlock then exits with an error.
 - **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. gocryptfs sets it at creation and records it in the conf, so a folder opens on any CPU. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20.
 
 </details>

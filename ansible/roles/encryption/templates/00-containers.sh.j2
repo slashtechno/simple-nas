@@ -1,0 +1,36 @@
+#!/bin/bash
+# Ansible-managed (roles/encryption): the deploy rewrites this file. unlock.sh runs it after mounting, with the folders
+# it just mounted as arguments (docs/encryption.md#containers-and-locked-folders).
+# A container that started while a folder was locked either sees it empty, or never started because Docker could not
+# create its mount source. This restarts every container that bind-mounts one of the folders, or a folder above or
+# inside one, and starts the ones that failed to start. Other containers are not touched, and one you stopped stays
+# stopped. With -n it only lists them (unlock.sh --status). Your own start commands go in a script beside this one.
+set -uo pipefail
+
+DRY=0
+if [ "${1:-}" = "-n" ]; then DRY=1; shift; fi
+command -v docker >/dev/null || exit 0   # encryption does not need Docker
+
+{% raw %}
+for name in $(docker ps -a --format '{{.Names}}'); do
+  # Running, or created with an error (the failed start); anything else was stopped on purpose.
+  state=$(docker inspect -f '{{.State.Status}}{{if .State.Error}} failed{{end}}' "$name")
+  case "$state" in running | restarting | 'created failed') ;; *) continue ;; esac
+
+  hit=0
+  for source in $(docker inspect -f '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}{{"\n"}}{{end}}{{end}}' "$name"); do
+    for folder in "$@"; do
+      case "$source/" in "$folder/"*) hit=1 ;; esac   # the mount is the folder or inside it
+      case "$folder/" in "$source/"*) hit=1 ;; esac   # the mount is above the folder
+    done
+  done
+  [ "$hit" = 1 ] || continue
+
+  if [ "$DRY" = 1 ]; then
+    echo "  $name ($state)"
+  else
+    echo "Restarting $name"
+    docker restart "$name" >/dev/null || echo "ERROR: could not restart $name." >&2
+  fi
+done
+{% endraw %}

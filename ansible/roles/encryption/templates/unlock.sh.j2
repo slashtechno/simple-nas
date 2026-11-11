@@ -1,13 +1,16 @@
 #!/bin/bash
-# Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh
+# Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh   (--status: show what is locked)
 # Asks for the passphrase once (only if a folder is locked) and mounts each encrypted folder. If it mounted any, it
-# runs every *.sh in {{ encryption_hooks_dir }}, in name order (docs/encryption.md). The deploy installs 00-docker.sh
-# there; your own start commands go beside it.
+# runs every *.sh in {{ encryption_hooks_dir }}, in name order, giving each the folders it mounted (docs/encryption.md).
+# The deploy installs 00-containers.sh there; your own start commands go beside it.
 # The passphrase can also arrive on stdin (`printf %s "$PASS" | sudo unlock.sh`), so another program can run this script.
-set -euo pipefail
+# No -e: a folder that fails must not stop the others, so each step is checked where it can fail.
+set -uo pipefail
 
 PASS=""
-MOUNTED=0
+MOUNTED=()   # the folders this run mounted
+FAILED=0
+LOCKED=()    # --status: the folders that are locked
 
 # Asked at the first locked folder, so an unlocked host never prompts.
 ask_passphrase() {
@@ -22,17 +25,41 @@ ask_passphrase() {
   fi
 }
 
-# Software that started while a folder was locked still sees it empty. After mounting, the scripts restart it.
-# This runs when the script ends, even when a later folder fails, so folders mounted before the failure do not
-# leave stale software behind. A loop over *.sh, not run-parts, for the reason in backup-services.sh. A script that
-# fails does not stop the others, and the unlock then exits with an error.
+# One line per folder: unlocked, locked, or never set up.
+show_state() {
+  local mount=$1 cipher=$2
+  if mountpoint -q "$mount/."; then
+    echo "unlocked      $mount"
+  elif [ ! -d "$cipher" ]; then
+    echo "never set up  $mount (run init-encrypted-folder.sh, docs/encryption.md#set-up-a-folder)"
+  else
+    echo "LOCKED        $mount"
+    LOCKED+=("$mount")
+  fi
+}
+
+if [ "${1:-}" = "--status" ]; then
+{% for folder in encrypted_pairs %}
+  show_state {{ folder.mount | quote }} {{ folder.cipher | quote }}
+{% endfor %}
+  if [ -n "${LOCKED[*]:-}" ] && [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
+    echo "Containers that use a locked folder (restarted or started when it unlocks):"
+    {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "${LOCKED[@]}"
+  fi
+  exit 0
+fi
+
+# Software that started while a folder was locked still sees it empty. After mounting, the scripts restart it. This
+# runs when the script ends, even when a later folder fails, so folders mounted before the failure do not leave stale
+# software behind. Each script gets the mounted folders as arguments. A loop over *.sh, not run-parts, for the reason
+# in backup-services.sh. A script that fails does not stop the others, and the unlock then exits with an error.
 finish() {
   local status=$?
-  if [ "$MOUNTED" = 1 ]; then
+  if [ -n "${MOUNTED[*]:-}" ]; then
     shopt -s nullglob
     for script in {{ encryption_hooks_dir | quote }}/*.sh; do
       echo "Running $(basename "$script")"
-      if ! bash "$script"; then
+      if ! bash "$script" "${MOUNTED[@]}"; then
         echo "ERROR: $(basename "$script") failed." >&2
         [ "$status" = 0 ] && status=1
       fi
@@ -42,44 +69,58 @@ finish() {
 }
 trap finish EXIT
 
-{% for folder in encrypted_pairs %}
-# --- {{ folder.mount }} ---
-# gocryptfs writes gocryptfs.conf as root with mode 0400 (at init, and again at every -passwd), so the backup user could
-# not read it and every backup would fail on it. The backups keep the conf (docs/encryption.md), so give it to
-# {{ ansible_user }}, who runs them. Done on every run, mounted or not, so running this after a -passwd repairs it.
-if [ -e {{ (folder.cipher ~ '/gocryptfs.conf') | quote }} ]; then
-  chown {{ ansible_user | quote }} {{ (folder.cipher ~ '/gocryptfs.conf') | quote }}
-fi
-if ! mountpoint -q {{ (folder.mount ~ '/.') | quote }}; then
-  # Checked before the prompt, so a folder that was never set up, or whose drive is not mounted, says so.
-  if [ ! -d {{ folder.cipher | quote }} ]; then
-    echo "ERROR: {{ folder.cipher }} does not exist, so {{ folder.mount }} was never set up. Run init-encrypted-folder.sh (docs/encryption.md#set-up-a-folder)." >&2
-    exit 1
+# Returns 1 for a folder that cannot be unlocked (the others carry on). Exits for a wrong or missing passphrase,
+# which would fail every folder.
+unlock_folder() {
+  local mount=$1 cipher=$2 rc
+  # gocryptfs writes gocryptfs.conf as root with mode 0400 (at init, and again at every -passwd), so the backup user could
+  # not read it and every backup would fail on it. The backups keep the conf (docs/encryption.md), so give it to
+  # {{ ansible_user }}, who runs them. Done on every run, mounted or not, so running this after a -passwd repairs it.
+  if [ -e "$cipher/gocryptfs.conf" ]; then
+    chown {{ ansible_user | quote }} "$cipher/gocryptfs.conf"
   fi
-  if [ ! -d {{ folder.mount | quote }} ]; then
-    echo "ERROR: {{ folder.mount }} does not exist. Is {{ folder.mount | dirname }} mounted?" >&2
-    exit 1
+  mountpoint -q "$mount/." && return 0
+  # Checked before the prompt, so a folder that was never set up, or whose drive is not mounted, says so.
+  if [ ! -d "$cipher" ]; then
+    echo "ERROR: $cipher does not exist, so $mount was never set up. Run init-encrypted-folder.sh (docs/encryption.md#set-up-a-folder)." >&2
+    return 1
+  fi
+  if [ ! -d "$mount" ]; then
+    echo "ERROR: $mount does not exist. Is $(dirname "$mount") mounted?" >&2
+    return 1
   fi
   ask_passphrase
-  echo "Unlocking {{ folder.mount }}"
+  echo "Unlocking $mount"
   # The folder must be empty: files left in it would be hidden by the mount. Move them away first (docs/encryption.md).
-  if [ -n "$(ls -A {{ folder.mount | quote }})" ]; then
-    echo "ERROR: {{ folder.mount }} is not empty. Move its files away, then run this again (docs/encryption.md)." >&2
-    exit 1
+  if [ -n "$(ls -A "$mount")" ]; then
+    echo "ERROR: $mount is not empty. Move its files away, then run this again (docs/encryption.md)." >&2
+    return 1
   fi
   # While locked, the empty folder is immutable: nothing can be created in it, so a container or a deploy that
   # runs before the unlock fails with "Operation not permitted" instead of filling the drive underneath.
   # The flag stays on the folder across reboots (to remove it: chattr -i) and does not touch the decrypted files.
   # Not every filesystem supports it (it needs ext4, xfs or btrfs), so warn rather than refuse to mount the folder.
-  if ! chattr +i {{ folder.mount | quote }}; then
-    echo "WARNING: {{ folder.mount }} does not support the immutable flag, so nothing stops plain files being written into it while it is locked (docs/encryption.md)." >&2
+  if ! chattr +i "$mount"; then
+    echo "WARNING: $mount does not support the immutable flag, so nothing stops plain files being written into it while it is locked (docs/encryption.md)." >&2
   fi
   # -allow_other lets containers, which run as other user ids, read the files. Never -nonempty.
-  gocryptfs -allow_other {{ folder.cipher | quote }} {{ folder.mount | quote }} <<<"$PASS" >/dev/null
-  MOUNTED=1
-fi
+  gocryptfs -allow_other "$cipher" "$mount" <<<"$PASS" >/dev/null
+  rc=$?
+  if [ "$rc" = 12 ]; then
+    echo "ERROR: wrong passphrase for $mount." >&2
+    exit 12
+  elif [ "$rc" != 0 ]; then
+    echo "ERROR: gocryptfs failed on $mount (exit $rc)." >&2
+    return 1
+  fi
+  MOUNTED+=("$mount")
+}
+
+{% for folder in encrypted_pairs %}
+unlock_folder {{ folder.mount | quote }} {{ folder.cipher | quote }} || FAILED=1
 {% endfor %}
 
-if [ "$MOUNTED" = 0 ]; then
+if [ -z "${MOUNTED[*]:-}" ] && [ "$FAILED" = 0 ]; then
   echo "Already unlocked."
 fi
+exit "$FAILED"

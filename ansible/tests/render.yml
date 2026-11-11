@@ -490,13 +490,15 @@
           - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'/after-unlock.d' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'systemctl' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'systemctl restart docker' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-docker.sh')"
+          - "'docker restart' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
+          - "'range .Mounts' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
+          - "'unlock_folder /mnt/primary/immich /mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - >-
-            ('chown ' ~ ansible_user ~ ' /mnt/primary/.immich.gocryptfs/gocryptfs.conf')
+            ('chown ' ~ ansible_user ~ ' \"$cipher/gocryptfs.conf\"')
             in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')
-          - "'chattr +i /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'chattr +i \"$mount\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'does not support the immutable flag' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'gocryptfs -allow_other /mnt/primary/.immich.gocryptfs /mnt/primary/immich' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'gocryptfs -allow_other \"$cipher\" \"$mount\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
           - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
           - >-

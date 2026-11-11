@@ -9,7 +9,7 @@
   loop:
     - "{{ scripts_dir }}/unlock.sh"
     - "{{ scripts_dir }}/init-encrypted-folder.sh"
-    - "{{ encryption_hooks_dir }}/00-docker.sh"
+    - "{{ encryption_hooks_dir }}/00-containers.sh"
 
 # rmdir only succeeds when the directory is empty.
 - name: Remove the after-unlock scripts directory (only if empty)

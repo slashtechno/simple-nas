@@ -14,6 +14,7 @@ One small program in this repo (`unlock-page/`), one file, standard library only
 
 - `GET` serves a form with one field; `POST` does the work.
 - **Login:** the field is the page password, compared in constant time with a hash in a setting. A password needs no database and works from a browser you do not control. Passkeys can be added later but are never the only route.
+- **Behind Tinyauth instead (optional):** where the page sits behind this repo's Caddy, the site can `import tinyauth_forwarder` (docs/caddy-reference.md#names-of-your-own) and use Tinyauth's login. The page's own password is then switched off by an explicit setting (`LOGIN=none`, never an empty hash), so a missing hash cannot open the page. With Tinyauth in front, the page has no password of its own; the passphrase still stays in the page's settings.
 - **Settings** (environment variables): the password hash, the gocryptfs passphrase, the hosts to unlock (name and address) and the SSH key.
 - **Passphrase:** held by whatever runs the page, never typed in a browser and never sent to one. Its secrecy is that platform's: keep its members to the owner, use two-factor sign-in, and make the passphrase long, random and used nowhere else. A leaked passphrase plus a stolen drive opens the data.
 - **A captured page password** (a keylogger on a browser you do not control) lets someone trigger an unlock, and an unlock helps only if they can also bring a stolen host back onto the tailnet. If a host is stolen, remove it from the tailnet and stop the page. Changing the page password after an untrusted browser is optional hygiene. The forced command below limits a leaked password to running `unlock.sh`, which also restarts the containers that use the folders, so it can disturb a running host but gives no shell.
@@ -26,7 +27,8 @@ The page's SSH key is not a login key. On the host, its line in `authorized_keys
 
 The program only needs to reach port 22 of the host over the tailnet, so where it runs is the owner's choice. Pick one when building; the code does not depend on it.
 
-- **A container or process on a machine that is already on the tailnet**: plain `ssh`, no extra network code. Run it with whatever you already use (a compose file, Dockge, a systemd unit) and expose it any way you like. Run it somewhere other than the host being unlocked, or it is locked out with it.
+- **A container or process on a machine that is already on the tailnet**: plain `ssh`, no extra network code. Run it with whatever you already use (a compose file, Dockge, a systemd unit) and expose it any way you like.
+- **On the host it unlocks:** works. Docker, sshd, Caddy and Tailscale run while folders are locked, so the page is reachable. Keep its files, and Tinyauth's if used, outside every listed folder, or they are locked with the rest. Unlocking restarts only containers that mount a listed folder, so the page keeps running through an unlock.
 - **A serverless platform** (Vercel, Lambda or similar): the function joins the tailnet as an ephemeral tagged node with Tailscale's `tsnet` (userspace networking, no tun device) and SSHes from there. This adds the tailnet-join code, so it is only worth it if no host can be reached from outside. Docs only, with one worked example; nothing else in the repo names a platform.
 
 ## Limits to build in
