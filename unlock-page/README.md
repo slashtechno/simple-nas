@@ -33,11 +33,10 @@ Test it: `docker compose exec unlock-page python3 app.py check` says for each ho
 
 ## Where to run it
 
-The page must reach port 22 of each host over the tailnet, and it must stay up while the hosts are locked.
+The page runs as a container (it needs `ssh` and files under `/run/unlock`). It must reach port 22 of each host over the tailnet, and it must stay up while the hosts are locked.
 
 - **Another machine on the tailnet.** Plain `ssh`, nothing else needed.
 - **The host it unlocks.** It works: Docker, SSH, Caddy and Tailscale run while folders are locked. Keep the page's files, Caddy's data and Tinyauth's data outside every listed folder ([which folders](../docs/encryption.md#which-folders-to-list)). Unlocking restarts only the containers that mount a listed folder, so the page keeps running.
-- **A serverless platform** (Vercel and similar) cannot reach port 22 of a tailnet host unless it joins the tailnet, for example with Tailscale's [`tsnet`](https://tailscale.com/kb/1244/tsnet). This page does not do that. Without a way in, it cannot unlock anything.
 
 ## Login
 
