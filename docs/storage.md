@@ -21,7 +21,7 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 ## What lives where
 
-Mount points are examples. Yours are the `mount` values. Every path is a setting in `group_vars/all/defaults-data-dirs.yml`.
+Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
@@ -99,7 +99,7 @@ For a drive new to the host, before it goes in `drives`. Run on the host.
    sudo mkfs.ext4 -L <label> -m 0 /dev/sdX1
    ```
 
-   `-m 0` drops ext4's 5% root reserve, which a data or backup drive does not need. The backup scripts refuse to run at 95% full.
+   `-m 0` drops ext4's 5% root reserve, which a data or backup drive does not need. The backup scripts refuse to run on a full drive ([backups.md](./backups.md#what-runs-automatically)).
 5. **Read the UUID** with `sudo blkid /dev/sdX1` (`lsblk` can lag) and put it in the `drives` entry.
 
 ## Adding, replacing or retiring a drive

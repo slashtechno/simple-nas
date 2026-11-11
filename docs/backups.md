@@ -39,7 +39,7 @@ Each run starts with `restic unlock`, which removes only stale locks: a restic k
 
 ## First backup
 
-The first run into an empty repository reads and hashes everything: hours for hundreds of GB over USB. Start it by hand as the ansible user, detached so a dropped SSH session does not stop it. Start it early enough that it ends before 02:00, when cron runs the same script:
+The first run into an empty repository reads and hashes everything: hours for hundreds of GB over USB. Start it by hand as the ansible user, detached so a dropped SSH session does not stop it. Start it early enough that it ends before the daily run (see [What runs automatically](#what-runs-automatically)), which runs the same script:
 
 ```bash
 setsid nohup /opt/services/scripts/backup-restic-local.sh > /tmp/first-backup.log 2>&1 < /dev/null &
@@ -57,7 +57,7 @@ Afterwards `restic snapshots` and `restic check` show a good repository ([Connec
 
 - Jobs exist only for the flags that are on. Turning one off removes its jobs on the next deploy. With both off Ansible skips the role: remove the jobs with `just teardown <host> --tags backup` ([teardown](../ansible/README.md#disable-or-remove-a-service)).
 - The local repository is `restic_repo_path` (`<backup drive mount>/restic-repo` unless set). Retention is `restic_local_retention` and `restic_cloud_retention`.
-- Dumps are in `service_dumps_dir` (the last 3 of each type kept), logs in `backup_logs_dir` (one file per job per day, plus `backup-cron.log`). They sit on the backup drive with a local backup, otherwise in `/var/lib/backup-work`.
+- Dumps are in `service_dumps_dir` (see Dumps below), logs in `backup_logs_dir` (one file per job per day, plus `backup-cron.log`). They sit on the backup drive with a local backup, otherwise in `/var/lib/backup-work`.
 - The local backup refuses to start when the backup drive is 95% full or more, because `restic forget --prune` needs free room to clean up. The alert fires and the log says how full it is.
 
 <details>

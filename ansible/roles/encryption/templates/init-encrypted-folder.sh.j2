@@ -37,4 +37,5 @@ chown --reference="$FOLDER" "$CIPHER"
 chmod --reference="$FOLDER" "$CIPHER"
 # shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
 gocryptfs -init $CIPHER_OPTION "$CIPHER"
-echo "Created $CIPHER. Next: save the master key above, copy $CIPHER/gocryptfs.conf off this host, run unlock.sh."
+echo "Cipher option used: ${CIPHER_OPTION:-none (AES-GCM)}. Rebuilding gocryptfs.conf from the master key needs the same option."
+echo "Created $CIPHER. Next: save the master key and the cipher option above, copy $CIPHER/gocryptfs.conf off this host, run unlock.sh."

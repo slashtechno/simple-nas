@@ -67,8 +67,8 @@ Deploy it with `just deploy connectivity_watchdog --limit <host>`. Run `just dep
 
 Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about 117 MB/s, against about 4.3 MB/s over Tailscale on wifi). The Pi is `10.10.20.1`. The laptop gets `10.10.20.2` from a `dnsmasq` instance scoped to that port. The deploy refuses if the port carries the host's default route.
 
-1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`. The address and port settings are in `ansible/group_vars/all/defaults-direct-link.yml`, and the same `vars.yml` can override them. Then `just deploy network --limit <host>`.
+1. Set `direct_link_enabled: true` in `host_vars/<host>/vars.yml`. The address settings are in `ansible/group_vars/all/defaults-direct-link.yml`, and the same `vars.yml` can override them. Then `just deploy network --limit <host>`.
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
-3. Open `https://10.10.20.1:3923` for Copyparty. Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once. `http://` on that port works too.
+3. Open `https://10.10.20.1:3923` for Copyparty (the default `direct_link_ip` and `copyparty_port`). Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once. `http://` on that port works too.
 
 The link has no route to the internet: `dnsmasq` hands out DHCP only (no DNS, no gateway). `10.10.20.0/30` does not overlap common VPN or home-router ranges such as `10.8.0.0/24` or `192.168.1.0/24`.

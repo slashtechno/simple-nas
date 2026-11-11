@@ -58,7 +58,7 @@ On a host that runs Caddy, every web service from this repo that you switch on g
 
 - The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea's links come from one address ([Gitea](./services.md#gitea)).
-- With more than one domain in `caddy_private_domains`, Caddy serves a service with `own_login` (or with Tinyauth off) under every domain. One behind the login gets the first domain only, because the session cookie covers one parent domain ([Tinyauth](./services.md#tinyauth-login)). The Homepage links to the first.
+- With more than one domain in `caddy_private_domains`, Caddy serves a service with `own_login` (or with Tinyauth off) under every domain. One behind the login gets the first domain only, because the session cookie covers one parent domain ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). The Homepage links to the first.
 - Crafty's panel serves a self-signed certificate. Caddy accepts it, and browsers see Caddy's.
 
 #### Ports and names

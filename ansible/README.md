@@ -49,7 +49,7 @@ Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CA
 
 **Which value wins**, from first to last: a role's `defaults/main.yml`, the shared defaults files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`. Files in `group_vars/all/` load in name order, and the defaults files sort before `vars.yml`. `just check` enforces that.
 
-A deploy restarts only what changed. Ansible recreates each compose service whose rendered file changed, and handlers cover the rest (Copyparty, Garage, pics, cloudflared, Homepage, containerd, dnsmasq, netplan, storage).
+A deploy restarts only what changed. Ansible recreates each compose service whose rendered file changed, and roles with a `handlers/` directory restart their own software when its config changes.
 
 ## Vault (secrets)
 
@@ -111,7 +111,7 @@ The old host keeps running until you check the new one.
 1. Add the new host as above under a new key, with the same `drives` and flags: copy the whole `host_vars/<old>/` directory, `vault.yml` included, and adjust. Do not run `just setup` for it: it would write random database passwords that do not match the data you restore.
 2. Plug in the data drives, or restore onto new ones ([backups.md](../docs/backups.md#restore-files)). A drive holds a service's data wherever you plug it in: [detach](../docs/storage.md#detach-a-drive) it from the old host first, and move one drive at a time.
 3. Deploy the new host, then check each service with its flag on.
-4. Move public names last: a hostname may appear in only one host's `cloudflared_ingress`, so take it out of the old host and deploy both.
+4. Move public names last: a hostname may appear in only one host's `cloudflared_ingress` ([why](../docs/services.md#cloudflare-add-a-public-hostname)), so take it out of the old host and deploy both.
 5. Retire the old host: flags to `false`, then [teardown](#disable-or-remove-a-service).
 
 <details>
@@ -209,12 +209,7 @@ ansible-playbook teardown.yml --limit <host> -e remove_data=true -e confirm_remo
 - Dockge stacks, backup snapshots (restorable until retention prunes them)
 - the dumps and logs on the backup drive (`service-dumps`, `logs`: they hold a full database dump and Garage's node key)
 
-**Removed only without `only`:**
-
-- the journald, cloud-init and zram drop-ins
-- the memory cgroup arguments in the Pi's kernel command line (these take effect at the next boot)
-- the terminal tools and the sleep masks
-- Tailscale's apt source and key
+**Removed only without `only`:** the parts `teardown.yml` tears down once per host (alert script, backup jobs, encryption scripts, drop-ins, terminal tools, Tailscale's apt source, the `services` network and more). `ansible-playbook teardown.yml --list-tags` names each part, and the tasks under `when: only | length == 0` show what each removes. The memory cgroup arguments take effect at the next boot.
 
 **Yours to clean up:** the service's `cloudflared_ingress` rule in `vars.yml`, and its Caddy name (gone once the flag is false and `just deploy caddy --limit <host>` runs).
 

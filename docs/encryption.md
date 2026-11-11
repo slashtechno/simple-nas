@@ -61,8 +61,13 @@ Lock again with `sudo umount /mnt/data/photos`.
 Per folder, easiest first:
 
 1. **From a backup:** `restic restore latest --target <scratch> --include <the .gocryptfs folder>/gocryptfs.conf` ([backups.md](./backups.md)), put it back in the `.gocryptfs` folder, unlock as usual. It needs the passphrase, not the master key.
-2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Give it the **same cipher option** that folder got at creation (`-xchacha` if made on a CPU without AES such as a Pi 4, none otherwise). Copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount succeeds but every read fails with an input/output error.
-3. **Files only:** if the whole `.gocryptfs` folder is gone, the backups still hold the decrypted files. Create a new encrypted folder, restore the snapshot to a scratch folder (`restic restore latest --target <scratch>`) and `rsync -aHAX` the files in. A host with a local backup is always covered ([backups.md](./backups.md#what-is-backed-up-where)). A cloud-only host is not checked.
+2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Give it the **same cipher option** the folder was created with. `init-encrypted-folder.sh` prints it (`-xchacha` or none) next to the master key, so you saved it with the key. Do not guess from today's CPU: the script chose it from the CPU that created the folder, which may not be the CPU you use now. Copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount succeeds but every read fails with an input/output error.
+3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
+   1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
+   2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
+   3. Copy the files in: `rsync -aHAX <scratch>/<path of the folder>/ <the folder>/`.
+
+   This works only if the backup includes the folder. On a host with a local backup the deploy checks that every listed folder is in it, so it always does. On a host with only a cloud backup nothing checks: look in `restic_cloud_rules` and `restic_cloud_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where)).
 
 <details>
 <summary>Not sure which cipher option was used</summary>
@@ -97,7 +102,7 @@ Do this **before the service first starts**, or it writes plain files into the f
    sudo /opt/services/scripts/unlock.sh
    ```
 
-3. **Save the master key** in your password manager. If the script stops after creating the `.gocryptfs` folder, remove that empty folder with `sudo rmdir` and run it again. A copy of each `gocryptfs.conf` off the host is cheap insurance.
+3. **Save the master key and the cipher option** the script prints in your password manager. If the script stops after creating the `.gocryptfs` folder, remove that empty folder with `sudo rmdir` and run it again. A copy of each `gocryptfs.conf` off the host is cheap insurance.
 4. Move the data in, with a checksum comparison:
 
    ```bash

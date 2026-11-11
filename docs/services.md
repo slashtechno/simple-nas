@@ -1,6 +1,6 @@
 # Service notes
 
-Every service below is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Tailscale and the terminal tools are on by default, and `tailscale_enabled: false` and `terminal_tools_enabled: false` turn them off. This page lists what each needs and the setup beyond the flag.
+Every service below is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. A few parts are on by default (the flags in [defaults-flags.yml](../ansible/group_vars/all/defaults-flags.yml) and `terminal_tools_enabled`). This page lists what each needs and the setup beyond the flag.
 
 - **Deploy one:** `just deploy <tag>` from `ansible/` (tag = role name).
 - **Settings and defaults:** `ansible/group_vars/all/` and each role's `defaults/main.yml`. `just settings` lists them ([where files are](../ansible/README.md#which-files-hold-what)).
@@ -59,7 +59,7 @@ Photo library with a machine-learning container. Photos are in `immich_upload_lo
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich. The deploy sets it through Immich's API, which needs an API key ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 - `roles/immich/files/dump.sh` dumps Postgres before each backup ([backups.md](./backups.md)).
 - To move `immich_upload_location` ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload`, ...). Immich checks them at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
-- On a small host, lower the job concurrency and check the transcoding policy ([memory.md](./memory.md#immich)). A newer image can run database migrations: read its release notes first ([update images](../ansible/README.md#update-service-images)).
+- On a small host, lower the job concurrency and check the transcoding policy ([memory.md](./memory.md#immich)). Read the release notes before an update ([update images](../ansible/README.md#update-service-images)).
 
 ## Gitea
 
@@ -205,7 +205,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
 - With `tinyauth_enabled`, every service with a Caddy name is behind the login except those marked `own_login: true` in `services.yml`. Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page. Tinyauth is its own login. Copyparty's browser name joins with `copyparty_sso_enabled`. To exempt another service, add `own_login: true` to its entry.
-- Caddy serves a protected service under the first `caddy_private_domains` entry only (the session cookie covers one parent domain). A published host port is not protected.
+- Caddy serves a protected service under the first `caddy_private_domains` entry only ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). A published host port is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`. A name in `caddy_sites` uses the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). [SilverBullet](https://silverbullet.md/) expects an authentication proxy, so leave its `SB_USER` unset.
 
 ### How an app joins
@@ -214,7 +214,7 @@ How an app gets past its own login, for this repo's services and your own, is in
 
 ## Dozzle: container logs
 
-[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows every container's logs in a browser at `https://dozzle.<private domain>`. It runs read-only (no shell, no container actions), and Docker's log rotation (`docker_log_opts`, three files of 10m) bounds what it keeps. The daily backup covers `dozzle_data_dir`, which holds per-user settings.
+[Dozzle](https://dozzle.dev/) (`dozzle_enabled`) shows every container's logs in a browser at `https://dozzle.<private domain>`. It runs read-only (no shell, no container actions), and Docker's log rotation (`docker_log_opts`) bounds what it keeps. The daily backup covers `dozzle_data_dir`, which holds per-user settings.
 
 1. Set `dozzle_enabled: true` and `just deploy dozzle --limit <host>`.
 2. `dozzle_port` is empty by default. Setting it publishes the page without a login, which Dozzle's docs warn against in forward-proxy mode.
@@ -235,7 +235,7 @@ Scrutiny can show a drive as failed while `smartctl -H` says PASSED. It also fai
 Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_admin_token` in the host's vault, then `just deploy garage,caddy --limit <host>`.
 
 - The web UI is at `https://garage.<private domain>` (create buckets and access keys there). It holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
-- Apps connect with endpoint `https://s3.example.com`, region `garage`, and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
+- Apps connect with endpoint your tunnel hostname for the `garage-cors-proxy` container (a `cloudflared_ingress` entry), region `garage`, and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`): [Restore: Garage](./backups.md#restore-garage).
 - Garage reads its cluster layout from `garage_data_dir/meta`. A first deploy (empty meta dir) starts with `--single-node` so it auto-configures one node. Later starts omit the flag, which Garage requires once a layout exists (see the comment in `roles/garage/tasks/main.yml`).
 
@@ -243,7 +243,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_
 
 One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
 
-- Panel: `https://<pi-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (Crafty makes it and has no setting for it). Behind Tinyauth it is the second login, so change it in the panel to something short, then delete the file.
+- Panel: `https://<host-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (Crafty makes it and has no setting for it). Behind Tinyauth it is the second login, so change it in the panel to something short, then delete the file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575). Set it when creating the server.
 - `crafty_memory_limit` caps all servers combined. On a Raspberry Pi Docker enforces it once the memory cgroup is on ([memory.md](./memory.md#memory-limits)). It competes with Immich on a small host: size the two so they leave room for the rest.
 - Not behind Cloudflare Tunnel: players join over the LAN, a router port-forward of the game port, or Tailscale. Docker publishes the panel and game ports on all interfaces, so do not forward the panel port.

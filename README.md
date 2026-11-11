@@ -55,4 +55,4 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service. Shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)). The render test |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-Plans for unfinished work are in `plans/`. Each says at the top that it is not kept current. Everything else under `docs/` describes how the repo works.
+Plans for unfinished work are in `plans/`. Each plan is deleted when its work is done (git history keeps it). Everything else under `docs/` describes how the repo works.
