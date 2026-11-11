@@ -23,12 +23,12 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
-- A wrong passphrase stops it. A folder it cannot unlock (never set up, not empty: move the files away first) is reported, and the others still unlock.
+- A wrong passphrase stops it. It reports a folder it cannot unlock (never set up, or not empty: move the files away first). The other folders still unlock.
 - From your computer: `just unlock <host>`, and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
-- To lock again: stop the containers that use the folder (`docker ps` and the compose file show them), then `sudo umount <folder>`.
+- To lock again, stop the containers that use the folder (`docker ps` shows them). Then run `sudo umount <folder>`.
 
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
@@ -73,14 +73,14 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 
 `00-containers.sh` (in `after-unlock.d`) does the restarting, whatever a container's restart policy, and prints each name. `unlock.sh --status` lists the waiting containers without changing anything.
 
-**Docker's own storage** (`docker_data_root`: images, layers, logs, named volumes) cannot be in a listed folder: overlay2 does not run on FUSE, and the deploy fails if you try. It holds public images and whatever a container writes outside a bind mount. The repo keeps service data in bind mounts (its one named volume is Immich's public model cache), so listing the data folders covers it. For a service of your own, use a bind mount for private data.
+**Docker's own storage** (`docker_data_root`: images, layers, logs, named volumes) cannot be in a listed folder, because overlay2 does not run on FUSE. The deploy fails if you try. It holds public images and whatever a container writes outside a bind mount. The repo keeps service data in bind mounts (its one named volume is Immich's public model cache). So listing the data folders covers it. For a service of your own, use a bind mount for private data.
 
 ## If gocryptfs.conf is lost
 
 Per folder, easiest first:
 
 1. **From a backup:** `restic restore latest --target <scratch> --include <the .gocryptfs folder>/gocryptfs.conf` ([backups.md](./backups.md)), put it back in the `.gocryptfs` folder, unlock as usual. It needs the passphrase, not the master key.
-2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Give it the **same cipher option** the folder was created with. `setup-encrypted-folder.sh` prints it (`-xchacha` or none) next to the master key, so you saved it with the key. Do not guess from today's CPU: the script chose it from the CPU that created the folder, which may not be the CPU you use now. Copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount succeeds but every read fails with an input/output error.
+2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Use the settings the folder was created with. `setup-encrypted-folder.sh` printed them (`gocryptfs -info`) next to the master key. If they show `XChaCha20Poly1305`, add `-xchacha`. If not, add no option, because AES-GCM is the gocryptfs default. Do not guess from today's CPU. The script chose the cipher from the CPU that created the folder. Copy the `gocryptfs.conf` that the command writes into the `.gocryptfs` folder. With the wrong option the mount works, but every read fails with an input/output error.
 3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
    1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
    2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
@@ -132,12 +132,12 @@ Do this **before the service first starts**, or it writes plain files into the f
    - It takes checksums of the existing files, and renames the folder to `photos.plain`.
    - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
    - It moves the files in, compares checksums, and removes `photos.plain` when they match. It needs room for the largest file plus 1%, not a second copy.
-4. **Save the master key and the cipher option** the script printed in your password manager. A copy of each `gocryptfs.conf` off the host is cheap insurance.
+4. **Save the master key and the settings** the script printed in your password manager. A copy of each `gocryptfs.conf` off the host is cheap insurance.
 5. Start the containers. Do steps 3 to 5 in one sitting.
 
 On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder. Use one passphrase for all folders: `unlock.sh` asks once and tries it on each.
 
-If the script reports a checksum mismatch it deletes nothing, but the files are then split between `photos` and `photos.plain`: look in both, then run the script again. A power cut can lose the one file being moved.
+If the script reports a checksum mismatch, it deletes nothing. The files are then split between `photos` and `photos.plain`. Look in both. Then run the script again. A power cut can lose the one file being moved.
 
 A service that runs as another user needs the folder's owner changed **while unlocked**. A change while locked is lost.
 
@@ -186,11 +186,11 @@ The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata
 3. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. Start the containers.
 4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 
-The role removes the scripts when no folder remains, and gocryptfs stays installed. `teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is, or holds, a listed folder stops before it removes anything: turn encryption off for it first.
+The role removes the scripts when no folder remains, and gocryptfs stays installed. `teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` stops before it removes anything when the service's data folder is, or holds, a listed folder. Turn encryption off for that folder first.
 
 ## Dumps and backups
 
-- **Dumps:** `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir` (`<backup drive>/service-dumps`, or on the root drive for a host with no local backup). Nothing encrypts it unless you list it, so until then anyone holding that drive can read Immich's database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and `restic_local_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where) checks that every listed folder appears in a rule).
+- **Dumps:** `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir`. That is `<backup drive>/service-dumps`, or the root drive on a host with no local backup. Nothing encrypts it unless you list it. Until then, anyone who holds that drive can read Immich's database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and `restic_local_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where) checks that every listed folder appears in a rule).
 - **Backups:** both scripts refuse to run while any listed folder stays locked. restic reads the folder through the mount (decrypted) and encrypts it with `vault_restic_password`. Every backup leaves out the ciphertext (it would be stored twice), but keeps each folder's `gocryptfs.conf`, so it restores with the data.
 - **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder ([backups.md](./backups.md)).
 
@@ -204,8 +204,8 @@ Each listed folder is a live decrypted view. The ciphertext sits beside it in a 
 Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits beside it in a hidden folder (`encrypted_pairs` in `group_vars/all/derived.yml`). `/mnt/data/photos` is the decrypted view that `unlock.sh` mounts (services and backups use this path, so no data setting changes). `/mnt/data/.photos.gocryptfs` holds the encrypted files on the same filesystem.
 
 - **Locked folder:** empty and marked immutable (`chattr +i`). A container or deploy that runs too early fails with "Operation not permitted" instead of filling the drive. It needs ext4, xfs or btrfs (elsewhere `unlock.sh` warns and mounts anyway). Root can remove the flag: a safety net, not a security boundary.
-- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order, and gives each the folders it just mounted as arguments. `00-containers.sh` ([above](#containers-and-locked-folders)) comes first. Add your own to start other software. A failing script does not stop the others. The unlock then exits with an error.
-- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. gocryptfs sets it at creation and records it in the conf, so a folder opens on any CPU. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20.
+- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order. It gives each script the folders it just mounted as arguments. `00-containers.sh` ([above](#containers-and-locked-folders)) comes first. Add your own to start other software. A failing script does not stop the others. The unlock then exits with an error.
+- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. gocryptfs sets it at creation and records it in the conf, so a folder opens on any CPU and a later change of the gocryptfs default does not affect it. AES-GCM has no option of its own: it is what gocryptfs uses when you choose nothing. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `gocryptfs -info <the .gocryptfs folder>` shows the cipher.
 
 </details>
 
@@ -215,7 +215,7 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 - **Plaintext / ciphertext.** Plaintext is your real file. Ciphertext is the scrambled version on disk. The `.gocryptfs` folder holds ciphertext. The listed folder is a live view of it, decrypted as you read and encrypted as you write.
 - **Master key.** One random 32-byte key does all the encrypting. gocryptfs makes it once, and it never changes. You never type it.
 - **Passphrase.** What you type. It only *locks* the master key, so changing it is instant: nothing is re-encrypted.
-- **Salt and scrypt.** gocryptfs turns the passphrase into the lock key with scrypt, which is deliberately slow, so each guess costs an attacker time. The salt stops an attacker from precomputing lock keys. Both are automatic.
+- **Salt and scrypt.** gocryptfs turns the passphrase into the lock key with scrypt. scrypt is slow on purpose, so each guess costs an attacker time. The salt stops an attacker from precomputing lock keys. Both are automatic.
 - **`gocryptfs.conf`.** In each `.gocryptfs` folder: the master key locked under the passphrase, plus the salt, scrypt settings and cipher. It is not secret alone, but without it nothing opens. The backups keep a copy.
 - **Master key printout.** `setup-encrypted-folder.sh` prints the master key once. Keep it in a password manager: with it and the ciphertext, anyone can read the files.
 

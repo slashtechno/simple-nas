@@ -61,8 +61,9 @@ if [ "$NEW" = 1 ]; then
   # shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
   printf '%s\n%s\n' "$PASS" "$PASS" | gocryptfs -init $CIPHER_OPTION "$CIPHER"
   echo
-  echo "SAVE THE MASTER KEY above in your password manager now, with the cipher option: ${CIPHER_OPTION:-none (AES-GCM)}."
-  echo "Rebuilding gocryptfs.conf from the master key needs the same option. Copy $CIPHER/gocryptfs.conf off this host too."
+  echo "SAVE THE MASTER KEY above in your password manager now, with these settings (gocryptfs -info). Rebuilding"
+  echo "gocryptfs.conf from the master key needs the same settings. Copy $CIPHER/gocryptfs.conf off this host too."
+  gocryptfs -info "$CIPHER"
 fi
 
 # 2. Mount it. unlock.sh gives gocryptfs.conf to the ansible user and runs the after-unlock scripts.
