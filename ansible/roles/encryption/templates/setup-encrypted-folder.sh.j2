@@ -60,6 +60,10 @@ if [ "$NEW" = 1 ]; then
   chmod --reference="$FOLDER" "$CIPHER"
   # shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
   printf '%s\n%s\n' "$PASS" "$PASS" | gocryptfs -init $CIPHER_OPTION "$CIPHER"
+  # AES-GCM has no option: gocryptfs uses it when it is told nothing. The docs name the cipher a folder has, so stop if
+  # gocryptfs made another one (a changed default) instead of leaving a folder the recovery steps do not describe.
+  if [ -n "$CIPHER_OPTION" ]; then WANT=XChaCha20Poly1305; else WANT=GCMIV128; fi
+  grep -q "$WANT" "$CIPHER/gocryptfs.conf" || { echo "ERROR: gocryptfs did not make the $WANT cipher this script expects (gocryptfs -info $CIPHER). Delete $CIPHER and report it." >&2; exit 1; }
   echo
   echo "SAVE THE MASTER KEY above in your password manager now, with these settings (gocryptfs -info). Rebuilding"
   echo "gocryptfs.conf from the master key needs the same settings. Copy $CIPHER/gocryptfs.conf off this host too."

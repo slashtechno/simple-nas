@@ -158,7 +158,7 @@ encrypted_folders:
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
-- `appdata` includes every database, Immich's Postgres too. Databases write often, so they are the slowest thing to encrypt: try your real workload first.
+- `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
 - `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
 - The defaults cover a service added later with its data under `{{ fast_drive }}/appdata`. Anything else stays plain.
 
@@ -205,7 +205,7 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 
 - **Locked folder:** empty and marked immutable (`chattr +i`). A container or deploy that runs too early fails with "Operation not permitted" instead of filling the drive. It needs ext4, xfs or btrfs (elsewhere `unlock.sh` warns and mounts anyway). Root can remove the flag: a safety net, not a security boundary.
 - **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order. It gives each script the folders it just mounted as arguments. `00-containers.sh` ([above](#containers-and-locked-folders)) comes first. Add your own to start other software. A failing script does not stop the others. The unlock then exits with an error.
-- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. gocryptfs sets it at creation and records it in the conf, so a folder opens on any CPU and a later change of the gocryptfs default does not affect it. AES-GCM has no option of its own: it is what gocryptfs uses when you choose nothing. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `gocryptfs -info <the .gocryptfs folder>` shows the cipher.
+- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. gocryptfs sets it at creation and records it in the conf, so a folder opens on any CPU and a later change of the gocryptfs default does not affect it. AES-GCM has no option of its own: it is what gocryptfs uses when you choose nothing. The setup script checks that the new folder has the cipher named here, and stops if it does not. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `gocryptfs -info <the .gocryptfs folder>` shows the cipher.
 
 </details>
 
