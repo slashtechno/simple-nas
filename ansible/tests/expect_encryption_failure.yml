@@ -1,0 +1,17 @@
+---
+# Used by tests/encryption.yml: runs the encrypted folder checks and passes only if they fail with `expect` in the message.
+- name: Run the checks
+  block:
+    - name: Check the encrypted folders
+      ansible.builtin.include_tasks: ../roles/encryption/tasks/check.yml
+    - name: The checks must have failed
+      ansible.builtin.fail:
+        msg: "check.yml accepted {{ encrypted_folders }}"
+  rescue:
+    - name: Only the checks may fail here, naming the problem
+      ansible.builtin.assert:
+        that: expect in message
+        fail_msg: "{{ encrypted_folders }} failed with '{{ message }}', expected '{{ expect }}'"
+      vars:
+        # A looped task reports each item's message in `results`.
+        message: "{{ ansible_failed_result.results | default([ansible_failed_result]) | map(attribute='msg') | join(' ') }}"

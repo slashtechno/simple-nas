@@ -23,10 +23,10 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
 - A wrong passphrase stops it. A folder it cannot unlock (never set up, not empty: move the files away first) is reported, and the others still unlock.
-- `sudo .../unlock.sh --status` lists each folder as locked or unlocked, and the containers waiting on a locked one. It changes nothing.
+- `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
-- Until you unlock, encrypted services stay down and **no backup runs**. A locked host can alert only if the ntfy that receives the alerts is up: keep that ntfy's data out of every listed folder, for example `ntfy_data_dir: /mnt/apps/ntfy` beside a listed `/mnt/apps/appdata` (ntfy sets its users and token at every start, so only its message history is not carried over), or point `ntfy_alert_url` at an ntfy on another host that stays up. `ntfy_alert_url` is one URL for every alert; `vault_ntfy_token` goes to whatever server it names, so it suits an ntfy you run, not ntfy.sh.
-- To lock again: stop the containers that use the folder (`--status` lists them once it is locked; before that, `docker ps` and the compose file show them), then `sudo umount <folder>`.
+- Until you unlock, encrypted services stay down and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
+- To lock again: stop the containers that use the folder (`docker ps` and the compose file show them), then `sudo umount <folder>`.
 
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
@@ -150,9 +150,23 @@ encrypted_folders:
 ```
 
 - A listed folder must not sit inside another. The deploy fails if one does.
+- The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Databases write often, so they are the slowest thing to encrypt: try your real workload first.
 - `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
 - The defaults cover a service added later with its data under `{{ fast_drive }}/appdata`. Anything else stays plain.
+
+**Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.
+
+| Data | Setting | If it is in a listed folder |
+|---|---|---|
+| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. Use an ntfy on another host (`ntfy_alert_url`), or keep this one's data in a plain folder such as `/mnt/apps/ntfy`. |
+| Caddy | `caddy_data_dir` | No web access to any service until you unlock. |
+| Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
+| An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
+
+The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. This is true with or without Tinyauth: with Tinyauth off, only the other rows apply. Details for the page: [unlock-page/README.md](../unlock-page/README.md).
+
+`vault_ntfy_token` goes to whatever server `ntfy_alert_url` names, so it suits an ntfy you run, not ntfy.sh.
 
 ### Turning it off
 

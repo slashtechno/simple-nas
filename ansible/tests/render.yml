@@ -492,6 +492,10 @@
           - "'systemctl' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'docker restart' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
           - "'range .Mounts' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
+          - "'created failed' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
+          - "'DRY=1' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
+          - "'00-containers.sh -n' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
+          - "'00-docker' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - "'unlock_folder /mnt/primary/immich /mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
           - >-
             ('chown ' ~ ansible_user ~ ' \"$cipher/gocryptfs.conf\"')

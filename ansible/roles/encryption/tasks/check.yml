@@ -1,0 +1,36 @@
+---
+# What every entry in `encrypted_folders` must satisfy. A file of its own so tests/encryption.yml can run it.
+- name: Check every encrypted folder is an absolute path below the root
+  ansible.builtin.assert:
+    that: item is match('/') and (item | regex_replace('/+$', '')) != ''
+    fail_msg: "encrypted_folders entry '{{ item }}' must be an absolute path such as /mnt/data/photos."
+    quiet: true
+  loop: "{{ encrypted_folders }}"
+
+# A folder inside another would put its encrypted files inside the outer one, hidden by the outer mount.
+- name: Check no encrypted folder is listed twice or inside another
+  ansible.builtin.assert:
+    that: >-
+      encrypted_pairs | map(attribute='mount') | select('match', (item.mount | regex_escape) ~ '/') | list | length == 0
+      and (encrypted_pairs | map(attribute='mount') | select('equalto', item.mount) | list | length) == 1
+    fail_msg: "{{ item.mount }} is listed twice or holds another listed folder. List each folder once, and none inside another."
+    quiet: true
+  loop: "{{ encrypted_pairs }}"
+  loop_control:
+    label: "{{ item.mount }}"
+
+# Logging in and unlocking need these while every listed folder is locked: the scripts, the ssh keys in the home folder,
+# the system folders (sshd, Tailscale), and Docker's storage (overlay2 does not run on a FUSE filesystem, so Docker would
+# not start). A listed folder that is, or holds, one of them would lock the host out of its own unlock.
+- name: Check no encrypted folder holds something that unlocking needs
+  vars:
+    encryption_needed_paths: >-
+      {{ [scripts_dir, encryption_hooks_dir, '/home/' ~ ansible_user, '/root', '/etc', '/usr', '/boot', '/var/lib']
+         + ([docker_data_root] if docker_data_root | length > 0 else []) }}
+  ansible.builtin.assert:
+    that: not (item.1 ~ '/').startswith(item.0.mount ~ '/')
+    fail_msg: "{{ item.0.mount }} holds {{ item.1 }}, which logging in and unlocking need while it is locked. List a folder below it."
+    quiet: true
+  loop: "{{ encrypted_pairs | product(encryption_needed_paths) | list }}"
+  loop_control:
+    label: "{{ item.0.mount }} / {{ item.1 }}"

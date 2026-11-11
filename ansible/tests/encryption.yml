@@ -1,0 +1,42 @@
+---
+# Each way an entry in `encrypted_folders` can be wrong must fail the deploy with a message naming it, and a good list
+# must pass (roles/encryption/tasks/check.yml). Run by `just _test`.
+- name: Check the encrypted folder asserts
+  hosts: render-full
+  become: false
+  gather_facts: false
+  vars:
+    repo: "{{ playbook_dir }}/.."
+    ansible_user: pi
+  tasks:
+    - name: Load the shared defaults and the derived values
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      loop:
+        - "{{ repo }}/group_vars/all/defaults.yml"
+        - "{{ repo }}/group_vars/all/derived.yml"
+
+    - name: A good list passes
+      ansible.builtin.include_tasks: ../roles/encryption/tasks/check.yml
+      vars:
+        encrypted_folders: [/mnt/data/photos/, /mnt/data/appdata]
+
+    - name: A bad list is refused, and the message names the problem
+      ansible.builtin.include_tasks: expect_encryption_failure.yml
+      vars:
+        encrypted_folders: "{{ case.folders }}"
+        docker_data_root: "{{ case.docker_data_root | default('') }}"
+        expect: "{{ case.expect }}"
+      loop:
+        - {folders: [photos], expect: must be an absolute path}
+        - {folders: [/], expect: must be an absolute path}
+        - {folders: [/mnt/data/photos, /mnt/data/photos], expect: listed twice}
+        - {folders: [/mnt/data, /mnt/data/photos], expect: holds another listed folder}
+        - {folders: [/opt], expect: /opt/services/scripts}
+        - {folders: [/opt/services], expect: /opt/services/scripts}
+        - {folders: [/home], expect: /home/pi}
+        - {folders: [/var], expect: /var/lib}
+        - {folders: [/mnt/docker], docker_data_root: /mnt/docker/data, expect: /mnt/docker/data}
+      loop_control:
+        loop_var: case
+        label: "{{ case.folders }}"

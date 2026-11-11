@@ -25,13 +25,13 @@ ask_passphrase() {
   fi
 }
 
-# One line per folder: unlocked, locked, or never set up.
+# One line per folder: unlocked, locked, or no encrypted files found.
 show_state() {
   local mount=$1 cipher=$2
   if mountpoint -q "$mount/."; then
     echo "unlocked      $mount"
   elif [ ! -d "$cipher" ]; then
-    echo "never set up  $mount (run init-encrypted-folder.sh, docs/encryption.md#set-up-a-folder)"
+    echo "no files      $mount ($cipher does not exist: never set up, or its drive is not mounted)"
   else
     echo "LOCKED        $mount"
     LOCKED+=("$mount")
@@ -77,12 +77,12 @@ unlock_folder() {
   # not read it and every backup would fail on it. The backups keep the conf (docs/encryption.md), so give it to
   # {{ ansible_user }}, who runs them. Done on every run, mounted or not, so running this after a -passwd repairs it.
   if [ -e "$cipher/gocryptfs.conf" ]; then
-    chown {{ ansible_user | quote }} "$cipher/gocryptfs.conf"
+    chown {{ ansible_user | quote }} "$cipher/gocryptfs.conf" || echo "WARNING: could not give $cipher/gocryptfs.conf to {{ ansible_user }}, so backups cannot read it." >&2
   fi
   mountpoint -q "$mount/." && return 0
   # Checked before the prompt, so a folder that was never set up, or whose drive is not mounted, says so.
   if [ ! -d "$cipher" ]; then
-    echo "ERROR: $cipher does not exist, so $mount was never set up. Run init-encrypted-folder.sh (docs/encryption.md#set-up-a-folder)." >&2
+    echo "ERROR: $cipher does not exist. Either $mount was never set up (docs/encryption.md#set-up-a-folder) or its drive is not mounted." >&2
     return 1
   fi
   if [ ! -d "$mount" ]; then
