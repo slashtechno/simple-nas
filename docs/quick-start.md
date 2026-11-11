@@ -2,7 +2,7 @@
 
 From a fresh clone to one host running **Immich**, **Copyparty**, **Dockge** for your own apps behind a **Tinyauth** login and **Caddy** names, daily **backups**, and **encrypted** data folders, on **three drives**. About an hour, plus the time the drives take to format.
 
-Each step links to the doc that explains it.
+Each step links to the doc that explains it. Not every part is needed: skip step 4 and leave out `encrypted_folders` for no encryption, and drop any flag in step 2 you do not want ([pick what you use](../ansible/README.md#pick-what-you-use)).
 
 ## You need
 

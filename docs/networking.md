@@ -1,8 +1,13 @@
 # Networking
 
-Wifi profiles are managed on the host with `nmcli`, not by Ansible. Ansible sets up the shared Docker network and the direct Ethernet link.
+Wifi profiles are managed on the host with `nmcli`, not by Ansible. Ansible sets up the shared Docker network, the optional direct Ethernet link and the optional connectivity watchdog. HTTPS names and ports for the web apps are in [caddy-reference.md](./caddy-reference.md#web-addresses-and-https).
 
-HTTPS names and ports for the web apps are in [caddy-reference.md](./caddy-reference.md#web-addresses-and-https).
+| I want to | Go to |
+|---|---|
+| Reach a Pi that dropped off the network | [If a Pi drops off the network](#if-a-pi-drops-off-the-network) |
+| Reconnect automatically when TCP stops working | [Connectivity watchdog](#connectivity-watchdog) |
+| Copy big files over a cable | [Direct Ethernet link](#direct-ethernet-link) |
+| Change network settings safely | [Rules for changing network config](#rules-for-changing-network-config) |
 
 ## If a Pi drops off the network
 
@@ -20,25 +25,31 @@ nmcli con up "<home profile>"  # switch to home wifi
 nmcli device wifi list         # networks the Pi can see right now
 ```
 
-## How the Pi picks a network
-
-- NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
-- Autoconnect does not replace an already active profile (NetworkManager docs), so a Pi on a hotspot stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale.
-- There is no switch-back automation. To add one, use a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`) or a systemd timer running `nmcli`.
-- The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
-
 ## Rules for changing network config
 
 - Do not change the connection Ansible is using without a way back in (Tailscale or Ethernet).
 - Run `just preview network --limit <host>` first.
 
-## What `roles/network` does
+<details>
+<summary>How the Pi picks a network</summary>
+
+- NetworkManager's `autoconnect-priority` chooses among saved networks that are in range. It does not check for internet: with home wifi up and the ISP down, the Pi stays on home wifi.
+- Autoconnect does not replace an already active profile, so a Pi on a hotspot stays there when home wifi returns; run `nmcli con up "<home profile>"` over Tailscale.
+- There is no switch-back automation. To add one, use a NetworkManager dispatcher script (`/etc/NetworkManager/dispatcher.d/`) or a systemd timer running `nmcli`.
+- The direct Ethernet link is a static profile with no gateway, so it is up whenever the cable is in, alongside wifi.
+
+</details>
+
+<details>
+<summary>What <code>roles/network</code> does</summary>
 
 - Creates the shared Docker network `docker_network` (`services`) on every host.
-- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init, which configures a machine at first boot (Raspberry Pi Imager and Ubuntu's Raspberry Pi images use it), cannot rewrite the network config later.
-- Sets up the direct Ethernet link when `direct_link_enabled` is true ([Direct Ethernet link](#direct-ethernet-link)).
+- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init (which configures a machine at first boot) cannot rewrite the network config later.
+- Sets up the direct Ethernet link when `direct_link_enabled` is true.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- The direct link uses whichever network stack the host runs. With NetworkManager running (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link`, with a higher autoconnect priority than the installer's profile, so NetworkManager picks it for the port. Without NetworkManager (Ubuntu Server, which renders netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
+- The direct link uses whichever network stack the host runs. With NetworkManager (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link` with a higher autoconnect priority than the installer's. Without it (Ubuntu Server, netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, and the deploy runs `netplan apply`. A host with neither stops with a message.
+
+</details>
 
 ## Connectivity watchdog
 
@@ -60,6 +71,4 @@ Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `https://10.10.20.1:3923` for Copyparty. Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once; `http://` on that port works too.
 
-The link can't reach the internet or collide with a VPN:
-- `dnsmasq` hands out DHCP only (no DNS, no gateway), and neither end has a gateway, so there is no route off the cable.
-- `10.10.20.0/30` has two usable addresses, too small to overlap common VPN or home-router ranges such as `10.8.0.0/24` or `192.168.1.0/24`.
+The link has no route to the internet (DHCP only, no gateway), and `10.10.20.0/30` is too small to overlap common VPN or home-router ranges.

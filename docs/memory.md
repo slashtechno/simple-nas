@@ -1,6 +1,12 @@
 # Memory on a small host
 
-A host can run out of RAM when its services add up to more than it has (Immich's machine learning, Crafty and a build are the largest). Check `free -m` after a deploy. Signs of running out: load average far above the core count, SSH that stalls, and kills in `journalctl -k | grep -i "out of memory"`.
+A host can run out of RAM when its services add up to more than it has (Immich's machine learning, Crafty and a build are the largest). Signs: load average far above the core count, SSH that stalls, kills in `journalctl -k | grep -i "out of memory"`. Check `free -m` after a deploy.
+
+| Problem | Fix |
+|---|---|
+| A container uses all the RAM | [Memory limits](#memory-limits) (a Pi needs the memory cgroup on first) |
+| Swap is in constant use | [Swap](#swap) (zram), or switch a service off |
+| Load spikes after a photo import | [Immich](#immich): lower job concurrency |
 
 ## Check
 
@@ -21,19 +27,24 @@ Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgr
 - **Check:** `memory` is in `cat /sys/fs/cgroup/cgroup.controllers`, `docker info` does not say `No memory limit support`, and the container's `HostConfig.Memory` is not `0`.
 - **Other limits:** `immich_machine_learning_memory_limit` caps Immich's machine-learning container, the usual cause of a load spike after an import.
 - **A limit below the app's need kills the app inside its container.** Crafty's servers must fit in `crafty_memory_limit` together.
-- **Turn off:** `pi_enabled: false`, deploy, then `just teardown <host> --tags pi` to take the arguments out again. Both apply after a reboot.
-- **Teardown cannot tell** the two arguments from ones you added by hand; `--tags pi` removes them either way.
-- **Backup of the file:** every change leaves the old file beside it as `cmdline.txt.bak`. If the Pi does not boot, put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
+- **If the Pi does not boot** after a change: every change leaves the old file beside it as `cmdline.txt.bak`. Put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
+- **Turn off:** `pi_enabled: false`, deploy, then `just teardown <host> --tags pi`, then reboot. Teardown cannot tell the two arguments from ones you added by hand, and removes them either way.
 
 ## Swap
 
 - **Turn on:** `zram_enabled: true`, deploy, then `sudo reboot`. `zram_ram_fraction` sets the size as a fraction of RAM.
 - **Turn off:** `zram_enabled: false`, deploy, then `just teardown <host> --tags zram` to remove the drop-in, then `sudo reboot`.
 - **Needed when** `free -m` shows the host using swap under normal load; a host with spare RAM can leave it off.
+- **Limits of swap:** more swap delays kills but does not help when the working set is larger than RAM. Memory limits and the Immich settings below do.
+
+<details>
+<summary>Which tool, cost, writeback</summary>
+
 - **Which tool:** Raspberry Pi OS sizes zram through `rpi-swap` (drop-in in `/etc/rpi/swap.conf.d/`); other hosts get `systemd-zram-generator` (drop-in in `/etc/systemd/zram-generator.conf.d/`). Teardown removes the drop-in.
 - **Cost:** zram keeps compressed pages in RAM, so a full device uses a fraction of its size in memory (the `COMPR` column of `zramctl`). Poorly compressible data costs more.
-- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` lets `rpi-swap` move idle pages to `/var/swap` on the root drive (a file of up to 2 GiB), first after a delay, then daily. That frees RAM at a few writes a day, far fewer than a plain swap file, and is `rpi-swap`'s own default; `false` keeps everything in RAM and `rpi-swap` deletes the file. Options: `man swap.conf`.
-- **Limits of swap:** more swap delays kills but does not help when the working set is larger than RAM. Memory limits and the Immich settings below do.
+- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` lets `rpi-swap` move idle pages to `/var/swap` on the root drive (up to 2 GiB), at a few writes a day. `false` keeps everything in RAM. Options: `man swap.conf`.
+
+</details>
 
 ## Immich
 
@@ -42,6 +53,17 @@ Job settings are stored in Immich's database, so the backup dump keeps them.
 - **Set them from the repo:** `immich_job_concurrency` maps a queue name to how many jobs run at once, for example `{thumbnailGeneration: 1, smartSearch: 1}`. Every deploy sets those queues and leaves all other Immich settings as saved. Empty (the default) sets nothing. It needs `vault_immich_api_key` (the key the [sign-in setup](./auth-reference.md#sign-in-with-tinyauth-oidc) also uses); with Immich down, a full deploy stops at this step. A queue name Immich does not have stops the deploy and lists the real ones.
 - **Or in the UI:** Administration → Settings → Job Settings. The next deploy overwrites a queue named in `immich_job_concurrency`.
 - **Heaviest:** smart search and face detection (machine learning). Pause them on Administration → Jobs during a large import and resume afterwards.
-- **Transcode policy:** `immich_transcode_policy` sets Immich's policy on every deploy: `disabled` makes no second copy of any video; `required` copies only videos that won't play as they are (an unaccepted video or audio codec, or HDR, which is tone-mapped to SDR); `optimal`, `bitrate` and `all` are described in `roles/immich/defaults/main.yml`. A policy change frees nothing by itself: run Transcode Videos on All (Administration → Jobs) once, and Immich deletes the copies it no longer needs. Under `required`, `immich_accepted_video_codecs` lists the codecs played as they are, so listing `hevc` and `av1` stops copies of phone video; HDR and uncompressed audio still get one. `disabled` sends HDR as it is, which browsers other than Safari may show washed out. A resolution or bitrate cap makes copies of videos that already play only under the `optimal` and `bitrate` policies.
-- **Video:** Administration → Settings → Video Transcoding. Transcoding runs `ffmpeg` on the CPU; a policy that converts every video keeps the host busy for hours.
+- **Transcode policy:** `immich_transcode_policy` is set on every deploy. `disabled` makes no second copy of any video; `required` copies only videos that will not play as they are. Transcoding runs `ffmpeg` on the CPU, so a policy that converts every video keeps the host busy for hours.
 - **An import resumes all paused jobs at once** when it ends. Expect a burst of load then.
+
+<details>
+<summary>Transcode policy details</summary>
+
+- `required` copies a video with an unaccepted video or audio codec, or HDR (tone-mapped to SDR). `optimal`, `bitrate` and `all` are described in `roles/immich/defaults/main.yml`.
+- A policy change frees nothing by itself: run Transcode Videos on All (Administration → Jobs) once, and Immich deletes the copies it no longer needs.
+- Under `required`, `immich_accepted_video_codecs` lists the codecs played as they are, so listing `hevc` and `av1` stops copies of phone video; HDR and uncompressed audio still get one.
+- `disabled` sends HDR as it is, which browsers other than Safari may show washed out.
+- A resolution or bitrate cap makes copies of videos that already play only under `optimal` and `bitrate`.
+- The same settings are in the UI at Administration → Settings → Video Transcoding.
+
+</details>
