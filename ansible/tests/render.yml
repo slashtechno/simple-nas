@@ -318,6 +318,37 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # services.yml and defaults-data-dirs.yml must name the same settings. A setting missing from services.yml is skipped by
+    # the backup coverage check and by teardown. A data directory defined in a role's defaults is not visible to them.
+    - name: Every data directory setting is named in services.yml, and every name there has a default
+      vars:
+        defined: >-
+          {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml).keys()
+             | reject('equalto', 'appdata_dir') | list }}
+        named: >-
+          {{ lookup('ansible.builtin.file', repo ~ '/group_vars/all/services.yml') | regex_replace('(?m)^\s*#.*$', '')
+             | regex_findall('[a-z0-9_]+_(?:dir|location)\b') | unique | list }}
+      ansible.builtin.assert:
+        that:
+          - defined | difference(named) == []
+          - named | difference(defined) == []
+        fail_msg: >-
+          defaults-data-dirs.yml and services.yml differ: only in defaults {{ defined | difference(named) }},
+          only in services.yml {{ named | difference(defined) }}
+        quiet: true
+
+    - name: No role's defaults define a data directory setting
+      vars:
+        defined: "{{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml).keys() | list }}"
+        role_keys: "{{ (lookup('ansible.builtin.file', item) | from_yaml | default({}, true)).keys() | list }}"
+      ansible.builtin.assert:
+        that: role_keys | intersect(defined) == []
+        fail_msg: "{{ item }} defines {{ role_keys | intersect(defined) }}: data directory settings belong in group_vars/all/defaults-data-dirs.yml"
+        quiet: true
+      loop: "{{ query('ansible.builtin.fileglob', repo ~ '/roles/*/defaults/main.yml') }}"
+      loop_control:
+        label: "{{ item | dirname | dirname | basename }}"
+
     # teardown.yml builds each service's data_paths from the same entries: the stacks are the owner's and stay, the
     # database and hist directories that the backup skips go.
     - name: Teardown deletes the right directories

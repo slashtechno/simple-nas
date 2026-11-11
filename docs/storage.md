@@ -25,7 +25,7 @@ Mount points are examples. Yours are the `mount` values. Most paths are settings
 
 ```
 /mnt/fast/                      fast drive
-├─ appdata/<service>/           each service's own data: databases, configs, sessions
+├─ appdata/<service>/           appdata_dir: each service's own data (databases, configs, sessions)
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
 ├─ fast/                        Copyparty's /fast volume
 └─ restic-cache/                restic's cache

@@ -5,42 +5,46 @@
 # To move a service to another drive, set its variable in host_vars/<host>/vars.yml (docs/storage.md#move-one-services-data).
 # Databases and configs are on the fast drive, bulk data on the primary; with both roles on one drive the split changes nothing.
 
+# The parent of each service's own data (databases, configs, sessions) on the fast drive. The settings below put their
+# folders in it. Listing it in encrypted_folders encrypts all of them (docs/encryption.md#which-folders-to-list).
+# The storage role creates it, so a folder you list exists before any service is deployed.
+appdata_dir: "{{ fast_drive }}/appdata"
 # The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 
 # Dockge's own database (users, settings).
-dockge_data_dir: "{{ fast_drive }}/appdata/dockge"
+dockge_data_dir: "{{ appdata_dir }}/dockge"
 
 # Tinyauth's sessions.
-tinyauth_data_dir: "{{ fast_drive }}/appdata/tinyauth"
+tinyauth_data_dir: "{{ appdata_dir }}/tinyauth"
 
 # Dozzle's per-user settings; little is lost without them.
-dozzle_data_dir: "{{ fast_drive }}/appdata/dozzle"
+dozzle_data_dir: "{{ appdata_dir }}/dozzle"
 
 # Scrutiny's collector and web UI configuration.
-scrutiny_config_dir: "{{ fast_drive }}/appdata/scrutiny/config"
+scrutiny_config_dir: "{{ appdata_dir }}/scrutiny/config"
 
 # Scrutiny's SMART history; left out of the backup because the collector writes it again.
-scrutiny_influx_dir: "{{ fast_drive }}/appdata/scrutiny/influxdb"
+scrutiny_influx_dir: "{{ appdata_dir }}/scrutiny/influxdb"
 
 # Caddy's certificates and state. Losing it means certificates are issued again.
-caddy_data_dir: "{{ fast_drive }}/appdata/caddy"
+caddy_data_dir: "{{ appdata_dir }}/caddy"
 
-# Immich's photos (primary drive).
+# Immich's photos (primary drive). The two immich_*_location names follow Immich's own UPLOAD_LOCATION and DB_DATA_LOCATION.
 immich_upload_location: "{{ primary_drive }}/photos"
 
 # Immich's Postgres data directory (fast drive).
-immich_db_data_location: "{{ fast_drive }}/appdata/immich_postgres"
+immich_db_data_location: "{{ appdata_dir }}/immich_postgres"
 
 # The files Copyparty serves (primary drive).
 copyparty_files_dir: "{{ primary_drive }}/files"
 
 # Copyparty's configuration (fast drive).
-copyparty_config_dir: "{{ fast_drive }}/appdata/copyparty_config"
+copyparty_config_dir: "{{ appdata_dir }}/copyparty_config"
 
-# Copyparty's thumbnails, databases and transcode cache (fast drive). Under appdata/, so the encrypted_folders
+# Copyparty's thumbnails, databases and transcode cache (fast drive). Under appdata_dir, so the encrypted_folders
 # recipe in docs/encryption.md covers it.
-copyparty_hist_dir: "{{ fast_drive }}/appdata/copyparty-hist"
+copyparty_hist_dir: "{{ appdata_dir }}/copyparty-hist"
 
 # Where the /fast volume lives.
 copyparty_fast_dir: "{{ fast_drive }}/fast"
@@ -49,16 +53,16 @@ copyparty_fast_dir: "{{ fast_drive }}/fast"
 copyparty_collab_dir: "{{ primary_drive }}/collab"
 
 # Gitea's repositories and database (fast drive).
-gitea_data_dir: "{{ fast_drive }}/appdata/gitea"
+gitea_data_dir: "{{ appdata_dir }}/gitea"
 
 # The Gitea runner's registration (.runner); on the fast drive so it is backed up.
-gitea_runner_data_dir: "{{ fast_drive }}/appdata/gitea_runner"
+gitea_runner_data_dir: "{{ appdata_dir }}/gitea_runner"
 
 # ntfy's message history and user database; little is lost without it.
-ntfy_data_dir: "{{ fast_drive }}/appdata/ntfy"
+ntfy_data_dir: "{{ appdata_dir }}/ntfy"
 
 # pics' data directory (fast drive).
-pics_data_dir: "{{ fast_drive }}/appdata/pics"
+pics_data_dir: "{{ appdata_dir }}/pics"
 
 # Where pics keeps its photos (primary drive). Copyparty serves them to pics only, as the volume /apps/pics/photos
 # (and the trash as /apps/pics/trash), so they are not part of copyparty_files_dir and the admin's file listing.
@@ -68,10 +72,10 @@ pics_photos_dir: "{{ primary_drive }}/apps/pics/photos"
 pics_trash_dir: "{{ primary_drive }}/apps/pics/trash"
 
 # Homebridge's configuration and pairings (fast drive).
-homebridge_config_dir: "{{ fast_drive }}/appdata/homebridge"
+homebridge_config_dir: "{{ appdata_dir }}/homebridge"
 
 # Garage's metadata and data (fast drive).
-garage_data_dir: "{{ fast_drive }}/appdata/garage"
+garage_data_dir: "{{ appdata_dir }}/garage"
 
 # Crafty's servers and configuration (fast drive).
-crafty_data_dir: "{{ fast_drive }}/appdata/crafty"
+crafty_data_dir: "{{ appdata_dir }}/crafty"

@@ -149,7 +149,7 @@ List the folders that hold data, not a drive's mount point. `/mnt/data` would pu
 
 ```yaml
 encrypted_folders:
-  - /mnt/data/appdata  # the databases and configs of every service this repo deploys
+  - /mnt/data/appdata  # `appdata_dir`: each service's own data (databases, configs, sessions), the compose files stay on the root drive
   - /mnt/data/stacks   # Dockge stacks
   - /mnt/data/photos   # Immich's photos
   - /mnt/data/files    # Copyparty's files
@@ -160,18 +160,18 @@ encrypted_folders:
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
 - `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
-- The defaults cover a service added later with its data under `{{ fast_drive }}/appdata`. Anything else stays plain.
+- The defaults cover a service added later with its data under `appdata_dir`. Anything else stays plain.
 
 **Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.
 
 | Data | Setting | If it is in a listed folder |
 |---|---|---|
-| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. Use an ntfy on another host (`ntfy_alert_url`), or keep this one's data in a plain folder such as `/mnt/apps/ntfy`. |
+| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. Use an ntfy on another host (`ntfy_alert_url`), or set `ntfy_data_dir` to a folder you do not list. |
 | Caddy | `caddy_data_dir` | No web access to any service until you unlock. |
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
 | An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
 
-The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
+The defaults put all three under `appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
 
 ### Turning it off
 
