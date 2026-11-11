@@ -117,10 +117,10 @@ Signs: `systemctl status mnt-<name>.mount` says `probably corrupted filesystem`,
 1. Stop the containers that use the drive.
 2. Check read-only: `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>`.
 3. Repair: the same with `-fy`. A journal that fails its checksum is discarded, losing writes since the last good mount. For worse damage, [restore from backup](./backups.md).
-4. Mount: `sudo systemctl reset-failed mnt-<name>.mount mnt-<name>.automount && sudo systemctl restart mnt-<name>.automount`.
-5. Recreate the containers ([step 4 here](#adding-replacing-or-retiring-a-drive)). What they wrote to the root drive sits under the mount point; delete it after `umount`.
+4. Mount: `sudo systemctl reset-failed mnt-<name>.mount mnt-<name>.automount && sudo systemctl restart mnt-<name>.automount`, then `ls <mount>` to confirm it mounts.
+5. Recreate the containers, as in step 4 of [Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive). What they wrote to the root drive sits under the mount point; delete it after `umount`.
 
-exFAT has no journal: `fsck.exfat -n /dev/sdX1` (or `diskutil verifyVolume` on a Mac) only reads.
+exFAT has no journal: `fsck.exfat -n /dev/sdX1` (or `diskutil verifyVolume` on a Mac) only reads; `-y` repairs.
 
 ## Using the root drive for fast or primary
 
@@ -152,7 +152,7 @@ For a drive that is new to the host, before it goes in `drives`. Run on the host
 
 1. **Identify it.** `lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE` lists the drives. Letters such as `sdc` change when drives are replugged, so before erasing check the model and serial (`sudo smartctl -i -d sat /dev/sdX`) against the label on the drive, and give every command below the `/dev/disk/by-id/...` path or a letter you have just re-checked.
 2. **Look before erasing.** A second-hand drive can hold files. Mount it read-only and list everything, hidden folders included: `sudo mount -o ro /dev/sdX1 /mnt/check` (add `-t ntfs-3g` for NTFS), `sudo ls -la /mnt/check`, then `sudo umount /mnt/check`.
-3. **Vet a used drive** with SMART and a read-only `badblocks` scan ([Checking a drive over USB](#checking-a-drive-over-usb)).
+3. **Vet a used drive** with SMART and a read-only `badblocks` scan ([Drive damage and wear](#drive-damage-and-wear)).
 4. **Partition and format** (this erases the drive):
 
    ```bash
@@ -187,7 +187,7 @@ A backup drive that drops out and comes back is covered in [backups.md](./backup
 A USB-to-SATA bridge hides the drive from the kernel's temperature driver (`drivetemp`).
 
 - **Read the temperature:** `sudo smartctl -d sat -a /dev/sdX` (attribute 194). Scrutiny reads the same data ([services.md](./services.md)).
-- **Long self-tests** (`smartctl -t long`) can abort with "Aborted by host" through some bridges. A read-only `badblocks` scan is the alternative.
+- **Long self-tests** (`smartctl -t long`) can abort with "Aborted by host" through some bridges. A read-only `badblocks` scan is the alternative ([Drive damage and wear](#drive-damage-and-wear)).
 - **Waking a sleeping drive:** a plain `smartctl -A` spins it up; `smartctl -n standby -A` skips a drive that is asleep.
 - **If the bridge answers `unsupported field in scsi command`:** its pass-through is broken. The fix is a `usb-storage.quirks` kernel option for that bridge, applied at boot (see smartmontools' USB page).
 
@@ -195,17 +195,17 @@ Check the drive maker's operating range; a hard drive in a closed enclosure can 
 
 ## Drive damage and wear
 
-Read the counters with `sudo smartctl -A -d sat /dev/disk/by-id/<drive>`; [Scrutiny](./services.md#scrutiny-drive-health) graphs them.
+Read the counters with `sudo smartctl -A -d sat /dev/disk/by-id/<drive>` (`ls -l /dev/disk/by-id/` lists the names; use the whole-disk entry, not one ending in `-part1`); [Scrutiny](./services.md#scrutiny-drive-health) graphs them.
 
-- **Damage:** `Reallocated_Sector_Ct` (5), `Current_Pending_Sector` (197) or `Offline_Uncorrectable` (198) above 0 are sectors the drive could not read. A count that keeps rising, new bad blocks after a repair or a failed `smartctl -t long` mean replace the drive. `UDMA_CRC_Error_Count` (199) points at the cable or USB bridge.
-- **Wear:** `Load_Cycle_Count` (193) divided by `Power_On_Hours` (9) is the head-parking rate; about 15 an hour or less is normal. The maker's datasheet gives the rated total (often 300,000 to 600,000 on a 2.5" drive). If the rate is high, `hdparm -B 254` stops aggressive parking; some USB bridges ignore it.
+- **Damage:** `Reallocated_Sector_Ct` (5), `Current_Pending_Sector` (197) or `Offline_Uncorrectable` (198) above 0 are sectors the drive could not read. A small, stable count can be kept; a count that keeps rising, new bad blocks after a repair or a failed `smartctl -t long` mean replace the drive. `UDMA_CRC_Error_Count` (199) points at the cable or USB bridge.
+- **Wear (hard drives):** `Load_Cycle_Count` (193) divided by `Power_On_Hours` (9) is the head-parking rate; about 15 an hour or less is normal. The maker's datasheet gives the rated total (often 300,000 to 600,000 on a 2.5" drive). If the rate is high, `hdparm -B 254` stops aggressive parking; some USB bridges ignore it.
 - **Power:** several drives dropping off USB together (`over-current` in `dmesg`) is the usual cause of a corrupt filesystem on a bus-powered host ([If the backup drive disconnects](./backups.md#if-the-backup-drive-disconnects)).
 
 To find and repair bad sectors:
 
-1. **Scan read-only** with the drive unmounted: `sudo systemd-run --unit=scan $(command -v badblocks) -b 4096 -sv -o /var/tmp/bad.txt /dev/disk/by-id/<drive>`. Never `-w`. It takes hours on a 2 TB drive; `systemd-run` keeps it running when SSH ends. Each number is a 4 KiB block counted from the start of the whole disk.
-2. **Find the files they hit before repairing.** Mount the drive read-only and read everything: `find <mount> -xdev -type f -exec cat {} + >/dev/null`. An unreadable file prints its path; restore it from backup. A clean pass shows every file can be read, not that its content is right: compare `sha256sum` lists with a second copy and test archives with `7z t` or `unzip -t`.
-3. **Overwrite each bad block no file needs:** `sudo dd if=/dev/zero of=/dev/disk/by-id/<drive> bs=4096 seek=<block> count=1 oflag=direct conv=notrunc`. The drive then repairs or remaps the sector, and what was in the block is gone. Then run `smartctl -t long` (hours; a pass means the whole surface reads).
+1. **Scan read-only** with the drive unmounted: `sudo systemd-run --unit=scan /usr/sbin/badblocks -b 4096 -sv -o /var/tmp/bad.txt /dev/disk/by-id/<drive>`. Never `-w`. It takes hours on a 2 TB drive; `systemd-run` keeps it running when SSH ends; `journalctl -u scan -f` shows its progress and the numbers also land in `/var/tmp/bad.txt`. Each number is a 4 KiB block counted from the start of the whole disk.
+2. **Find the files they hit before repairing.** Mount the drive read-only (`sudo mount -o ro /dev/disk/by-id/<drive>-part1 /mnt/check`) and read everything: `sudo find /mnt/check -xdev -type f -exec cat {} + >/dev/null`. An unreadable file prints its path with `Input/output error`; restore it from backup. A clean pass shows every file can be read, not that its content is right: compare `sha256sum` lists with a second copy and test archives with `7z t` or `unzip -t`.
+3. **Overwrite each bad block no file needs.** Unmount the drive first (a block outside every file can still hold filesystem metadata, so run the filesystem check afterwards: `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>` for ext4): `sudo dd if=/dev/zero of=/dev/disk/by-id/<drive> bs=4096 seek=<block> count=1 oflag=direct conv=notrunc`. The drive then repairs or remaps the sector, and what was in the block is gone. Then run `smartctl -t long` (hours; a pass means the whole surface reads).
 4. **Keep watching the counters**, and keep nothing on a drive with defects that exists nowhere else ([backups.md](./backups.md)).
 
 ## Move one service's data
