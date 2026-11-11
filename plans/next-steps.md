@@ -7,6 +7,7 @@ Goal: someone who is not a full-time sysadmin can run the setup and read, change
 ## Open
 
 - [ ] Deploy the remaining hosts one tag at a time, the one with real containers last (never restart Docker there). Merge the opt-in stack into `main` only after the first host is good.
+- [ ] The connectivity watchdog's reconnect branch is untested: no real outage has happened yet ([networking.md](../docs/networking.md#connectivity-watchdog)).
 - [ ] Test `alert.sh` and a pics alert with a deliberate failure.
 - [ ] The remaining drive steps (the new drive and the fast/primary split): [drive-migration.md](./drive-migration.md).
 - [ ] Backup status page: built and tested, not checked on a host whose backup drive is attached. A failure before a script's status setup (a mount guard) leaves the previous file, which turns stale within 36 hours (9 days for the weekly jobs).

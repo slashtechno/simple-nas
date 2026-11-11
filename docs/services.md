@@ -1,6 +1,6 @@
 # Service notes
 
-Every service is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. This page lists what each needs and the setup beyond the flag.
+Every service below is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml` (Tailscale and the terminal tools are on by default; `tailscale_enabled: false` and `terminal_tools_enabled: false` turn them off). This page lists what each needs and the setup beyond the flag.
 
 - **Deploy one:** `just deploy <tag>` from `ansible/` (tag = role name).
 - **Settings and defaults:** `ansible/group_vars/all/` and each role's `defaults/main.yml`; `just settings` lists them ([where files are](../ansible/README.md#which-files-hold-what)).

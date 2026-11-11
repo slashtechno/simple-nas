@@ -235,7 +235,7 @@ tail -50 /mnt/backup/logs/backup-cron.log           # recent combined cron log (
 /bin/bash /opt/services/scripts/backup-restic-local.sh   # run a job by hand; or backup-restic-cloud.sh, restic-check.sh
 ```
 
-The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and when it ends. A missing, unreadable or too old file shows as an error, never ok; `cat` it to see what the last run did. A run that stops before writing it (a mount guard, such as a dropped drive) leaves the previous result, so a card can say ok for up to 36 hours (9 days for weekly jobs) after the first such failure: the alert is what reports it.
+The dashboard does not check that a `daily` snapshot exists, only that the job ran. The dashboard's job status comes from `<backup_logs_dir>/restic-<local|cloud|check>.status.json`, which each script writes when a run starts and when it ends. A missing, unreadable or too old file shows as an error, never ok; `cat` it to see what the last run did. A run that stops before writing it (a mount guard, such as a dropped drive) leaves the previous result, so a card can say ok for up to 36 hours (9 days for weekly jobs) after the first such failure: the alert is what reports it.
 
 ### Checking the cloud repo (manual)
 

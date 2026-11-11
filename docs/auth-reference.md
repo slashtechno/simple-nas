@@ -95,7 +95,7 @@ For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy
 2. Publish no port for the app: a published port skips Caddy and the login.
 3. Start the stack. Open the name in a private browser window: it shows the Tinyauth login (`curl` gets 401).
 
-The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. If the app also has its own login, pick the first that fits:
+The app sits behind Tinyauth and receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` and `Remote-Groups` headers. Tinyauth sends `Remote-Groups` only for LDAP and OAuth logins, so groups in an app do not work with local Tinyauth users: give each user an account of the same name in the app. If the app also has its own login, pick the first that fits:
 
 1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider when `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` is on, so the app knows who signed in and keeps its own accounts ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment` (`TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS`, `_NAME`, as in `roles/tinyauth/templates/docker-compose.yml.j2`) and give the app the issuer `https://auth.<first private domain>`.
 2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`, with its own setting for it. Where the app lets you name the header, that name is a secret, so another container on the network cannot forge it.

@@ -22,6 +22,7 @@ All commands run from `ansible/`.
 | Update the OS, Docker or Tailscale | nothing | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
 | Add a drive, replace one, or move a service's data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
 | Add a host, or run several | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
+| Move a working host to new hardware | [move a host](#move-a-working-host-to-new-hardware) | `just deploy '' --limit <host> -K` |
 | Give services `https://` names, or change a port | `caddy_private_domains`, `<name>_subdomain`, `<name>_port` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>` and the service's tag |
 | Add a public hostname | `cloudflared_ingress` ([how](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption,backup --limit <host>`, then [set up the folder](../docs/encryption.md#set-up-a-folder) |
@@ -99,6 +100,16 @@ The same steps add a second or third host: each has its own `host_vars/<host>/` 
 5. Join the tailnet once by hand: `sudo tailscale up`. With `caddy_private_domains` set, Caddy stops this first deploy until you have joined: join, then deploy again.
 6. Reboot once (`sudo reboot`): the drive guard ([storage.md](../docs/storage.md#how-a-drive-is-mounted)) is armed only at boot, and on a Raspberry Pi so is the memory cgroup.
 7. Set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`). It works from anywhere, and Homepage and the service links use it.
+
+### Move a working host to new hardware
+
+The old host keeps running until the new one is checked.
+
+1. Add the new host as above under a new key, with the same `drives` and flags (copy `host_vars/<old>/` and adjust).
+2. Plug in the data drives, or restore onto new ones ([backups.md](../docs/backups.md#restore-files)). A drive holds a service's data wherever it is plugged in: move one drive at a time and check the service.
+3. Deploy the new host, then check each service with its flag on.
+4. Move public names last: a hostname may appear in only one host's `cloudflared_ingress`, so take it out of the old host and deploy both.
+5. Retire the old host: flags to `false`, then [teardown](#disable-or-remove-a-service).
 
 <details>
 <summary>Optional: Raspberry Pi Connect (remote shell from a browser)</summary>
