@@ -16,11 +16,11 @@ One small program in this repo (`unlock-page/`), one file, standard library only
 - **Login:** the field is the page password, compared in constant time with a hash in a setting. A password needs no database and works from a browser you do not control. Passkeys can be added later but are never the only route.
 - **Settings** (environment variables): the password hash, the gocryptfs passphrase, the hosts to unlock (name and address) and the SSH key.
 - **Passphrase:** held by whatever runs the page, never typed in a browser and never sent to one. Its secrecy is that platform's: keep its members to the owner, use two-factor sign-in, and make the passphrase long, random and used nowhere else. A leaked passphrase plus a stolen drive opens the data.
-- **A captured page password** (a keylogger on a browser you do not control) lets someone trigger an unlock, and an unlock helps only if they can also bring a stolen host back onto the tailnet. If a host is stolen, remove it from the tailnet and stop the page. Changing the page password after an untrusted browser is optional hygiene. The forced command below means a leaked password can trigger unlock attempts and nothing else.
+- **A captured page password** (a keylogger on a browser you do not control) lets someone trigger an unlock, and an unlock helps only if they can also bring a stolen host back onto the tailnet. If a host is stolen, remove it from the tailnet and stop the page. Changing the page password after an untrusted browser is optional hygiene. The forced command below limits a leaked password to running `unlock.sh`, which also restarts the containers that use the folders, so it can disturb a running host but gives no shell.
 
 ## How the forced SSH command works
 
-The page's SSH key is not a login key. On the host, its line in `authorized_keys` carries `restrict,command="sudo /opt/services/scripts/unlock.sh"` (Ansible's `authorized_key` takes `key_options`). Whatever the client asks for, `sshd` runs that one command and ignores the request; `restrict` turns off shell, forwarding and TTY. The ansible user has passwordless sudo, so without the forced command a stolen key is root. The passphrase goes over the SSH connection to the command's stdin.
+The page's SSH key is not a login key. On the host, its line in `authorized_keys` carries `restrict,command="sudo /opt/services/scripts/unlock.sh"` (Ansible's `authorized_key` takes `key_options`). Whatever the client asks for, `sshd` runs that one command and ignores the request; `restrict` turns off port forwarding, agent forwarding, X11 and a TTY. The ansible user has passwordless sudo, so without the forced command a stolen key is root. The passphrase goes over the SSH connection to the command's stdin.
 
 ## Where it runs
 
