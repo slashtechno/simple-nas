@@ -65,7 +65,7 @@ Afterwards `restic snapshots` and `restic check` show a good repository ([Connec
 
 - **Times** are the `hour`, `minute` and `weekday` lines of the cron tasks in `roles/backup/tasks/local.yml` and `cloud.yml`, not settings. Edit one and `just deploy backup` (Ansible matches a job by name, so it replaces the old time). Cron uses the host's `timezone`. Keep the check away from the backup.
 - **Timeout:** every restic call has `restic_command_timeout`, default 23 hours, enough for a first backup over a slow link or USB 2. So a stalled network pipe fails the run instead of holding the lock. A run that hits the timeout stops and alerts. Raise it in `host_vars/<host>/vars.yml` for a larger repository.
-- **Alerts:** a failed job goes to the system log (`journalctl -t backup`) and, with `ntfy_alert_url` set and `just deploy common`, to your phone ([services.md](./services.md#ntfy-failure-alerts)).
+- **Alerts:** a failed job goes to the system log (`journalctl -t backup`) and, with an alert URL set and `just deploy common`, to your phone ([services.md](./services.md#ntfy-failure-alerts)).
 
 </details>
 
