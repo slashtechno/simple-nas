@@ -4,6 +4,14 @@ Status: not built. Nothing in the repo depends on it. Waiting for the owner's go
 
 A page you open in any browser and type the gocryptfs passphrase into; it runs `unlock.sh` on the host. `unlock.sh` reads the passphrase from stdin and holds all the unlock logic, so the page only delivers a passphrase and runs that command.
 
+## Optional, on top of encryption
+
+Encryption works on its own: `encrypted_folders` empty means no encryption, and unlocking by hand over SSH (`just unlock <host>`) is the default. The page is a further optional layer.
+
+- The host side is one switch of its own, `unlock_page_enabled`, off by default like every part. It installs the forced-command SSH key for the page and nothing else.
+- Turning it on without `encrypted_folders` fails the deploy: there is nothing to unlock.
+- With it off, nothing changes for encryption, and the Vercel project (its own repository) is not part of this repo.
+
 ## Design
 
 - **Page:** one Go function in a Vercel project of its own (it is not Ansible-deployed). `GET` serves a form, `POST` does the work. No session, cookie or auth library.
