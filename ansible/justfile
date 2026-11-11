@@ -96,7 +96,7 @@ edit *args:
 preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
-# Unlock a host's encrypted folders over SSH; it asks for the passphrase here: `just unlock pinas` (docs/encryption.md)
+# Unlock a host's encrypted folders over SSH (the scripts are in the default scripts_dir); it asks for the passphrase here: `just unlock pinas` (docs/encryption.md)
 unlock host:
     ssh -t "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh
 

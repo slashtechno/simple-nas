@@ -26,10 +26,10 @@
   vars:
     encryption_needed_paths: >-
       {{ [scripts_dir, encryption_hooks_dir, '/home/' ~ ansible_user, '/root', '/etc', '/usr', '/boot', '/var/lib']
-         + ([docker_data_root] if docker_data_root | length > 0 else []) }}
+         + [docker_data_root if docker_data_root | length > 0 else '/var/lib/docker'] }}
   ansible.builtin.assert:
     that: not (item.1 ~ '/').startswith(item.0.mount ~ '/')
-    fail_msg: "{{ item.0.mount }} holds {{ item.1 }}, which logging in and unlocking need while it is locked. List a folder below it."
+    fail_msg: "{{ item.0.mount }} is, or holds, {{ item.1 }}, which logging in and unlocking need while it is locked. List a folder below it."
     quiet: true
   loop: "{{ encrypted_pairs | product(encryption_needed_paths) | list }}"
   loop_control:

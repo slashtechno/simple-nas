@@ -27,7 +27,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - From your computer: `just unlock <host>`, and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
-- Until you unlock, encrypted services stay down and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
+- Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
 - To lock again: stop the containers that use the folder (`docker ps` and the compose file show them), then `sudo umount <folder>`.
 
 <details>
@@ -80,7 +80,7 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 Per folder, easiest first:
 
 1. **From a backup:** `restic restore latest --target <scratch> --include <the .gocryptfs folder>/gocryptfs.conf` ([backups.md](./backups.md)), put it back in the `.gocryptfs` folder, unlock as usual. It needs the passphrase, not the master key.
-2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Give it the **same cipher option** the folder was created with. `init-encrypted-folder.sh` prints it (`-xchacha` or none) next to the master key, so you saved it with the key. Do not guess from today's CPU: the script chose it from the CPU that created the folder, which may not be the CPU you use now. Copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount succeeds but every read fails with an input/output error.
+2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Give it the **same cipher option** the folder was created with. `setup-encrypted-folder.sh` prints it (`-xchacha` or none) next to the master key, so you saved it with the key. Do not guess from today's CPU: the script chose it from the CPU that created the folder, which may not be the CPU you use now. Copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount succeeds but every read fails with an input/output error.
 3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
    1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
    2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
@@ -129,7 +129,7 @@ Do this **before the service first starts**, or it writes plain files into the f
 
 On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder, and use one passphrase for all folders.
 
-If the script reports a checksum mismatch it deletes nothing: the files stay in `photos.plain`. A power cut can lose the one file being moved.
+If the script reports a checksum mismatch it deletes nothing, but the files are then split between `photos` and `photos.plain`: look in both, then run the script again. A power cut can lose the one file being moved.
 
 A service that runs as another user needs the folder's owner changed **while unlocked**. A change while locked is lost.
 
@@ -169,7 +169,7 @@ The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata
 
 ### Turning it off
 
-The same checksum move as step 4, in the other direction. Stop the services that use the folder first.
+The same checksum move as in step 3, in the other direction. Stop the services that use the folder first.
 
 <details>
 <summary>The commands</summary>

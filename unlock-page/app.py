@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""A web page that unlocks the encrypted folders of your hosts (docs/unlock-page.md).
+"""A web page that unlocks the encrypted folders of your hosts (unlock-page/README.md).
 
 You type a password. The page then runs `unlock.sh` on each host over SSH and feeds it the gocryptfs passphrase,
-which only this program knows. The SSH key is limited on the host to that one command (roles/unlock_access).
+which only this program knows. The SSH key is limited on the host to that one command (docs/encryption.md).
 
   python3 app.py           serve the page
   python3 app.py hash      print the value for UNLOCK_PASSWORD_HASH (asks for the password)
@@ -25,6 +25,8 @@ import urllib.parse
 
 # user@address for each host, as name=user@address, comma separated: pi4=user@pi4.example.ts.net,pinas=user@pinas.example.ts.net
 HOSTS = [h.split("=", 1) for h in os.environ.get("UNLOCK_HOSTS", "").split(",") if h]
+if any(len(h) != 2 for h in HOSTS):
+    sys.exit("UNLOCK_HOSTS must look like name=user@address,name=user@address")
 SSH_KEY = os.environ.get("UNLOCK_SSH_KEY", "/run/unlock/ssh_key")
 KNOWN_HOSTS = os.environ.get("UNLOCK_KNOWN_HOSTS", "/run/unlock/known_hosts")
 PASSPHRASE_FILE = os.environ.get("UNLOCK_PASSPHRASE_FILE", "/run/unlock/passphrase")
@@ -68,8 +70,11 @@ def ssh(target, stdin_text):
 
 
 def unlock_all():
-    with open(PASSPHRASE_FILE) as f:
-        passphrase = f.read().strip()
+    try:
+        with open(PASSPHRASE_FILE) as f:
+            passphrase = f.read().rstrip("\r\n")  # a file made with echo ends with a newline the passphrase does not have
+    except OSError as error:
+        return [("passphrase", 1, f"Cannot read {PASSPHRASE_FILE}: {error}")]
     return [(name, *ssh(target, passphrase)) for name, target in HOSTS]
 
 

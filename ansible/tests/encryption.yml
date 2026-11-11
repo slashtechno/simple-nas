@@ -39,6 +39,7 @@
         - {folders: [/opt/services], expect: /opt/services/scripts}
         - {folders: [/home], expect: /home/pi}
         - {folders: [/var], expect: /var/lib}
+        - {folders: [/var/lib/docker], expect: /var/lib/docker}
         - {folders: [/mnt/docker], docker_data_root: /mnt/docker/data, expect: /mnt/docker/data}
         - {folders: [/mnt/data/photos], key: "not a key", expect: unlock_page_public_key}
         - {folders: [/mnt/data/photos], key: "ssh-ed25519 AAAA x\nssh-ed25519 BBBB y", expect: unlock_page_public_key}

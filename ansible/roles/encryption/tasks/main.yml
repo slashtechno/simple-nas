@@ -10,6 +10,7 @@
     name:
       - gocryptfs
       - fuse3
+      - rsync
     state: present
     update_cache: true
     cache_valid_time: 3600
@@ -48,7 +49,7 @@
 - name: Allow the unlock page's SSH key to run unlock.sh and nothing else
   ansible.builtin.lineinfile:
     path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-    regexp: "{{ ('command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\"') | regex_escape }}"
+    regexp: "^{{ ('restrict,command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\" ') | regex_escape }}"
     line: restrict,command="sudo {{ scripts_dir }}/unlock.sh" {{ unlock_page_public_key }}
     state: "{{ 'present' if unlock_page_public_key | length > 0 else 'absent' }}"
   when: encrypted_folders | length > 0

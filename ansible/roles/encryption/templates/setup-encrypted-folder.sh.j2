@@ -15,11 +15,16 @@ esac
 PLAIN="$FOLDER.plain"          # where the existing files wait while they move in
 SUMS="$FOLDER.plain.sha256"    # their checksums, taken before the move
 
+# A folder that does not exist usually means its drive is not mounted: creating it here would put the files on the root drive.
+[ -d "$FOLDER" ] || { echo "ERROR: $FOLDER does not exist. Is its drive mounted? (A new folder: create it first with mkdir.)" >&2; exit 1; }
+# A run that stopped before gocryptfs.conf was written starts this step again.
+[ -e "$CIPHER/gocryptfs.conf" ] && NEW=0 || NEW=1
+
 [ -t 0 ] || { echo "ERROR: run this in a terminal (ssh -t <host> sudo ...): it asks for the passphrase and shows the master key." >&2; exit 1; }
 
 # A container that has the folder open keeps the old files. Stop it first: it would see the folder empty after the mount.
 if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
-  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER")
+  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER") || true   # no Docker answer: carry on
   if [ -n "$BUSY" ]; then
     echo "ERROR: stop these containers first (docker stop <name>):" >&2
     echo "$BUSY" >&2
@@ -30,14 +35,14 @@ fi
 # Asked once and used for every step, so it is never typed twice. A new folder asks twice, to catch a typing mistake.
 IFS= read -rsp "gocryptfs passphrase: " PASS; echo
 [ -n "$PASS" ] || { echo "ERROR: no passphrase given." >&2; exit 1; }
-if [ ! -e "$CIPHER" ]; then
+if [ "$NEW" = 1 ]; then
   IFS= read -rsp "Again: " AGAIN; echo
   [ "$PASS" = "$AGAIN" ] || { echo "ERROR: the two passphrases differ." >&2; exit 1; }
 fi
 
 # 1. Create the encrypted files. Existing files move aside (a rename, so it is instant) and the folder takes their owner.
-if [ ! -e "$CIPHER" ]; then
-  if [ -n "$(ls -A "$FOLDER" 2>/dev/null)" ]; then
+if [ "$NEW" = 1 ]; then
+  if [ -n "$(ls -A "$FOLDER")" ]; then
     [ ! -e "$PLAIN" ] || { echo "ERROR: $FOLDER and $PLAIN both exist. Move one away." >&2; exit 1; }
     echo "Taking checksums of $FOLDER (this reads every file once)"
     (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"
@@ -45,13 +50,11 @@ if [ ! -e "$CIPHER" ]; then
     mkdir "$FOLDER"
     chown --reference="$PLAIN" "$FOLDER"
     chmod --reference="$PLAIN" "$FOLDER"
-  else
-    mkdir -p "$FOLDER"
   fi
   # The cipher cannot be changed later. A CPU with AES instructions is fastest with the default (AES-GCM);
   # one without (a Raspberry Pi 4, for example) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
   if grep -qw aes /proc/cpuinfo; then CIPHER_OPTION=""; else CIPHER_OPTION="-xchacha"; fi
-  mkdir "$CIPHER"
+  mkdir -p "$CIPHER"
   # The mounted folder's top directory shows the cipher folder's owner and mode, so copy them from the folder.
   chown --reference="$FOLDER" "$CIPHER"
   chmod --reference="$FOLDER" "$CIPHER"
