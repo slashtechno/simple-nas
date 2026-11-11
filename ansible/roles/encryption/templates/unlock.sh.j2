@@ -28,7 +28,8 @@ ask_passphrase() {
 # One line per folder: unlocked, locked, or no encrypted files found.
 show_state() {
   local mount=$1 cipher=$2
-  # "$mount/." tests the folder itself; without the "/." a plain folder inside a mounted drive counts as mounted too.
+  # The trailing "/." is the idiom of the backup guards (roles/backup/templates/mount-guards.j2): mountpoint -q on the bare
+  # path can succeed on the automount placeholder of a missing drive.
   if mountpoint -q "$mount/."; then
     echo "unlocked      $mount"
   elif [ ! -d "$cipher" ]; then
