@@ -23,7 +23,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
 - A wrong passphrase stops it at that folder and says which. A locked folder that is not empty stops it too (move the files away first).
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
-- Until you unlock, encrypted services stay down and **no backup runs**. Set `ntfy_alert_url` to another host's ntfy (or ntfy.sh) to hear about a locked host. An ntfy on this host is down with Docker.
+- Until you unlock, encrypted services stay down and **no backup runs**. A locked host can alert only if the ntfy that receives the alerts is up: keep that ntfy's data out of every listed folder, for example `ntfy_data_dir: /mnt/apps/ntfy` beside a listed `/mnt/apps/appdata` (ntfy sets its users and token at every start, so only its message history is not carried over), or point `ntfy_alert_url` at an ntfy on another host that stays up. `ntfy_alert_url` is one URL for every alert; `vault_ntfy_token` goes to whatever server it names, so it suits an ntfy you run, not ntfy.sh.
 - To lock again: stop the containers that use the folder, then `sudo umount <folder>`.
 
 <details>
