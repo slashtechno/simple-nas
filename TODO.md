@@ -11,7 +11,7 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - A pics `archive_dir` option, with its path under a drive that has a role so the backup covers it — waits for: the owner writing it in the pics repository.
 - Delete the stale `pi-nas-runner` entry in Gitea — waits for: a few minutes in Gitea's admin page.
 - `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)) — waits for: the next Sunday offsite backup.
-- Unlock encrypted folders from a web page: [plans/unlock-web-page.md](./plans/unlock-web-page.md). Waiting for: the owner's go on the design and the checks listed there.
+- Test the unlock page (`unlock-page/`) against a real host: key, `check`, a real unlock. Waiting for: a host with encryption on.
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md) — waits for: the new drive passing its vetting.
 - Encryption at rest ([encryption.md](./docs/encryption.md)): open the folder on a Mac (gocryptfs and macFUSE) before real data goes in — waits for: a spare drive.
 - Open items of [plans/next-steps.md](./plans/next-steps.md) — waits for: each item's own condition.

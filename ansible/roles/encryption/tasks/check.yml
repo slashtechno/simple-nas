@@ -34,3 +34,10 @@
   loop: "{{ encrypted_pairs | product(encryption_needed_paths) | list }}"
   loop_control:
     label: "{{ item.0.mount }} / {{ item.1 }}"
+
+# One line in authorized_keys: a second line could add a key with no restriction.
+- name: Check the unlock page key is one public key
+  ansible.builtin.assert:
+    that: unlock_page_public_key | length == 0 or (unlock_page_public_key is match('(ssh|ecdsa|sk)-[^\\n]*$') and '\n' not in unlock_page_public_key)
+    fail_msg: "unlock_page_public_key must be one public key line, such as 'ssh-ed25519 AAAA... unlock-page'."
+    quiet: true

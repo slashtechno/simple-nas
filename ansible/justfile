@@ -23,7 +23,7 @@ deps:
 _lint:
     uvx {{ ansible_lint }}
     uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
-    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files tools/edit.py
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files ../unlock-page tools/edit.py
 
 # Both playbooks parse
 _syntax:
@@ -95,3 +95,15 @@ edit *args:
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
 preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
+
+# Unlock a host's encrypted folders over SSH; it asks for the passphrase here: `just unlock pinas` (docs/encryption.md)
+unlock host:
+    ssh -t "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh
+
+# Show which encrypted folders are locked and which containers wait for them: `just encryption-status pinas`
+encryption-status host:
+    ssh "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh --status
+
+# Prints user@address for a host, from the inventory (the same ones `deploy` uses).
+_ssh_target host:
+    @ansible-inventory --host {{ host }} --vault-password-file .vault-pass | python3 -c 'import json, sys; h = json.load(sys.stdin); print(h["ansible_user"] + "@" + h.get("ansible_host", "{{ host }}"))'

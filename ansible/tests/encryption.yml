@@ -15,17 +15,20 @@
       loop:
         - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/derived.yml"
+        - "{{ repo }}/roles/encryption/defaults/main.yml"
 
     - name: A good list passes
       ansible.builtin.include_tasks: ../roles/encryption/tasks/check.yml
       vars:
         encrypted_folders: [/mnt/data/photos/, /mnt/data/appdata]
+        unlock_page_public_key: ssh-ed25519 AAAAC3Nza unlock-page
 
     - name: A bad list is refused, and the message names the problem
       ansible.builtin.include_tasks: expect_encryption_failure.yml
       vars:
         encrypted_folders: "{{ case.folders }}"
         docker_data_root: "{{ case.docker_data_root | default('') }}"
+        unlock_page_public_key: "{{ case.key | default('') }}"
         expect: "{{ case.expect }}"
       loop:
         - {folders: [photos], expect: must be an absolute path}
@@ -37,6 +40,8 @@
         - {folders: [/home], expect: /home/pi}
         - {folders: [/var], expect: /var/lib}
         - {folders: [/mnt/docker], docker_data_root: /mnt/docker/data, expect: /mnt/docker/data}
+        - {folders: [/mnt/data/photos], key: "not a key", expect: unlock_page_public_key}
+        - {folders: [/mnt/data/photos], key: "ssh-ed25519 AAAA x\nssh-ed25519 BBBB y", expect: unlock_page_public_key}
       loop_control:
         loop_var: case
         label: "{{ case.folders }}"

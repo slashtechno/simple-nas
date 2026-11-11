@@ -21,6 +21,7 @@ for name in $names; do
 
   hit=0
   while IFS= read -r source; do
+    [ -n "$source" ] || continue   # docker inspect ends its output with an empty line, which would match everything
     for folder in "$@"; do
       case "$source/" in "$folder/"*) hit=1 ;; esac   # the mount is the folder or inside it
       case "$folder/" in "$source/"*) hit=1 ;; esac   # the mount is above the folder

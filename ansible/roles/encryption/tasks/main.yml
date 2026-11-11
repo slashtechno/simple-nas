@@ -1,6 +1,6 @@
 ---
 # Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
-# (init-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
+# (setup-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
 # tools and both scripts. With no encrypted folder it removes the scripts again (remove.yml).
 - name: Check the encrypted folders
   ansible.builtin.import_tasks: check.yml
@@ -22,7 +22,7 @@
     owner: root
     group: root
     mode: "0750"
-  loop: [unlock.sh, init-encrypted-folder.sh]
+  loop: [unlock.sh, setup-encrypted-folder.sh]
   when: encrypted_folders | length > 0
 
 - name: Create the after-unlock scripts directory
@@ -41,6 +41,16 @@
     owner: root
     group: root
     mode: "0755"
+  when: encrypted_folders | length > 0
+
+# `restrict` turns off port and agent forwarding and the terminal; `command=` replaces whatever the client asks to run.
+# The ansible user has passwordless sudo, so without the forced command this key would be root. An empty setting removes it.
+- name: Allow the unlock page's SSH key to run unlock.sh and nothing else
+  ansible.builtin.lineinfile:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    regexp: "{{ ('command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\"') | regex_escape }}"
+    line: restrict,command="sudo {{ scripts_dir }}/unlock.sh" {{ unlock_page_public_key }}
+    state: "{{ 'present' if unlock_page_public_key | length > 0 else 'absent' }}"
   when: encrypted_folders | length > 0
 
 - name: Remove the encryption scripts when no folder is listed

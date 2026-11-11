@@ -1,0 +1,91 @@
+#!/bin/bash
+# Ansible-managed (roles/encryption). Encrypts one folder from encrypted_folders, existing data included:
+#   sudo {{ scripts_dir }}/setup-encrypted-folder.sh <folder>
+# Run it in a terminal (ssh -t). Stop the containers that use the folder first. If it stops half way (a lost connection),
+# run the same command again: every step checks what is already done. Then see docs/encryption.md#set-up-a-folder.
+set -euo pipefail
+
+FOLDER="${1:?Usage: $0 <folder from encrypted_folders>}"
+case "${FOLDER%/}" in
+{% for folder in encrypted_pairs %}
+  {{ folder.mount | quote }}) FOLDER={{ folder.mount | quote }}; CIPHER={{ folder.cipher | quote }} ;;
+{% endfor %}
+  *) echo "ERROR: $FOLDER is not in encrypted_folders. Add it there and deploy encryption first." >&2; exit 1 ;;
+esac
+PLAIN="$FOLDER.plain"          # where the existing files wait while they move in
+SUMS="$FOLDER.plain.sha256"    # their checksums, taken before the move
+
+[ -t 0 ] || { echo "ERROR: run this in a terminal (ssh -t <host> sudo ...): it asks for the passphrase and shows the master key." >&2; exit 1; }
+
+# A container that has the folder open keeps the old files. Stop it first: it would see the folder empty after the mount.
+if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
+  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER")
+  if [ -n "$BUSY" ]; then
+    echo "ERROR: stop these containers first (docker stop <name>):" >&2
+    echo "$BUSY" >&2
+    exit 1
+  fi
+fi
+
+# Asked once and used for every step, so it is never typed twice. A new folder asks twice, to catch a typing mistake.
+IFS= read -rsp "gocryptfs passphrase: " PASS; echo
+[ -n "$PASS" ] || { echo "ERROR: no passphrase given." >&2; exit 1; }
+if [ ! -e "$CIPHER" ]; then
+  IFS= read -rsp "Again: " AGAIN; echo
+  [ "$PASS" = "$AGAIN" ] || { echo "ERROR: the two passphrases differ." >&2; exit 1; }
+fi
+
+# 1. Create the encrypted files. Existing files move aside (a rename, so it is instant) and the folder takes their owner.
+if [ ! -e "$CIPHER" ]; then
+  if [ -n "$(ls -A "$FOLDER" 2>/dev/null)" ]; then
+    [ ! -e "$PLAIN" ] || { echo "ERROR: $FOLDER and $PLAIN both exist. Move one away." >&2; exit 1; }
+    echo "Taking checksums of $FOLDER (this reads every file once)"
+    (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"
+    mv "$FOLDER" "$PLAIN"
+    mkdir "$FOLDER"
+    chown --reference="$PLAIN" "$FOLDER"
+    chmod --reference="$PLAIN" "$FOLDER"
+  else
+    mkdir -p "$FOLDER"
+  fi
+  # The cipher cannot be changed later. A CPU with AES instructions is fastest with the default (AES-GCM);
+  # one without (a Raspberry Pi 4, for example) is faster with XChaCha20, which needs gocryptfs 2.2 or later.
+  if grep -qw aes /proc/cpuinfo; then CIPHER_OPTION=""; else CIPHER_OPTION="-xchacha"; fi
+  mkdir "$CIPHER"
+  # The mounted folder's top directory shows the cipher folder's owner and mode, so copy them from the folder.
+  chown --reference="$FOLDER" "$CIPHER"
+  chmod --reference="$FOLDER" "$CIPHER"
+  # shellcheck disable=SC2086  # CIPHER_OPTION is empty or one option
+  printf '%s\n%s\n' "$PASS" "$PASS" | gocryptfs -init $CIPHER_OPTION "$CIPHER"
+  echo
+  echo "SAVE THE MASTER KEY above in your password manager now, with the cipher option: ${CIPHER_OPTION:-none (AES-GCM)}."
+  echo "Rebuilding gocryptfs.conf from the master key needs the same option. Copy $CIPHER/gocryptfs.conf off this host too."
+fi
+
+# 2. Mount it. unlock.sh gives gocryptfs.conf to the ansible user and runs the after-unlock scripts.
+if ! mountpoint -q "$FOLDER/."; then
+  printf '%s' "$PASS" | {{ (scripts_dir ~ '/unlock.sh') | quote }}
+fi
+mountpoint -q "$FOLDER/." || { echo "ERROR: $FOLDER is not mounted." >&2; exit 1; }
+
+# 3. Move the files in, then compare checksums. --remove-source-files means no second copy of the data is needed,
+# and the same command finishes an interrupted move. --inplace leaves no hidden temporary file behind when it is cut off.
+# The checksums were taken before the move.
+if [ -d "$PLAIN" ]; then
+  echo "Moving the files into $FOLDER"
+  rsync -aHAX --inplace --remove-source-files "$PLAIN/" "$FOLDER/"
+  echo "Comparing checksums"
+  if ! diff "$SUMS" <(cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) >/dev/null; then
+    echo "ERROR: the files in $FOLDER do not match the checksums in $SUMS. Nothing is deleted. Run this again, or look at the difference with diff." >&2
+    exit 1
+  fi
+  # Only empty folders are left in $PLAIN. Anything else (a file rsync could not move) stays for you to look at.
+  find "$PLAIN" -depth -type d -empty -delete
+  if [ -d "$PLAIN" ]; then
+    echo "WARNING: $PLAIN still holds files the move did not take. Look at them, then delete them yourself." >&2
+  else
+    rm -f "$SUMS"
+  fi
+fi
+
+echo "$FOLDER is encrypted and unlocked. Start the containers that use it."

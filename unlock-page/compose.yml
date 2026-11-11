@@ -1,0 +1,12 @@
+# The page, as a plain compose file: `docker compose up -d --build`, or paste it into Dockge. README.md lists the files.
+services:
+  unlock-page:
+    build: .
+    restart: unless-stopped
+    environment:
+      UNLOCK_HOSTS: pi4=user@pi4.example.ts.net,pinas=user@pinas.example.ts.net
+      UNLOCK_PASSWORD_HASH: "scrypt$$..."   # python3 app.py hash (write each $ twice in a compose file)
+    volumes:
+      - ./secrets:/run/unlock:ro            # ssh_key, known_hosts, passphrase
+    ports:
+      - "8080:8080"

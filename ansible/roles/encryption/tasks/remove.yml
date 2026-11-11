@@ -8,7 +8,7 @@
     state: absent
   loop:
     - "{{ scripts_dir }}/unlock.sh"
-    - "{{ scripts_dir }}/init-encrypted-folder.sh"
+    - "{{ scripts_dir }}/setup-encrypted-folder.sh"
     - "{{ encryption_hooks_dir }}/00-containers.sh"
 
 # rmdir only succeeds when the directory is empty.
@@ -18,3 +18,9 @@
   register: encryption_rmdir
   changed_when: encryption_rmdir.rc == 0
   failed_when: false   # a directory with your own scripts, or a missing one, is fine
+
+- name: Remove the unlock page's SSH key
+  ansible.builtin.lineinfile:
+    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+    regexp: "{{ ('command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\"') | regex_escape }}"
+    state: absent

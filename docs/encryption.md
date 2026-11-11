@@ -5,6 +5,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 | I want to | Go to |
 |---|---|
 | Unlock after a reboot | [Unlocking](#unlocking) |
+| Unlock from a browser | [unlock-page/README.md](../unlock-page/README.md) |
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
 | Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
@@ -23,6 +24,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
 - A wrong passphrase stops it. A folder it cannot unlock (never set up, not empty: move the files away first) is reported, and the others still unlock.
+- From your computer: `just unlock <host>`, and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, encrypted services stay down and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
@@ -31,7 +33,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
 
-`init-encrypted-folder.sh` and `unlock.sh` run these commands and add checks: they refuse a non-empty folder and pick the cipher for you. A listed folder that stays locked still stops both backups.
+`setup-encrypted-folder.sh` and `unlock.sh` run these commands and add checks: they pick the cipher for you and move existing files in. A listed folder that stays locked still stops both backups.
 
 Create (in a terminal: the passphrase prompt and the one-time master key need one):
 
@@ -108,31 +110,28 @@ Use a long random passphrase from a password manager. It is the weak point, not 
 
 ## Set up a folder
 
-Do this **before the service first starts**, or it writes plain files into the folder. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. Step 4 applies only to a folder that already holds data: run a backup first. Once you list the path, both backups refuse to run until you unlock it, and step 4 removes the source files as it goes.
+Do this **before the service first starts**, or it writes plain files into the folder. Run a backup first if the folder already holds data. Once you list a folder, both backups refuse to run until you unlock it.
 
 1. Add the paths to `encrypted_folders` ([which folders](#which-folders-to-list)) and run `just deploy encryption,backup --limit <host>`.
-2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one, in a terminal (it prints the master key only there. From your computer use `ssh -t <host> sudo ...`):
+2. Stop the containers that use the folder (`docker stop <name>`). The script lists any that are still running.
+3. Run the script for each folder, in a terminal (`ssh -t <host>`). It asks for the passphrase and shows the master key only in a terminal:
 
    ```bash
-   sudo mv /mnt/data/photos /mnt/data/photos.plain      # skip if the folder does not exist yet
-   sudo /opt/services/scripts/init-encrypted-folder.sh /mnt/data/photos
-   sudo /opt/services/scripts/unlock.sh
+   sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/data/photos
    ```
 
-3. **Save the master key and the cipher option** the script prints in your password manager. If the script stops after creating the `.gocryptfs` folder, remove that empty folder with `sudo rmdir` and run it again. A copy of each `gocryptfs.conf` off the host is cheap insurance.
-4. Move the data in, with a checksum comparison:
+   The script does these steps. Each one checks what is already done, so after a lost connection run the same command again.
+   - It takes checksums of the existing files, and renames the folder to `photos.plain`.
+   - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
+   - It moves the files in, compares checksums, and removes `photos.plain` when they match. It needs room for the largest file plus 1%, not a second copy.
+4. **Save the master key and the cipher option** the script printed in your password manager. A copy of each `gocryptfs.conf` off the host is cheap insurance.
+5. Start the containers. Until a folder is unlocked, every backup refuses to run, so do steps 3 to 5 in one sitting.
 
-   ```bash
-   cd /mnt/data/photos.plain && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/before.txt
-   sudo rsync -aHAX --remove-source-files /mnt/data/photos.plain/ /mnt/data/photos/
-   cd /mnt/data/photos && find . -type f -exec sha256sum {} + | sort -k2 > /tmp/after.txt
-   diff /tmp/before.txt /tmp/after.txt && echo identical
-   ```
+On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder, and use one passphrase for all folders.
 
-   You need room for the largest file plus 1%, not a second copy. Re-run the same `rsync` if it stops half way. A power cut can lose the file it is moving.
-5. When the lists match, `sudo rm -r /mnt/data/photos.plain` and start the service. Until `unlock.sh` mounts the folder, every backup refuses to run, so do this in one sitting.
+If the script reports a checksum mismatch it deletes nothing: the files stay in `photos.plain`. A power cut can lose the one file being moved.
 
-The mounted folder's top directory takes the owner and mode of the empty folder it came from (root's). A service running as another user needs it chowned **while unlocked**. A chown while locked is lost.
+A service that runs as another user needs the folder's owner changed **while unlocked**. A change while locked is lost.
 
 Removing files does not wipe them from a drive: re-format a drive that held plain data before it leaves your hands.
 
@@ -164,7 +163,7 @@ encrypted_folders:
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
 | An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
 
-The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. This is true with or without Tinyauth: with Tinyauth off, only the other rows apply. Details for the page: [unlock-page/README.md](../unlock-page/README.md).
+The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. This is true with or without Tinyauth: with Tinyauth off, only the other rows apply. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
 
 `vault_ntfy_token` goes to whatever server `ntfy_alert_url` names, so it suits an ntfy you run, not ntfy.sh.
 
@@ -224,7 +223,7 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 - **Passphrase.** What you type. It only *locks* the master key, so changing it is instant: nothing is re-encrypted.
 - **Salt and scrypt.** gocryptfs turns the passphrase into the lock key with scrypt, which is deliberately slow, so each guess costs an attacker time. The salt stops an attacker from precomputing lock keys. Both are automatic.
 - **`gocryptfs.conf`.** In each `.gocryptfs` folder: the master key locked under the passphrase, plus the salt, scrypt settings and cipher. It is not secret alone, but without it nothing opens. The backups keep a copy.
-- **Master key printout.** `init-encrypted-folder.sh` prints the master key once. Keep it in a password manager: with it and the ciphertext, anyone can read the files.
+- **Master key printout.** `setup-encrypted-folder.sh` prints the master key once. Keep it in a password manager: with it and the ciphertext, anyone can read the files.
 
 ```
 passphrase + salt ──scrypt──▶ lock key
