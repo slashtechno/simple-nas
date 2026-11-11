@@ -11,7 +11,7 @@ Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs
 | All drives gone | [Disaster recovery](#disaster-recovery-all-drives-fail) |
 | Backups fail or the backup drive dropped out | [If the backup drive disconnects](#if-the-backup-drive-disconnects), [Checking backup status](#checking-backup-status) |
 | Drive will not mount | [storage.md](./storage.md#a-drive-that-will-not-mount) |
-| Lost the vault password | Nothing opens a repository without `vault_restic_password`: [Disaster recovery](#disaster-recovery-all-drives-fail) step 1 |
+| Lost the vault password | Nothing opens a repository without `vault_restic_password`, so those backups cannot be read. Make a new repository ([switching backups on](#switching-backups-on)) and keep the password in a password manager this time |
 
 ## Switching backups on
 
@@ -87,7 +87,7 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`): `resti
 
 The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager.
 
-- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`, so moving a service to a drive without a role cannot silently drop it from the backup. Encrypted folders are checked too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
+- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`, so moving a service to a drive without a role cannot silently drop it from the backup (the one exception is Immich's raw Postgres directory, which is dumped instead). Encrypted folders are checked too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
 - **Not enforced (offsite):** the offsite list is short on purpose; with the cloud backup on, each deploy prints the data it leaves out.
 - **Dumps:** one script per service with a live database (`roles/<service>/files/dump.sh` for Immich, Gitea, Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's), its files starting with `<service>-`; for software this repo does not run, put an executable `<name>.sh` in `service_dump_scripts_dir` by hand.
 

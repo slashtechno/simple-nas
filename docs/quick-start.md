@@ -13,7 +13,7 @@ Each step links to the doc that explains it.
 
 ## 1. Install and add the host
 
-Follow steps 1 to 4 of [Add a host](../ansible/README.md#add-a-host): install the tools, add the host to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname).
+Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), then follow steps 1 to 3 of [Add a host](../ansible/README.md#add-a-host): check the host, add it to `inventory/hosts.yml`, then `just setup home` ("home" is the host's nickname). Stop before its step 4: the first deploy comes in step 3 below.
 
 ## 2. Fill in your values
 

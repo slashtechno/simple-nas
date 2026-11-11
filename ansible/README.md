@@ -20,7 +20,8 @@ All commands run from `ansible/`.
 | Add or change a secret | `just edit vault` | `just deploy <tag>` |
 | Update a service's image | its line in `versions.yml` ([how](#update-service-images)) | `just preview <tag>`, then `just deploy <tag>` |
 | Update the OS, Docker or Tailscale | nothing | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
-| Add a drive, replace one, or move a service's data | [docs/storage.md](../docs/storage.md) | `just deploy storage --limit <host>` |
+| Add or replace a drive | [docs/storage.md](../docs/storage.md#adding-replacing-or-retiring-a-drive) | `just deploy storage --limit <host>` |
+| Move one service's data to another drive | [docs/storage.md](../docs/storage.md#move-one-services-data) | `just deploy <service> --limit <host>` |
 | Add a host, or run several | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Move a working host to new hardware | [move a host](#move-a-working-host-to-new-hardware) | `just deploy '' --limit <host> -K` |
 | Give services `https://` names, or change a port | `caddy_private_domains`, `<name>_subdomain`, `<name>_port` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>` and the service's tag |
@@ -84,6 +85,8 @@ cd ansible/
 just deps
 ```
 
+Install Ansible with brew or the `ansible` package from pip (not `ansible-core`): the package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords.
+
 Then create the files in the table above and [add each host](#add-a-host). The first deploy to a host needs its sudo password once (`-K`); the sudoers file `common` installs makes `-K` unnecessary afterwards.
 
 ## Add a host
@@ -105,8 +108,8 @@ The same steps add a second or third host: each has its own `host_vars/<host>/` 
 
 The old host keeps running until the new one is checked.
 
-1. Add the new host as above under a new key, with the same `drives` and flags (copy `host_vars/<old>/` and adjust).
-2. Plug in the data drives, or restore onto new ones ([backups.md](../docs/backups.md#restore-files)). A drive holds a service's data wherever it is plugged in: move one drive at a time and check the service.
+1. Add the new host as above under a new key, with the same `drives` and flags: copy the whole `host_vars/<old>/` directory, `vault.yml` included, and adjust. Do not run `just setup` for it: it would write new random database passwords that do not match the data you restore.
+2. Plug in the data drives, or restore onto new ones ([backups.md](../docs/backups.md#restore-files)). A drive holds a service's data wherever it is plugged in: [detach](../docs/storage.md#detach-a-drive) it from the old host first, and move one drive at a time.
 3. Deploy the new host, then check each service with its flag on.
 4. Move public names last: a hostname may appear in only one host's `cloudflared_ingress`, so take it out of the old host and deploy both.
 5. Retire the old host: flags to `false`, then [teardown](#disable-or-remove-a-service).

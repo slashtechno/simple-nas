@@ -51,7 +51,8 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | [docs/caddy-reference.md](./docs/caddy-reference.md) | Caddy: names, ports, HTTPS, label syntax |
 | [docs/auth-reference.md](./docs/auth-reference.md) | Tinyauth: users, 2FA, sign in with GitHub or Google, OIDC |
 | [TODO.md](./TODO.md) | The owner's list of work waiting on time or hardware |
+| `.github/workflows/` | CI: runs `just check` on every push |
 | `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service; shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)); the render test |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
-Plans for work not finished are in `plans/`; research notes are in `docs/research/`. Both say at the top that they are not kept current. Everything else under `docs/` describes how the repo works.
+Plans for work not finished are in `plans/`; they say at the top that they are not kept current. Everything else under `docs/` describes how the repo works.

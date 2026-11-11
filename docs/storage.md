@@ -106,7 +106,7 @@ For a drive new to the host, before it goes in `drives`. Run on the host.
 
 1. Prepare the drive ([above](#preparing-a-drive); a drive bought as exFAT or NTFS will not mount until formatted ext4). Add or point a `drives` entry at it: a new `uuid`, on the same or a new `mount`, with `roles` updated. If the mount point stays, [detach the old drive](#detach-a-drive) first.
 2. `just deploy storage --limit <host>`.
-3. Copy the data over, for example `rsync -aHAX`.
+3. Copy the data over, for example `rsync -aHAX`, with the services using it stopped (a database copied while running is corrupt). If the old drive died, restore from a backup instead ([backups.md](./backups.md#restore-files)).
 4. Recreate the containers that bind the drive: a container keeps its old mount until recreated, and a deploy does not recreate one whose compose file and image are unchanged. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
 
 To retire a drive, delete its entry. The role never removes an fstab line: delete it by hand and `sudo umount` the drive.
@@ -131,7 +131,7 @@ Each service's data directories are settings in `group_vars/all/defaults-data-di
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive with a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. `cd /opt/services/<service> && docker compose down`.
 3. `rsync -aHAX <old path>/ <new path>/`.
-4. `just deploy <service> --limit <host>`, check it works, then delete the old copy by hand.
+4. `just deploy <service> --limit <host>` (not `storage`), check it works, then delete the old copy by hand.
 
 ## A drive that will not mount
 
@@ -185,7 +185,7 @@ Set `usb_automount_enabled: true` in the host's `host_vars` (off by default) and
 - **Read-only** unless `usb_automount_writable: true`; nothing on it can run (`nosuid,nodev,noexec`). Writable drives are checked first (`fsck -y`, which repairs) and appear when the check ends.
 - **Unmount before unplugging**, or a writable drive can corrupt: `sudo systemctl stop 'run-media-system-<label>.mount'` (`systemctl list-units 'run-media-*'` shows the name), then power off as in [Detach a drive](#detach-a-drive) step 4.
 - Copyparty runs as root, so files it creates on ext4 belong to root; exFAT, FAT and NTFS store no owners.
-- Drives listed in `drives` never appear here. On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts them.
+- Drives listed in `drives` never appear here; a wrong `uuid` there means that drive is also mounted a second time. On a desktop OS (Ubuntu Desktop) keep it off: the desktop's own automounter also mounts them.
 
 ## Docker's own storage
 
