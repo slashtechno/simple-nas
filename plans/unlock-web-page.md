@@ -7,16 +7,16 @@ A page you open in any browser and type the gocryptfs passphrase into; it runs `
 ## Design
 
 - **Page:** one Go function in a Vercel project of its own (it is not Ansible-deployed). `GET` serves a form, `POST` does the work. No session, cookie or auth library.
-- **Login:** the form has two fields, the page password and the gocryptfs passphrase, sent in one `POST`. The function compares the password with a hash held in an environment variable (constant-time compare). A password needs no database, and it works from a browser you do not control. Passkeys can be added later but are never the only route.
+- **Login:** the form has one field, the page password. The function compares it with a hash held in an environment variable (constant-time compare). A password needs no database, and it works from a browser you do not control. Passkeys can be added later but are never the only route.
 - **Reach:** the function joins the tailnet as an ephemeral, tagged node with Tailscale's `tsnet` (userspace networking, no tun device), SSHes to the host and runs the unlock command. No port on the host is open to the internet; the only public surface is the page.
-- **Passphrase:** held in the function's memory while it runs. After using an untrusted browser, change the gocryptfs passphrase (`gocryptfs -passwd`, [encryption.md](../docs/encryption.md)) and the page password.
-- **Guessing:** each attempt is slow (a tailnet join plus scrypt), and a leaked page password lets someone trigger unlock attempts and nothing else, because of the forced command below.
+- **Passphrase:** an environment variable of the Vercel project. The browser never sees it and nobody types it. Its secrecy is the Vercel account's: turn on two-factor sign-in and keep the project's members to the owner. A leaked Vercel environment plus a stolen drive opens the data, so the passphrase must be long and random and used nowhere else.
+- **A captured page password** (a keylogger on a browser you do not control) lets someone trigger an unlock, and an unlock helps only if they can also bring a stolen host back onto the tailnet. If the host is stolen, remove it from the tailnet and take the function down. After a browser you do not trust, changing the page password is optional hygiene. Each guess is slow (a tailnet join plus scrypt), and the forced command below means a leaked password can trigger unlock attempts and nothing else.
 
 ## Limits to build in
 
 - **Tailnet key:** reusable, ephemeral and tagged, with an ACL that lets the tag reach only port 22 of the hosts. It expires after at most 90 days: rotate it by hand within that time.
 - **SSH key on the host:** in `authorized_keys` as `restrict,command="sudo /opt/services/scripts/unlock.sh"` (Ansible's `authorized_key` takes `key_options`). The ansible user has passwordless sudo, so without the forced command a stolen key is root.
-- **A daily self-test, so the page works on the day it is needed.** A scheduled job runs the same command with empty input. On an unlocked host it prints "Already unlocked." and exits 0; on a locked host it prints "no passphrase given" and exits 1. Either result proves the whole path works. A connection failure means the key or the route broke, and the job alerts. It also reports a locked host.
+- **A daily self-test, so the page works on the day it is needed.** A scheduled job runs the same command with empty input, never the passphrase: sending it would unlock any host that boots on the tailnet without anyone asking. On an unlocked host it prints "Already unlocked." and exits 0; on a locked host it prints "no passphrase given" and exits 1. Either result proves the whole path works. A connection failure means the key or the route broke, and the job alerts. It also reports a locked host.
 - A Tailscale OAuth client (`auth_keys` scope, never expires) can mint a key on each request instead of rotating by hand; use it if rotation becomes a chore.
 
 ## Verify before building
