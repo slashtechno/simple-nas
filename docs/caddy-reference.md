@@ -13,13 +13,11 @@ The optional reverse proxy (`caddy_enabled`). It watches Docker: a container's *
 
 ## What `roles/caddy` deploys
 
-Runs on any host that sets `caddy_enabled: true`.
-
 - **Needs:** the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet.
-- **Image:** built on the host from `roles/caddy/files/Dockerfile` (versions in `versions.yml`). The first build compiles Caddy and takes 20+ minutes on a small host.
+- **Image:** built on the host from `roles/caddy/files/Dockerfile` (`caddy_version`, `caddy_docker_proxy_version` and `caddy_cloudflare_dns_version` in `versions.yml`). The first build compiles Caddy and takes 20+ minutes on a small host.
 - **Listens** on ports 80 and 443 of the host. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
-- **Data:** `caddy_data_dir`. Losing it means certificates are issued again.
-- **Joins** the `services` network (created by `roles/network` on every host) and mounts the Docker socket. The compose file is `roles/caddy/templates/docker-compose.yml.j2`.
+- **Data:** `caddy_data_dir` (`defaults-data-dirs.yml`). Losing it means certificates are issued again.
+- **Joins** the `services` network (created by `roles/network` on every host) and mounts the Docker socket; `CADDY_INGRESS_NETWORKS` in its compose file names the network it watches. The compose file is `roles/caddy/templates/docker-compose.yml.j2`.
 
 ## Web addresses and HTTPS
 
@@ -40,8 +38,8 @@ caddy_private_domains: [<host>.example.com]
 
 - **Cloudflare:** the domain must equal, or be a subdomain of, one domain in `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
 - **DNS:** a deploy keeps two DNS-only records, `<host>.example.com` and `*.<host>.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
-- **Certificates:** one wildcard certificate per private domain from Let's Encrypt through the Cloudflare DNS challenge, so no port is opened.
-- **Port 443:** Caddy needs it on the host. A host that serves on 443 through `tailscale serve` needs `sudo tailscale serve reset` first.
+- **Certificates:** one wildcard certificate per private domain from Let's Encrypt through the Cloudflare DNS challenge, so no router port is opened.
+- **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - **Public names** are not this: they are `cloudflared_ingress` entries, and Cloudflare serves their certificate. For a service behind the login: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet).
 
 <details>
@@ -138,14 +136,14 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 
 ## Gotchas for this repo
 
-- **A name does not work.** Read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
+- **First step when a name does not work:** read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
 - **Shared network.** A stack must declare the external `services` network and join it; a container not on it is invisible to `{{upstreams}}`.
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
 - **TLS.** Behind cloudflared, use an `http://` site address ([With cloudflared](#with-cloudflared)). Names under a `caddy_private_domains` entry get a certificate automatically; for any other name use `tls internal` unless the Cloudflare token covers its zone.
 - **Docker socket.** Caddy mounts it ([glossary](./glossary.md#drives-and-docker)), so anything that can set labels on a container can publish a route.
 
 <details>
-<summary>Proxy headers, <code>caddy_sites</code> values, modes</summary>
+<summary>Proxy headers, <code>caddy_sites</code> values, TLS, modes</summary>
 
 - **Apps that trust proxy headers.** Caddy sends `X-Forwarded-For`, `-Proto` and `-Host`. An app that rejects requests unless it reads them (Copyparty's `rproxy` and `xff-src` in `roles/copyparty/templates/copyparty.conf.j2`) must be told to trust the proxy's network.
 - **`caddy_sites` values.** Each directive becomes a label `caddy_N.<directive>`, so a value is one string and a dot in the key nests (`header.X-Frame-Options`); `{uri}` takes single braces, and a `$` is written `$$` (Compose reads it first).

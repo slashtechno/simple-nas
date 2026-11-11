@@ -44,10 +44,10 @@ nmcli device wifi list         # networks the Pi can see right now
 <summary>What <code>roles/network</code> does</summary>
 
 - Creates the shared Docker network `docker_network` (`services`) on every host.
-- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init (which configures a machine at first boot) cannot rewrite the network config later.
+- If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`), so cloud-init (which configures a machine at first boot; Raspberry Pi Imager and Ubuntu's Raspberry Pi images use it) cannot rewrite the network config later.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- The direct link uses whichever network stack the host runs. With NetworkManager (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link` with a higher autoconnect priority than the installer's. Without it (Ubuntu Server, netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, and the deploy runs `netplan apply`. A host with neither stops with a message.
+- The direct link uses whichever network stack the host runs. With NetworkManager (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link` with a higher autoconnect priority than the installer's. Without it (Ubuntu Server, netplan with systemd-networkd) it is `/etc/netplan/60-direct-link.yaml`, which overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply`. A host with neither stops with a message.
 
 </details>
 
@@ -71,4 +71,4 @@ Cable the Pi's idle Ethernet port straight to a laptop for fast transfers (about
 2. Plug the cable into the Pi and the laptop. The laptop picks up its address automatically.
 3. Open `https://10.10.20.1:3923` for Copyparty. Copyparty makes its own self-signed certificate and serves it on the same port as plain http, so the browser warns once; `http://` on that port works too.
 
-The link has no route to the internet (DHCP only, no gateway), and `10.10.20.0/30` is too small to overlap common VPN or home-router ranges.
+The link has no route to the internet: `dnsmasq` hands out DHCP only (no DNS, no gateway). `10.10.20.0/30` does not overlap common VPN or home-router ranges such as `10.8.0.0/24` or `192.168.1.0/24`.

@@ -42,7 +42,7 @@ Raspberry Pi firmware starts the kernel with the memory cgroup off (it adds `cgr
 
 - **Which tool:** Raspberry Pi OS sizes zram through `rpi-swap` (drop-in in `/etc/rpi/swap.conf.d/`); other hosts get `systemd-zram-generator` (drop-in in `/etc/systemd/zram-generator.conf.d/`). Teardown removes the drop-in.
 - **Cost:** zram keeps compressed pages in RAM, so a full device uses a fraction of its size in memory (the `COMPR` column of `zramctl`). Poorly compressible data costs more.
-- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` lets `rpi-swap` move idle pages to `/var/swap` on the root drive (up to 2 GiB), at a few writes a day. `false` keeps everything in RAM. Options: `man swap.conf`.
+- **Writeback (Raspberry Pi OS):** `zram_writeback_enabled` (default on) lets `rpi-swap` move idle pages to `/var/swap` on the root drive (up to 2 GiB), at a few writes a day. `false` keeps everything in RAM and `rpi-swap` deletes that file. Options: `man swap.conf`.
 
 </details>
 

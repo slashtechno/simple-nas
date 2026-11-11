@@ -29,7 +29,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
 
-The scripts run a few gocryptfs commands and add checks. For a folder in `encrypted_folders` the backups still guard and skip it while it is locked.
+`init-encrypted-folder.sh` and `unlock.sh` run these commands and add checks (a non-empty folder is refused, the cipher is picked for you). A listed folder that is locked still stops both backups.
 
 Create (in a terminal: the passphrase prompt and the one-time master key need one):
 
@@ -41,7 +41,7 @@ sudo chmod --reference=/mnt/data/photos /mnt/data/.photos.gocryptfs
 sudo gocryptfs -init -xchacha /mnt/data/.photos.gocryptfs   # drop -xchacha if `grep -w aes /proc/cpuinfo` prints anything
 ```
 
-`--reference=FILE` copies the owner or mode of FILE, so the mounted folder gets the owner you gave the plain one. The script also refuses to overwrite an existing folder and picks the cipher for you.
+`--reference=FILE` copies the owner or mode of FILE, so the mounted folder gets the owner you gave the plain one.
 
 Unlock:
 
@@ -82,11 +82,11 @@ Try each on a scratch mount: `gocryptfs -ro [-xchacha] -masterkey=stdin <the .go
 
 Use a long random passphrase from a password manager; it is the weak point, not the 256-bit cipher.
 
-**After typing the passphrase on a device you do not trust:** run `sudo gocryptfs -passwd <the .gocryptfs folder>` for every folder, then `sudo unlock.sh` (it gives the rewritten `gocryptfs.conf` to the ansible user so backups can read it), then run a backup (older snapshots hold the old passphrase). This does not re-encrypt data, so it helps only if nobody copied the conf.
+**After typing the passphrase on a device you do not trust:** run `sudo gocryptfs -passwd <the .gocryptfs folder>` for every folder, then `sudo /opt/services/scripts/unlock.sh` (it gives the rewritten `gocryptfs.conf` to the ansible user so backups can read it), then run a backup (older snapshots hold the old passphrase). This does not re-encrypt data, so it helps only if nobody copied the conf.
 
 ## Set up a folder
 
-Do this **before the service first starts**, or it writes plain files into the folder. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. If the folder already holds data, run a backup first: once the path is listed, both backups refuse to run until it is unlocked, and step 4 deletes the source files as it goes.
+Do this **before the service first starts**, or it writes plain files into the folder. On a new host: `just deploy storage,common --limit <host>`, then steps 1 to 5 for each folder (one shared passphrase), then deploy everything. Step 4 applies only to a folder that already holds data: run a backup first, because once the path is listed both backups refuse to run until it is unlocked, and step 4 deletes the source files as it goes.
 
 1. Add the paths to `encrypted_folders` ([which folders](#which-folders-to-list)) and run `just deploy encryption,backup --limit <host>`.
 2. Stop the service that uses the folder until step 5. Rename a folder that holds data, then create the encrypted one, in a terminal (it prints the master key only there; from your computer use `ssh -t <host> sudo ...`):
@@ -110,7 +110,9 @@ Do this **before the service first starts**, or it writes plain files into the f
    You need room for the largest file plus 1%, not a second copy. Re-run the same `rsync` if it stops half way; a power cut can lose the file being moved.
 5. When the lists match, `sudo rm -r /mnt/data/photos.plain` and start the service. Until `unlock.sh` has mounted the folder every backup refuses to run, so do this in one sitting.
 
-The mounted folder's top directory takes the owner and mode of the empty folder it was created from (root's). A service running as another user needs it chowned **while unlocked**; a chown while locked is lost. Deleting files does not erase them from a drive: re-format a drive that held plain data before it leaves your hands.
+The mounted folder's top directory takes the owner and mode of the empty folder it was created from (root's). A service running as another user needs it chowned **while unlocked**; a chown while locked is lost.
+
+Deleting files does not erase them from a drive: re-format a drive that held plain data before it leaves your hands.
 
 ### Which folders to list
 
@@ -159,11 +161,13 @@ The role removes the scripts when no folder is left; gocryptfs stays installed. 
 
 ## Dumps and backups
 
-- **Dumps:** `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir` (`<backup drive>/service-dumps`). Nothing encrypts it unless you list it, so until then anyone holding the backup drive can read Immich's database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and `restic_local_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where) checks every listed folder is covered).
+- **Dumps:** `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir` (`<backup drive>/service-dumps`, or on the root drive for a host with no local backup). Nothing encrypts it unless you list it, so until then anyone holding that drive can read Immich's database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and `restic_local_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where) checks every listed folder is covered).
 - **Backups:** both scripts refuse to run while any listed folder is locked. restic reads the folder through the mount (decrypted) and encrypts it with `vault_restic_password`. The ciphertext is left out of every backup (it would be stored twice), but each folder's `gocryptfs.conf` is kept, so it restores with the data.
-- **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder.
+- **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder ([backups.md](./backups.md)).
 
 ## How it works
+
+Each listed folder is a live decrypted view; the ciphertext sits beside it in a hidden `.<name>.gocryptfs` folder on the same drive.
 
 <details>
 <summary>Folders, scripts, cipher and Docker (what to know before changing anything)</summary>
@@ -172,9 +176,9 @@ Each entry in `encrypted_folders` is the path of one folder. The ciphertext sits
 
 - **Locked folder:** an empty folder marked immutable (`chattr +i`), so a container or deploy that runs too early fails with "Operation not permitted" instead of filling the drive. It needs ext4, xfs or btrfs (elsewhere `unlock.sh` warns and mounts anyway). Root can remove the flag: a safety net, not a security boundary.
 - **Containers do not wait:** one with data in a locked folder fails or sees an empty folder until `unlock.sh` restarts Docker, which stops every container while it restarts.
-- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order. Add your own to start other software. A failing script does not stop the others; the unlock then exits with an error.
+- **After-unlock scripts:** `unlock.sh` runs every `<name>.sh` in `after-unlock.d` (`encryption_hooks_dir`) as root, in name order; `00-docker.sh` (the Docker restart) comes first. Add your own to start other software. A failing script does not stop the others; the unlock then exits with an error.
 - **Docker's storage** (`docker_data_root`) cannot be in a listed folder (overlay2 does not run on FUSE); the deploy fails if it is. `sshd` and Tailscale run on the host, so you can still log in to unlock.
-- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. It is fixed at creation and recorded in the conf, so a folder opens on any CPU. Another machine needs gocryptfs 2.2+ for XChaCha20 (`brew install gocryptfs` and `brew install --cask macfuse`). `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20.
+- **Cipher:** AES-GCM when the CPU has AES instructions, XChaCha20 when not (a Raspberry Pi 4). Both are 256-bit. It is fixed at creation and recorded in the conf, so a folder opens on any CPU. Another machine needs gocryptfs 2.2+ for XChaCha20 (on a Mac: gocryptfs and macFUSE). `grep -c XChaCha20Poly1305 <the .gocryptfs folder>/gocryptfs.conf` prints 1 for XChaCha20.
 
 </details>
 
