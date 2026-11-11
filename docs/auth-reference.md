@@ -1,5 +1,15 @@
 # Login (Tinyauth) reference
 
+| I want to | Go to |
+|---|---|
+| Add a user, change a password | [Users and passwords](#users-and-passwords) |
+| Add a second factor | [Two-factor codes](#two-factor-codes-totp) |
+| Sign in with GitHub or Google | [GitHub, Google](#sign-in-with-github-google-or-another-openid-connect-provider) |
+| Log in to Gitea, Immich or pics with Tinyauth | [OIDC](#sign-in-with-tinyauth-oidc) |
+| Put my own app behind the login | [Protect an app](#protect-an-app-of-your-own) |
+| Limit a service to some users | [Who may use what](#who-may-use-what) |
+| Reach a protected service away from Tailscale | [From outside](#reach-a-protected-service-from-outside-the-tailnet) |
+
 Tinyauth is the login in front of the web services: what it does and how a service joins it is in [services.md](./services.md#tinyauth-login). This page is how to use it: users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale and sessions. Its own settings are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)); the role takes extra ones in `tinyauth_environment` (host `vars.yml`).
 
 ## Users and passwords
@@ -31,7 +41,7 @@ tinyauth_environment:
 
 - **Who may sign in.** A provider accepts any of its accounts, so the whitelists limit it by email: only the emails of the users in `vault_tinyauth_users` that have an `email:`, and a limited service lets in only the emails of the users `service_users` lists for it.
 - **The deploy stops** if no user has an email, if a listed user has none, or if `tinyauth_environment` sets a whitelist itself.
-- **Name the user after the GitHub login**, with your email: `{name: slashtechno, password: ..., email: you@example.com}` (lower-case letters, digits and `-`). Both logins then give apps the same name, so they see one person. If the names differ: [one person, several names](#one-person-several-names).
+- **Name the user after the GitHub login**, with your email: `{name: <github-login>, password: ..., email: you@example.com}` (lower-case letters, digits and `-`). Both logins then give apps the same name, so they see one person. If the names differ: [one person, several names](#one-person-several-names).
 - `google` is the same with `GOOGLE`, but Google gives the user name `you_example.com`, so name the user that to match. Another provider (Pocket ID, Authentik, Keycloak) is any other id plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
 ## Sign in with Tinyauth (OIDC)
@@ -72,7 +82,7 @@ For a Dockge stack or any container on the host. Needs `tinyauth_enabled`, Caddy
        image: traefik/whoami
        networks: [services]
        labels:
-         caddy: whoami.pi4.example.com             # under the first private domain
+         caddy: whoami.<host>.example.com             # under the first private domain
          caddy.import: tinyauth_forwarder          # the login
          caddy.reverse_proxy: "{{upstreams 80}}"
        # no ports: here
@@ -105,11 +115,11 @@ The login and its session cookie belong to the private domain. Tinyauth takes th
    ```yaml
    cloudflared_enabled: true
    cloudflared_ingress:
-     - {hostname: dockge.pi4.example.com, service: "http://caddy:80"}
-     - {hostname: auth.pi4.example.com, service: "http://caddy:80"}
+     - {hostname: dockge.<host>.example.com, service: "http://caddy:80"}
+     - {hostname: auth.<host>.example.com, service: "http://caddy:80"}
    caddy_sites:
-     http://dockge.pi4.example.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
-     http://auth.pi4.example.com: {reverse_proxy: "tinyauth:3000"}
+     http://dockge.<host>.example.com: {import: tinyauth_forwarder, reverse_proxy: "dockge:5001"}
+     http://auth.<host>.example.com: {reverse_proxy: "tinyauth:3000"}
    ```
 
    Then `just deploy caddy,cloudflared --limit <host>`. The login page is now on the internet: give every user a `totp` secret first (above). Cloudflare ends the TLS, so the sites are `http://` ([With cloudflared](./caddy-reference.md#with-cloudflared)).
@@ -137,6 +147,10 @@ A list limits the users in `vault_tinyauth_users`; a person who signs in with Gi
 
 ## Tailscale
 
+<details>
+<summary>Tailscale as a login provider (two routes)</summary>
+
+
 Two routes, neither used by the deploy by default:
 
 - **Continue with Tailscale** is built into Tinyauth: `TINYAUTH_TAILSCALE_ENABLED: "true"`, `TINYAUTH_TAILSCALE_APITOKEN` (an API token from the Tailscale admin console, in the vault) and `TINYAUTH_TAILSCALE_TAILNET`. It works out who you are from the device your request comes from, so Tinyauth must see the real client IP: also set `TINYAUTH_AUTH_TRUSTEDPROXIES` to the `services` network's subnet (`docker network inspect services`). Tagged devices are not recognised.
@@ -144,7 +158,13 @@ Two routes, neither used by the deploy by default:
 
 A Tailscale login is checked like a password user: by user name against `service_users`, not by the email whitelists, and it skips two-factor. A service without a `service_users` entry is open to the whole tailnet, so list who may use it.
 
+</details>
+
 ## One person, several names
+
+<details>
+<summary>When one person has a password, GitHub and Tailscale login</summary>
+
 
 Password, GitHub, Google and Tailscale logins each give the session a different name, and Tinyauth cannot link them: a name that is not a user in `vault_tinyauth_users` is another person to the apps. Where the same person needs the same access under another name, add that name there too:
 
@@ -153,6 +173,8 @@ Password, GitHub, Google and Tailscale logins each give the session a different 
 - Immich and Gitea: the second name is a new login; link it to the same account by hand ([first login](#sign-in-with-tinyauth-oidc)).
 
 `service_users` takes only names from `vault_tinyauth_users` (the deploy checks), so a name that exists only at Tailscale (`you_example.com`) needs that check widened first.
+
+</details>
 
 ## Access gotchas
 
@@ -164,4 +186,10 @@ Password, GitHub, Google and Tailscale logins each give the session a different 
 
 ## Session length
 
+<details>
+<summary>Session length settings</summary>
+
+
 `TINYAUTH_AUTH_SESSIONEXPIRY` is seconds, default one day, and it slides while you use the site. `TINYAUTH_AUTH_SESSIONMAXLIFETIME` caps the total age (default none). Sessions are stored in `tinyauth_data_dir`, so a redeploy keeps them.
+
+</details>

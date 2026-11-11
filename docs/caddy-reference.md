@@ -30,11 +30,11 @@ For `https://<app>.<host>.<your domain>` with a Let's Encrypt certificate, tailn
 
 ```yaml
 caddy_enabled: true
-caddy_private_domains: [pi4.example.com]
+caddy_private_domains: [<host>.example.com]
 ```
 
 - **Cloudflare:** the domain must equal, or be a subdomain of, one domain in `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
-- **DNS:** a deploy keeps two DNS-only records, `pi4.example.com` and `*.pi4.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
+- **DNS:** a deploy keeps two DNS-only records, `<host>.example.com` and `*.<host>.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
   - Every record carries the comment `managed by simple-nas, caddy <host>`.
   - A name that already has a record without it stops the deploy. Records with it for a domain not in the list are deleted.
   - `--check` prints the plan. To remove the records, set the list to `[]` and run `just deploy caddy --limit <host>` before `teardown.yml -e only=caddy`; teardown does not call Cloudflare.
@@ -45,7 +45,7 @@ caddy_private_domains: [pi4.example.com]
 
 #### Service names
 
-On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon`, no fixed `port`, and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.pi4.example.com`.
+On a host that runs Caddy, every web service from this repo that is switched on (a `services.yml` entry with an `icon`, no fixed `port`, and a non-empty `<name>_subdomain`) gets `https://<subdomain>.<private domain>`, for example `https://immich.<host>.example.com`.
 
 - The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea's links come from one address ([Gitea](./services.md#gitea)).
@@ -58,7 +58,7 @@ Override them in `host_vars/<host>/vars.yml`; a setting you leave out keeps its 
 
 ```yaml
 gitea_port: 3100             # host port: the http://<host>:<port> address and the Homepage fallback link
-gitea_subdomain: code        # https://code.pi4.example.com
+gitea_subdomain: code        # https://code.<host>.example.com
 ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<port>
 dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
 ```
@@ -76,19 +76,19 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
 
   ```yaml
   caddy_sites:
-    pi4.example.com: {reverse_proxy: "homepage:3000"}
-    gh.pi4.example.com: {redir: "https://github.com{uri}"}   # gh.pi4.example.com/owner/repo opens github.com/owner/repo
-  homepage_host: pi4.example.com   # Homepage refuses any other address
+    <host>.example.com: {reverse_proxy: "homepage:3000"}
+    gh.<host>.example.com: {redir: "https://github.com{uri}"}   # gh.<host>.example.com/owner/repo opens github.com/owner/repo
+  homepage_host: <host>.example.com   # Homepage refuses any other address
   ```
 
-  - The domain itself or any name one label below it can be an address, so `pi4.example.com` can open the start page, Copyparty or Dockge.
+  - The domain itself or any name one label below it can be an address, so `<host>.example.com` can open the start page, Copyparty or Dockge.
   - `{import: tinyauth_forwarder}` as one of the directives puts that name behind the login ([Tinyauth](./services.md#tinyauth-login)).
   - Gitea, ntfy and similar apps build links from a configured base URL, so change that too.
 - **An app of your own** takes a name with labels (see [Label syntax](#label-syntax)).
 
 ### Short name
 
-A host with `caddy_private_domains` redirects `http://<host>` (302) to the first private domain: `http://pi4` to `https://pi4.example.com`.
+A host with `caddy_private_domains` redirects `http://<host>` (302) to the first private domain: `http://<host>` to `https://<host>.example.com`.
 
 - `<host>` is the host's name in the inventory, so give each host its MagicDNS short name there (the first label, such as `pi4`).
 - Type `http://pi4` or `pi4/`, or the browser treats the text as a search. The redirect is plain http because no certificate can cover a name that is not a real domain.
