@@ -84,7 +84,7 @@ Per folder, easiest first:
 3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
    1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
    2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
-   3. Copy the files in: `rsync -aHAX <scratch>/<path of the folder>/ <the folder>/`.
+   3. Copy the files in: `sudo rsync -aHAX <scratch>/<path of the folder>/ <the folder>/` ([flags](./storage.md#copying-data-with-rsync)).
 
    This works only if the backup includes the folder. On a host with a local backup the deploy checks that every listed folder is in it, so it always does. On a host with only a cloud backup nothing checks: look in `restic_cloud_rules` and `restic_cloud_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where)).
 
@@ -184,7 +184,7 @@ diff /tmp/before.txt /tmp/after.txt && echo identical
 
 </details>
 
-If it stops half way, run the same `rsync` again. When the lists match:
+If it stops half way, run the same `rsync` again ([flags](./storage.md#copying-data-with-rsync)). When the lists match:
 
 1. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`.
 2. `sudo umount /mnt/data/photos && sudo chattr -i /mnt/data/photos`

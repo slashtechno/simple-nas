@@ -106,7 +106,7 @@ For a drive new to the host, before it goes in `drives`. Run on the host.
 
 1. Prepare the drive ([above](#preparing-a-drive)). A drive bought as exFAT or NTFS will not mount until formatted ext4. Add or point a `drives` entry at it: a new `uuid`, on the same or a new `mount`, with `roles` updated. If the mount point stays, [detach the old drive](#detach-a-drive) first.
 2. `just deploy storage --limit <host>`.
-3. Copy the data over, for example `rsync -aHAX`, with the services using it stopped (a database copied while running is corrupt). If the old drive died, restore from a backup instead ([backups.md](./backups.md#restore-files)).
+3. Copy the data over, for example `rsync -aHAX` ([what the flags mean](#copying-data-with-rsync)), with the services using it stopped (a database copied while running is corrupt). If the old drive died, restore from a backup instead ([backups.md](./backups.md#restore-files)).
 4. Recreate the containers that bind the drive. A container keeps its old mount until recreated, and a deploy does not recreate one whose compose file and image did not change. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
 
 To retire a drive, remove its entry. The role never removes an fstab line: remove it by hand and `sudo umount` the drive.
@@ -130,8 +130,23 @@ Each service's data directories are settings in `group_vars/all/defaults-data-di
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive with a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. `cd /opt/services/<service> && docker compose down`.
-3. `rsync -aHAX <old path>/ <new path>/`.
+3. `sudo rsync -aHAX <old path>/ <new path>/` ([flags](#copying-data-with-rsync)).
 4. `just deploy <service> --limit <host>` (not `storage`), check it works, then remove the old copy by hand.
+
+## Copying data with rsync
+
+The commands in these docs copy with `rsync -aHAX <from>/ <to>/`. Run it with `sudo`, so it can keep file owners.
+
+| Part | What it does |
+|---|---|
+| `-a` | Keeps owner, permissions, dates and symbolic links |
+| `-H`, `-A`, `-X` | Also keep hard links, access lists and extended attributes |
+| `/` at the end of `<from>/` | Copies what is inside the folder. Without it, rsync makes a folder called `<from>` inside `<to>`. |
+| `-n` (dry run) | Shows what it would copy and copies nothing. Add `-v` to list the files. |
+| `--progress` | Shows each file as it copies |
+| `--remove-source-files` | Deletes each source file after it copied. Empty folders stay. |
+
+If rsync stops half way, run the same command again: it copies only what is missing or changed.
 
 ## A drive that will not mount
 
