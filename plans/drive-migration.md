@@ -2,7 +2,7 @@
 
 > **Status: active plan. Delete this file when the migration is done; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Waiting on the owner's steps. The drives are bought (the IronWolf; [next-steps.md](./next-steps.md) Phase 1); pinas's `drives` lists the T7 (`fast, primary`) and the IronWolf (`backup`); the P10 is not in it yet. The steps run on pinas.
+Waiting on the owner's steps. The drives are bought; pinas's `drives` lists the T7 (`fast, primary`) and the IronWolf (`backup`); the P10 is not in it yet. The steps run on pinas.
 
 Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles are explained in [storage.md](../docs/storage.md)):
 
@@ -19,12 +19,11 @@ Current layout: the T7 has `roles: [fast, primary]`; the IronWolf has `[backup]`
 Vet each new drive yourself, not on the seller's word: `sudo smartctl -d sat -a /dev/sdX` (power-on hours, reallocated and pending sectors), then a read-only `badblocks` scan. A long `smartctl` self-test aborts through the IronWolf's USB bridge.
 
 - [x] IronWolf: vetted (SMART counters all 0, full read-only `badblocks` scan found no bad blocks). It is plugged into pinas and formatted ext4 (UUID in `host_vars/pinas/vars.yml`).
-- [ ] P10 (WD_BLACK P10, 2.5", bus-powered, USB 3.2 Gen 1): vet it before it holds photos. WD publishes no failure rate, and it may be SMR. Check `smartctl -d sat -a` works through its bridge; write 100 GB or more in one run and watch whether the speed collapses (SMR); and run the checks below with it plugged in. It must not hold the only copy or the restic repository.
-  - Status: SMART and `smartctl -t long` work through its bridge. A full read-only `badblocks -b 4096` scan finds 8 bad blocks in 4 small spots (13 pending, 0 reallocated sectors). No file occupies them. They are overwritten as in [storage.md](../docs/storage.md#drive-damage-and-wear) and a full-surface `smartctl -t long` passes. Pending still reads 13, since the drive recounts only on its next scan: read it again after `smartctl -t offline`; a count that stays or rises means the repair failed.
+- [ ] P10 (WD_BLACK P10, 2.5", bus-powered, USB 3.2 Gen 1): vet it before it holds photos. WD publishes no failure rate, and it may be SMR. It must not hold the only copy or the restic repository.
+  - Done: SMART and `smartctl -t long` work through its bridge; a full read-only `badblocks -b 4096` scan found 8 bad blocks in 4 small spots (13 pending sectors, 0 reallocated), which were overwritten ([storage.md](../docs/storage.md#drive-damage-and-wear)); a full-surface long test then passed.
+  - Open: pending still reads 13 until the drive recounts on its next scan. Run `smartctl -t offline`, then read pending again: a count that stays or rises means the repair failed. Also write 100 GB or more in one run and watch whether the speed collapses (SMR).
   - Until 2026-11-24, watch pending and reallocated in Scrutiny (a rise means new bad blocks), then run `smartctl -t long` again.
-  - Keep it for `primary` only if, on that date, pending is 0 or unchanged, reallocated is small and stable, no new bad block has appeared and the second long test passes. Otherwise replace it. Plan to buy a replacement either way.
-- [ ] IronWolf (3.5") needs a powered USB-SATA dock (12V).
-- [ ] Power and ports: the T7 and the P10 share the Pi's USB current budget (1.6 A on a Pi 5 with a 5 A supply or `usb_max_current_enable=1`; 1.2 A on a Pi 4), and the IronWolf has its own 12 V supply. Put the T7 and the P10 on the two USB 3 ports and the IronWolf on USB 2. With all three plugged in, check `lsusb -t` (separate buses, the driver and speed of each), `dmesg | grep -iE 'usb|uas|reset|over-current|voltage'`, and `vcgencmd get_throttled` (`0x0`, also while the P10 spins up and during the 02:00 backup). If the P10 resets, try `usb-storage.quirks=<vid>:<pid>:u` in `cmdline.txt`; if the budget is exceeded, put it in a self-powered dock.
+  - Keep it for `primary` only if, on that date, pending is 0 or unchanged, reallocated is small and stable, no new bad block has appeared and the second long test passes. Otherwise replace it; plan to buy a replacement either way.
 
 ## 1. Backup drive swap (low risk, first)
 
