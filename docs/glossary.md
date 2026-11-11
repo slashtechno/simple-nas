@@ -1,6 +1,6 @@
 # Words used in these docs
 
-This page defines each word once. The other docs link to it. [encryption.md](./encryption.md) has its own terms at the top. The last section covers the Ansible parts you meet while editing the repo.
+This page defines each word once. The other docs link to it. [encryption.md](./encryption.md) has its own terms in its *How it works* section. The last section covers the Ansible parts you meet while editing the repo.
 
 ## Backups
 

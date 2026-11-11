@@ -19,7 +19,7 @@ You type a password. The page then runs `unlock.sh` on each host over SSH and se
 6. Set `UNLOCK_HOSTS` in `compose.yml` to `name=user@address` for each host, comma separated. Start it: `docker compose up -d --build`.
 7. Serve it over HTTPS (the password crosses the network). Options: Caddy ([caddy-reference.md](../docs/caddy-reference.md#names-of-your-own)), `tailscale serve`, or Cloudflare.
 
-Test it: `docker compose exec unlock-page python3 app.py check` says for each host whether it is unlocked, locked, or cannot be reached. It sends no passphrase.
+Test it with the [check](#check-that-it-works-every-day).
 
 ## Settings
 

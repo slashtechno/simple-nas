@@ -1,6 +1,6 @@
 # Encryption at rest
 
-Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.net/gocryptfs/) stores their files encrypted. You unlock them by hand after each boot. Everything else runs as before. A full walk-through on a new host: [quick-start.md](./quick-start.md).
+Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.net/gocryptfs/) stores their files encrypted. You unlock them by hand after each boot. A full walk-through on a new host: [quick-start.md](./quick-start.md).
 
 | I want to | Go to |
 |---|---|
@@ -33,7 +33,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
 
-`setup-encrypted-folder.sh` and `unlock.sh` run these commands and add checks: they pick the cipher for you and move existing files in. A listed folder that stays locked still stops both backups.
+`setup-encrypted-folder.sh` and `unlock.sh` run these commands and add checks: they pick the cipher for you and move existing files in.
 
 Create (in a terminal: the passphrase prompt and the one-time master key need one):
 
@@ -133,9 +133,9 @@ Do this **before the service first starts**, or it writes plain files into the f
    - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
    - It moves the files in, compares checksums, and removes `photos.plain` when they match. It needs room for the largest file plus 1%, not a second copy.
 4. **Save the master key and the cipher option** the script printed in your password manager. A copy of each `gocryptfs.conf` off the host is cheap insurance.
-5. Start the containers. Until a folder is unlocked, every backup refuses to run, so do steps 3 to 5 in one sitting.
+5. Start the containers. Do steps 3 to 5 in one sitting.
 
-On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder, and use one passphrase for all folders.
+On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder. Use one passphrase for all folders: `unlock.sh` asks once and tries it on each.
 
 If the script reports a checksum mismatch it deletes nothing, but the files are then split between `photos` and `photos.plain`: look in both, then run the script again. A power cut can lose the one file being moved.
 
@@ -171,9 +171,7 @@ encrypted_folders:
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
 | An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
 
-The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. This is true with or without Tinyauth: with Tinyauth off, only the other rows apply. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
-
-Send the backup alerts to another ntfy with `host_alert_url`, so a locked host can still alert ([services.md](./services.md#ntfy-failure-alerts)).
+The defaults put all three under `{{ fast_drive }}/appdata`, so listing `appdata` locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
 
 ### Turning it off
 
@@ -188,9 +186,7 @@ Send the backup alerts to another ntfy with `host_alert_url`, so a locked host c
 3. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. Start the containers.
 4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 
-The role removes the scripts when no folder remains. gocryptfs stays installed. You can drop the old ciphertext, master key and passphrase for that folder.
-
-`teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is, or holds, a listed folder stops before it removes anything: turn encryption off for it first.
+The role removes the scripts when no folder remains, and gocryptfs stays installed. `teardown.yml` (or `--tags encryption`) removes the scripts, and never touches encrypted folders or your scripts. `-e remove_data=true` on a service whose data folder is, or holds, a listed folder stops before it removes anything: turn encryption off for it first.
 
 ## Dumps and backups
 
