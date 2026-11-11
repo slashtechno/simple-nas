@@ -9,4 +9,9 @@ services:
     volumes:
       - ./secrets:/run/unlock:ro            # ssh_key, known_hosts, passphrase
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"               # this machine only: put a proxy with HTTPS in front (README.md)
+    # With this repo's Caddy on the same machine (README.md, "Login"): remove `ports` and uncomment these lines.
+    # networks: [services]
+# networks:
+#   services:
+#     external: true

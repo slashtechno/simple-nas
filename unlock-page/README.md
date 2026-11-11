@@ -1,6 +1,6 @@
 # Unlock page
 
-A web page that unlocks the encrypted folders of your hosts ([encryption.md](../docs/encryption.md)). Optional: `unlock.sh` over SSH (`just unlock <host>`) always works. Use the page when you must unlock from a browser you do not control.
+Not an Ansible-deployed service on purpose: it runs on whatever machine you choose, with a plain compose file. A web page that unlocks the encrypted folders of your hosts ([encryption.md](../docs/encryption.md)). Optional: `unlock.sh` over SSH (`just unlock <host>`) always works. Use the page when you must unlock from a browser you do not control.
 
 You type a password. The page then runs `unlock.sh` on each host over SSH and sends it the gocryptfs passphrase, which only the page can read. The browser never sees the passphrase.
 

@@ -22,5 +22,5 @@
 - name: Remove the unlock page's SSH key
   ansible.builtin.lineinfile:
     path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-    regexp: "{{ ('command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\"') | regex_escape }}"
+    regexp: "^{{ ('restrict,command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\" ') | regex_escape }}"
     state: absent
