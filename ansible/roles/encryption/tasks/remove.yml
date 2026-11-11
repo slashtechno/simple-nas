@@ -1,6 +1,6 @@
 ---
 # Removes what the encryption role installs. Used by the role (no encrypted folders) and by teardown.yml.
-# The scripts you added to the hooks directory are never touched; the directory goes only when it is empty.
+# The hooks directory and the scripts you added to it are never touched.
 # Data in encrypted folders is not touched either.
 - name: Remove the encryption scripts
   ansible.builtin.file:
@@ -12,16 +12,8 @@
     - "{{ scripts_dir }}/remove-encrypted-folder.sh"
     - "{{ encryption_hooks_dir }}/00-containers.sh"
 
-# rmdir only succeeds when the directory is empty.
-- name: Remove the after-unlock scripts directory (only if empty)
-  ansible.builtin.command:
-    cmd: rmdir {{ encryption_hooks_dir | quote }}
-  register: encryption_rmdir
-  changed_when: encryption_rmdir.rc == 0
-  failed_when: false   # a directory with your own scripts, or a missing one, is fine
-
 - name: Remove the unlock page's SSH key
   ansible.builtin.lineinfile:
     path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-    regexp: "^{{ ('restrict,command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\" ') | regex_escape }}"
+    regexp: "^{{ (unlock_page_key_command ~ ' ') | regex_escape }}"
     state: absent

@@ -7,13 +7,20 @@
     quiet: true
   loop: "{{ encrypted_folders }}"
 
-# A folder inside another would put its encrypted files inside the outer one, hidden by the outer mount.
-- name: Check no encrypted folder is listed twice or inside another
+- name: Check no encrypted folder is listed twice
   ansible.builtin.assert:
-    that: >-
-      encrypted_pairs | map(attribute='mount') | select('match', (item.mount | regex_escape) ~ '/') | list | length == 0
-      and (encrypted_pairs | map(attribute='mount') | select('equalto', item.mount) | list | length) == 1
-    fail_msg: "{{ item.mount }} is listed twice or holds another listed folder. List each folder once, and none inside another."
+    that: (encrypted_pairs | map(attribute='mount') | select('equalto', item.mount) | list | length) == 1
+    fail_msg: "{{ item.mount }} is listed twice. List each folder once."
+    quiet: true
+  loop: "{{ encrypted_pairs }}"
+  loop_control:
+    label: "{{ item.mount }}"
+
+# A folder inside another would put its encrypted files inside the outer one, hidden by the outer mount.
+- name: Check no encrypted folder is inside another
+  ansible.builtin.assert:
+    that: encrypted_pairs | map(attribute='mount') | select('match', (item.mount | regex_escape) ~ '/') | list | length == 0
+    fail_msg: "{{ item.mount }} holds another listed folder. List a folder only once, and none inside another."
     quiet: true
   loop: "{{ encrypted_pairs }}"
   loop_control:

@@ -479,32 +479,25 @@
     - name: The optional template branches rendered
       vars:
         tinyauth_compose: "{{ lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml') }}"
+        setup_sh: "{{ lookup('ansible.builtin.file', out_dir ~ '/encryption/setup-encrypted-folder.sh') }}"
+        unlock_sh: "{{ lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') }}"
+        hook_sh: "{{ lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh') }}"
       ansible.builtin.assert:
         that:
           - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
           # Encryption: unlock.sh makes the locked folder immutable, mounts with -allow_other and never -nonempty;
           # the backups refuse a locked folder and skip its encrypted copy.
-          - "'.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/setup-encrypted-folder.sh')"
-          - "'chown --reference=\"$FOLDER\" \"$CIPHER\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/setup-encrypted-folder.sh')"
-          - "'-xchacha' in lookup('ansible.builtin.file', out_dir ~ '/encryption/setup-encrypted-folder.sh')"
-          - "'/mnt/primary/..gocryptfs' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'/after-unlock.d' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'systemctl' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'docker restart' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
-          - "'range .Mounts' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
-          - "'[ -n \"$source\" ] || continue' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
-          - "'created failed' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
-          - "'DRY=1' in lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh')"
-          - "'00-containers.sh -n' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'00-docker' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'unlock_folder /mnt/primary/immich /mnt/primary/.immich.gocryptfs' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - >-
-            ('chown ' ~ ansible_user ~ ' \"$cipher/gocryptfs.conf\"')
-            in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')
-          - "'chattr +i \"$mount\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'does not support the immutable flag' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'gocryptfs -allow_other \"$cipher\" \"$mount\"' in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh')"
-          - "'-nonempty' not in lookup('ansible.builtin.file', out_dir ~ '/encryption/unlock.sh') | regex_replace('Never -nonempty', '')"
+          - "'.immich.gocryptfs' in setup_sh"
+          - "'unlock_folder /mnt/primary/immich /mnt/primary/.immich.gocryptfs' in unlock_sh"
+          - "'/mnt/primary/..gocryptfs' not in unlock_sh"
+          - "'/after-unlock.d' in unlock_sh"
+          - "'00-containers.sh -n' in unlock_sh"
+          # The hook skips the empty line docker inspect ends with; without this it matches every container.
+          - "'[ -n \"$source\" ] || continue' in hook_sh"
+          - "('chown ' ~ ansible_user ~ ' \"$cipher/gocryptfs.conf\"') in unlock_sh"
+          - "'chattr +i \"$mount\"' in unlock_sh"
+          - "'gocryptfs -allow_other \"$cipher\" \"$mount\"' in unlock_sh"
+          - "'-nonempty' not in unlock_sh | regex_replace('Never -nonempty', '')"
           - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'

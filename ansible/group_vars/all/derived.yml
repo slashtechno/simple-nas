@@ -58,6 +58,8 @@ data_drive_mounts: >-
   {%- endif -%}
   {%- endfor -%}
   {{ mounts }}
+# The start of the unlock page's line in authorized_keys: what the key may run (roles/encryption/tasks). The line is this, a space, then the key.
+unlock_page_key_command: 'restrict,command="sudo {{ scripts_dir }}/unlock.sh"'
 # Each encrypted folder with the hidden folder next to it that holds its encrypted files.
 # Example: encrypted_folders [/mnt/primary/photos/] gives [{mount: /mnt/primary/photos, cipher: /mnt/primary/.photos.gocryptfs}].
 encrypted_pairs: >-

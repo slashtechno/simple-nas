@@ -1,58 +1,55 @@
 ---
 # Folders in `encrypted_folders` are stored encrypted with gocryptfs (docs/encryption.md). Creating one
 # (setup-encrypted-folder.sh) and unlocking after each boot (unlock.sh) are done by hand; this role installs the
-# tools and both scripts. With no encrypted folder it removes the scripts again (remove.yml).
+# tools and the scripts. With no encrypted folder it removes the scripts again (remove.yml).
 - name: Check the encrypted folders
   ansible.builtin.import_tasks: check.yml
 
-- name: Install gocryptfs and FUSE
-  ansible.builtin.apt:
-    name:
-      - gocryptfs
-      - fuse3
-      - rsync
-    state: present
-    update_cache: true
-    cache_valid_time: 3600
+- name: Install what unlocking needs
   when: encrypted_folders | length > 0
+  block:
+    - name: Install gocryptfs and FUSE
+      ansible.builtin.apt:
+        name:
+          - gocryptfs
+          - fuse3
+          - rsync
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
 
-- name: Install the encryption scripts
-  ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "{{ scripts_dir }}/{{ item }}"
-    owner: root
-    group: root
-    mode: "0750"
-  loop: [unlock.sh, setup-encrypted-folder.sh, remove-encrypted-folder.sh]
-  when: encrypted_folders | length > 0
+    - name: Install the encryption scripts
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ scripts_dir }}/{{ item }}"
+        owner: root
+        group: root
+        mode: "0750"
+      loop: [unlock.sh, setup-encrypted-folder.sh, remove-encrypted-folder.sh]
 
-- name: Create the after-unlock scripts directory
-  ansible.builtin.file:
-    path: "{{ encryption_hooks_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-  when: encrypted_folders | length > 0
+    - name: Create the after-unlock scripts directory
+      ansible.builtin.file:
+        path: "{{ encryption_hooks_dir }}"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
 
-- name: Install the container restart script
-  ansible.builtin.template:
-    src: 00-containers.sh.j2
-    dest: "{{ encryption_hooks_dir }}/00-containers.sh"
-    owner: root
-    group: root
-    mode: "0755"
-  when: encrypted_folders | length > 0
+    - name: Install the container restart script
+      ansible.builtin.template:
+        src: 00-containers.sh.j2
+        dest: "{{ encryption_hooks_dir }}/00-containers.sh"
+        owner: root
+        group: root
+        mode: "0755"
 
-# `restrict` turns off port and agent forwarding and the terminal; `command=` replaces whatever the client asks to run.
-# The ansible user has passwordless sudo, so without the forced command this key would be root. An empty setting removes it.
-- name: Allow the unlock page's SSH key to run unlock.sh and nothing else
-  ansible.builtin.lineinfile:
-    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-    regexp: "^{{ ('restrict,command=\"sudo ' ~ scripts_dir ~ '/unlock.sh\" ') | regex_escape }}"
-    line: restrict,command="sudo {{ scripts_dir }}/unlock.sh" {{ unlock_page_public_key }}
-    state: "{{ 'present' if unlock_page_public_key | length > 0 else 'absent' }}"
-  when: encrypted_folders | length > 0
+    # One key that can run unlock.sh and nothing else (unlock-page/README.md#how-the-key-is-limited). An empty setting removes it.
+    - name: Allow the unlock page's SSH key to run unlock.sh and nothing else
+      ansible.builtin.lineinfile:
+        path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+        regexp: "^{{ (unlock_page_key_command ~ ' ') | regex_escape }}"
+        line: "{{ unlock_page_key_command }} {{ unlock_page_public_key }}"
+        state: "{{ 'present' if unlock_page_public_key | length > 0 else 'absent' }}"
 
 - name: Remove the encryption scripts when no folder is listed
   ansible.builtin.import_tasks: remove.yml

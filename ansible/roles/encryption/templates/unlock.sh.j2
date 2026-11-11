@@ -28,6 +28,7 @@ ask_passphrase() {
 # One line per folder: unlocked, locked, or no encrypted files found.
 show_state() {
   local mount=$1 cipher=$2
+  # "$mount/." tests the folder itself; without the "/." a plain folder inside a mounted drive counts as mounted too.
   if mountpoint -q "$mount/."; then
     echo "unlocked      $mount"
   elif [ ! -d "$cipher" ]; then
@@ -51,8 +52,8 @@ fi
 
 # Software that started while a folder was locked still sees it empty. After mounting, the scripts restart it. This
 # runs when the script ends, even when a later folder fails, so folders mounted before the failure do not leave stale
-# software behind. Each script gets the mounted folders as arguments. A loop over *.sh, not run-parts, for the reason
-# in backup-services.sh. A script that fails does not stop the others, and the unlock then exits with an error.
+# software behind. Each script gets the mounted folders as arguments. A loop over *.sh, not run-parts: run-parts skips names with a dot, such as
+# my.start.sh. A script that fails does not stop the others, and the unlock then exits with an error.
 finish() {
   local status=$?
   if [ -n "${MOUNTED[*]:-}" ]; then
