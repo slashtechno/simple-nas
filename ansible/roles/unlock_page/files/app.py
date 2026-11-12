@@ -73,9 +73,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_page("")
 
     def do_POST(self):
+        # Read the body first: closing a connection with unread data can reset it and lose the reply.
+        fields = urllib.parse.parse_qs(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 4096)).decode())
         if not same_origin(self.headers):
             return self.send_page("<p>Refused: the request came from another site.</p>", 403)
-        fields = urllib.parse.parse_qs(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 4096)).decode())
         action = fields.get("action", [""])[0]
         if action not in ("unlock", "lock"):
             return self.send_page("<p>Unknown action.</p>", 400)

@@ -201,6 +201,8 @@ Set it up once:
 3. Run `just deploy encryption,unlock_page --limit <host>`. Each host runs its own page.
 4. Check it: `docker exec unlock-page python3 app.py check` prints the host's status and exits 1 if the page cannot reach the host.
 
+**Outside the tailnet:** the page, like every Tinyauth site, opens only where the private names resolve, which is on the tailnet. To reach it through Cloudflare, publish the page and the login under the private domain: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet), with `unlock` in place of `dockge`. Cloudflared, Caddy and Tinyauth live on the root drive, so they run while the folders are locked. Keep the Tinyauth login in front of it and give every user a `totp` secret: the page can unlock and stop your services.
+
 **Unlock** unlocks the folders and starts the containers that wait for them. **Lock** asks first, then stops those containers and unmounts the folders, as `unlock.sh --lock` does. The page shows the status of each folder.
 
 <details>
