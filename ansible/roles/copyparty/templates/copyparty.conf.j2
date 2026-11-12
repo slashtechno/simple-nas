@@ -92,9 +92,9 @@
 {% endfor %}
 {% endif %}
 
-{% if copyparty_fast_enabled | bool %}
-[/fast]
-  /fast
+{% if copyparty_scratch_enabled | bool %}
+[/scratch]
+  /scratch
   accs:
 {% for u in admins %}
     A: {{ u }}

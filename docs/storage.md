@@ -13,7 +13,7 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 
 | Role | Holds |
 |---|---|
-| `fast` | A service's own state (`appdata/`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `fast/` and the restic cache |
+| `fast` | A service's own state (`appdata/`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `scratch/` and the restic cache |
 | `primary` | Bulk data (`bulk/`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
 | `backup` | The restic repo, service dumps, logs |
 
@@ -21,13 +21,13 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 ## What lives where
 
-The rule: a service's own state is in `appdata/<service>`, its bulk data in `bulk/<service>`, and your own files in plainly named folders (`stacks`, `fast`, `files`, `collab`). A part of a service is a subfolder (`appdata/gitea/runner`). Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
+The rule: a service's own state is in `appdata/<service>`, its bulk data in `bulk/<service>`, and your own files in plainly named folders (`stacks`, `scratch`, `files`, `collab`). A part of a service is a subfolder (`appdata/gitea/runner`). Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
 ├─ appdata/<service>/           appdata_dir: each service's own state (databases, configs, sessions)
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
-├─ fast/                        Copyparty's /fast volume
+├─ scratch/                     Copyparty's /scratch volume
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
 ├─ bulk/<service>/              bulk_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)

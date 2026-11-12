@@ -154,13 +154,13 @@ encrypted_folders:
   - /mnt/data/stacks   # Dockge stacks
   - /mnt/data/files    # Copyparty's files
   - /mnt/data/collab   # Copyparty's /collab, if you use it
-  - /mnt/data/fast     # Copyparty's /fast, if you use it
+  - /mnt/data/scratch  # Copyparty's /scratch, if you use it
 ```
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
-- `collab` and `fast` hold data only when `copyparty_collab_enabled` and `copyparty_fast_enabled` are on, but they exist as settings always, so list them if you will turn them on.
+- `collab` and `scratch` hold data only when `copyparty_collab_enabled` and `copyparty_scratch_enabled` are on, but they exist as settings always, so list them if you will turn them on.
 - The defaults cover a service added later with its data under `appdata_dir` or `bulk_dir`. Anything else stays plain.
 
 **Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.

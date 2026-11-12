@@ -19,8 +19,8 @@ bulk_dir: "{{ primary_drive }}/bulk"
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 # The files Copyparty serves (primary drive).
 copyparty_files_dir: "{{ primary_drive }}/files"
-# Where the /fast volume lives (fast drive).
-copyparty_fast_dir: "{{ fast_drive }}/fast"
+# Where the /scratch volume lives (fast drive).
+copyparty_scratch_dir: "{{ fast_drive }}/scratch"
 # Directory behind /collab (primary drive).
 copyparty_collab_dir: "{{ primary_drive }}/collab"
 
