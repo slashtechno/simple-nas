@@ -13,7 +13,7 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 
 | Role | Holds |
 |---|---|
-| `fast` | A service's own state (`appdata/<service>`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `scratch/` and the restic cache |
+| `fast` | A service's own state (`appdata/<service>`: databases, configs, sessions), your Dockge `stacks/` and the restic cache |
 | `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
 | `backup` | The restic repo, service dumps, logs |
 
@@ -23,13 +23,12 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 Each service keeps its data in `appdata/<service>`. Services with more than one directory use one subfolder (a part) for each, for example `appdata/immich/postgres` and `appdata/immich/photos`. State goes on the `fast` drive. Bulk data goes on the `primary` drive. If one drive has both roles, the two `appdata` folders are the same folder.
 
-Your own files have plain names: `stacks`, `scratch`, `files` and `collab`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
+Your own files have plain names: `stacks`, `files` and `collab`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
 ├─ appdata/<service>/           fast_appdata_dir: each service's state (databases, configs, sessions)
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
-├─ scratch/                     Copyparty's /scratch volume
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
 ├─ appdata/<service>/           primary_appdata_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)

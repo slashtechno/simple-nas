@@ -93,10 +93,6 @@ storage_enabled: true
 # Mounted at /run/media/system/<label>; Copyparty shows them under /drives (docs/storage.md).
 usb_automount_enabled: false
 
-# Add a /scratch volume to Copyparty (SSD scratch and working space). Useful only when the fast and primary
-# roles are on different drives; with one drive it would just be a folder of /. See docs/storage.md.
-copyparty_scratch_enabled: false
-
 # Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
 # (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
 copyparty_collab_enabled: false

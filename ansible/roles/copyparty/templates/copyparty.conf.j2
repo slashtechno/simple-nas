@@ -92,15 +92,6 @@
 {% endfor %}
 {% endif %}
 
-{% if copyparty_scratch_enabled | bool %}
-[/scratch]
-  /scratch
-  accs:
-{% for u in admins %}
-    A: {{ u }}
-{% endfor %}
-
-{% endif %}
 {% if usb_automount_enabled | bool %}
 {# USB drives plugged into the host; /host/usb is /run/media/system. #}
 [/drives]

@@ -73,15 +73,6 @@
     mode: "0755"
   when: copyparty_collab_enabled | bool
 
-- name: Create the /scratch volume directory
-  ansible.builtin.file:
-    path: "{{ copyparty_scratch_dir }}"
-    state: directory
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
-    mode: "0755"
-  when: copyparty_scratch_enabled | bool
-
 - name: Copy Docker build files
   ansible.builtin.copy:
     src: Dockerfile

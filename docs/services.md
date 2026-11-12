@@ -75,14 +75,14 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends in `vault_copyparty_collab_users`. The admin has access too. With it off there is no folder and no friend accounts.
 
-`/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). `/scratch` is a volume on the fast drive (`copyparty_scratch_dir`) when `copyparty_scratch_enabled: true`. It helps only when the fast and primary roles are on different drives. The `/scratch` volume hides a folder named `scratch` inside `files/`.
+`/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). To add the fast drive, the backup drive or one folder of either, see [More drives and folders](#more-drives-and-folders).
 
 Apps that store files in Copyparty (pics) get an account named after the app and their own volumes at `/apps/<app>/<folder>`. The app's `copyparty` field in `services.yml` declares them (its comment says how). The volumes are not part of `copyparty_files_dir`, so the admin's listing does not show them. Every admin (`copyparty_user` and, with SSO, `copyparty_sso_admins`) has full access. `/apps/` opens read-only and lists each app's folders. Leave out the `d` permission unless the app must delete: without it Copyparty also refuses overwrites.
 
 `copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login. It adds to Copyparty's own passwords and does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep password logins.
 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`.
-- **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/`, `/collab` and `/scratch`. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
+- **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/` and `/collab`. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
 
 <details>
 <summary>Give another app volumes, extra listeners (SFTP), one-folder users, share links</summary>
@@ -95,7 +95,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
 
   `perms`: `r` read, `w` write, `m` move, `d` delete.
 
-- **Any other Copyparty option** (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file. So the generated `/`, `/collab` and `/scratch` cannot be extended ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_ports` publishes a listener's port as `"host:container"` strings (without one it is reachable only from other containers).
+- **Any other Copyparty option** (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file. So the generated `/` and `/collab` cannot be extended ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders ([below](#more-drives-and-folders)). `copyparty_extra_ports` publishes a listener's port as `"host:container"` strings (without one it is reachable only from other containers).
 
   ```yaml
   # An SFTP login for a sync client (WebDAV lacks the modtimes rclone needs)
@@ -111,7 +111,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
         rwmd: syncer
   ```
 
-- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`, `/scratch`). The user name is the Tinyauth user name:
+- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`). The user name is the Tinyauth user name:
 
   ```yaml
   copyparty_extra_conf: |
@@ -125,6 +125,37 @@ Apps that store files in Copyparty (pics) get an account named after the app and
 - **Share links** on the browser name ask for the Tinyauth login too (Copyparty expects the `/shares` prefix to be exempt, [shares](https://github.com/9001/copyparty#shares)). Hand links out on the published port or the tunnel hostname instead.
 
 </details>
+
+### More drives and folders
+
+Copyparty shows a host folder only after you do two things: mount it into the container, then give it a volume. Set both in the host's `vars.yml`.
+
+```yaml
+copyparty_extra_volumes:                  # "host path:path in the container[:ro]"
+  - "{{ fast_drive }}/shared:/fast"
+  - "/mnt/backup/service-dumps:/backup:ro"   # :ro makes it read-only, whatever the access rules say
+copyparty_extra_conf: |
+  [accounts]
+    syncer: {{ vault_copyparty_syncer_pass }}   # a service account: a vault entry you name yourself
+  [/fast]
+    /fast
+    accs:
+      A: yourusername       # an admin
+      rw: friend            # read and write
+      rw: syncer
+  [/backup]
+    /backup
+    accs:
+      A: yourusername
+```
+
+Then run `just deploy copyparty --limit <host>`.
+
+- **Admins:** the generated volumes give admin access to `copyparty_user` and to `copyparty_sso_admins`. Your own volumes do not. Write each admin by name in the `accs:` block.
+- **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Write it in `accs:`. The user needs no `[accounts]` entry. A signed-in user that no `accs:` line names sees nothing in the volume.
+- **Service accounts** (a sync client, a script, WebDAV): add a password in `[accounts]` and name it in `accs:`. A password account works on the published port and the tunnel hostname. It does not work on the browser name: Tinyauth stops clients that cannot sign in through a web page. Keep the password in the vault.
+- **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
+- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. Restart Copyparty after an unlock (the unlock scripts do it when the folder is listed).
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`.
 

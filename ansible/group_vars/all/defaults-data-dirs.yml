@@ -5,7 +5,7 @@
 # To move a service to another drive, set its variable in host_vars/<host>/vars.yml (docs/storage.md#move-one-services-data).
 # One rule: every service's data is in <a parent>/<service>[/<part>], where the parent is fast_appdata_dir (state: databases,
 # configs, sessions) or primary_appdata_dir (bulk data: photos, object blocks, game worlds), and your own files are in
-# plainly named folders (stacks, scratch, files, collab). A service with more than one directory gives each its own part,
+# plainly named folders (stacks, files, collab). A service with more than one directory gives each its own part,
 # because the two parents are one folder on a host whose fast and primary roles share a drive. Multi-word folder names use
 # hyphens. The deploy refuses a directory inside another (check_data_dirs.yml).
 
@@ -21,8 +21,6 @@ primary_appdata_dir: "{{ primary_drive }}/appdata"
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 # The files Copyparty serves (primary drive).
 copyparty_files_dir: "{{ primary_drive }}/files"
-# Where the /scratch volume lives (fast drive).
-copyparty_scratch_dir: "{{ fast_drive }}/scratch"
 # Directory behind /collab (primary drive).
 copyparty_collab_dir: "{{ primary_drive }}/collab"
 
