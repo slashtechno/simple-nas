@@ -73,7 +73,7 @@ You describe the desired state in YAML and a run makes each host match it. Each 
   ```
 
 - **`pre_tasks`.** Run first, tagged `always`. `site.yml` uses them to check the OS, that Docker is not a snap, and that every web service has a port or a name. They also check that every Tinyauth app has Tinyauth, Caddy and its vault secret.
-- **`teardown.yml`.** Refuses to run without `--limit`. Its `remove_data: false` is what `-e remove_data=true` overrides. One looped `include_tasks` of `teardown_service.yml` removes each entry of `services` (`-e only=a,b` picks some).
+- **`teardown.yml`.** Refuses to run without `--limit`. Its `remove_data: false` is what `-e remove_data=true` overrides. One looped `include_tasks` of `teardown_service.yml` removes each entry of `services` (`-e only=a,b` picks some). With `remove_data=true` it deletes each data folder the service lists, then the service's own folder above them (`appdata/copyparty`) if that is empty.
 - **`import_*` vs `include_*`.** Ansible reads `import_role` and `import_tasks` when the playbook loads, so `--tags` reach inside. `include_*` runs at run time, and tags do not reach inside. The repo uses it only where a role runs mid-task (tailscale, pics).
 - **Role directories.**
 

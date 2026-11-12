@@ -1,6 +1,7 @@
 ---
 # Removes one compose service. Called from teardown.yml for each entry of `services`, with:
 #   service: directory name under services_dir (also the compose project)
+#   service_key: the service's key in services.yml
 #   data_paths: directories deleted only when remove_data=true (default: none)
 - name: Down {{ service }} compose project
   community.docker.docker_compose_v2:
@@ -25,3 +26,13 @@
     state: absent
   # The ternary is evaluated lazily: with remove_data false, data_paths (which needs the drive roles) is never read.
   loop: "{{ data_paths | default([]) if remove_data | bool else [] }}"
+
+# A service with parts has a folder of its own name above them (appdata/copyparty above config and hist). Nothing names it, so
+# it stays empty after the wipe. rmdir only succeeds when the folder is empty.
+- name: Remove {{ service }}'s own folder above its data (only if empty)
+  ansible.builtin.command:
+    cmd: rmdir "{{ item }}"
+  loop: "{{ (data_paths | default([]) | map('dirname') | select('match', '.*/' ~ service_key ~ '$') | unique | list) if remove_data | bool else [] }}"
+  register: rmdir_parent
+  changed_when: rmdir_parent.rc == 0
+  failed_when: false   # a folder that still holds something, or is already gone, is fine

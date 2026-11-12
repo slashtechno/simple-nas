@@ -102,6 +102,7 @@
         label: "{{ item.key }}"
       vars:
         service: "{{ item.compose }}"
+        service_key: "{{ item.key }}"
         # The names become paths only when remove_data is true: a host without the drives never reads them otherwise.
         data_paths: "{{ query('ansible.builtin.vars', *((item.data | default([]) + item.no_backup | default([])) | select | list)) }}"
 
