@@ -9,7 +9,8 @@
 #   dns.yml     the DNS records
 #
 # API calls run on your computer, so cloudflared on the server needs only the tunnel token. The broad token
-# (cloudflare_api_token) still reaches the server through Caddy's DNS challenge (docs/caddy-reference.md). Tasks with `check_mode: false` only read, so --check can show the plan.
+# (cloudflare_api_token) still reaches the server through Caddy's DNS challenge (docs/caddy-reference.md).
+# Tasks with `check_mode: false` only read, so --check can show the plan.
 - name: Check the settings
   ansible.builtin.import_tasks: check.yml
 
