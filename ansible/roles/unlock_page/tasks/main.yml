@@ -12,6 +12,12 @@
       the page has no login of its own, and anyone who reaches it can unlock and lock the hosts.
     quiet: true
 
+- name: Check the hosts it unlocks accept its key
+  ansible.builtin.assert:
+    that: unlock_page_public_key | length > 0
+    fail_msg: "Set unlock_page_public_key in group_vars/all/vars.yml: the page's key, so each host lets it run unlock.sh (docs/encryption.md#unlock-page)."
+    quiet: true
+
 - name: Check the hosts it unlocks are in the inventory
   ansible.builtin.assert:
     that: item in groups['all']

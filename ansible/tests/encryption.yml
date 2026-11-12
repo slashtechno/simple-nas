@@ -15,7 +15,6 @@
       loop:
         - "{{ repo }}/group_vars/all/defaults.yml"
         - "{{ repo }}/group_vars/all/derived.yml"
-        - "{{ repo }}/roles/encryption/defaults/main.yml"
 
     - name: A good list passes
       ansible.builtin.include_tasks: ../roles/encryption/tasks/check.yml
