@@ -149,8 +149,7 @@ List the folders that hold data, not a drive's mount point. `/mnt/data` would pu
 
 ```yaml
 encrypted_folders:
-  - /mnt/data/appdata  # `appdata_dir`: each service's own state (databases, configs, sessions), the compose files stay on the root drive
-  - /mnt/data/bulk     # `bulk_dir`: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
+  - /mnt/data/appdata  # `fast_appdata_dir` and `primary_appdata_dir`: every service's data, the compose files stay on the root drive
   - /mnt/data/stacks   # Dockge stacks
   - /mnt/data/files    # Copyparty's files
   - /mnt/data/collab   # Copyparty's /collab, if you use it
@@ -161,7 +160,8 @@ encrypted_folders:
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
 - `collab` and `scratch` hold data only when `copyparty_collab_enabled` and `copyparty_scratch_enabled` are on, but they exist as settings always, so list them if you will turn them on.
-- The defaults cover a service added later with its data under `appdata_dir` or `bulk_dir`. Anything else stays plain.
+- The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
+- With the fast and primary roles on two drives, list `appdata` on each (two entries).
 
 **Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.
 
@@ -172,7 +172,7 @@ encrypted_folders:
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
 | An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
 
-The defaults put all three under `appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
+The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
 
 ### Turning it off
 

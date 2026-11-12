@@ -3,16 +3,18 @@
 # Same rules as defaults.yml: tracked defaults for every host; override in vars.yml, never edit here.
 
 # To move a service to another drive, set its variable in host_vars/<host>/vars.yml (docs/storage.md#move-one-services-data).
-# One rule: a service's own state is in appdata_dir/<key> (fast drive), its bulk data in bulk_dir/<key> (primary drive),
-# and the owner's own files in a plainly named folder (stacks, fast, files, collab). A part of a service is a subfolder
-# of its folder. Multi-word folder names use hyphens. With both roles on one drive the split changes nothing.
+# One rule: every service's data is in <a parent>/<service>[/<part>], where the parent is fast_appdata_dir (state: databases,
+# configs, sessions) or primary_appdata_dir (bulk data: photos, object blocks, game worlds), and your own files are in
+# plainly named folders (stacks, scratch, files, collab). A service with more than one directory gives each its own part,
+# because the two parents are one folder on a host whose fast and primary roles share a drive. Multi-word folder names use
+# hyphens. The deploy refuses a directory inside another (check_data_dirs.yml).
 
-# The parent of each service's own state (databases, configs, sessions) on the fast drive. List it in encrypted_folders
-# to encrypt all of it (docs/encryption.md#which-folders-to-list). The storage role creates it.
-appdata_dir: "{{ fast_drive }}/appdata"
-# The parent of each service's bulk data (photos, object blocks, game worlds) on the primary drive. List it in
-# encrypted_folders to encrypt all of it. The storage role creates it. A host that runs a service with bulk data needs the primary role.
-bulk_dir: "{{ primary_drive }}/bulk"
+# The parent of each service's state on the fast drive. List it in encrypted_folders to encrypt all of it
+# (docs/encryption.md#which-folders-to-list). The storage role creates it.
+fast_appdata_dir: "{{ fast_drive }}/appdata"
+# The parent of each service's bulk data on the primary drive; the same folder as fast_appdata_dir on a one-drive host.
+# The storage role creates it. A host that runs a service with bulk data needs the primary role.
+primary_appdata_dir: "{{ primary_drive }}/appdata"
 
 # The owner's own folders sit directly on a drive and are never deleted by teardown.
 # The compose stacks you create in Dockge: one directory each, holding a compose.yaml and its data.
@@ -25,62 +27,62 @@ copyparty_scratch_dir: "{{ fast_drive }}/scratch"
 copyparty_collab_dir: "{{ primary_drive }}/collab"
 
 # Dockge's own database (users, settings).
-dockge_data_dir: "{{ appdata_dir }}/dockge"
+dockge_data_dir: "{{ fast_appdata_dir }}/dockge"
 
 # Tinyauth's sessions.
-tinyauth_data_dir: "{{ appdata_dir }}/tinyauth"
+tinyauth_data_dir: "{{ fast_appdata_dir }}/tinyauth"
 
 # Dozzle's per-user settings; little is lost without them.
-dozzle_data_dir: "{{ appdata_dir }}/dozzle"
+dozzle_data_dir: "{{ fast_appdata_dir }}/dozzle"
 
 # Scrutiny's collector and web UI configuration.
-scrutiny_config_dir: "{{ appdata_dir }}/scrutiny/config"
+scrutiny_config_dir: "{{ fast_appdata_dir }}/scrutiny/config"
 
 # Scrutiny's SMART history; left out of the backup because the collector writes it again.
-scrutiny_influx_dir: "{{ appdata_dir }}/scrutiny/influxdb"
+scrutiny_influx_dir: "{{ fast_appdata_dir }}/scrutiny/influxdb"
 
 # Caddy's certificates and state. Losing it means certificates are issued again.
-caddy_data_dir: "{{ appdata_dir }}/caddy"
+caddy_data_dir: "{{ fast_appdata_dir }}/caddy"
 
 # Immich's photos.
-immich_photos_dir: "{{ bulk_dir }}/immich"
+immich_photos_dir: "{{ primary_appdata_dir }}/immich/photos"
 
 # Immich's Postgres data directory.
-immich_postgres_dir: "{{ appdata_dir }}/immich"
+immich_postgres_dir: "{{ fast_appdata_dir }}/immich/postgres"
 
 # Copyparty's configuration.
-copyparty_config_dir: "{{ appdata_dir }}/copyparty/config"
+copyparty_config_dir: "{{ fast_appdata_dir }}/copyparty/config"
 
 # Copyparty's thumbnails, databases and transcode cache; left out of the backup because they are made again.
-copyparty_hist_dir: "{{ appdata_dir }}/copyparty/hist"
+copyparty_hist_dir: "{{ fast_appdata_dir }}/copyparty/hist"
 
 # Gitea's repositories and database.
-gitea_data_dir: "{{ appdata_dir }}/gitea/data"
+gitea_data_dir: "{{ fast_appdata_dir }}/gitea/data"
 
 # The Gitea runner's registration (.runner); in appdata so it is backed up.
-gitea_runner_data_dir: "{{ appdata_dir }}/gitea/runner"
+gitea_runner_data_dir: "{{ fast_appdata_dir }}/gitea/runner"
 
 # ntfy's message history and user database; little is lost without it.
-ntfy_data_dir: "{{ appdata_dir }}/ntfy"
+ntfy_data_dir: "{{ fast_appdata_dir }}/ntfy"
 
 # pics' data directory.
-pics_data_dir: "{{ appdata_dir }}/pics"
+pics_data_dir: "{{ fast_appdata_dir }}/pics/data"
 
 # Where pics keeps its photos. Copyparty serves them to pics only, as the volume /apps/pics/photos
 # (and the trash as /apps/pics/trash), so they are not part of copyparty_files_dir and the admin's file listing.
-pics_photos_dir: "{{ bulk_dir }}/pics/photos"
+pics_photos_dir: "{{ primary_appdata_dir }}/pics/photos"
 
 # Where pics moves deleted photos; the only pics volume where files can be deleted.
-pics_trash_dir: "{{ bulk_dir }}/pics/trash"
+pics_trash_dir: "{{ primary_appdata_dir }}/pics/trash"
 
 # Homebridge's configuration and pairings.
-homebridge_data_dir: "{{ appdata_dir }}/homebridge"
+homebridge_data_dir: "{{ fast_appdata_dir }}/homebridge"
 
 # Garage's metadata (which objects and buckets exist). A live database: left out of the backup, the dump carries it.
-garage_meta_dir: "{{ appdata_dir }}/garage"
+garage_meta_dir: "{{ fast_appdata_dir }}/garage/meta"
 
 # Garage's object blocks, plain files.
-garage_blocks_dir: "{{ bulk_dir }}/garage"
+garage_blocks_dir: "{{ primary_appdata_dir }}/garage/data"
 
 # Crafty's servers, worlds and configuration.
-crafty_data_dir: "{{ bulk_dir }}/crafty"
+crafty_data_dir: "{{ primary_appdata_dir }}/crafty"

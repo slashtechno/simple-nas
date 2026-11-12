@@ -324,7 +324,7 @@
       vars:
         defined: >-
           {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml).keys()
-             | difference(['appdata_dir', 'bulk_dir']) | list }}
+             | difference(['fast_appdata_dir', 'primary_appdata_dir']) | list }}
         named: >-
           {{ lookup('ansible.builtin.file', repo ~ '/group_vars/all/services.yml') | regex_replace('(?m)^\s*#.*$', '')
              | regex_findall('[a-z0-9_]+_(?:dir|location)\b') | unique | list }}
@@ -337,23 +337,23 @@
           only in services.yml {{ named | difference(defined) }}
         quiet: true
 
-    # The layout rule (defaults-data-dirs.yml): a service's folder is {{ appdata_dir }}/<key> or {{ bulk_dir }}/<key>, with
+    # The layout rule (defaults-data-dirs.yml): a service's folder is {{ fast_appdata_dir }}/<key> or {{ primary_appdata_dir }}/<key>, with
     # parts as subfolders. Only the owner's own folders are named plainly. Read as raw text, so a path is not resolved.
-    - name: Every data directory is under appdata_dir or bulk_dir in its service's folder, or is an owner folder
+    - name: Every data directory is under fast_appdata_dir or primary_appdata_dir in its service's folder, or is an owner folder
       vars:
         owner_folders: [dockge_stacks_dir, copyparty_files_dir, copyparty_scratch_dir, copyparty_collab_dir]
         # The service key is the first word of the setting name; a service key with an underscore needs a rule here first.
         service_folder: "{{ item.key.split('_')[0] }}"
-        under_parent: "{{ item.value is match('^\\{\\{ (appdata|bulk)_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
+        under_parent: "{{ item.value is match('^\\{\\{ (fast|primary)_appdata_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
       ansible.builtin.assert:
         that: item.key in owner_folders or under_parent
         fail_msg: >-
-          {{ item.key }}: {{ item.value }} breaks the layout rule. Use {{ '{{ appdata_dir }}' }}/{{ service_folder }}[/part]
-          or {{ '{{ bulk_dir }}' }}/{{ service_folder }}[/part]; a new owner folder is added to owner_folders here.
+          {{ item.key }}: {{ item.value }} breaks the layout rule. Use {{ '{{ fast_appdata_dir }}' }}/{{ service_folder }}[/part]
+          or {{ '{{ primary_appdata_dir }}' }}/{{ service_folder }}[/part]; a new owner folder is added to owner_folders here.
         quiet: true
       loop: >-
         {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml) | dict2items
-           | rejectattr('key', 'in', ['appdata_dir', 'bulk_dir']) | list }}
+           | rejectattr('key', 'in', ['fast_appdata_dir', 'primary_appdata_dir']) | list }}
       loop_control:
         label: "{{ item.key }}"
 
@@ -583,7 +583,7 @@
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "'/mnt/primary/bulk/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "'/mnt/primary/appdata/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"

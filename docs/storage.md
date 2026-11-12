@@ -13,24 +13,24 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 
 | Role | Holds |
 |---|---|
-| `fast` | A service's own state (`appdata/`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `scratch/` and the restic cache |
-| `primary` | Bulk data (`bulk/`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
+| `fast` | A service's own state (`appdata/<service>`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `scratch/` and the restic cache |
+| `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
 | `backup` | The restic repo, service dumps, logs |
 
 One drive can hold several roles. Each role is claimed by at most one drive per host (a duplicate claim or an unknown role fails the deploy). Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives`. Giving a role its own drive later moves that role's paths, and you copy the data once ([Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)).
 
 ## What lives where
 
-The rule: a service's own state is in `appdata/<service>`, its bulk data in `bulk/<service>`, and your own files in plainly named folders (`stacks`, `scratch`, `files`, `collab`). A part of a service is a subfolder (`appdata/gitea/runner`). Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
+The rule: a service's data is in `appdata/<service>[/<part>]` on the drive its role names: state on the `fast` drive, bulk data on the `primary` drive. Your own files are in plainly named folders (`stacks`, `scratch`, `files`, `collab`). A service with several directories gives each its own part (`appdata/immich/postgres`, `appdata/immich/photos`). On a host where one drive holds both roles, the two `appdata` folders are one. Each path is a setting you can change. Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
-├─ appdata/<service>/           appdata_dir: each service's own state (databases, configs, sessions)
+├─ appdata/<service>/           fast_appdata_dir: each service's state (databases, configs, sessions)
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
 ├─ scratch/                     Copyparty's /scratch volume
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
-├─ bulk/<service>/              bulk_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
+├─ appdata/<service>/           primary_appdata_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
 └─ files/, collab/              your files in Copyparty
 /mnt/backup/                    backup drive: restic repository, dumps, logs
 /opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)

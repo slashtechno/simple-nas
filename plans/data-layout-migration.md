@@ -1,8 +1,8 @@
-# Data layout migration (appdata and bulk)
+# Data layout migration (one appdata folder)
 
 > **Status: active plan. Delete this file when both hosts are migrated and the branch is merged; git history keeps it.** It records one owner's steps, not conventions: the rules are in AGENTS.md and the code.
 
-Branch: `layout-appdata-bulk`. The layout rule is in [storage.md](../docs/storage.md#what-lives-where): a service's own state is `appdata/<service>`, its bulk data `bulk/<service>`, and your own files have plain names. `main` is what the hosts deploy from, so merge only after both hosts are done.
+Branch: `layout-appdata-bulk`. The layout rule is in [storage.md](../docs/storage.md#what-lives-where): a service's data is `appdata/<service>[/<part>]` on its role's drive, and your own files have plain names. `main` is what the hosts deploy from, so merge only after both hosts are done.
 
 **Order: stop, move, deploy. Never deploy first.** A deploy before the move creates empty new folders. Immich would then start a new, empty Postgres cluster, and a later `mv` into an existing folder nests the old one inside it.
 
@@ -12,22 +12,22 @@ On pinas (`/mnt/t7`, roles `fast` and `primary` on one drive, so every `mv` belo
 
 | Old | New |
 |---|---|
-| `photos` | `bulk/immich` |
-| `appdata/immich_postgres` | `appdata/immich` |
+| `photos` | `appdata/immich/photos` |
+| `appdata/immich_postgres` | `appdata/immich/postgres` |
 | `appdata/copyparty_config` | `appdata/copyparty/config` |
 | `appdata/copyparty-hist` | `appdata/copyparty/hist` |
 | `appdata/gitea` | `appdata/gitea/data` |
 | `appdata/gitea_runner` | `appdata/gitea/runner` |
-| `appdata/garage/meta` | `appdata/garage` |
-| `appdata/garage/data` | `bulk/garage` |
-| `appdata/crafty` | `bulk/crafty` |
-| `apps/pics/photos`, `apps/pics/trash` | `bulk/pics/photos`, `bulk/pics/trash` |
+| `appdata/pics` | `appdata/pics/data` |
+| `apps/pics/photos`, `apps/pics/trash` | `appdata/pics/photos`, `appdata/pics/trash` |
+
+Garage (`appdata/garage/meta` and `data`) and Crafty (`appdata/crafty`) stay where they are.
 
 On pi4 (`/mnt/apps`): only `appdata/copyparty_config` and `appdata/copyparty-hist` move, to `appdata/copyparty/config` and `appdata/copyparty/hist`.
 
-Unchanged: `caddy`, `dozzle`, `dockge`, `homebridge`, `ntfy`, `pics`, `scrutiny`, `tinyauth`, `files`, `collab`, `stacks`, `restic-cache`.
+Unchanged: `caddy`, `dozzle`, `dockge`, `homebridge`, `ntfy`, `scrutiny`, `tinyauth`, `files`, `collab`, `stacks`, `restic-cache`.
 
-Setting names that changed: `immich_upload_location` is `immich_photos_dir`, `immich_db_data_location` is `immich_postgres_dir`, `homebridge_config_dir` is `homebridge_data_dir`, `garage_data_dir` is `garage_meta_dir` plus `garage_blocks_dir`. The host vars files set none of them.
+Setting names that changed: `immich_upload_location` is `immich_photos_dir`, `immich_db_data_location` is `immich_postgres_dir`, `homebridge_config_dir` is `homebridge_data_dir`, `garage_data_dir` is `garage_meta_dir` plus `garage_blocks_dir`, `appdata_dir` is `fast_appdata_dir` (and `primary_appdata_dir` is new). The host vars files set none of them.
 
 ## 0. Before anything
 
@@ -52,24 +52,21 @@ Ask Docker, not memory. This lists every container with a bind mount under the d
 docker ps -q | xargs -r docker inspect -f '{{.Name}} {{index .Config.Labels "com.docker.compose.project.working_dir"}} {{range .Mounts}}{{.Source}} {{end}}' | grep -E '/mnt/(t7|apps)/'
 ```
 
-Stop the ones whose mounts are in the table above, in each folder: `docker compose down`. On pinas these are Immich (server, Postgres), Copyparty, Gitea (and its runner), Garage, Crafty and pics. Leave the others running. Then run the command again: no listed path may still be mounted by a running container.
+Stop the ones whose mounts are in the table above, in each folder: `docker compose down`. On pinas these are Immich (server, Postgres), Copyparty, Gitea (and its runner) and pics. Garage and Crafty keep their paths: leave them running. Then run the command again: no listed path may still be mounted by a running container.
 
 ## 2. Move (pinas)
 
 ```bash
 T=/mnt/t7
-sudo install -d -o "$USER" -g "$USER" "$T/bulk" "$T/bulk/pics" "$T/appdata/copyparty"
+sudo install -d -o "$USER" -g "$USER" "$T/appdata/immich" "$T/appdata/copyparty"
 
-mv_new $T/photos                       $T/bulk/immich
-mv_new $T/appdata/immich_postgres      $T/appdata/immich
+mv_new $T/appdata/immich_postgres      $T/appdata/immich/postgres
+mv_new $T/photos                       $T/appdata/immich/photos
 mv_new $T/appdata/copyparty_config     $T/appdata/copyparty/config
 mv_new $T/appdata/copyparty-hist       $T/appdata/copyparty/hist
-mv_new $T/appdata/crafty               $T/bulk/crafty
-mv_new $T/apps/pics/photos             $T/bulk/pics/photos
-mv_new $T/apps/pics/trash              $T/bulk/pics/trash
 ```
 
-Gitea and Garage change a folder into a folder of the same name, so each goes through a temporary name. Run each block once. If one stops halfway, look at the folders by hand instead of running it again.
+Gitea and pics change a folder into a folder of the same name, so each goes through a temporary name. Run each block once. If one stops halfway, look at the folders by hand instead of running it again.
 
 Gitea (the old folder becomes the new `data` inside a folder of the old name):
 
@@ -80,13 +77,14 @@ mv_new $T/appdata/gitea-old            $T/appdata/gitea/data
 mv_new $T/appdata/gitea_runner         $T/appdata/gitea/runner
 ```
 
-Garage (its `meta` becomes the folder itself, `data` goes to bulk):
+pics:
 
 ```bash
-mv_new $T/appdata/garage               $T/appdata/garage-old
-mv_new $T/appdata/garage-old/meta      $T/appdata/garage
-mv_new $T/appdata/garage-old/data      $T/bulk/garage
-sudo rmdir $T/appdata/garage-old        # fails if anything is left inside: look before you remove it
+mv_new $T/appdata/pics                 $T/appdata/pics-old
+sudo install -d -o "$USER" -g "$USER" $T/appdata/pics
+mv_new $T/appdata/pics-old             $T/appdata/pics/data
+mv_new $T/apps/pics/photos             $T/appdata/pics/photos
+mv_new $T/apps/pics/trash              $T/appdata/pics/trash
 ```
 
 Then check that nothing is left behind: `ls -A $T $T/appdata $T/apps`.
@@ -101,14 +99,14 @@ Each is checked, looked at and only then deleted. Step 1's list shows whether a 
 
 ## 4. Deploy
 
-- [ ] `just deploy '' --limit pinas`. The storage role creates `bulk` and the service roles recreate their containers on the new paths.
+- [ ] `just deploy '' --limit pinas`. The service roles recreate their containers on the new paths.
 - [ ] Check the mounts point at the new paths and nothing points at the old ones:
 
   ```bash
   docker ps -q | xargs -r docker inspect -f '{{.Name}} {{range .Mounts}}{{.Source}} {{end}}' | grep -E '/mnt/t7/' | sort
-  ls -A $T $T/appdata $T/bulk
+  ls -A $T $T/appdata
   ```
-- [ ] Open each service: Immich shows the photos, Gitea shows the repositories and the runner is online, Garage answers (`docker exec garage /garage status`), Crafty lists its servers, pics and Copyparty show the photos.
+- [ ] Open each service: Immich shows the photos, Gitea shows the repositories and the runner is online, pics and Copyparty show the photos.
 - [ ] Run `/opt/services/scripts/backup-restic-local.sh` and check `restic snapshots`. Restic stores the moved files again as paths, but deduplicates the content, so little is uploaded.
 
 ## 5. pi4
@@ -126,10 +124,10 @@ then `just deploy '' --limit pi4` and check Copyparty. pi4's `/mnt/t7/photos` is
 
 ## Rollback
 
-Stop the same containers, run the `mv` lines backwards (new to old; Gitea and Garage in reverse order), `git checkout main`, and deploy. The deploy before the move is the only step that cannot be undone with `mv` alone (an empty Postgres cluster started on the new path): never do it.
+Stop the same containers, run the `mv` lines backwards (new to old; Gitea and pics in reverse order), `git checkout main`, and deploy. The deploy before the move is the only step that cannot be undone with `mv` alone (an empty Postgres cluster started on the new path): never do it.
 
 ## Done
 
 - [ ] Both hosts migrated and checked, a backup after the move checked.
-- [ ] `git grep` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`) finds nothing (`git grep <name> -- ':!plans'`).
+- [ ] `git grep -w` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`, `appdata_dir`) finds nothing (`git grep <name> -- ':!plans'`; `-w` keeps `fast_appdata_dir` from matching `appdata_dir`).
 - [ ] Merge the branch to `main`, then delete this file.

@@ -117,21 +117,21 @@
   notify: Reload udev rules
   when: not usb_automount_enabled | bool
 
-# The parents of the service data directories: appdata_dir on the fast drive, bulk_dir on the primary. Each service role
-# creates its own folder below them. They exist before any service is deployed, because setup-encrypted-folder.sh
-# refuses a folder that does not exist.
+# The parents of the service data directories: fast_appdata_dir on the fast drive, primary_appdata_dir on the primary.
+# Each service role creates its own folder below them. They exist before any service is deployed, because
+# setup-encrypted-folder.sh refuses a folder that does not exist.
 - name: Create the appdata directory on the fast drive
   ansible.builtin.file:
-    path: "{{ appdata_dir }}"
+    path: "{{ fast_appdata_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0755"
   when: "'fast' in drive_mounts"
 
-- name: Create the bulk directory on the primary drive
+- name: Create the appdata directory on the primary drive
   ansible.builtin.file:
-    path: "{{ bulk_dir }}"
+    path: "{{ primary_appdata_dir }}"
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
