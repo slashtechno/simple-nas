@@ -32,7 +32,7 @@ Setting names that changed: `immich_upload_location` is `immich_photos_dir`, `im
 ## 0. Before anything
 
 - [ ] On your machine: `git checkout layout-appdata-bulk`, then `just check` in `ansible/`, and `just preview '' --limit <host>` to read the diff (it shows new paths; nothing has moved yet).
-- [ ] On the host, run a backup and check it: `/opt/services/scripts/backup-restic-local.sh`, then `restic snapshots` (the restic recipe is in [backups.md](../docs/backups.md)). Check that the newest snapshot is from today.
+- [ ] On each host, run a backup and check it: `/opt/services/scripts/backup-restic-local.sh`, then `restic snapshots` (the restic recipe is in [backups.md](../docs/backups.md)). Check that the newest snapshot is from today.
 - [ ] Define a move helper in the host shell. It refuses a missing source or an existing target, and skips a step that is already done, so you can run the list again after a stop:
 
   ```bash
@@ -98,7 +98,6 @@ Each is checked, looked at and only then deleted. Step 1's list shows whether a 
 - [ ] `$T/copyparty-hist` (top level): confirm no container mounts it, then `ls -la` and `du -sh` it. Copyparty rebuilds its thumbnail data, so delete it if it holds only that.
 - [ ] `$T/backups`: `ls -A` it. Remove it with `rmdir` only if it is empty.
 - [ ] `$T/apps`: `rmdir $T/apps/pics $T/apps` once the pics folders have moved.
-- [ ] pi4 `/mnt/t7/photos`: not one of this repo's paths. Look at it by hand.
 
 ## 4. Deploy
 
@@ -114,7 +113,7 @@ Each is checked, looked at and only then deleted. Step 1's list shows whether a 
 
 ## 5. pi4
 
-Same order: stop Copyparty (step 1), then
+Same order, and a checked backup first (step 0): stop Copyparty (step 1), then
 
 ```bash
 T=/mnt/apps
@@ -123,7 +122,7 @@ mv_new $T/appdata/copyparty_config $T/appdata/copyparty/config
 mv_new $T/appdata/copyparty-hist   $T/appdata/copyparty/hist
 ```
 
-then `just deploy '' --limit pi4` and check Copyparty.
+then `just deploy '' --limit pi4` and check Copyparty. pi4's `/mnt/t7/photos` is not one of this repo's paths: look at it by hand.
 
 ## Rollback
 
@@ -132,5 +131,5 @@ Stop the same containers, run the `mv` lines backwards (new to old; Gitea and Ga
 ## Done
 
 - [ ] Both hosts migrated and checked, a backup after the move checked.
-- [ ] `git grep` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`) finds nothing.
+- [ ] `git grep` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`) finds nothing (`git grep <name> -- ':!plans'`).
 - [ ] Merge the branch to `main`, then delete this file.

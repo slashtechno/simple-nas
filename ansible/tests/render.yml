@@ -341,15 +341,12 @@
     # parts as subfolders. Only the owner's own folders are named plainly. Read as raw text, so a path is not resolved.
     - name: Every data directory is under appdata_dir or bulk_dir in its service's folder, or is an owner folder
       vars:
-        owner_folders:
-          dockge_stacks_dir: "{{ '{{ fast_drive }}/stacks' }}"
-          copyparty_files_dir: "{{ '{{ primary_drive }}/files' }}"
-          copyparty_fast_dir: "{{ '{{ fast_drive }}/fast' }}"
-          copyparty_collab_dir: "{{ '{{ primary_drive }}/collab' }}"
+        owner_folders: [dockge_stacks_dir, copyparty_files_dir, copyparty_fast_dir, copyparty_collab_dir]
+        # The service key is the first word of the setting name; a service key with an underscore needs a rule here first.
         service_folder: "{{ item.key.split('_')[0] }}"
         under_parent: "{{ item.value is match('^\\{\\{ (appdata|bulk)_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
       ansible.builtin.assert:
-        that: owner_folders[item.key] | default('') == item.value or under_parent
+        that: item.key in owner_folders or under_parent
         fail_msg: >-
           {{ item.key }}: {{ item.value }} breaks the layout rule. Use {{ '{{ appdata_dir }}' }}/{{ service_folder }}[/part]
           or {{ '{{ bulk_dir }}' }}/{{ service_folder }}[/part]; a new owner folder is added to owner_folders here.
@@ -658,6 +655,9 @@
           - "garage_meta_dir in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(caddy_data_dir ~ '/caddy') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(copyparty_config_dir ~ '/copyparty') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(tinyauth_data_dir ~ '/oidc') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(gitea_data_dir ~ '/ssh') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(crafty_data_dir ~ '/backups') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "'--fsck=' in lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')"
           - >-
             drives | map(attribute='uuid') | map('lower') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list

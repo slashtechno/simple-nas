@@ -24,7 +24,7 @@
 # A deploy writes it again from Cloudflare.
 {{ cloudflared_token_file }}
 # The directories each enabled service lists as no_backup in group_vars/all/services.yml, and the folders inside its
-# data directories that it lists as no_backup_in (each with the reason). To back one up, add its "!" line to
+# data directories that it lists as no_backup_in (the reason is in services.yml). To back one up, add its "!" line to
 # restic_local_rules or restic_cloud_rules (docs/backups.md).
 {% for path in query('ansible.builtin.vars', *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='no_backup', default=[]) | flatten | select | list)) %}
 {{ path }}
