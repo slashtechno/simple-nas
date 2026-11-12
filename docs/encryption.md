@@ -24,7 +24,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 - It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
 - A wrong passphrase stops it. It reports a folder it cannot unlock (never set up, or not empty: move the files away first). The other folders still unlock.
-- From your computer: `just unlock <host>`, and `just encryption-status <host>` for the status below.
+- From your computer: `just unlock <host>`, `just lock <host>` and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
@@ -192,31 +192,30 @@ The role removes the scripts when no folder remains, and gocryptfs stays install
 
 ## Unlock page
 
-A web page that shows, unlocks and locks the encrypted folders from a browser. It is deployed by the `unlock_page` role (`unlock_page_enabled: true` in the host's `vars.yml`) and sits behind the Tinyauth login at `https://<unlock_page_subdomain>.<domain>`. `unlock.sh` over SSH (`just unlock`, `just lock`) always works without it.
+A web page on the host that shows, unlocks and locks its encrypted folders from a browser. The `unlock_page` role deploys it (`unlock_page_enabled: true` in the host's `vars.yml`). It sits behind the Tinyauth login at `https://<unlock_page_subdomain>.<domain>`. `just unlock` and `just lock` over SSH work without it.
 
 Set it up once:
 
-1. Make a key for the page: `ssh-keygen -t ed25519 -N '' -C unlock-page -f unlock-page-key`. Put the private key in the vault as `vault_unlock_page_ssh_key` and the public line in `group_vars/all/vars.yml` as `unlock_page_public_key`. Delete the two files.
-2. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. It is the one you type into `setup-encrypted-folder.sh`.
-3. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder: the deploy refuses a listed folder that holds either, or the page's own folder.
-4. Run `just deploy encryption,unlock_page --limit <host>`. By default the page unlocks only its own host. `unlock_page_hosts: [pi4, pinas]` makes it unlock several: each of them needs `encryption` deployed with the same `unlock_page_public_key`.
-5. Check it: `docker compose -f /opt/services/unlock-page/docker-compose.yml exec unlock-page python3 app.py check` prints each host as locked or unlocked and exits 1 if one cannot be reached. Run it from cron if you rely on the page.
+1. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. It is the one you type into `setup-encrypted-folder.sh`.
+2. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder: the deploy refuses a listed folder that holds either, or the page's own folder.
+3. Run `just deploy encryption,unlock_page --limit <host>`. Each host runs its own page.
+4. Check it: `docker exec unlock-page python3 app.py check` prints the host's status and exits 1 if the page cannot reach the host.
 
-The page shows each host's status. **Unlock** sends the passphrase and starts the containers that wait for the folders. **Lock** asks first, then stops those containers and unmounts the folders, as `unlock.sh --lock` does.
+**Unlock** unlocks the folders and starts the containers that wait for them. **Lock** asks first, then stops those containers and unmounts the folders, as `unlock.sh --lock` does. The page shows the status of each folder.
 
 <details>
-<summary>How the key is limited, and what a thief can do</summary>
+<summary>How it works, and what a thief can do</summary>
 
-On each host, the key sits in `authorized_keys` as `restrict,command="sudo <scripts_dir>/unlock.sh \"$SSH_ORIGINAL_COMMAND\""`.
+The page is a container with no key and no passphrase. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. systemd starts `unlock-page-request.sh` as root for each connection. The script compares the word with those three strings and runs one fixed command for each. The passphrase is in `<scripts_dir>/unlock-passphrase` (root only), and `unlock` reads it from there.
 
-- `command=` replaces whatever the client asks to run. The page sends nothing, `--status` or `--lock`, and `unlock.sh` accepts only those three. Anything else exits with a usage message.
-- `restrict` turns off port forwarding, agent forwarding, X11 and the terminal.
-- The ansible user has passwordless sudo, so without the forced command the key would be root.
+- Nothing from the connection is run, expanded or put in a command line. The script reads at most 16 characters of one line, and anything but the three words gets "unknown request". `tests/test_unlock_page.py` sends the script shell syntax, long input and extra lines.
+- `unlock.sh` also accepts only no argument, `--status` and `--lock`.
+- The page's container mounts the socket's folder read-only.
 - The page refuses a POST whose `Origin` is another site, so a page on another site cannot press Lock for you.
 
-Someone who reaches the page past Tinyauth can unlock and lock your hosts, and so can anyone who steals the key. A stop of the services is the worst a key thief can do. Neither can log in, read files or see the passphrase. The passphrase and the key are in `/opt/services/unlock-page/secrets` (root only, root drive). Anyone who holds the whole host, switched off, can read them: see [What it protects](#what-it-protects).
+Someone who gets past Tinyauth can unlock and lock the folders. The worst of that is stopped services. Nobody can log in, read files or see the passphrase through the page. Anyone who holds the whole host, switched off, can read the passphrase file: see [What it protects](#what-it-protects).
 
-If a host is stolen, take it off the tailnet and remove `unlock_page_public_key`.
+Turn the page off with `teardown.yml --tags unlock_page` (the socket, the script and the passphrase file) and `-e only=unlock_page` (the container).
 
 </details>
 

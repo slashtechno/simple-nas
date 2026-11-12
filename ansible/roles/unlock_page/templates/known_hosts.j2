@@ -1,4 +1,0 @@
-{# One line per host: the address the page uses, then the key type and the key (the .pub file's comment is left out). #}
-{% for target, identity in unlock_page_targets | zip(unlock_page_host_keys.results) %}
-{{ target.address }} {{ (identity.content | b64decode).split()[0:2] | join(' ') }}
-{% endfor %}

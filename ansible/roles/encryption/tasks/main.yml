@@ -43,14 +43,6 @@
         group: root
         mode: "0755"
 
-    # One key that can run unlock.sh and nothing else (docs/encryption.md#unlock-page). An empty setting removes it.
-    - name: Allow the unlock page's SSH key to run unlock.sh and nothing else
-      ansible.builtin.lineinfile:
-        path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-        regexp: "^{{ (unlock_page_key_command ~ ' ') | regex_escape }}"
-        line: "{{ unlock_page_key_command }} {{ unlock_page_public_key }}"
-        state: "{{ 'present' if unlock_page_public_key | length > 0 else 'absent' }}"
-
 - name: Remove the encryption scripts when no folder is listed
   ansible.builtin.import_tasks: remove.yml
   when: encrypted_folders | length == 0

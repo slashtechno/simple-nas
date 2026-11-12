@@ -21,9 +21,3 @@
   register: encryption_rmdir
   changed_when: encryption_rmdir.rc == 0
   failed_when: false   # a directory with your own scripts, or a missing one, is fine
-
-- name: Remove the unlock page's SSH key
-  ansible.builtin.lineinfile:
-    path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
-    regexp: "^{{ (unlock_page_key_command ~ ' ') | regex_escape }}"
-    state: absent

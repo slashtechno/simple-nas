@@ -18,19 +18,6 @@ STOPPED_FILE={{ encryption_stopped_file | quote }}
 command -v docker >/dev/null || exit 0   # encryption does not need Docker
 
 {% raw %}
-# The containers the last lock stopped. They are stopped, so the loop below skips them: start them here, or list them.
-if [ -s "$STOPPED_FILE" ]; then
-  if [ "$DRY" = 1 ]; then
-    while IFS= read -r name; do echo "  $name (stopped by the lock)"; done <"$STOPPED_FILE"
-  elif [ "$STOP" = 0 ]; then
-    while IFS= read -r name; do
-      echo "Starting $name"
-      docker start "$name" >/dev/null || { echo "ERROR: could not start $name." >&2; FAILED=1; }
-    done <"$STOPPED_FILE"
-    rm -f "$STOPPED_FILE"
-  fi
-fi
-
 names=$(docker ps -a --format '{{.Names}}') || { echo "ERROR: cannot list containers. Is Docker running?" >&2; exit 1; }
 for name in $names; do
   # Running, or created with an error (the failed start); anything else was stopped on purpose.
@@ -57,5 +44,17 @@ for name in $names; do
     docker restart "$name" >/dev/null || { echo "ERROR: could not restart $name." >&2; FAILED=1; }
   fi
 done
+# The containers the last lock stopped. They are stopped, so the loop above skips them: start them here (after the loop, which would restart them again), or list them.
+if [ -s "$STOPPED_FILE" ]; then
+  if [ "$DRY" = 1 ]; then
+    while IFS= read -r name; do echo "  $name (stopped by the lock)"; done <"$STOPPED_FILE"
+  elif [ "$STOP" = 0 ]; then
+    while IFS= read -r name; do
+      echo "Starting $name"
+      docker start "$name" >/dev/null || { echo "ERROR: could not start $name." >&2; FAILED=1; }
+    done <"$STOPPED_FILE"
+    rm -f "$STOPPED_FILE"
+  fi
+fi
 {% endraw %}
 exit "$FAILED"

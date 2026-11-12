@@ -18,10 +18,6 @@ scripts_dir: "{{ services_dir }}/scripts"
 # Absolute paths of folders to store encrypted with gocryptfs, each a folder a service already uses. Listing one switches encryption on (docs/encryption.md).
 encrypted_folders: []
 
-# The public SSH key of the unlock page (docs/encryption.md#unlock-page), such as `ssh-ed25519 AAAA... unlock-page`. Set it for every host the
-# page unlocks: the host then accepts that key for one thing only, running unlock.sh. Empty means no page key. Needs `encrypted_folders`.
-unlock_page_public_key: ""
-
 # This host's drives. Empty by default; a host that has drives lists them in host_vars/<host>/vars.yml
 # (explained in host_vars/vars.yml.example).
 drives: []

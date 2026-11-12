@@ -41,7 +41,7 @@ show_state() {
   fi
 }
 
-# The unlock page's key runs this with whatever the page sends (docs/encryption.md#unlocking): only these three are accepted.
+# Only these three are accepted: whatever calls this, the unlock page's request script included, cannot make it do anything else.
 case "${1:-}" in
   "" | --status | --lock) ;;
   *) echo "usage: unlock.sh [--status | --lock]" >&2; exit 2 ;;
@@ -93,6 +93,9 @@ finish() {
         [ "$status" = 0 ] && status=1
       fi
     done
+  elif [ -s {{ encryption_stopped_file | quote }} ]; then
+    # A lock that failed on a busy folder stopped containers and left the folder mounted. Nothing is mounted by this run, but they must start.
+    bash {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} || status=1
   fi
   exit "$status"
 }

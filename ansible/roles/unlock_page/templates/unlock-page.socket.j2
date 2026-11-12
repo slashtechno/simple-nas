@@ -1,0 +1,13 @@
+# Ansible-managed (roles/unlock_page). The unlock page's container connects here; only root can (mode 0600 in a folder of mode 0700).
+[Unit]
+Description=Unlock page requests
+
+[Socket]
+ListenStream={{ unlock_page_socket_dir }}/unlock.sock
+DirectoryMode=0700
+SocketMode=0600
+# One copy of the service per connection (unlock-page@.service).
+Accept=yes
+
+[Install]
+WantedBy=sockets.target

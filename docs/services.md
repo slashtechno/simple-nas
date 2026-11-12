@@ -45,7 +45,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 | Tailscale ([networking](./networking.md)) | Private remote access, installed unless `tailscale_enabled: false` | `roles/tailscale` | Tailscale joined by hand |
 | [Homepage](#homepage) | Start page with a tile per enabled service on every host | `roles/homepage` | none |
 | [Dockge, Caddy](#ad-hoc-app-platform) | Dockge: web UI for your own compose stacks. Caddy: reverse proxy that names apps from container labels | `roles/dockge`, `roles/caddy` | `fast` drive role |
-| [Unlock page](./encryption.md#unlock-page) | Show, unlock and lock the encrypted folders from a browser | `roles/unlock_page` | `tinyauth_enabled`, a Caddy name, `encrypted_folders`, `vault_unlock_page_ssh_key`, `vault_encryption_passphrase` |
+| [Unlock page](./encryption.md#unlock-page) | Show, unlock and lock the encrypted folders from a browser | `roles/unlock_page` | `tinyauth_enabled`, a Caddy name, `encrypted_folders`, `vault_encryption_passphrase` |
 | Backups ([backups.md](./backups.md)) | Daily local and weekly cloud backups, a weekly check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) |
 | Connectivity watchdog ([networking](./networking.md#connectivity-watchdog)) | Reconnects the network when TCP stops working | `roles/connectivity_watchdog` | NetworkManager |
 | Raspberry Pi tuning ([memory](./memory.md#memory-limits)) | Memory cgroup, so container memory limits work | `roles/pi` | a Raspberry Pi |

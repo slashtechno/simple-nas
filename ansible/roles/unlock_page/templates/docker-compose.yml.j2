@@ -12,11 +12,8 @@ services:
     restart: unless-stopped
     environment:
       TZ: {{ timezone }}
-      UNLOCK_HOSTS: "{% for t in unlock_page_targets %}{{ t.name }}={{ t.user }}@{{ t.address }}{{ ',' if not loop.last }}{% endfor %}"
+    # The folder with the socket (unlock-page.socket), read-only: the page can ask the host for three things and nothing else.
     volumes:
-      - ./secrets:/run/unlock:ro
-    # The page's own host, reached through Docker's gateway.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - {{ unlock_page_socket_dir }}:/run/unlock:ro
     networks:
       - {{ docker_network }}

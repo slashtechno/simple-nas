@@ -127,8 +127,6 @@
           "gh.pi4.example.com": {redir: "https://github.com{uri}"}
         vault_tinyauth_users: [{name: owner, password: "pass$word", email: "owner@real.example"}, {name: second, password: second, totp: JBSWY3DPEHPK3PXP}]
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret"}
-        # The result of the unlock page role's slurp of each host's SSH identity (a task, so the render test supplies it).
-        unlock_page_host_keys: {results: [{content: "c3NoLWVkMjU1MTkgQUFBQUMzTnphRXhhbXBsZSByb290QHJlbmRlci1mdWxs"}]}
         immich_port: ""
         immich_extra_origins: ["https://photos.example.org"]
         pics_extra_origins: ["http://nas:8100"]
@@ -566,15 +564,21 @@
           # Lock: only the three arguments the page's key can send are accepted; --lock stops the containers through the hook, which
           # records them for the next unlock, then unmounts each folder.
           - "'\"\" | --status | --lock) ;;' in unlock_sh"
-          # The unlock page: it reaches its own host through Docker's gateway and trusts only the identity read from the host.
-          - "'UNLOCK_HOSTS: \"render-full=' in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
-          - "'@host.docker.internal' in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
-          - "lookup('ansible.builtin.file', out_dir ~ '/unlock_page/known_hosts') | trim == 'host.docker.internal ssh-ed25519 AAAAC3NzaExample'"
           - "'\"${1:-}\" = \"--lock\"' in unlock_sh and 'mountpoint -q /mnt/primary/immich/. && MOUNTED_NOW' in unlock_sh"
           - "'00-containers.sh --stop' in unlock_sh and 'umount \"$mount\"' in unlock_sh"
           - "(encryption_stopped_file ~ ' ') not in hook_sh and 'STOPPED_FILE=' ~ encryption_stopped_file in hook_sh"
           - "'docker stop \"$name\"' in hook_sh and 'docker start \"$name\"' in hook_sh"
-          - "unlock_page_key_command.startswith('restrict,command=\"sudo ') and '$SSH_ORIGINAL_COMMAND' in unlock_page_key_command"
+          # A lock that failed on a busy folder leaves containers stopped and the folders mounted: the next unlock must still start them,
+          # and only after the loop that restarts the running ones.
+          # The unlock page has no key and no passphrase: it mounts the socket's folder read-only, and the request script on the host
+          # compares one word with three fixed strings, running nothing it received.
+          - "(unlock_page_socket_dir ~ ':/run/unlock:ro') in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
+          - "('ListenStream=' ~ unlock_page_socket_dir ~ '/unlock.sock') in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/unlock-page.socket')"
+          - "'SocketMode=0600' in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/unlock-page.socket')"
+          - "('[ -s ' ~ encryption_stopped_file ~ ' ]') in unlock_sh"
+          - "hook_sh.index('Restarting $name') < hook_sh.index('Starting $name')"
+          # The page has no login of its own: Tinyauth in front of its name is the login.
+          - "caddy_labels[caddy_site['unlock.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
           # The hook skips the empty line docker inspect ends with; without this it matches every container.
           - "'[ -n \"$source\" ] || continue' in hook_sh"
           - "('chown ' ~ ansible_user ~ ' \"$cipher/gocryptfs.conf\"') in unlock_sh"

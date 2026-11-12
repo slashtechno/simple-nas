@@ -1,0 +1,20 @@
+---
+# Removes what the unlock_page role puts outside its compose directory. Used by teardown.yml. The compose directory is removed
+# with the service (services.yml).
+- name: Stop listening on the unlock page's socket
+  ansible.builtin.systemd:
+    name: unlock-page.socket
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  failed_when: false   # a host that never had the socket has no such unit
+
+- name: Remove the socket, its service, the request script and the passphrase
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/unlock-page.socket
+    - /etc/systemd/system/unlock-page@.service
+    - "{{ scripts_dir }}/unlock-page-request.sh"
+    - "{{ unlock_passphrase_file }}"

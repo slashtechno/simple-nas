@@ -1,0 +1,11 @@
+# Ansible-managed (roles/unlock_page). One request from the unlock page: the connection is the script's input and output.
+[Unit]
+Description=Unlock page request
+
+[Service]
+ExecStart=/bin/bash {{ (scripts_dir ~ '/unlock-page-request.sh') | quote }}
+StandardInput=socket
+StandardOutput=socket
+StandardError=socket
+# An unlock of a large folder or a stuck lock must not run forever.
+RuntimeMaxSec=900

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Ansible-managed (roles/unlock_page): systemd runs one copy of this, as root, for each connection to the unlock page's socket
+# (unlock-page.socket). The connection is both its input and its output.
+# The page sends one word. Nothing from the connection is run, expanded or put in a command line: the word is only compared with three
+# fixed strings, and each match runs a fixed command. Anything else is refused. The passphrase never crosses the connection: unlock
+# reads it from a file only root can read, and the other two commands read nothing. The last line sent back is "exit N", the exit code of the command.
+set -uo pipefail
+
+# At most 16 characters, so a long input cannot fill memory. "|| true": a closed connection or a timeout leaves the word empty.
+IFS= read -r -t 10 -n 16 word || true
+
+case "$word" in
+  unlock) {{ (scripts_dir ~ '/unlock.sh') | quote }} <{{ unlock_passphrase_file | quote }} ;;
+  lock) {{ (scripts_dir ~ '/unlock.sh') | quote }} --lock </dev/null ;;
+  status) {{ (scripts_dir ~ '/unlock.sh') | quote }} --status </dev/null ;;
+  *) echo "unknown request" >&2; false ;;
+esac
+echo "exit $?"

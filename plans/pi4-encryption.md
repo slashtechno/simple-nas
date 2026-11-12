@@ -8,9 +8,7 @@ Decisions: encrypt `/mnt/apps/appdata`, `/mnt/apps/stacks` and `/mnt/apps/files`
 
 ## 1. Settings (on your machine)
 
-- [ ] Make the page's key and delete the files after step 2: `ssh-keygen -t ed25519 -N '' -C unlock-page -f scratch/unlock-page-key`.
-- [ ] In the vault (`ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml`): `vault_unlock_page_ssh_key` (the private key, as a `|` block) and `vault_encryption_passphrase` (a long random one, the one you will type in step 5).
-- [ ] In `group_vars/all/vars.yml`: `unlock_page_public_key: <the line of scratch/unlock-page-key.pub>`.
+- [ ] In the vault (`ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml`): `vault_encryption_passphrase`, a long random passphrase. It is the one you type in step 5.
 - [ ] In `host_vars/pi4/vars.yml`:
 
   ```yaml
@@ -25,7 +23,7 @@ Decisions: encrypt `/mnt/apps/appdata`, `/mnt/apps/stacks` and `/mnt/apps/files`
 ## 2. Backup and stop
 
 - [ ] On pi4: `/opt/services/scripts/backup-restic-local.sh`, then `restic snapshots` ([connecting](../docs/backups.md#connecting)). The newest snapshot must be from today. Three root-owned files in `stacks/cortex` report a read error: that is known.
-- [ ] Stop everything that mounts the three folders or the plain ones: `docker ps -q | xargs -r docker stop`. Then `docker ps` lists nothing.
+- [ ] Save what is running, then stop it: `docker ps --format '{{.Names}}' > ~/running.txt && xargs -r docker stop < ~/running.txt`. Then `docker ps` lists nothing. Your own stacks are not started by a deploy or an unlock, so step 6 starts them from this file.
 
 ## 3. Move the plain folders (pi4)
 
@@ -42,7 +40,7 @@ ls -A $T/plain $T/appdata
 
 ## 4. Deploy the encryption scripts
 
-- [ ] `just deploy encryption,backup --limit pi4`. It fails if a listed folder holds the page, Caddy or Tinyauth data. It installs the scripts and the page's SSH key. The backups now refuse to run until the folders are unlocked.
+- [ ] `just deploy encryption,backup --limit pi4`. It fails if a listed folder holds the page, Caddy or Tinyauth data. It installs the scripts. The backups now refuse to run until the folders are unlocked.
 
 ## 5. Encrypt each folder (in a terminal on pi4)
 
@@ -58,13 +56,13 @@ sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/stacks   # the lo
 
 ## 6. Deploy everything and check
 
-- [ ] `just deploy '' --limit pi4`. Start the containers: `just unlock pi4` mounts the folders and starts them.
+- [ ] `just deploy '' --limit pi4` starts the services Ansible manages. Then start the rest: `xargs -r docker start < ~/running.txt` on pi4. (The setup script leaves the folders mounted, so `just unlock pi4` would only say "Already unlocked.")
 - [ ] `just encryption-status pi4`: every folder unlocked, no container waiting.
 - [ ] Open Dockge and the media apps, and run `/opt/services/scripts/backup-restic-local.sh`. Then `restic ls latest | grep gocryptfs.conf` prints one line per folder.
 
 ## 7. The page and lock
 
-- [ ] On pi4: `docker compose -f /opt/services/unlock-page/docker-compose.yml exec unlock-page python3 app.py check` prints `pi4: unlocked`.
+- [ ] On pi4: `docker exec unlock-page python3 app.py check` prints each folder as unlocked, and `systemctl status unlock-page.socket` shows it listening.
 - [ ] `just lock pi4`: the containers that use the folders stop, the folders unmount. `just encryption-status pi4` shows them locked and the waiting containers. ntfy, Caddy, Tinyauth and the page keep running.
 - [ ] Open `https://unlock.pi4.slashtechno.com`, log in with Tinyauth, press Unlock. Everything starts again. Press Lock, then Unlock once more.
 - [ ] Reboot pi4 and unlock from the page: nothing runs on the encrypted folders before that.
