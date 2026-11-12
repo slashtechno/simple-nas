@@ -61,6 +61,7 @@
     mode: "0644"
   loop:
     - app.py
+    - simple.min.css
     - Dockerfile
 
 - name: Render the page's docker-compose.yml

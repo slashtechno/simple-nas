@@ -11,3 +11,6 @@ StandardOutput=socket
 StandardError=socket
 # An unlock of a large folder or a stuck lock must not run forever.
 RuntimeMaxSec=900
+# unlock.sh starts gocryptfs, which keeps running as the mount. systemd kills everything left in the unit when the script ends,
+# and that would unmount the folders at once (tested on a Pi 4). With "process" it ends only the script.
+KillMode=process

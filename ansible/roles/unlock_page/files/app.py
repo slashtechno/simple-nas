@@ -22,8 +22,12 @@ import urllib.parse
 SOCKET = os.environ.get("UNLOCK_SOCKET", "/run/unlock/unlock.sock")
 PORT = int(os.environ.get("PORT", "8080"))
 
+# Simple.css 2.3.7 (MIT, files/simple.LICENSE): a classless stylesheet that follows the browser's light or dark setting.
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "simple.min.css")) as css_file:
+    CSS = css_file.read()
+
 PAGE = """<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>Unlock</title><body style="font:16px system-ui;max-width:32rem;margin:2rem auto;padding:0 1rem">
+<title>Unlock</title><style>/*css*/</style><body>
 <h1>Unlock</h1>{result}
 <form method=post><input type=password name=passphrase autocomplete=current-password placeholder=Passphrase>
 <button name=action value=unlock>Unlock</button>
@@ -69,7 +73,8 @@ def render(code, output):
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def send_page(self, result, status=200):
-        data = PAGE.format(result=result, status=render(*ask("status"))).encode()
+        # The stylesheet goes in after format(), which would read its braces as fields.
+        data = PAGE.format(result=result, status=render(*ask("status"))).replace("/*css*/", CSS, 1).encode()
         self.send_response(status)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Cache-Control", "no-store")

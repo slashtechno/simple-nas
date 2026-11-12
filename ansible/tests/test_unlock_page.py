@@ -142,6 +142,7 @@ form = urllib.parse.urlencode
 
 status, page = fetch()
 assert status == 200 and "ran [--status]" in page and "the-passphrase" not in page and "type=password" in page
+assert "prefers-color-scheme" in page and "/*css*/" not in page  # the stylesheet is in the page
 status, page = fetch("action=lock", origin=base.rstrip("/"))
 assert status == 200 and "ran [--lock]" in page, page
 hard = "p@ss word&=%+;$(x)\"'"  # characters that the form encoding and a shell would each treat specially

@@ -5,11 +5,11 @@
 # A key defined in both files takes the host's value, so move a key here, do not copy it.
 
 # Cloudflare API token with Zone:DNS:Edit on every zone in cloudflare_zones and Account:Cloudflare Tunnel:Edit.
-# Caddy (caddy_private_domains) puts it in its compose file on the host, unless caddy_dns_api_token names another token.
 vault_cloudflared_api_token: "your_cloudflare_api_token"
-# Optional: a token with only Zone:DNS:Edit on the zone of caddy_private_domains, for the host. To use it, set
-# `caddy_dns_api_token: "{{ vault_caddy_dns_api_token }}"` in vars.yml.
-# vault_caddy_dns_api_token: "your_dns_only_token"
+# The token that Caddy (caddy_private_domains) puts in its compose file on the host: Zone:DNS:Edit on the zone of
+# caddy_private_domains and nothing else, so a thief of the host cannot edit other zones or tunnels. The same value as the
+# line above also works. Needed only on a host with caddy_private_domains.
+vault_caddy_dns_api_token: "your_dns_only_token"
 # ID of the Cloudflare account that owns the tunnel.
 vault_cloudflared_account_id: "your_cloudflare_account_id"
 # Login token for the ntfy server (roles/ntfy), used by the server and by every host that sends alerts.

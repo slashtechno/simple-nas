@@ -18,7 +18,18 @@ STOPPED_FILE={{ encryption_stopped_file | quote }}
 command -v docker >/dev/null || exit 0   # encryption does not need Docker
 
 {% raw %}
-names=$(docker ps -a --format '{{.Names}}') || { echo "ERROR: cannot list containers. Is Docker running?" >&2; exit 1; }
+# Names on standard input, one per line, come out in the order to start them. A container that joins another's network
+# (network_mode: container:<name>) cannot start before that one runs, so it goes last.
+start_order() {
+  local name mode joiners=()
+  while IFS= read -r name; do
+    mode=$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$name" 2>/dev/null)
+    case "$mode" in container:*) joiners+=("$name") ;; *) echo "$name" ;; esac
+  done
+  [ "${#joiners[@]}" = 0 ] || printf '%s\n' "${joiners[@]}"
+}
+
+names=$(docker ps -a --format '{{.Names}}' | start_order) || { echo "ERROR: cannot list containers. Is Docker running?" >&2; exit 1; }
 for name in $names; do
   # Running, or created with an error (the failed start); anything else was stopped on purpose.
   state=$(docker inspect -f '{{.State.Status}}{{if .State.Error}} failed{{end}}' "$name") || { FAILED=1; continue; }
@@ -52,7 +63,7 @@ if [ -s "$STOPPED_FILE" ]; then
     while IFS= read -r name; do
       echo "Starting $name"
       docker start "$name" >/dev/null || { echo "ERROR: could not start $name." >&2; FAILED=1; }
-    done <"$STOPPED_FILE"
+    done < <(start_order <"$STOPPED_FILE")
     rm -f "$STOPPED_FILE"
   fi
 fi
