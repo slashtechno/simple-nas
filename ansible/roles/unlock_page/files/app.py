@@ -8,7 +8,7 @@ page holds no key and no passphrase.
   python3 app.py           serve the page
   python3 app.py check     print the host's status; exit 1 if the socket cannot be reached
 
-The socket path is the environment variable UNLOCK_SOCKET (set by the role's compose file).
+The socket path is the environment variable UNLOCK_SOCKET; the default is where the role's compose file mounts it.
 """
 
 import html

@@ -64,6 +64,7 @@ if [ "${1:-}" = "--lock" ]; then
       FAILED=1
     fi
   done
+  [ "$FAILED" = 0 ] || echo "The containers stopped for the lock stay stopped. Close what holds the folder and lock again, or unlock to start them." >&2
   exit "$FAILED"
 fi
 

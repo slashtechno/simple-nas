@@ -1,4 +1,6 @@
 # Ansible-managed (roles/unlock_page). One request from the unlock page: the connection is the script's input and output.
+# systemd starts one copy per request (see the .socket file). It runs as root; the connection is its input and output, which is
+# how the page's one word arrives and the reply goes back. Logs: journalctl -u 'unlock-page@*'.
 [Unit]
 Description=Unlock page request
 

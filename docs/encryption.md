@@ -219,6 +219,8 @@ Someone who gets past Tinyauth can unlock and lock the folders. The worst of tha
 
 Turn the page off with `teardown.yml --tags unlock_page` (the socket, the script and the passphrase file) and `-e only=unlock_page` (the container).
 
+
+If the page cannot reach the host: `systemctl status unlock-page.socket` shows whether the socket listens, `journalctl -u 'unlock-page@*'` shows each request, and `echo status | sudo socat - UNIX-CONNECT:/run/unlock-page/unlock.sock` sends one by hand (`socat` is in apt). A request the script refuses shows as a failed unit there.
 </details>
 
 ## Dumps and backups

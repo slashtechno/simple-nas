@@ -590,6 +590,8 @@
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
           - "cloudflared_token_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - "unlock_passphrase_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - "scripts_dir ~ '/unlock.sh' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
