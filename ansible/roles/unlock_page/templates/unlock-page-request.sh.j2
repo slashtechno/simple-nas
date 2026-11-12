@@ -2,15 +2,23 @@
 # Ansible-managed (roles/unlock_page): systemd runs one copy of this, as root, for each connection to the unlock page's socket
 # (unlock-page.socket). The connection is both its input and its output.
 # The page sends one word. Nothing from the connection is run, expanded or put in a command line: the word is only compared with three
-# fixed strings, and each match runs a fixed command. Anything else is refused. The passphrase never crosses the connection: unlock
-# reads it from a file only root can read, and the other two commands read nothing. The last line sent back is "exit N", the exit code of the command.
+# fixed strings, and each match runs a fixed command. Anything else is refused. For unlock, the line after the word is the
+# passphrase the owner typed. It goes to unlock.sh on standard input (a pipe, so it is in no file, argument or environment
+# variable) and is not kept: no passphrase is stored on this host. The last line sent back is "exit N", the exit code of the command.
 set -uo pipefail
 
 # At most 16 characters, so a long input cannot fill memory. "|| true": a closed connection or a timeout leaves the word empty.
 IFS= read -r -t 10 -n 16 word || true
 
 case "$word" in
-  unlock) {{ (scripts_dir ~ '/unlock.sh') | quote }} <{{ unlock_passphrase_file | quote }} ;;
+  unlock)
+    # At most 1024 characters, on one line. "|| true": a closed connection or a timeout leaves it empty.
+    IFS= read -r -t 10 -n 1024 pass || true
+    if [ -n "$pass" ]; then
+      printf '%s' "$pass" | {{ (scripts_dir ~ '/unlock.sh') | quote }}
+    else
+      echo "no passphrase sent" >&2; false
+    fi ;;
   lock) {{ (scripts_dir ~ '/unlock.sh') | quote }} --lock </dev/null ;;
   status) {{ (scripts_dir ~ '/unlock.sh') | quote }} --status </dev/null ;;
   *) echo "unknown request" >&2; false ;;

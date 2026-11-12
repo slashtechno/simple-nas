@@ -1,6 +1,7 @@
 ---
-# A web page that shows, unlocks and locks the encrypted folders of this host (docs/encryption.md#unlock-page). It has no SSH key and no
-# passphrase: it connects to a socket that only root can use, and a small script on the host runs the fixed unlock.sh command.
+# A web page that shows, unlocks and locks the encrypted folders of this host (docs/encryption.md#unlock-page). It has no SSH key
+# and stores no passphrase: it connects to a socket that only root can use, and a small script on the host runs the fixed unlock.sh
+# command. The owner types the passphrase on the page for each unlock.
 - name: Check the page has a login and a name
   ansible.builtin.assert:
     that:
@@ -12,25 +13,11 @@
       the page has no login of its own, and anyone who reaches it can unlock and lock the folders.
     quiet: true
 
-- name: Check there is something to unlock, and the passphrase to do it with
+- name: Check there is something to unlock
   ansible.builtin.assert:
-    that:
-      - encrypted_folders | length > 0
-      - vault_encryption_passphrase is defined
-    fail_msg: >-
-      unlock_page_enabled needs encrypted_folders on {{ inventory_hostname }}, and vault_encryption_passphrase in
-      group_vars/all/vault.yml (docs/encryption.md#unlock-page).
+    that: encrypted_folders | length > 0
+    fail_msg: "unlock_page_enabled needs encrypted_folders on {{ inventory_hostname }} (docs/encryption.md#unlock-page)."
     quiet: true
-
-# Root only: unlock.sh reads it. It is not in the compose directory, which is the image's build context.
-- name: Write the passphrase where only root can read it
-  ansible.builtin.copy:
-    content: "{{ vault_encryption_passphrase }}"
-    dest: "{{ unlock_passphrase_file }}"
-    owner: root
-    group: root
-    mode: "0600"
-  no_log: true
 
 - name: Install the request script
   ansible.builtin.template:

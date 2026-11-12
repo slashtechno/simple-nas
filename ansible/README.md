@@ -27,7 +27,7 @@ All commands run from `ansible/`.
 | Give services `https://` names, or change a port | `caddy_private_domains`, `<name>_subdomain`, `<name>_port` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>` and the service's tag |
 | Add a public hostname | `cloudflared_ingress` ([how](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption,backup --limit <host>`, then [set up the folder](../docs/encryption.md#set-up-a-folder) |
-| Unlock or lock from a browser | [the unlock page](../docs/encryption.md#unlock-page) | `unlock_page_enabled`, `vault_encryption_passphrase`, then `just deploy encryption,unlock_page --limit <host>` |
+| Unlock or lock from a browser | [the unlock page](../docs/encryption.md#unlock-page) | `unlock_page_enabled`, then `just deploy encryption,unlock_page --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview, or check my edits | nothing | `just preview <tag> --limit <host>`, or `just check` |
 | Run a backup now, or check that backups ran | nothing | [checking backup status](../docs/backups.md#checking-backup-status) |

@@ -37,28 +37,27 @@ The unlock page is a web page on the host. It shows the encrypted folders, unloc
 
 Set it up once:
 
-1. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. Use the passphrase you type in `setup-encrypted-folder.sh`.
-2. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder. The deploy stops when a listed folder holds one of them, or holds the page's own folder.
-3. Run `just deploy encryption,unlock_page --limit <host>`. Each host runs its own page.
-4. Run `docker exec unlock-page python3 app.py check`. It prints the host's status. It exits with 1 when the page cannot reach the host.
+1. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder. The deploy stops when a listed folder holds one of them, or holds the page's own folder.
+2. Run `just deploy encryption,unlock_page --limit <host>`. Each host runs its own page.
+3. Run `docker exec unlock-page python3 app.py check`. It prints the host's status. It exits with 1 when the page cannot reach the host.
 
-**Unlock** unlocks the folders and starts the containers that wait for them. **Lock** asks you first. It then stops those containers and unmounts the folders, as `unlock.sh --lock` does.
+**Unlock** asks for the passphrase, unlocks the folders and starts the containers that wait for them. Nothing stores the passphrase: type it for each unlock, or let your password manager fill it in. **Lock** asks you first. It then stops those containers and unmounts the folders, as `unlock.sh --lock` does.
 
-**Outside the tailnet:** like every Tinyauth site, the page opens only where the private names resolve. That is on the tailnet. To open it through Cloudflare, publish the page and the login under the private domain. Follow [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet) and use `unlock` where it says `dockge`. Cloudflared, Caddy and Tinyauth are on the root drive, so they run while the folders are locked. Give every user a `totp` secret.
+**Outside the tailnet:** like every Tinyauth site, the page opens only where the private names resolve. That is on the tailnet. To open it through Cloudflare, publish the page and the login under the private domain. Follow [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet) and use `unlock` where it says `dockge`. Cloudflared, Caddy and Tinyauth are on the root drive, so they run while the folders are locked. Give every user a `totp` secret. Cloudflare ends TLS, so on that route it can see the passphrase you type.
 
 <details>
 <summary>How it works, and what a thief can do</summary>
 
-The page is a container. It has no key and no passphrase. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. For each connection, systemd starts `unlock-page-request.sh` as root. The script compares the word with those three strings and runs one fixed command for each. The passphrase is in `<scripts_dir>/unlock-passphrase` (root only). The `unlock` command reads it from there.
+The page is a container. It has no key. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. For `unlock` it sends the passphrase you typed on the next line. For each connection, systemd starts `unlock-page-request.sh` as root. The script compares the word with those three strings and runs one fixed command for each. It pipes the passphrase to `unlock.sh` on standard input, so the passphrase is in no file, argument, environment variable or log. Caddy forwards only the request's headers to Tinyauth, so Tinyauth never sees it.
 
-- The script never runs, expands or inserts text from the connection. It reads at most 16 characters of one line. It answers any other word with "unknown request". `tests/test_unlock_page.py` sends it shell syntax, long input and extra lines.
+- The script never runs, expands or inserts text from the connection. It reads at most 16 characters for the word and 1024 for the passphrase line. It answers any other word with "unknown request". `tests/test_unlock_page.py` sends it shell syntax, long input and extra lines.
 - `unlock.sh` accepts only no argument, `--status` and `--lock`.
 - The page's container mounts the socket's folder read-only.
 - The page refuses a POST whose `Origin` is another site. A page on another site cannot press Lock for you.
 
-A person who gets past Tinyauth can unlock and lock the folders. The worst result is stopped services. That person cannot log in, read files or see the passphrase through the page. A person who holds the whole host, switched off, can read the passphrase file ([What it protects](#what-it-protects)).
+A person who gets past Tinyauth, or a container on the same Docker network, can press Lock. The worst result is stopped services. That person cannot unlock without the passphrase, and cannot log in or read files through the page. A host that is switched off holds no passphrase ([What it protects](#what-it-protects)).
 
-To remove the page, run `teardown.yml --tags unlock_page` (the socket, the script and the passphrase file) and `-e only=unlock_page` (the container).
+To remove the page, run `teardown.yml --tags unlock_page` (the socket and the script) and `-e only=unlock_page` (the container).
 
 If the page cannot reach the host:
 
@@ -142,9 +141,8 @@ It prints the key as one line of 64 characters. The setup script prints the same
 It takes seconds: the master key stays the same and nothing is re-encrypted. Do it after you type the passphrase on a device you do not trust. That helps only if nobody copied `gocryptfs.conf`. If someone may have both the conf and the passphrase, [make a new master key](#make-a-new-master-key).
 
 1. For each folder, in a terminal (`ssh -t <host>`): `sudo gocryptfs -passwd <the .gocryptfs folder>`. `-passwd` changes the passphrase of that one folder. Use the same new passphrase for every folder, so one prompt unlocks them all.
-2. On a host that runs the [unlock page](#unlock-page): put the new passphrase in the vault as `vault_encryption_passphrase`, then run `just deploy unlock_page --limit <host>`. Until you do, the page's Unlock fails with a wrong-passphrase error.
-3. Run `sudo /opt/services/scripts/unlock.sh`. It gives the rewritten `gocryptfs.conf` to the ansible user, so backups can read it. Then run a backup. Older snapshots keep the old `gocryptfs.conf`, and it opens only with the old passphrase.
-4. Update your password manager, and copy the new `gocryptfs.conf` off the host.
+2. Run `sudo /opt/services/scripts/unlock.sh`. It gives the rewritten `gocryptfs.conf` to the ansible user, so backups can read it. Then run a backup. Older snapshots keep the old `gocryptfs.conf`, and it opens only with the old passphrase.
+3. Update your password manager, and copy the new `gocryptfs.conf` off the host.
 
 ### Make a new master key
 
@@ -219,10 +217,9 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 
 | Protects | Does not protect |
 |---|---|
-| A drive lost, stolen, sold or repaired. A thief with the whole host while it is off | A host that is running and unlocked |
+| A drive lost, stolen, sold or repaired, when the thief does not also have the root drive | A host that is running and unlocked |
 | File contents and names | The number, depth, size (to 4 KiB) and modification time of files |
 | | The root drive: it holds the restic password and the Tailscale and Cloudflare logins, so a thief with the whole host can open the backups |
-| | The passphrase, on a host that runs the [unlock page](#unlock-page): it is on the root drive too, so a thief with the whole host can unlock |
 | | Backup logs (they list every path) and service dumps, unless you list the dumps folder ([below](#dumps-and-backups)) |
 
 Use a long random passphrase from a password manager. It is the weak point, not the 256-bit cipher.

@@ -23,14 +23,13 @@
 # run fails with restic exit 3. It stays on disk when cloudflared_enabled is turned off, so the line is unconditional.
 # A deploy writes it again from Cloudflare.
 {{ cloudflared_token_file }}
-# The scripts that only root can read (mode 0750 or 0600): the encryption scripts, the unlock page's request script and its
-# passphrase file. Without these lines every run fails with restic exit 3, and the passphrase would never belong in a backup.
+# The scripts that only root can read (mode 0750): the encryption scripts and the unlock page's request script. Without these
+# lines every run fails with restic exit 3.
 # A deploy writes them again. Unconditional, like the token: they stay on disk when the role is turned off.
 {{ scripts_dir }}/unlock.sh
 {{ scripts_dir }}/setup-encrypted-folder.sh
 {{ scripts_dir }}/remove-encrypted-folder.sh
 {{ scripts_dir }}/unlock-page-request.sh
-{{ unlock_passphrase_file }}
 # The directories each enabled service lists as no_backup in group_vars/all/services.yml, and the folders inside its
 # data directories that it lists as no_backup_in (the reason is in services.yml). To back one up, add its "!" line to
 # restic_local_rules or restic_cloud_rules (docs/backups.md).

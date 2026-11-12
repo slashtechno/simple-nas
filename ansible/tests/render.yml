@@ -570,7 +570,7 @@
           - "'docker stop \"$name\"' in hook_sh and 'docker start \"$name\"' in hook_sh"
           # A lock that failed on a busy folder leaves containers stopped and the folders mounted: the next unlock must still start them,
           # and only after the loop that restarts the running ones.
-          # The unlock page has no key and no passphrase: it mounts the socket's folder read-only, and the request script on the host
+          # The unlock page stores no key and no passphrase: it mounts the socket's folder read-only, and the request script on the host
           # compares one word with three fixed strings, running nothing it received.
           - "(unlock_page_socket_dir ~ ':/run/unlock:ro') in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
           - "('ListenStream=' ~ unlock_page_socket_dir ~ '/unlock.sock') in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/unlock-page.socket')"
@@ -590,7 +590,6 @@
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
           - "cloudflared_token_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
-          - "unlock_passphrase_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - "scripts_dir ~ '/unlock.sh' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'

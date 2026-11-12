@@ -25,6 +25,3 @@ vault_rclone_gdrive_token: ""
 vault_tinyauth_users:
   - name: you
     password: "change-me-generate-with-openssl-rand-base64-24"
-# The gocryptfs passphrase of the encrypted folders (docs/encryption.md#unlock-page). The unlock page's host keeps it in a file
-# only root can read, and unlocks with it. Needed only on a host with unlock_page_enabled.
-vault_encryption_passphrase: "change-me-the-passphrase-of-the-encrypted-folders"

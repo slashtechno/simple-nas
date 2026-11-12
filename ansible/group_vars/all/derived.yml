@@ -58,9 +58,8 @@ data_drive_mounts: >-
   {%- endif -%}
   {%- endfor -%}
   {{ mounts }}
-# Where the unlock page and the host talk (roles/unlock_page): a socket only root can use, and the file that holds the passphrase.
+# Where the unlock page and the host talk (roles/unlock_page): a socket only root can use.
 unlock_page_socket_dir: /run/unlock-page
-unlock_passphrase_file: "{{ scripts_dir }}/unlock-passphrase"
 # The names of the containers that the last lock stopped, which the next unlock starts again (00-containers.sh). Kept on the root
 # drive: a reboot while locked must not forget them.
 encryption_stopped_file: "{{ scripts_dir }}/.stopped-for-lock"

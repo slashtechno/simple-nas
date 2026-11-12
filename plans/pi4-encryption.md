@@ -8,7 +8,7 @@ Decisions: encrypt `/mnt/apps/appdata`, `/mnt/apps/stacks` and `/mnt/apps/files`
 
 ## 1. Settings (on your machine)
 
-- [ ] In the vault (`ansible-vault edit --vault-password-file .vault-pass group_vars/all/vault.yml`): `vault_encryption_passphrase`, a long random passphrase. It is the one you type in step 5.
+- [ ] Delete `vault_encryption_passphrase` from the vault (`ansible-vault edit --vault-password-file .vault-pass host_vars/pi4/vault.yml`). Nothing reads it any more: the unlock page asks for the passphrase you typed in step 5.
 - [ ] In `host_vars/pi4/vars.yml`:
 
   ```yaml
@@ -64,7 +64,7 @@ sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/stacks   # the lo
 
 - [ ] On pi4: `docker exec unlock-page python3 app.py check` prints each folder as unlocked, and `systemctl status unlock-page.socket` shows it listening.
 - [ ] `just lock pi4`: the containers that use the folders stop, the folders unmount. `just encryption-status pi4` shows them locked and the waiting containers. ntfy, Caddy, Tinyauth and the page keep running.
-- [ ] Open `https://unlock.pi4.slashtechno.com`, log in with Tinyauth, press Unlock. Everything starts again. Press Lock, then Unlock once more.
+- [ ] Open `https://unlock.pi4.slashtechno.com`, log in with Tinyauth, type the passphrase and press Unlock. Everything starts again. Press Lock, then Unlock once more.
 - [ ] Reboot pi4 and unlock from the page: nothing runs on the encrypted folders before that.
 
 ## Rollback

@@ -189,7 +189,7 @@
           tags: [encryption]
           ansible.builtin.import_tasks: roles/encryption/tasks/remove.yml
 
-        # The unlock page's socket, request script and passphrase file. Its compose directory goes with the service (services.yml).
+        # The unlock page's socket and request script. Its compose directory goes with the service (services.yml).
         - name: Remove the unlock page's socket
           tags: [unlock_page]
           ansible.builtin.import_tasks: roles/unlock_page/tasks/remove.yml

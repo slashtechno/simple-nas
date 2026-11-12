@@ -9,7 +9,7 @@
     daemon_reload: true
   failed_when: false   # a host that never had the socket has no such unit
 
-- name: Remove the socket, its service, the request script and the passphrase
+- name: Remove the socket, its service and the request script
   ansible.builtin.file:
     path: "{{ item }}"
     state: absent
@@ -17,4 +17,3 @@
     - /etc/systemd/system/unlock-page.socket
     - /etc/systemd/system/unlock-page@.service
     - "{{ scripts_dir }}/unlock-page-request.sh"
-    - "{{ unlock_passphrase_file }}"

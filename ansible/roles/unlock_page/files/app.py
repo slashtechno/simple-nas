@@ -2,8 +2,9 @@
 """A web page that shows, unlocks and locks the encrypted folders of this host (docs/encryption.md#unlock-page).
 
 The Ansible role puts Tinyauth in front of it, so whoever reaches the page is logged in. A button sends one word, unlock, lock or
-status, to a socket that only root on the host can use. A script there compares the word with those three and runs unlock.sh. The
-page holds no key and no passphrase.
+status, to a socket that only root on the host can use. A script there compares the word with those three and runs unlock.sh. For
+unlock the owner types the passphrase on the page and the page passes it on the socket. Nothing stores it: not this page, not the
+host, and it is in no log, URL or reply.
 
   python3 app.py           serve the page
   python3 app.py check     print the host's status; exit 1 if the socket cannot be reached
@@ -24,18 +25,20 @@ PORT = int(os.environ.get("PORT", "8080"))
 PAGE = """<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>Unlock</title><body style="font:16px system-ui;max-width:32rem;margin:2rem auto;padding:0 1rem">
 <h1>Unlock</h1>{result}
-<form method=post><button name=action value=unlock>Unlock</button>
+<form method=post><input type=password name=passphrase autocomplete=current-password placeholder=Passphrase>
+<button name=action value=unlock>Unlock</button>
 <button name=action value=lock onclick="return confirm('Stop the services that use the folders and lock them?')">Lock</button></form>
 <h2>Status</h2>{status}"""
 
 
-def ask(word):
-    """Send one word to the host's script. Returns (exit code, output). The script accepts unlock, lock and status only."""
+def ask(word, passphrase=""):
+    """Send one word to the host's script. Returns (exit code, output). The script accepts unlock, lock and status only.
+    The passphrase follows the word on its own line, for unlock."""
     try:
         with socket.socket(socket.AF_UNIX) as conn:
             conn.settimeout(900)
             conn.connect(SOCKET)
-            conn.sendall(word.encode() + b"\n")
+            conn.sendall(word.encode() + b"\n" + (passphrase.encode() + b"\n" if passphrase else b""))
             conn.shutdown(socket.SHUT_WR)
             reply = b""
             while chunk := conn.recv(4096):
@@ -53,6 +56,11 @@ def same_origin(headers):
     """A browser sends Origin on a POST. A form on another site would carry the Tinyauth cookie, so refuse a different one."""
     origin = headers.get("Origin")
     return origin is None or urllib.parse.urlparse(origin).netloc == headers.get("Host")
+
+
+def good_passphrase(text):
+    """One line of 1 to 1024 characters. The script reads one line, and bash cannot hold a NUL."""
+    return 0 < len(text.encode()) <= 1024 and not any(c in text for c in "\n\r\0")
 
 
 def render(code, output):
@@ -74,13 +82,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         # Read the body first: closing a connection with unread data can reset it and lose the reply.
-        fields = urllib.parse.parse_qs(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 4096)).decode())
+        fields = urllib.parse.parse_qs(self.rfile.read(min(int(self.headers.get("Content-Length", 0)), 16384)).decode())
         if not same_origin(self.headers):
             return self.send_page("<p>Refused: the request came from another site.</p>", 403)
         action = fields.get("action", [""])[0]
         if action not in ("unlock", "lock"):
             return self.send_page("<p>Unknown action.</p>", 400)
-        self.send_page(render(*ask(action)))
+        if action == "lock":
+            return self.send_page(render(*ask("lock")))
+        passphrase = fields.get("passphrase", [""])[0]
+        if not good_passphrase(passphrase):  # never shown back
+            return self.send_page("<p>Type the passphrase: one line, up to 1024 characters.</p>", 400)
+        self.send_page(render(*ask("unlock", passphrase)))
 
 
 def main():
