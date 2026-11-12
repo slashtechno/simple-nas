@@ -9,7 +9,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
 | Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
-| Change the passphrase, or make a new master key | [Change the passphrase or the master key](#change-the-passphrase-or-the-master-key) |
+| Change the passphrase, show the master key, or make a new one | [Change the passphrase or the master key](#change-the-passphrase-or-the-master-key) |
 | Stop encrypting a folder | [Turning it off](#turning-it-off) |
 | Know what is and is not protected | [What it protects](#what-it-protects) |
 | Check backups still work | [Dumps and backups](#dumps-and-backups) |
@@ -147,6 +147,14 @@ A service that runs as another user needs the folder's owner changed **while unl
 Removing files does not wipe them from a drive: re-format a drive that held plain data before it leaves your hands.
 
 ### Change the passphrase or the master key
+
+**Show the master key.** You need the passphrase, not the old printout. In a terminal on the host:
+
+```bash
+sudo gocryptfs-xray -dumpmasterkey <the .gocryptfs folder>/gocryptfs.conf    # asks for the passphrase
+```
+
+It prints the key as one line of 64 characters with no dashes. It is the same key the setup script printed, and gocryptfs accepts it with or without dashes. The key opens every file in the folder, so show it only in a terminal you trust. Never paste it into a chat, a ticket or a log.
 
 **Change the passphrase.** It takes seconds. The master key stays the same, and gocryptfs re-encrypts no data. A mounted folder stays mounted.
 
