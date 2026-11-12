@@ -153,9 +153,25 @@ Then run `just deploy copyparty --limit <host>`.
 
 - **Admins:** the generated volumes give admin access to `copyparty_user` and to `copyparty_sso_admins`. Your own volumes do not. Write each admin by name in the `accs:` block.
 - **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Write it in `accs:`. The user needs no `[accounts]` entry. A signed-in user that no `accs:` line names sees nothing in the volume.
-- **Service accounts** (a sync client, a script, WebDAV): add a password in `[accounts]` and name it in `accs:`. A password account works on the published port and the tunnel hostname. It does not work on the browser name: Tinyauth stops clients that cannot sign in through a web page. Keep the password in the vault.
+- **Your own service account** (a sync client, a script, WebDAV): the `syncer` line in the example. Add a name and a password under `[accounts]`, then name it in `accs:`. Keep the password in the vault.
+- **An account that Ansible manages:** every service with a `copyparty` field in `services.yml` (pics) gets an account named after its key. The deploy writes its password from the vault. Accounts from both files combine, so name it in `accs:` and leave out the password ([example below](#give-an-ansible-managed-account-another-folder)).
+- **Where passwords work:** a password account works on the published port and the tunnel hostname. It does not work on the browser name: Tinyauth stops clients that cannot sign in through a web page.
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
 - **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty by itself when the mounted folder is, or sits in, a listed folder.
+
+#### Give an Ansible-managed account another folder
+
+This lets pics read and write the folder `/fast` from the example above. `pics` already has its own volumes (`/apps/pics/photos` and `/apps/pics/trash`). Do not redefine those: a volume may appear in only one file. Instead, change the `/fast` volume in your `copyparty_extra_conf` (a YAML key can appear only once) and add the account to its `accs:` block:
+
+```
+  [/fast]
+    /fast
+    accs:
+      A: yourusername
+      rw: pics          # the account exists already: no [accounts] entry and no password here
+```
+
+The app must send its requests to the new volume (`/fast`). A Copyparty account only decides what the app may open. It does not change where the app looks.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`.
 
