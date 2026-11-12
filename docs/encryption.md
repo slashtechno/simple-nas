@@ -22,13 +22,13 @@ ssh <host>
 sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 ```
 
-- It mounts each locked folder, then runs the scripts in `after-unlock.d`. It does nothing on an unlocked host.
-- A wrong passphrase stops it. It reports a folder it cannot unlock (never set up, or not empty: move the files away first). The other folders still unlock.
+- The script mounts each locked folder. Then it runs the scripts in `after-unlock.d`. On an unlocked host it does nothing.
+- A wrong passphrase stops the script. If it cannot unlock one folder, it reports that folder and unlocks the others. A folder fails when you never set it up, or when it is not empty (move the files away first).
 - From your computer: `just unlock <host>`, `just lock <host>` and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
-- To lock again: `just lock <host>`, or `sudo /opt/services/scripts/unlock.sh --lock` on the host. It stops the containers that use a folder, unmounts every folder, and reports a folder that is busy (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers it stopped, which an unlock leaves alone otherwise.
+- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It reports a busy folder (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
 
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
@@ -192,35 +192,38 @@ The role removes the scripts when no folder remains, and gocryptfs stays install
 
 ## Unlock page
 
-A web page on the host that shows, unlocks and locks its encrypted folders from a browser. The `unlock_page` role deploys it (`unlock_page_enabled: true` in the host's `vars.yml`). It sits behind the Tinyauth login at `https://<unlock_page_subdomain>.<domain>`. `just unlock` and `just lock` over SSH work without it.
+The unlock page is a web page on the host. It shows the encrypted folders, unlocks them and locks them. The `unlock_page` role installs it when `unlock_page_enabled: true` is in the host's `vars.yml`. Tinyauth protects it at `https://<unlock_page_subdomain>.<domain>`. `just unlock` and `just lock` work without it.
 
 Set it up once:
 
-1. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. It is the one you type into `setup-encrypted-folder.sh`.
-2. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder: the deploy refuses a listed folder that holds either, or the page's own folder.
+1. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. Use the passphrase you type in `setup-encrypted-folder.sh`.
+2. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder. The deploy stops when a listed folder holds one of them, or holds the page's own folder.
 3. Run `just deploy encryption,unlock_page --limit <host>`. Each host runs its own page.
-4. Check it: `docker exec unlock-page python3 app.py check` prints the host's status and exits 1 if the page cannot reach the host.
+4. Run `docker exec unlock-page python3 app.py check`. It prints the host's status. It exits with 1 when the page cannot reach the host.
 
-**Outside the tailnet:** the page, like every Tinyauth site, opens only where the private names resolve, which is on the tailnet. To reach it through Cloudflare, publish the page and the login under the private domain: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet), with `unlock` in place of `dockge`. Cloudflared, Caddy and Tinyauth live on the root drive, so they run while the folders are locked. Keep the Tinyauth login in front of it and give every user a `totp` secret: the page can unlock and stop your services.
+**Unlock** unlocks the folders and starts the containers that wait for them. **Lock** asks you first. It then stops those containers and unmounts the folders, as `unlock.sh --lock` does. The page shows the state of each folder.
 
-**Unlock** unlocks the folders and starts the containers that wait for them. **Lock** asks first, then stops those containers and unmounts the folders, as `unlock.sh --lock` does. The page shows the status of each folder.
+**Outside the tailnet:** like every Tinyauth site, the page opens only where the private names resolve. That is on the tailnet. To open it through Cloudflare, publish the page and the login under the private domain. Follow [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet) and use `unlock` where it says `dockge`. Cloudflared, Caddy and Tinyauth are on the root drive, so they run while the folders are locked. Keep the Tinyauth login in front of the page. Give every user a `totp` secret. A person who gets past the login can unlock the folders and stop your services.
 
 <details>
 <summary>How it works, and what a thief can do</summary>
 
-The page is a container with no key and no passphrase. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. systemd starts `unlock-page-request.sh` as root for each connection. The script compares the word with those three strings and runs one fixed command for each. The passphrase is in `<scripts_dir>/unlock-passphrase` (root only), and `unlock` reads it from there.
+The page is a container. It has no key and no passphrase. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. For each connection, systemd starts `unlock-page-request.sh` as root. The script compares the word with those three strings and runs one fixed command for each. The passphrase is in `<scripts_dir>/unlock-passphrase` (root only). The `unlock` command reads it from there.
 
-- Nothing from the connection is run, expanded or put in a command line. The script reads at most 16 characters of one line, and anything but the three words gets "unknown request". `tests/test_unlock_page.py` sends the script shell syntax, long input and extra lines.
-- `unlock.sh` also accepts only no argument, `--status` and `--lock`.
+- The script never runs, expands or inserts text from the connection. It reads at most 16 characters of one line. It answers any other word with "unknown request". `tests/test_unlock_page.py` sends it shell syntax, long input and extra lines.
+- `unlock.sh` accepts only no argument, `--status` and `--lock`.
 - The page's container mounts the socket's folder read-only.
-- The page refuses a POST whose `Origin` is another site, so a page on another site cannot press Lock for you.
+- The page refuses a POST whose `Origin` is another site. A page on another site cannot press Lock for you.
 
-Someone who gets past Tinyauth can unlock and lock the folders. The worst of that is stopped services. Nobody can log in, read files or see the passphrase through the page. Anyone who holds the whole host, switched off, can read the passphrase file: see [What it protects](#what-it-protects).
+A person who gets past Tinyauth can unlock and lock the folders. The worst result is stopped services. That person cannot log in, read files or see the passphrase through the page. A person who holds the whole host, switched off, can read the passphrase file ([What it protects](#what-it-protects)).
 
-Turn the page off with `teardown.yml --tags unlock_page` (the socket, the script and the passphrase file) and `-e only=unlock_page` (the container).
+To remove the page, run `teardown.yml --tags unlock_page` (the socket, the script and the passphrase file) and `-e only=unlock_page` (the container).
 
+If the page cannot reach the host:
 
-If the page cannot reach the host: `systemctl status unlock-page.socket` shows whether the socket listens, `journalctl -u 'unlock-page@*'` shows each request, and `echo status | sudo socat - UNIX-CONNECT:/run/unlock-page/unlock.sock` sends one by hand (`socat` is in apt). A request the script refuses shows as a failed unit there.
+- `systemctl status unlock-page.socket` shows whether the socket listens.
+- `journalctl -u 'unlock-page@*'` shows each request. A request that the script refuses shows as a failed unit.
+- `echo status | sudo socat - UNIX-CONNECT:/run/unlock-page/unlock.sock` sends one request by hand. Install `socat` with apt.
 </details>
 
 ## Dumps and backups

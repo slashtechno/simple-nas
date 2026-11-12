@@ -201,7 +201,7 @@ ansible-playbook teardown.yml --limit <host> --vault-password-file .vault-pass  
 ansible-playbook teardown.yml --limit <host> -e remove_data=true -e confirm_remove_data=<host> --vault-password-file .vault-pass   # also wipes data: no undo without a backup
 ```
 
-`remove_data=true` stops unless `confirm_remove_data` is the host's inventory name, and unless no folder to remove is, or holds, an [encrypted folder](../docs/encryption.md#turning-it-off). The paths it removes are the `data` and `no_backup` fields of the service's entry in `services.yml`. Check a restore first.
+`remove_data=true` stops unless `confirm_remove_data` is the host's inventory name, and unless no folder to remove is, or holds, an [encrypted folder](../docs/encryption.md#turning-it-off). The paths it removes are the `data` and `no_backup` fields of the service's entry in `services.yml`. The `stacks` folder always stays. Check a restore first.
 
 **Never touched:**
 
