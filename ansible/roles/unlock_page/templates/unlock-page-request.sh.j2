@@ -16,3 +16,7 @@ case "$word" in
   *) echo "unknown request" >&2; false ;;
 esac
 echo "exit $?"
+# Read and discard the rest of the input before the script ends. Closing a connection that still holds unread data makes Linux
+# reset it, and the reset can destroy the reply above. The page closes its side after sending, so this ends at once. A client
+# that never closes, or sends without end, is cut off by the 5 second wait and the cap of 256 reads (1 MiB).
+for _ in {1..256}; do IFS= read -r -t 5 -n 4096 _ || break; done
