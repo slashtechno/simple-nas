@@ -82,7 +82,7 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`). `resti
 | Compose files, scripts, the credentials written into them (`services_dir`) | No | Yes |
 | Immich database | Dump only (raw Postgres directory excluded) | Dump only |
 | Gitea database and repositories | Dump, plus raw data (SSH host keys excluded) | Dump only |
-| Garage metadata | Dump only (`<garage_data_dir>/meta` excluded). Data blocks are plain files | Dump only |
+| Garage metadata | Dump only (`garage_meta_dir` excluded). Data blocks (`garage_blocks_dir`) are plain files | Dump only |
 | Restic password | No | No |
 
 The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager.
@@ -190,17 +190,17 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 
 ## Restore: Garage
 
-Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database. The file backup leaves out `<garage_data_dir>/meta` and carries it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`. The data blocks under `<garage_data_dir>/data` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when `data` has files and `meta` is empty: Garage would start a new empty cluster beside the old blocks. Put the metadata back first.
+Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database. The file backup leaves out `<garage_meta_dir>` and carries it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`. The data blocks in `<garage_blocks_dir>` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when the blocks directory has files and the metadata directory is empty: Garage would start a new empty cluster beside the old blocks. Put the metadata back first.
 
 ```bash
 cd /opt/services/garage && docker compose stop garage
 mkdir -p /tmp/garage-restore
 tar -xzf /mnt/backup/service-dumps/garage-meta-<timestamp>.tar.gz -C /tmp/garage-restore
 # the newest snapshot is a single LMDB file: it becomes data.mdb of the db.lmdb directory
-sudo mv <garage_data_dir>/meta/db.lmdb <garage_data_dir>/meta/db.lmdb.old
-sudo mkdir <garage_data_dir>/meta/db.lmdb
-sudo cp /tmp/garage-restore/snapshots/<newest>/db.lmdb <garage_data_dir>/meta/db.lmdb/data.mdb
-sudo cp /tmp/garage-restore/node_key /tmp/garage-restore/node_key.pub /tmp/garage-restore/cluster_layout <garage_data_dir>/meta/
+sudo mv <garage_meta_dir>/db.lmdb <garage_meta_dir>/db.lmdb.old
+sudo mkdir <garage_meta_dir>/db.lmdb
+sudo cp /tmp/garage-restore/snapshots/<newest>/db.lmdb <garage_meta_dir>/db.lmdb/data.mdb
+sudo cp /tmp/garage-restore/node_key /tmp/garage-restore/node_key.pub /tmp/garage-restore/cluster_layout <garage_meta_dir>/
 docker compose start garage
 ```
 

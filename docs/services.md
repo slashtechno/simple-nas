@@ -53,12 +53,12 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 
 ## Immich
 
-Photo library with a machine-learning container. Photos are in `immich_upload_location` (primary drive), its Postgres data in `immich_db_data_location` (fast drive).
+Photo library with a machine-learning container. Photos are in `immich_photos_dir` (`bulk/immich`, primary drive), its Postgres data in `immich_postgres_dir` (`appdata/immich`, fast drive).
 
 - Public access: a `cloudflared_ingress` entry pointing at `http://immich_server:2283`.
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich. The deploy sets it through Immich's API, which needs an API key ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
 - `roles/immich/files/dump.sh` dumps Postgres before each backup ([backups.md](./backups.md)).
-- To move `immich_upload_location` ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload`, ...). Immich checks them at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
+- To move `immich_photos_dir` ([move one service's data](./storage.md#move-one-services-data)), copy the whole directory including the hidden `.immich` file in each subfolder (`library`, `thumbs`, `upload`, ...). Immich checks them at start and refuses to run without them ([system integrity](https://docs.immich.app/administration/system-integrity)).
 - On a small host, lower the job concurrency and check the transcoding policy ([memory.md](./memory.md#immich)). Read the release notes before an update ([update images](../ansible/README.md#update-service-images)).
 
 ## Gitea
@@ -244,11 +244,11 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_
 - The web UI is at `https://garage.<private domain>` (create buckets and access keys there). It holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
 - Apps connect with endpoint your tunnel hostname for the `garage-cors-proxy` container (a `cloudflared_ingress` entry), region `garage`, and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`): [Restore: Garage](./backups.md#restore-garage).
-- Garage reads its cluster layout from `garage_data_dir/meta`. A first deploy (empty meta dir) starts with `--single-node` so it auto-configures one node. Later starts omit the flag, which Garage requires once a layout exists (see the comment in `roles/garage/tasks/main.yml`).
+- Garage reads its cluster layout from `garage_meta_dir` (the object blocks are in `garage_blocks_dir`). A first deploy (empty meta dir) starts with `--single-node` so it auto-configures one node. Later starts omit the flag, which Garage requires once a layout exists (see the comment in `roles/garage/tasks/main.yml`).
 
 ## Crafty (Minecraft servers)
 
-One container runs every server. All data is under `crafty_data_dir` (`servers/ backups/ logs/ config/ import/`).
+One container runs every server. All data is under `crafty_data_dir` (`bulk/crafty`: `servers/ backups/ logs/ config/ import/`).
 
 - Panel: `https://<host-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (Crafty makes it and has no setting for it). Behind Tinyauth it is the second login, so change it in the panel to something short, then delete the file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575). Set it when creating the server.

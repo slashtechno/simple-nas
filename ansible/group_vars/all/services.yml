@@ -46,15 +46,13 @@ services:
   # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
   # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one; pics sends the address it was opened on, like Immich.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
-     data: [immich_upload_location], no_backup: [immich_db_data_location],
+     data: [immich_photos_dir], no_backup: [immich_postgres_dir],
      container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
      oidc_secret: vault_immich_oidc_secret,
      oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | list + immich_extra_origins)
                | product(['/auth/login', '/user-settings']) | map('join') | list + ['app.immich:///oauth-callback'] }}"}
   - {name: Copyparty, key: copyparty, compose: copyparty,
-     data: [copyparty_files_dir, copyparty_config_dir,
-            "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}",
-            "{{ 'copyparty_fast_dir' if copyparty_fast_enabled | bool else '' }}"],
+     data: [copyparty_files_dir, copyparty_config_dir, copyparty_collab_dir, copyparty_fast_dir],
      no_backup: [copyparty_hist_dir],
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
@@ -69,7 +67,7 @@ services:
      oidc_secret: vault_pics_oidc_secret,
      oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ pics_subdomain ~ '.') | list + pics_extra_origins)
                | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
-  - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_config_dir],
+  - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_data_dir],
      port: 8581, icon: homebridge, description: HomeKit}
   - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
      container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
@@ -90,7 +88,7 @@ services:
   - {name: Homepage, key: homepage, compose: homepage,
      container: homepage, container_port: 3000, icon: homepage, description: Start page}
   # The tile and Caddy name are the web UI (behind Tinyauth); the S3 endpoint is published by the garage role's own compose file.
-  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_data_dir],
+  - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_blocks_dir], no_backup: [garage_meta_dir],
      container: garage-webui, container_port: 3909, icon: garage, description: S3 storage}
   - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.

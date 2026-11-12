@@ -12,8 +12,8 @@ services:
     command: ["/garage", "server"{% if garage_is_first_deploy | default(True) %}, "--single-node"{% endif %}]
     volumes:
       - {{ services_dir }}/garage/garage.toml:/etc/garage.toml:ro
-      - {{ garage_data_dir }}/meta:/var/lib/garage/meta
-      - {{ garage_data_dir }}/data:/var/lib/garage/data
+      - {{ garage_meta_dir }}:/var/lib/garage/meta
+      - {{ garage_blocks_dir }}:/var/lib/garage/data
     environment:
       GARAGE_CONFIG_FILE: /etc/garage.toml
     # No host ports: the S3 API goes through garage-cors-proxy, and the admin API and RPC stay on the Docker network.

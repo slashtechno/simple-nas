@@ -324,7 +324,7 @@
       vars:
         defined: >-
           {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml).keys()
-             | reject('equalto', 'appdata_dir') | list }}
+             | difference(['appdata_dir', 'bulk_dir']) | list }}
         named: >-
           {{ lookup('ansible.builtin.file', repo ~ '/group_vars/all/services.yml') | regex_replace('(?m)^\s*#.*$', '')
              | regex_findall('[a-z0-9_]+_(?:dir|location)\b') | unique | list }}
@@ -336,6 +336,29 @@
           defaults-data-dirs.yml and services.yml differ: only in defaults {{ defined | difference(named) }},
           only in services.yml {{ named | difference(defined) }}
         quiet: true
+
+    # The layout rule (defaults-data-dirs.yml): a service's folder is {{ appdata_dir }}/<key> or {{ bulk_dir }}/<key>, with
+    # parts as subfolders. Only the owner's own folders are named plainly. Read as raw text, so a path is not resolved.
+    - name: Every data directory is under appdata_dir or bulk_dir in its service's folder, or is an owner folder
+      vars:
+        owner_folders:
+          dockge_stacks_dir: "{{ '{{ fast_drive }}/stacks' }}"
+          copyparty_files_dir: "{{ '{{ primary_drive }}/files' }}"
+          copyparty_fast_dir: "{{ '{{ fast_drive }}/fast' }}"
+          copyparty_collab_dir: "{{ '{{ primary_drive }}/collab' }}"
+        service_folder: "{{ item.key.split('_')[0] }}"
+        under_parent: "{{ item.value is match('^\\{\\{ (appdata|bulk)_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
+      ansible.builtin.assert:
+        that: owner_folders[item.key] | default('') == item.value or under_parent
+        fail_msg: >-
+          {{ item.key }}: {{ item.value }} breaks the layout rule. Use {{ '{{ appdata_dir }}' }}/{{ service_folder }}[/part]
+          or {{ '{{ bulk_dir }}' }}/{{ service_folder }}[/part]; a new owner folder is added to owner_folders here.
+        quiet: true
+      loop: >-
+        {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/defaults-data-dirs.yml') | from_yaml) | dict2items
+           | rejectattr('key', 'in', ['appdata_dir', 'bulk_dir']) | list }}
+      loop_control:
+        label: "{{ item.key }}"
 
     - name: No role's defaults define a data directory setting
       vars:
@@ -360,7 +383,7 @@
         that:
           - item.key != 'dockge' or deleted == [dockge_data_dir]
           - item.key != 'copyparty' or copyparty_hist_dir in deleted
-          - item.key != 'immich' or immich_db_data_location in deleted
+          - item.key != 'immich' or immich_postgres_dir in deleted
           - deleted | length == deleted | unique | length
         quiet: true
       loop: "{{ services }}"
@@ -563,7 +586,7 @@
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "'/mnt/primary/apps/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "'/mnt/primary/bulk/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
@@ -632,7 +655,7 @@
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'gitea-runner:' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
           - "'runner$$token' in lookup('ansible.builtin.file', out_dir ~ '/gitea/docker-compose.yml')"
-          - "(garage_data_dir ~ '/meta') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "garage_meta_dir in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(caddy_data_dir ~ '/caddy') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(copyparty_config_dir ~ '/copyparty') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "'--fsck=' in lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')"

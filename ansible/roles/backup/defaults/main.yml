@@ -16,7 +16,7 @@ restic_local_extra_rules: []
 # The same rules for the weekly offsite backup. Each path is its own snapshot group, and a "- " line applies to
 # every path. Default: this host's base directory (compose files, credentials) and Copyparty's config. Add more
 # paths to upload more, e.g. a drive's data on a host with no local backup; Immich's photos are not included
-# (they are large): add "{{ immich_upload_location }}" to restic_cloud_extra_rules.
+# (they are large): add "{{ immich_photos_dir }}" to restic_cloud_extra_rules.
 restic_cloud_rules: >-
   {{ ([copyparty_config_dir] if copyparty_enabled | bool else [])
      + [services_dir] + restic_cloud_extra_rules }}

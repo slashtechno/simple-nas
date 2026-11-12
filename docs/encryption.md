@@ -149,18 +149,19 @@ List the folders that hold data, not a drive's mount point. `/mnt/data` would pu
 
 ```yaml
 encrypted_folders:
-  - /mnt/data/appdata  # `appdata_dir`: each service's own data (databases, configs, sessions), the compose files stay on the root drive
+  - /mnt/data/appdata  # `appdata_dir`: each service's own state (databases, configs, sessions), the compose files stay on the root drive
+  - /mnt/data/bulk     # `bulk_dir`: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
   - /mnt/data/stacks   # Dockge stacks
-  - /mnt/data/photos   # Immich's photos
   - /mnt/data/files    # Copyparty's files
-  - /mnt/data/apps     # pics' photos and trash, if pics is on
+  - /mnt/data/collab   # Copyparty's /collab, if you use it
+  - /mnt/data/fast     # Copyparty's /fast, if you use it
 ```
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
-- `fast` and `collab` hold data when `copyparty_fast_enabled` and `copyparty_collab_enabled` are on.
-- The defaults cover a service added later with its data under `appdata_dir`. Anything else stays plain.
+- `collab` and `fast` hold data only when `copyparty_collab_enabled` and `copyparty_fast_enabled` are on, but they exist as settings always, so list them if you will turn them on.
+- The defaults cover a service added later with its data under `appdata_dir` or `bulk_dir`. Anything else stays plain.
 
 **Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.
 

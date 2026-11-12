@@ -31,7 +31,7 @@
 # So the flag goes in only when the meta directory is still empty, i.e. a first deploy.
 - name: Check if the Garage meta directory has data (the cluster is already bootstrapped)
   ansible.builtin.find:
-    path: "{{ garage_data_dir }}/meta"
+    path: "{{ garage_meta_dir }}"
     file_type: any
   register: garage_meta_contents
 
@@ -40,10 +40,10 @@
     garage_is_first_deploy: "{{ garage_meta_contents.matched == 0 }}"
 
 # An empty meta directory next to existing data blocks means the metadata was not copied along (a moved
-# garage_data_dir). A first deploy would then start Garage with a new, empty cluster and orphan the blocks.
+# garage_meta_dir). A first deploy would then start Garage with a new, empty cluster and orphan the blocks.
 - name: Check for data blocks
   ansible.builtin.find:
-    path: "{{ garage_data_dir }}/data"
+    path: "{{ garage_blocks_dir }}"
     file_type: any
   register: garage_data_contents
 
@@ -51,7 +51,7 @@
   ansible.builtin.assert:
     that: not (garage_is_first_deploy and garage_data_contents.matched > 0)
     fail_msg: >-
-      {{ garage_data_dir }}/data has files but {{ garage_data_dir }}/meta is empty. Copy the old meta directory
+      {{ garage_blocks_dir }} has files but {{ garage_meta_dir }} is empty. Copy the old meta directory
       over (or restore the metadata dump, docs/backups.md#restore-garage), then deploy again.
     quiet: true
 
@@ -63,8 +63,8 @@
     group: "{{ ansible_user }}"
     mode: "0755"
   loop:
-    - "{{ garage_data_dir }}/meta"
-    - "{{ garage_data_dir }}/data"
+    - "{{ garage_meta_dir }}"
+    - "{{ garage_blocks_dir }}"
 
 # Garage's metadata is root-owned, so the backup copies it through this script, not as plain files
 # (see backup-services.sh). teardown_service.yml removes it again.

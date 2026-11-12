@@ -13,26 +13,25 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 
 | Role | Holds |
 |---|---|
-| `fast` | Random-IO data and caches: Docker stacks, databases, every service's config directory, restic cache, Copyparty `hist` (the full list is `group_vars/all/defaults-data-dirs.yml`) |
-| `primary` | Bulk data: photos, files |
+| `fast` | A service's own state (`appdata/`: databases, configs, sessions), your Dockge `stacks/`, Copyparty's `fast/` and the restic cache |
+| `primary` | Bulk data (`bulk/`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
 | `backup` | The restic repo, service dumps, logs |
 
 One drive can hold several roles. Each role is claimed by at most one drive per host (a duplicate claim or an unknown role fails the deploy). Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives`. Giving a role its own drive later moves that role's paths, and you copy the data once ([Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)).
 
 ## What lives where
 
-Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
+The rule: a service's own state is in `appdata/<service>`, its bulk data in `bulk/<service>`, and your own files in plainly named folders (`stacks`, `fast`, `files`, `collab`). A part of a service is a subfolder (`appdata/gitea/runner`). Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
-├─ appdata/<service>/           appdata_dir: each service's own data (databases, configs, sessions)
+├─ appdata/<service>/           appdata_dir: each service's own state (databases, configs, sessions)
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
 ├─ fast/                        Copyparty's /fast volume
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
-├─ photos/                      Immich's photos
-├─ files/, collab/              Copyparty's files
-└─ apps/pics/{photos,trash}/    pics
+├─ bulk/<service>/              bulk_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
+└─ files/, collab/              your files in Copyparty
 /mnt/backup/                    backup drive: restic repository, dumps, logs
 /opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)
 /var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")
@@ -42,7 +41,7 @@ Mount points are examples. Yours are the `mount` values. Most paths are settings
 
 A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it. A host needs `backup` where `backup_local_enabled` is true ([backups.md](./backups.md)). The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed.
 
-One USB drive for apps and backups (`[fast, backup]`), or everything (`[fast, primary, backup]`). The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
+One USB drive for everything (`[fast, primary, backup]`), or for apps and backups (`[fast, backup]`). Immich, Garage, Crafty, pics and Copyparty's files need the `primary` role, so a host without it can run only the services that keep all their data in `appdata`. The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
 
 ```yaml
 drives:
@@ -126,7 +125,7 @@ To mount it again, plug it in, `sudo systemctl start mnt-backup.automount`, open
 
 ## Move one service's data
 
-Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`.
+Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`. Keep the layout rule when you set a new path.
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive with a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. `cd /opt/services/<service> && docker compose down`.

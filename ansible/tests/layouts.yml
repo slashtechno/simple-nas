@@ -136,7 +136,7 @@
                 offsite_script | regex_findall('if ! mountpoint -q \\S+/\\.; then') | length
                 == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0) + encrypted_folders | length
               - "not offsite_paths is search('(?m)^- ')"
-              - "'immich' not in expect.services | default([]) or immich_db_data_location in offsite_excludes"
+              - "'immich' not in expect.services | default([]) or immich_postgres_dir in offsite_excludes"
               - "'copyparty' not in expect.services | default([]) or copyparty_hist_dir in offsite_excludes"
 
         - name: Read the local exclude list
@@ -175,7 +175,7 @@
               ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
               vars:
                 immich_enabled: true
-                immich_upload_location: /not-backed-up/photos
+                immich_photos_dir: /not-backed-up/photos
             - name: The coverage check must have failed
               ansible.builtin.fail:
                 msg: check_coverage.yml accepted a directory outside restic_local_rules
@@ -210,7 +210,7 @@
           ansible.builtin.include_tasks: ../roles/backup/tasks/check_coverage.yml
           vars:
             immich_enabled: true
-            immich_upload_location: /not-backed-up/photos
+            immich_photos_dir: /not-backed-up/photos
             restic_local_rules: "{{ rules_with_opt_out }}"
           when: backup_local_enabled | bool
 
