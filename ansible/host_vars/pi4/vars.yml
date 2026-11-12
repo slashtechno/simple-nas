@@ -28,6 +28,16 @@ copyparty_enabled: true
 usb_automount_enabled: true
 usb_automount_writable: true
 
+# --- Encryption (docs/encryption.md) ---
+# Everything the services and you keep on the drive, except what must work while it is locked.
+encrypted_folders: [/mnt/apps/appdata, /mnt/apps/stacks, /mnt/apps/files]
+# ntfy (alerts), Caddy and Tinyauth (the way to the unlock page) stay readable while the folders are locked.
+ntfy_data_dir: /mnt/apps/plain/ntfy
+caddy_data_dir: /mnt/apps/plain/caddy
+tinyauth_data_dir: /mnt/apps/plain/tinyauth
+# A web page that unlocks and locks the folders: https://unlock.pi4.slashtechno.com (docs/encryption.md#unlock-page).
+unlock_page_enabled: true
+
 # --- Drives ---
 drives:
   - uuid: "652f3034-fd03-4a7e-b39a-a7d5262c371a"   # 128 GB USB stick, label primary → /mnt/apps

@@ -55,6 +55,7 @@
     enabled: true
     state: started
     daemon_reload: true
+  when: not ansible_check_mode   # the unit files are only simulated under --check, so systemd cannot find them
 
 - name: Create the page's directory
   ansible.builtin.file:
@@ -90,3 +91,4 @@
     project_src: "{{ services_dir }}/unlock-page"
     state: present
     build: always
+  when: not ansible_check_mode   # on the first deploy the folder above is only simulated under --check
