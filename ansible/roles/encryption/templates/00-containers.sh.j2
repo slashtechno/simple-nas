@@ -4,15 +4,33 @@
 # A container that started while a folder was locked either sees it empty, or never started because Docker could not
 # create its mount source. This restarts every container that bind-mounts one of the folders, or a folder above or
 # inside one, and starts the ones that failed to start. Other containers are not touched, and one you stopped stays
-# stopped. With -n it only lists them (unlock.sh --status). Your own start commands go in a script beside this one.
+# stopped. With -n it only lists them (unlock.sh --status). With --stop (unlock.sh --lock) it stops the same containers and
+# writes their names to {{ encryption_stopped_file }}; the next unlock starts those, which it would otherwise leave stopped.
+# Your own start commands go in a script beside this one.
 set -uo pipefail
 
 DRY=0
+STOP=0
 FAILED=0
 if [ "${1:-}" = "-n" ]; then DRY=1; shift; fi
+if [ "${1:-}" = "--stop" ]; then STOP=1; shift; fi
+STOPPED_FILE={{ encryption_stopped_file | quote }}
 command -v docker >/dev/null || exit 0   # encryption does not need Docker
 
 {% raw %}
+# The containers the last lock stopped. They are stopped, so the loop below skips them: start them here, or list them.
+if [ -s "$STOPPED_FILE" ]; then
+  if [ "$DRY" = 1 ]; then
+    while IFS= read -r name; do echo "  $name (stopped by the lock)"; done <"$STOPPED_FILE"
+  elif [ "$STOP" = 0 ]; then
+    while IFS= read -r name; do
+      echo "Starting $name"
+      docker start "$name" >/dev/null || { echo "ERROR: could not start $name." >&2; FAILED=1; }
+    done <"$STOPPED_FILE"
+    rm -f "$STOPPED_FILE"
+  fi
+fi
+
 names=$(docker ps -a --format '{{.Names}}') || { echo "ERROR: cannot list containers. Is Docker running?" >&2; exit 1; }
 for name in $names; do
   # Running, or created with an error (the failed start); anything else was stopped on purpose.
@@ -31,6 +49,9 @@ for name in $names; do
 
   if [ "$DRY" = 1 ]; then
     echo "  $name ($state)"
+  elif [ "$STOP" = 1 ]; then
+    echo "Stopping $name"
+    if docker stop "$name" >/dev/null; then echo "$name" >>"$STOPPED_FILE"; else echo "ERROR: could not stop $name." >&2; FAILED=1; fi
   else
     echo "Restarting $name"
     docker restart "$name" >/dev/null || { echo "ERROR: could not restart $name." >&2; FAILED=1; }

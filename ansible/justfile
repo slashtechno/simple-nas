@@ -100,6 +100,10 @@ preview tags='' *flags: (_tags tags)
 unlock host:
     ssh -t "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh
 
+# Stop the containers that use a host's encrypted folders and unlock them again later with `just unlock`: `just lock pinas` (docs/encryption.md)
+lock host:
+    ssh -t "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh --lock
+
 # Show which encrypted folders are locked and which containers wait for them: `just encryption-status pinas`
 encryption-status host:
     ssh "$(just _ssh_target {{ host }})" sudo /opt/services/scripts/unlock.sh --status

@@ -12,6 +12,7 @@
     - "{{ scripts_dir }}/setup-encrypted-folder.sh"
     - "{{ scripts_dir }}/remove-encrypted-folder.sh"
     - "{{ encryption_hooks_dir }}/00-containers.sh"
+    - "{{ encryption_stopped_file }}"
 
 # rmdir only succeeds when the directory is empty.
 - name: Remove the after-unlock scripts directory (only if empty)

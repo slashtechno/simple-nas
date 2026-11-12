@@ -4,7 +4,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 
 | I want to | Go to |
 |---|---|
-| Unlock after a reboot | [Unlocking](#unlocking) |
+| Unlock after a reboot, or lock again | [Unlocking](#unlocking) |
 | Unlock from a browser | [unlock-page/README.md](../unlock-page/README.md) |
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
 | Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
@@ -28,7 +28,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
-- To lock again, stop the containers that use the folder (`docker ps` shows them). Then run `sudo umount <folder>`.
+- To lock again: `just lock <host>`, or `sudo /opt/services/scripts/unlock.sh --lock` on the host. It stops the containers that use a folder, unmounts every folder, and reports a folder that is busy (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers it stopped, which an unlock leaves alone otherwise.
 
 <details>
 <summary>Unlock or create a folder by hand, without the scripts</summary>
@@ -70,6 +70,7 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 | Mounts a folder inside it (`appdata/<service>`) | Never starts: Docker cannot create the folder (state `created`) | Started |
 | Mounts no listed folder, including your own `docker run` | Runs normally | Not touched |
 | Stopped on purpose | Stays stopped | Stays stopped |
+| Stopped by a lock | Stays stopped | Started |
 
 `00-containers.sh` (in `after-unlock.d`) does the restarting, whatever a container's restart policy, and prints each name. `unlock.sh --status` lists the waiting containers without changing anything.
 

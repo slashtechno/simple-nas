@@ -1,5 +1,6 @@
 #!/bin/bash
 # Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh   (--status: show what is locked)
+# --lock stops the containers that use the folders and unmounts them (the next unlock starts those again).
 # Asks for the passphrase once (only if a folder is locked) and mounts each encrypted folder. If it mounted any, it
 # runs every *.sh in {{ encryption_hooks_dir }}, in name order, giving each the folders it mounted (docs/encryption.md).
 # The deploy installs 00-containers.sh there; your own start commands go beside it.
@@ -39,6 +40,32 @@ show_state() {
     LOCKED+=("$mount")
   fi
 }
+
+# The unlock page's key runs this with whatever the page sends (docs/encryption.md#unlocking): only these three are accepted.
+case "${1:-}" in
+  "" | --status | --lock) ;;
+  *) echo "usage: unlock.sh [--status | --lock]" >&2; exit 2 ;;
+esac
+
+if [ "${1:-}" = "--lock" ]; then
+  MOUNTED_NOW=()
+{% for folder in encrypted_pairs %}
+  mountpoint -q {{ (folder.mount ~ '/.') | quote }} && MOUNTED_NOW+=({{ folder.mount | quote }})
+{% endfor %}
+  if [ -z "${MOUNTED_NOW[*]:-}" ]; then echo "Already locked."; exit 0; fi
+  if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
+    {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} --stop "${MOUNTED_NOW[@]}" || FAILED=1
+  fi
+  for mount in "${MOUNTED_NOW[@]}"; do
+    if umount "$mount"; then
+      echo "Locked $mount"
+    else
+      echo "ERROR: could not unmount $mount: something still has a file open there (fuser -vm $mount)." >&2
+      FAILED=1
+    fi
+  done
+  exit "$FAILED"
+fi
 
 if [ "${1:-}" = "--status" ]; then
 {% for folder in encrypted_pairs %}

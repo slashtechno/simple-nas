@@ -59,7 +59,11 @@ data_drive_mounts: >-
   {%- endfor -%}
   {{ mounts }}
 # The start of the unlock page's line in authorized_keys: what the key may run (roles/encryption/tasks). The line is this, a space, then the key.
-unlock_page_key_command: 'restrict,command="sudo {{ scripts_dir }}/unlock.sh"'
+# The page sends nothing, --lock or --status as the command, the shell puts it in as one argument, and unlock.sh accepts only those three.
+unlock_page_key_command: 'restrict,command="sudo {{ scripts_dir }}/unlock.sh \"$SSH_ORIGINAL_COMMAND\""'
+# The names of the containers that the last lock stopped, which the next unlock starts again (00-containers.sh). Kept on the root
+# drive: a reboot while locked must not forget them.
+encryption_stopped_file: "{{ scripts_dir }}/.stopped-for-lock"
 # Each encrypted folder with the hidden folder next to it that holds its encrypted files.
 # Example: encrypted_folders [/mnt/primary/photos/] gives [{mount: /mnt/primary/photos, cipher: /mnt/primary/.photos.gocryptfs}].
 encrypted_pairs: >-
