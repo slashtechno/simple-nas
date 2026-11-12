@@ -146,6 +146,7 @@
         dockge_port: ""
         scrutiny_devices: [/dev/sdb]   # the render test replaces the host's smartctl scan
         cloudflare_api_token: render-test-token
+        caddy_dns_api_token: render-dns-token   # Caddy's token is its own setting, not the account token
         encrypted_folders: [/mnt/primary/immich/]   # the trailing slash is tolerated
 
     - name: Turn on the offsite backup
@@ -689,6 +690,8 @@
           - "\"HUB_ALERT_URLS='ntfy://tk_a$b@pi4:8090/alerts'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'CLOUDFLARE_API_TOKEN: \"render-dns-token\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
+          - "'render-test-token' not in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'caddy.acme_dns: cloudflare' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'NTFY_BEHIND_PROXY' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"
           - "'NTFY_UPSTREAM_BASE_URL' in lookup('ansible.builtin.file', out_dir ~ '/ntfy/docker-compose.yml')"

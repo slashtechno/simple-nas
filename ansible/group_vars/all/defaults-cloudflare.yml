@@ -5,6 +5,12 @@
 # API token, from the vault. It needs Zone:DNS:Edit on every zone below; the tunnel also needs Account:Cloudflare Tunnel:Edit.
 cloudflare_api_token: "{{ vault_cloudflared_api_token }}"
 
+# The token Caddy gets on the host for its DNS challenge (a certificate for each private domain). The default is the token above.
+# Caddy needs only Zone:DNS:Edit on the zone of caddy_private_domains, so a token with that alone is the one to put on the host:
+# a thief of the host then cannot edit other zones or tunnels. To use one, follow the steps in vault.yml.example.
+# Teardown does not read it.
+caddy_dns_api_token: "{{ cloudflare_api_token }}"
+
 # Account ID, from the vault.
 cloudflare_account_id: "{{ vault_cloudflared_account_id }}"
 

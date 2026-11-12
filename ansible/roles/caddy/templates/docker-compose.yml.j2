@@ -22,7 +22,7 @@ services:
     environment:
       CADDY_INGRESS_NETWORKS: {{ docker_network }}
 {% if caddy_private_domains | length > 0 %}
-      CLOUDFLARE_API_TOKEN: "{{ cloudflare_api_token }}"
+      CLOUDFLARE_API_TOKEN: "{{ caddy_dns_api_token }}"
 {% endif %}
 {% if caddy_private_domains | length > 0 or caddy_sites | length > 0 %}
     labels:
