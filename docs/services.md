@@ -155,7 +155,7 @@ Then run `just deploy copyparty --limit <host>`.
 - **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Write it in `accs:`. The user needs no `[accounts]` entry. A signed-in user that no `accs:` line names sees nothing in the volume.
 - **Service accounts** (a sync client, a script, WebDAV): add a password in `[accounts]` and name it in `accs:`. A password account works on the published port and the tunnel hostname. It does not work on the browser name: Tinyauth stops clients that cannot sign in through a web page. Keep the password in the vault.
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
-- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. Restart Copyparty after an unlock (the unlock scripts do it when the folder is listed).
+- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty by itself when the mounted folder is, or sits in, a listed folder.
 
 To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`.
 

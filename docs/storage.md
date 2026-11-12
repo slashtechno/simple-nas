@@ -17,6 +17,8 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 | `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
 | `backup` | The restic repo, service dumps, logs |
 
+To browse a drive, or one folder of it, in Copyparty: [More drives and folders](./services.md#more-drives-and-folders).
+
 One drive can hold several roles. Each role is claimed by at most one drive per host (a duplicate claim or an unknown role fails the deploy). Service paths come from `fast_drive`, `primary_drive` and `backup_drive`, worked out from `drives`. Giving a role its own drive later moves that role's paths, and you copy the data once ([Adding, replacing or retiring a drive](#adding-replacing-or-retiring-a-drive)).
 
 ## What lives where
