@@ -48,7 +48,7 @@ ls -A $T/plain $T/appdata
 ssh -t user@pi4.ferret-ordinal.ts.net
 sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/appdata
 sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/files
-sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/stacks   # the long one: run it in tmux
+sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/apps/stacks   # the long one: run it in tmux or zellij
 ```
 
 - [ ] Type the passphrase from the vault each time. Save each master key and cipher settings in your password manager.

@@ -9,6 +9,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
 | Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
+| Change the passphrase, or make a new master key | [Change the passphrase or the master key](#change-the-passphrase-or-the-master-key) |
 | Stop encrypting a folder | [Turning it off](#turning-it-off) |
 | Know what is and is not protected | [What it protects](#what-it-protects) |
 | Check backups still work | [Dumps and backups](#dumps-and-backups) |
@@ -116,7 +117,7 @@ gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>  
 
 Use a long random passphrase from a password manager. It is the weak point, not the 256-bit cipher.
 
-**After typing the passphrase on a device you do not trust:** run `sudo gocryptfs -passwd <the .gocryptfs folder>` for every folder. Then run `sudo /opt/services/scripts/unlock.sh` (it gives the rewritten `gocryptfs.conf` to the ansible user so backups can read it). Then run a backup (older snapshots hold the old passphrase). This does not re-encrypt data, so it helps only if nobody copied the conf.
+**After typing the passphrase on a device you do not trust:** [change the passphrase](#change-the-passphrase-or-the-master-key). That helps only if nobody copied `gocryptfs.conf`. If someone may have both the conf and the passphrase, make a new master key.
 
 ## Set up a folder
 
@@ -134,7 +135,7 @@ Do this **before the service first starts**, or it writes plain files into the f
    - It takes checksums of the existing files, and renames the folder to `photos.plain`.
    - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
    - It moves the files in, compares checksums, and removes `photos.plain` when they match. It needs room for the largest file plus 1%, not a second copy.
-4. **Save the master key and the settings** the script printed in your password manager. A copy of each `gocryptfs.conf` off the host is cheap insurance.
+4. **Save the master key and the settings** the script printed in your password manager. The key is one value: eight groups of eight characters with dashes between them. The terminal wraps it over two lines. Save it as one line. gocryptfs ignores the dashes when you enter it. A copy of each `gocryptfs.conf` off the host is cheap insurance.
 5. Start the containers. Do steps 3 to 5 in one sitting.
 
 On a new host, do `just deploy storage,common --limit <host>` first, deploy everything after the last folder. Use one passphrase for all folders: `unlock.sh` asks once and tries it on each.
@@ -144,6 +145,23 @@ If the script reports a checksum mismatch, it deletes nothing. The files are the
 A service that runs as another user needs the folder's owner changed **while unlocked**. A change while locked is lost.
 
 Removing files does not wipe them from a drive: re-format a drive that held plain data before it leaves your hands.
+
+### Change the passphrase or the master key
+
+**Change the passphrase.** It takes seconds. The master key stays the same, and gocryptfs re-encrypts no data. A mounted folder stays mounted.
+
+1. For each folder, in a terminal (`ssh -t <host>`): `sudo gocryptfs -passwd <the .gocryptfs folder>`. `-passwd` changes the passphrase of that one folder. It asks for the old passphrase, then the new one twice. Use the same new passphrase for every folder, so one prompt unlocks them all.
+2. On a host that runs the [unlock page](#unlock-page): put the new passphrase in the vault as `vault_encryption_passphrase`, then run `just deploy unlock_page --limit <host>`. Until you do, the page's Unlock fails with a wrong-passphrase error.
+3. Run `sudo /opt/services/scripts/unlock.sh`. It gives the rewritten `gocryptfs.conf` to the ansible user, so backups can read it. Then run a backup. Older snapshots keep the old `gocryptfs.conf`, and it opens only with the old passphrase.
+4. Update your password manager, and copy the new `gocryptfs.conf` off the host.
+
+**Make a new master key.** gocryptfs cannot change the master key of a folder. You decrypt the folder and encrypt it again. Do this when someone may have had the master key, or both the conf and the passphrase. The two moves read and write every file at the encrypted speed ([how slow](#which-folders-to-list)). On a Raspberry Pi 4, 21 GB takes hours.
+
+1. Run a backup. Stop the containers that use the folder.
+2. `sudo /opt/services/scripts/remove-encrypted-folder.sh <folder>` puts the files back as plain files ([turning it off](#turning-it-off)).
+3. When the plain files are correct, delete the old encrypted files: `sudo rm -r <the .gocryptfs folder>`.
+4. `sudo /opt/services/scripts/setup-encrypted-folder.sh <folder>` encrypts the folder again. It makes a new master key. Save it, with the settings it prints ([set up a folder](#set-up-a-folder)).
+5. Run a backup. Snapshots from before keep the old conf and open only with the old passphrase and master key. Keep both until those snapshots expire.
 
 ### Which folders to list
 
