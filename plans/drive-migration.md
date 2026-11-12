@@ -8,8 +8,8 @@ Target, in the host's `drives` list (`ansible/host_vars/<host>/vars.yml`; roles 
 
 | Role | Drive | Mount | Holds |
 |---|---|---|---|
-| `fast` | Samsung T7 500GB SSD | `/mnt/t7` | Docker data, Immich database, configs, restic cache, Copyparty `hist` |
-| `primary` | WD_BLACK P10 2TB | `/mnt/main` | photos, files, collab |
+| `fast` | Samsung T7 500GB SSD | `/mnt/t7` | Docker data, `appdata` (Immich database, configs, Copyparty `hist`), `stacks`, restic cache |
+| `primary` | WD_BLACK P10 2TB | `/mnt/main` | `bulk` (Immich photos, Garage blocks, Crafty, pics), `files`, `collab` |
 | `backup` | Seagate IronWolf Pro 6TB (used) | `/mnt/backup` | restic repo, service dumps, logs |
 
 Current layout: the T7 has `roles: [fast, primary]`; the IronWolf has `[backup]`.
@@ -40,12 +40,12 @@ Vet each new drive yourself, not on the seller's word: `sudo smartctl -d sat -a 
 ## 2. Primary drive and fast/primary split
 
 - [ ] Format the P10 as ext4. In `drives`, add `mount: /mnt/main`, `roles: [primary]` and change the T7 to `roles: [fast]`.
-- [ ] `just deploy storage --limit <host>` mounts `/mnt/main`. The `photos`, `files` and `collab` folders come from the rsync below and from the service roles.
-- [ ] Stop the services that write to `photos`, `files` and `collab` (`cd /opt/services/<service> && docker compose down` for Immich and Copyparty; their only data on the T7 is what is copied).
-- [ ] Copy: `rsync -aHAX /mnt/t7/photos/ /mnt/main/photos/`, the same for `files` and `collab`. Databases, Docker and config directories stay on the T7.
-- [ ] Run no full `just deploy` between changing `drives` and finishing the copy: the service roles would recreate Immich and Copyparty on the empty `/mnt/main`. Deploy `storage` only until the copy is done. Also copy `/mnt/t7/apps/` (pics' photos and trash) to `/mnt/main/apps/`.
+- [ ] `just deploy storage --limit <host>` mounts `/mnt/main`. The `bulk`, `files` and `collab` folders come from the rsync below and from the service roles.
+- [ ] Stop the services that write to `bulk`, `files` and `collab` (`cd /opt/services/<service> && docker compose down` for Immich, Copyparty, Garage, Crafty and pics; their only data on the T7 is what is copied).
+- [ ] Copy: `rsync -aHAX /mnt/t7/bulk/ /mnt/main/bulk/`, the same for `files` and `collab`. Databases, Docker and config directories stay on the T7.
+- [ ] Run no full `just deploy` between changing `drives` and finishing the copy: the service roles would recreate Immich and Copyparty on the empty `/mnt/main`. Deploy `storage` only until the copy is done.
 - [ ] `just deploy`, then check Immich. Copyparty re-scans its index on the first start; that is expected.
-- [ ] After a good backup and a check that the copies match (`diff -rq` or file counts and sizes), delete the old folders from the T7 (`photos`, `files`, `collab`): left behind they are backed up twice and fill the SSD.
+- [ ] After a good backup and a check that the copies match (`diff -rq` or file counts and sizes), delete the old folders from the T7 (`bulk`, `files`, `collab`): left behind they are backed up twice and fill the SSD.
 - [ ] Docker's images and layers stay on the root drive unless `docker_data_root` is set ([storage.md](../docs/storage.md#dockers-own-storage)); the table above does not assume it. Setting it means Docker does not start when the T7 is missing.
 
 ## 3. Backup follow-up after the split
