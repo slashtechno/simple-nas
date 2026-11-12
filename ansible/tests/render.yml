@@ -556,7 +556,7 @@
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
-          - "(services_dir ~ '/cloudflared/token') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - "cloudflared_token_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')

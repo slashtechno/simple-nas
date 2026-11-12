@@ -75,6 +75,10 @@ ntfy_alert_url: ""
 # File on the host holding host_alert_token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
 
+# File on the host holding the Cloudflare tunnel token, mounted into the tunnel's container. Here because the backup
+# role leaves it out (the container's user owns it, mode 400).
+cloudflared_token_file: "{{ services_dir }}/cloudflared/token"
+
 # Who may use a service: {service key: [Tinyauth user names]}. A service not listed is open to every user in
 # vault_tinyauth_users; which services accept a list is in docs/auth-reference.md#who-may-use-what.
 # Example: {dozzle: [alice], pics: [alice, bob]}

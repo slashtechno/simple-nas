@@ -62,7 +62,7 @@
 - name: Write the tunnel token
   ansible.builtin.copy:
     content: "{{ cloudflared_token.json.result }}"
-    dest: "{{ services_dir }}/cloudflared/token"
+    dest: "{{ cloudflared_token_file }}"
     owner: "65532"
     group: "65532"
     mode: "0400"
