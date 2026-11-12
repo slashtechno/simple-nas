@@ -3,6 +3,7 @@
 {% import 'status-report.j2' as job_status with context %}
 {% import 'restic-env.j2' as restic_env with context %}
 set -o pipefail
+{{ guards.hold_lock() }}
 
 {% if backup_local_enabled | bool %}
 # Refuse to run if the backup drive is not mounted at {{ backup_drive }}: the service dumps and logs

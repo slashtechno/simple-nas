@@ -29,7 +29,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
-- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It reports a busy folder (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
+- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It refuses while a backup runs, and reports a busy folder (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
 
 ## Unlock page
 
@@ -219,8 +219,10 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 |---|---|
 | A drive lost, stolen, sold or repaired, when the thief does not also have the root drive | A host that is running and unlocked |
 | File contents and names | The number, depth, size (to 4 KiB) and modification time of files |
-| | The root drive: it holds the restic password and the Tailscale and Cloudflare logins, so a thief with the whole host can open the backups |
+| | The root drive: it holds the restic password and the Tailscale and Cloudflare logins ([the Cloudflare token](./caddy-reference.md#web-addresses-and-https) can edit DNS and tunnels), so a thief with the whole host can open the backups |
 | | Backup logs (they list every path) and service dumps, unless you list the dumps folder ([below](#dumps-and-backups)) |
+
+After a theft of the whole host, revoke the Cloudflare API and tunnel tokens and remove the host from Tailscale. The thief can read the backups on the host's drives: the restic key of an existing repository does not change with the vault value.
 
 Use a long random passphrase from a password manager. It is the weak point, not the 256-bit cipher.
 

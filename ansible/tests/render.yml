@@ -586,6 +586,10 @@
           - "'gocryptfs -allow_other \"$cipher\" \"$mount\"' in unlock_sh"
           - "'-nonempty' not in unlock_sh | regex_replace('Never -nonempty', '')"
           - "'mountpoint -q /mnt/primary/immich/.' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
+          # A lock must not unmount folders under a backup: both backup scripts and unlock.sh --lock use one lock on the scripts folder.
+          - "'flock 9' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-local.sh')"
+          - "'flock 9' in lookup('ansible.builtin.file', out_dir ~ '/backup/backup-restic-cloud.sh')"
+          - "'flock -n 9' in unlock_sh"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')

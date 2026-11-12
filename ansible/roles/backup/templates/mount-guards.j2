@@ -1,5 +1,6 @@
 {# Shared by the backup scripts. Use: {% import 'mount-guards.j2' as guards with context %}, then
-   guards.require_mounted(path, what_would_go_wrong) for one drive or guards.require_data_drives() for all data drives. #}
+   guards.require_mounted(path, what_would_go_wrong) for one drive or guards.require_data_drives() for all data drives.
+   guards.hold_lock() makes a backup wait for a lock in progress (unlock.sh --lock holds the same lock). #}
 {% macro guard(path, consequence, hint='Check the drive (check the USB connection; the drive mounts itself when it is back).') -%}
 if ! mountpoint -q {{ (path ~ '/.') | quote }}; then
   echo "ERROR: {{ path }} is not a mounted filesystem — {{ consequence }}. {{ hint }}" >&2
@@ -13,6 +14,15 @@ fi
 {% macro require_mounted(path, consequence) -%}
 {{ explain() }}
 {{ guard(path, consequence) }}
+{%- endmacro %}
+{% macro hold_lock() -%}
+{% if encrypted_pairs | length > 0 %}
+# A lock unmounts the encrypted folders. The guards below look only once, so a lock during a backup would make files
+# vanish under restic. unlock.sh --lock holds a lock on the scripts folder and refuses while a backup holds it; a
+# backup that starts during a lock waits here, then finds the folders locked and refuses. The lock ends with the script.
+exec 9<{{ scripts_dir | quote }}
+flock 9
+{% endif %}
 {%- endmacro %}
 {% macro require_data_drives() -%}
 {% if data_drive_mounts | length > 0 %}

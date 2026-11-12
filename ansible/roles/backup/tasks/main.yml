@@ -15,7 +15,7 @@
     state: directory
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-    mode: "0755"
+    mode: "{{ '0700' if item == service_dumps_dir else '0755' }}"   # the dumps hold databases and keys: only the backup user reads them
   loop: >-
     {{ ([] if backup_local_enabled | bool else [backup_work_dir])
        + [restic_cache_dir, backup_logs_dir, service_dumps_dir]

@@ -53,6 +53,10 @@ if [ "${1:-}" = "--lock" ]; then
   mountpoint -q {{ (folder.mount ~ '/.') | quote }} && MOUNTED_NOW+=({{ folder.mount | quote }})
 {% endfor %}
   if [ -z "${MOUNTED_NOW[*]:-}" ]; then echo "Already locked."; exit 0; fi
+  # A backup reads these folders. Unmounting under it makes files vanish, and restic would save a snapshot without them.
+  # The backup scripts hold the same lock on this folder (roles/backup, mount-guards.j2). The lock ends with this script.
+  exec 9<{{ scripts_dir | quote }}
+  flock -n 9 || { echo "A backup is running. Lock again when it finishes." >&2; exit 1; }
   if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
     {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} --stop "${MOUNTED_NOW[@]}" || FAILED=1
   fi
