@@ -130,14 +130,24 @@
             offsite_script: "{{ cloud_files.results[0].content | b64decode }}"
             offsite_paths: "{{ cloud_files.results[1].content | b64decode }}"
             offsite_excludes: "{{ cloud_files.results[2].content | b64decode }}"
+            # Every directory an enabled service leaves out of the backup (no_backup), and every folder inside its data
+            # directories it leaves out (no_backup_in).
+            enabled: "{{ services | selectattr('key', 'in', enabled_service_keys) | list }}"
+            left_out: >-
+              {%- set out = query('ansible.builtin.vars', *(enabled | map(attribute='no_backup', default=[]) | flatten | select | list)) | list -%}
+              {%- for entry in enabled | map(attribute='no_backup_in', default={}) -%}
+              {%- for setting, folder in entry.items() -%}
+              {%- set _ = out.append(lookup('ansible.builtin.vars', setting) ~ '/' ~ folder) -%}
+              {%- endfor -%}
+              {%- endfor -%}
+              {{ out }}
           ansible.builtin.assert:
             that:
               - >-
                 offsite_script | regex_findall('if ! mountpoint -q \\S+/\\.; then') | length
                 == data_drive_mounts | length + (1 if backup_local_enabled | bool else 0) + encrypted_folders | length
               - "not offsite_paths is search('(?m)^- ')"
-              - "'immich' not in expect.services | default([]) or immich_postgres_dir in offsite_excludes"
-              - "'copyparty' not in expect.services | default([]) or copyparty_hist_dir in offsite_excludes"
+              - left_out | select('in', offsite_excludes) | list | length == left_out | length
 
         - name: Read the local exclude list
           ansible.builtin.slurp:
