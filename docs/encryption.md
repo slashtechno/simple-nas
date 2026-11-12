@@ -82,7 +82,7 @@ Do this **before the service first starts**, or it writes plain files into the f
    The script does these steps. Each one checks what is already done, so after a lost connection run the same command again.
    - It takes checksums of the existing files, and renames the folder to `photos.plain`.
    - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
-   - It moves the files in, compares checksums, and removes `photos.plain` when they match. The drive needs free space for the folder's size plus 2%, because rsync deletes finished files late and both copies can exist at once. The script checks this first and stops if there is not enough.
+   - It moves the files in, compares checksums, and removes `photos.plain` when they match. The drive needs free space equal to the folder's size plus 2%. The plain files stay until rsync deletes them, which is late, so both copies can exist at once and the space in use can reach twice the folder's size. The script checks the free space first and stops if there is not enough.
 4. **Save the master key and the settings** the script printed in your password manager. The key is one value that the terminal wraps over two lines. Save it as one line ([its format](#show-the-master-key)). A copy of each `gocryptfs.conf` off the host is cheap insurance.
 5. Start the containers. Do steps 3 to 5 in one sitting.
 
