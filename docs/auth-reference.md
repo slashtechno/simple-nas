@@ -9,6 +9,7 @@
 | Put my own app behind the login | [Protect an app](#protect-an-app-of-your-own) |
 | Limit a service to some users | [Who may use what](#who-may-use-what) |
 | Reach a protected service away from Tailscale | [From outside](#reach-a-protected-service-from-outside-the-tailnet) |
+| Get in while Tinyauth is down | [If Tinyauth is down](#if-tinyauth-is-down) |
 
 Tinyauth is the login in front of the web services: what it does and how a service joins it is in [services.md](./services.md#tinyauth-login). This page covers users, two-factor codes, sign in with GitHub or Google, OpenID Connect, Tailscale and sessions. Its own settings are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)). The role takes extra ones in `tinyauth_environment` (host `vars.yml`).
 
@@ -119,6 +120,14 @@ The login and its session cookie belong to the private domain. Tinyauth takes th
 3. **The app's own login, exposed directly:** a tunnel entry to the container, only for an app that has a login ([which](./services.md#tinyauth-login)). Never for Dozzle, Scrutiny, the Garage web UI or Dockge with its login off.
 
 A second Tinyauth for another domain does not fit: it needs its own users, container and forwarder snippet by hand. Tailscale Funnel gives another domain (`ts.net`), so the login cannot follow it.
+
+## If Tinyauth is down
+
+While Tinyauth is down, the names it protects do not open. First find out why: `docker ps -a --filter name=tinyauth` and `docker logs tinyauth`, then `just deploy tinyauth --limit <host>`. To work while it is down:
+
+- **A service with a host port** (`<name>_port` is not `""`) opens on `http://<host>:<port>` with no login, because a published port skips Caddy ([ports](./caddy-reference.md#web-addresses-and-https)).
+- **Dockge** has no host port by default: use ssh, or the steps in [Dockge](./services.md#ad-hoc-app-platform).
+- **Encrypted folders:** the [unlock page](./encryption.md#unlock-page) is behind the login too, so use `just unlock <host>`.
 
 ## Who may use what
 

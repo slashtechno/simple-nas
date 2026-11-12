@@ -14,7 +14,7 @@ All commands run from `ansible/`.
 |---|---|---|
 | Set up a new server | [quick-start](../docs/quick-start.md), then [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
 | Turn a service on | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus its drive roles and vault entries ([services](../docs/services.md)) | `just deploy <name> --limit <host>` (with Caddy names also `caddy,homepage`) |
-| Stop or remove a service | flag `false`, then [tear it down](#disable-or-remove-a-service) | `just teardown <host> -e only=<name>` |
+| Stop or remove a service, or everything on a host | flag `false`, then [tear it down](#disable-or-remove-a-service) | `just teardown <host> -e only=<name>` (leave `-e only=` off for the whole host) |
 | Change a setting | the file that owns it ([table below](#which-files-hold-what)) | `just deploy <tag>` |
 | Find a setting, its default and overrides | nothing | `just settings <word>` (or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
 | Add or change a secret | `just edit vault` | `just deploy <tag>` |
@@ -30,6 +30,8 @@ All commands run from `ansible/`.
 | Unlock or lock from a browser | [the unlock page](../docs/encryption.md#unlock-page) | `unlock_page_enabled`, `vault_encryption_passphrase`, then `just deploy encryption,unlock_page --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
 | Preview, or check my edits | nothing | `just preview <tag> --limit <host>`, or `just check` |
+| Run a backup now, or check that backups ran | nothing | [checking backup status](../docs/backups.md#checking-backup-status) |
+| Check a drive's health | `scrutiny_enabled: true` | [Scrutiny](../docs/services.md#scrutiny-drive-health) |
 | Restore from a backup, or recover after a disaster | nothing | [docs/backups.md](../docs/backups.md) |
 
 ## Which files hold what
