@@ -151,13 +151,11 @@ copyparty_extra_conf: |
 
 Then run `just deploy copyparty --limit <host>`.
 
-- **Admins:** the generated volumes give admin access to `copyparty_user` and to `copyparty_sso_admins`. Your own volumes do not. Write each admin by name in the `accs:` block.
-- **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Write it in `accs:`. The user needs no `[accounts]` entry. A signed-in user that no `accs:` line names sees nothing in the volume.
-- **Your own service account** (a sync client, a script, WebDAV): the `syncer` line in the example. Add a name and a password under `[accounts]`, then name it in `accs:`. Keep the password in the vault.
-- **An account that Ansible manages:** every service with a `copyparty` field in `services.yml` (pics) gets an account named after its key. The deploy writes its password from the vault. Accounts from both files combine, so name it in `accs:` and leave out the password ([example below](#give-an-ansible-managed-account-another-folder)).
-- **Where passwords work:** a password account works on the published port and the tunnel hostname. It does not work on the browser name: Tinyauth stops clients that cannot sign in through a web page.
+- **Admins:** the generated volumes give admin access to `copyparty_user` and `copyparty_sso_admins`. Your own volumes do not: name each admin in `accs:`.
+- **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Name it in `accs:`, with no `[accounts]` entry. A user that no `accs:` line names sees nothing.
+- **Service accounts:** your own (the `syncer` line) needs a name and a vault password under `[accounts]`. An account Ansible manages (every service with a `copyparty` field in `services.yml`, such as `pics`) already exists with its password: name it in `accs:` ([example below](#give-an-ansible-managed-account-another-folder)). Passwords work on the published port and the tunnel hostname, not on the browser name: Tinyauth stops clients that cannot sign in through a web page.
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
-- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty by itself when the mounted folder is, or sits in, a listed folder.
+- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty by itself.
 
 #### Give an Ansible-managed account another folder
 
@@ -290,7 +288,7 @@ Scrutiny can show a drive as failed while `smartctl -H` says PASSED. It also fai
 Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_admin_token` in the host's vault, then `just deploy garage,caddy --limit <host>`.
 
 - The web UI is at `https://garage.<private domain>` (create buckets and access keys there). It holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
-- Apps connect with endpoint your tunnel hostname for the `garage-cors-proxy` container (a `cloudflared_ingress` entry), region `garage`, and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
+- Apps connect to the hostname of the `garage-cors-proxy` container's `cloudflared_ingress` entry, with region `garage` and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`): [Restore: Garage](./backups.md#restore-garage).
 - Garage reads its cluster layout from `garage_meta_dir` (the object blocks are in `garage_blocks_dir`). A first deploy (empty meta dir) starts with `--single-node` so it auto-configures one node. Later starts omit the flag, which Garage requires once a layout exists (see the comment in `roles/garage/tasks/main.yml`).
 
