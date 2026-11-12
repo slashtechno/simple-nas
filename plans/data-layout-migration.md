@@ -126,7 +126,31 @@ then `just deploy '' --limit pi4` and check Copyparty. pi4's `/mnt/t7/photos` is
 
 ## Rollback
 
-Stop the same containers and run the `mv` lines backwards (new to old). Gitea and pics first need their folder out of the way: `mv appdata/gitea/data appdata/gitea-old`, remove the empty `appdata/gitea` after moving `runner` back, then `mv appdata/gitea-old appdata/gitea`; the same for `appdata/pics` (and `install -d $T/apps/pics` before moving the photos back). Then `git checkout main` and deploy. The deploy before the move is the only step that cannot be undone with `mv` alone (an empty Postgres cluster started on the new path): never do it.
+Stop the same containers. Run these moves on pinas, then `git checkout main` and deploy.
+
+```bash
+T=/mnt/t7
+mv_new $T/appdata/copyparty/config     $T/appdata/copyparty_config
+mv_new $T/appdata/copyparty/hist       $T/appdata/copyparty-hist
+sudo rmdir $T/appdata/copyparty
+mv_new $T/appdata/immich/photos        $T/photos
+mv_new $T/appdata/immich/postgres      $T/appdata/immich_postgres
+sudo rmdir $T/appdata/immich
+
+mv_new $T/appdata/gitea/runner         $T/appdata/gitea_runner
+mv_new $T/appdata/gitea/data           $T/appdata/gitea-old
+sudo rmdir $T/appdata/gitea
+mv_new $T/appdata/gitea-old            $T/appdata/gitea
+
+sudo install -d -o "$USER" -g "$USER" $T/apps/pics
+mv_new $T/appdata/pics/photos          $T/apps/pics/photos
+mv_new $T/appdata/pics/trash           $T/apps/pics/trash
+mv_new $T/appdata/pics/data            $T/appdata/pics-old
+sudo rmdir $T/appdata/pics
+mv_new $T/appdata/pics-old             $T/appdata/pics
+```
+
+On pi4, run the two Copyparty lines with `T=/mnt/apps`. Never deploy the new branch before you move the folders. A deploy first starts an empty Immich database on the new path, and `mv` cannot undo that.
 
 ## Done
 

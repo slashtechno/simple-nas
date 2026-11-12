@@ -21,7 +21,9 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 ## What lives where
 
-The rule: a service's data is in `appdata/<service>[/<part>]` on the drive its role names: state on the `fast` drive, bulk data on the `primary` drive. Your own files are in plainly named folders (`stacks`, `scratch`, `files`, `collab`). A service with several directories gives each its own part (`appdata/immich/postgres`, `appdata/immich/photos`). On a host where one drive holds both roles, the two `appdata` folders are one. Each path is a setting you can change. Multi-word folder names use hyphens. Mount points are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`, and the restic cache is in `roles/backup/defaults/main.yml`.
+Each service keeps its data in `appdata/<service>`. Services with more than one directory use one subfolder (a part) for each, for example `appdata/immich/postgres` and `appdata/immich/photos`. State goes on the `fast` drive. Bulk data goes on the `primary` drive. If one drive has both roles, the two `appdata` folders are the same folder.
+
+Your own files have plain names: `stacks`, `scratch`, `files` and `collab`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
@@ -41,7 +43,7 @@ The rule: a service's data is in `appdata/<service>[/<part>]` on the drive its r
 
 A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it. A host needs `backup` where `backup_local_enabled` is true ([backups.md](./backups.md)). The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed.
 
-One USB drive for everything (`[fast, primary, backup]`), or for apps and backups (`[fast, backup]`). Immich, Garage, Crafty, pics and Copyparty's files need the `primary` role, so a host without it can run only the services that keep all their data in `appdata`. The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
+One USB drive for everything (`[fast, primary, backup]`), or for apps and backups (`[fast, backup]`). Immich, Garage, Crafty, pics and Copyparty's files keep data on the `primary` drive. A host without that role cannot run them. The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
 
 ```yaml
 drives:
@@ -125,7 +127,7 @@ To mount it again, plug it in, `sudo systemctl start mnt-backup.automount`, open
 
 ## Move one service's data
 
-Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`. Keep the layout rule when you set a new path. The deploy refuses a data directory that is the same as, or inside, another one (`ansible/check_data_dirs.yml`), because an exclude or teardown of the outer folder would take the inner one with it.
+Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`. You can set any path. Two rules apply. The deploy refuses a data directory that is the same as, or inside, another one (`ansible/check_data_dirs.yml`). A backup or a teardown of the outer folder would take the inner one with it. The local backup must also cover the new path.
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive with a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. `cd /opt/services/<service> && docker compose down`.
