@@ -82,7 +82,7 @@ Do this **before the service first starts**, or it writes plain files into the f
    The script does these steps. Each one checks what is already done, so after a lost connection run the same command again.
    - It takes checksums of the existing files, and renames the folder to `photos.plain`.
    - It creates the encrypted files and mounts the folder. The folder keeps the owner and mode of the old one.
-   - It moves the files in, compares checksums, and removes `photos.plain` when they match. It needs room for the largest file plus 1%, not a second copy.
+   - It moves the files in, compares checksums, and removes `photos.plain` when they match. The drive needs free space for the folder's size plus 2%, because rsync deletes finished files late and both copies can exist at once. The script checks this first and stops if there is not enough.
 4. **Save the master key and the settings** the script printed in your password manager. The key is one value that the terminal wraps over two lines. Save it as one line ([its format](#show-the-master-key)). A copy of each `gocryptfs.conf` off the host is cheap insurance.
 5. Start the containers. Do steps 3 to 5 in one sitting.
 
@@ -193,7 +193,7 @@ gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>  
    sudo /opt/services/scripts/remove-encrypted-folder.sh /mnt/data/photos
    ```
 
-   After a lost connection, run the same command again. If a checksum differs it deletes nothing. It keeps the encrypted files.
+   The drive needs free space for the folder's size plus 2%, and the script checks it first. After a lost connection, run the same command again. If a checksum differs it deletes nothing. It keeps the encrypted files.
 3. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. Start the containers.
 4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 

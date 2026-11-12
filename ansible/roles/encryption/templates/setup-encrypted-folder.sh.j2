@@ -44,6 +44,13 @@ fi
 if [ "$NEW" = 1 ]; then
   if [ -n "$(ls -A "$FOLDER")" ]; then
     [ ! -e "$PLAIN" ] || { echo "ERROR: $FOLDER and $PLAIN both exist. Move one away." >&2; exit 1; }
+    # rsync deletes a finished source file late (observed: gigabytes behind the copy), so both copies can exist at once.
+    # A full drive stops the move half way, and Docker and the logs on that drive fail with it. This runs only on a fresh
+    # start: on a rerun the half-moved $PLAIN would count files that are already copied.
+    NEED=$(du -sb "$FOLDER" | cut -f1)
+    NEED=$((NEED + NEED / 50))
+    HAVE=$(df -B1 --output=avail "$FOLDER" | tail -n 1)
+    [ "$HAVE" -ge "$NEED" ] || { echo "ERROR: $FOLDER needs $NEED bytes free for the encrypted copy (its size plus 2%), and the drive has $HAVE. Free space first." >&2; exit 1; }
     echo "Taking checksums of $FOLDER (this reads every file once)"
     (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"
     mv "$FOLDER" "$PLAIN"
@@ -77,8 +84,8 @@ if ! mountpoint -q "$FOLDER/."; then
 fi
 mountpoint -q "$FOLDER/." || { echo "ERROR: $FOLDER is not mounted." >&2; exit 1; }
 
-# 3. Move the files in, then compare checksums. --remove-source-files means no second copy of the data is needed,
-# and the same command finishes an interrupted move. --inplace leaves no hidden temporary file behind when it is cut off.
+# 3. Move the files in, then compare checksums. --remove-source-files deletes each source after it copied, but late, so
+# step 1 checks for room for both copies. The same command finishes an interrupted move. --inplace leaves no hidden temporary file behind when it is cut off.
 # The checksums were taken before the move.
 if [ -d "$PLAIN" ]; then
   echo "Moving the files into $FOLDER"

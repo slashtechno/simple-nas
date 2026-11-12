@@ -34,9 +34,18 @@ if ! mountpoint -q "$FOLDER/."; then
 fi
 mountpoint -q "$FOLDER/." || { echo "ERROR: $FOLDER is not mounted." >&2; exit 1; }
 
-# 2. Move the files out into $PLAIN, then compare checksums. --remove-source-files means no second copy of the data is
-# needed, and the same command finishes an interrupted move. The checksums are taken once, before the first move.
-[ -e "$SUMS" ] || { echo "Taking checksums of $FOLDER (this reads every file once)"; (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"; }
+# 2. Move the files out into $PLAIN, then compare checksums. --remove-source-files deletes each source after it copied, but
+# late (observed: gigabytes behind the copy), so both copies can exist at once. A full drive stops the move half way, and
+# Docker and the logs on that drive fail with it. The free-space check and the checksums run only on a fresh start: on a
+# rerun the half-moved folder would count files that are already copied. The same command finishes an interrupted move.
+if [ ! -e "$SUMS" ]; then
+  NEED=$(du -sb "$FOLDER" | cut -f1)
+  NEED=$((NEED + NEED / 50))
+  HAVE=$(df -B1 --output=avail "$FOLDER" | tail -n 1)
+  [ "$HAVE" -ge "$NEED" ] || { echo "ERROR: the plain copy needs $NEED bytes free (the folder's size plus 2%), and the drive has $HAVE. Free space first." >&2; exit 1; }
+  echo "Taking checksums of $FOLDER (this reads every file once)"
+  (cd "$FOLDER" && find . -type f -exec sha256sum {} + | sort -k2) > "$SUMS"
+fi
 mkdir -p "$PLAIN"
 chown --reference="$FOLDER" "$PLAIN"
 chmod --reference="$FOLDER" "$PLAIN"
