@@ -43,8 +43,7 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | [docs/storage.md](./docs/storage.md) | Add or replace a drive, a drive that will not mount, drive wear |
 | [docs/networking.md](./docs/networking.md) | A Pi that dropped off the network |
 | [docs/memory.md](./docs/memory.md) | A host short of RAM |
-| [docs/encryption.md](./docs/encryption.md) | Encrypted folders: set up, unlock after a boot |
-| [unlock-page/README.md](./unlock-page/README.md) | Unlock from a browser (an optional standalone app, not an Ansible role) |
+| [docs/encryption.md](./docs/encryption.md) | Encrypted folders: set up, unlock after a boot, lock, the unlock page |
 
 | Reference | |
 |---|---|

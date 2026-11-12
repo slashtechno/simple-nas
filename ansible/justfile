@@ -23,7 +23,7 @@ deps:
 _lint:
     uvx {{ ansible_lint }}
     uvx --from {{ shellcheck }} shellcheck --severity=warning roles/*/files/*.sh
-    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files ../unlock-page tools/edit.py
+    uvx {{ ruff }} check --isolated --select F,B roles/backup_status/files roles/dockge/files roles/unlock_page/files tools/edit.py
 
 # Both playbooks parse
 _syntax:

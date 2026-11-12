@@ -1,0 +1,22 @@
+networks:
+  {{ docker_network }}:
+    external: true
+
+services:
+  unlock-page:
+    build:
+      context: .
+      args:
+        PYTHON_IMAGE: {{ python_image }}
+    container_name: unlock-page
+    restart: unless-stopped
+    environment:
+      TZ: {{ timezone }}
+      UNLOCK_HOSTS: "{% for t in unlock_page_targets %}{{ t.name }}={{ t.user }}@{{ t.address }}{{ ',' if not loop.last }}{% endfor %}"
+    volumes:
+      - ./secrets:/run/unlock:ro
+    # The page's own host, reached through Docker's gateway.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - {{ docker_network }}

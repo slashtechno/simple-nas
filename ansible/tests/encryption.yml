@@ -23,11 +23,22 @@
         encrypted_folders: [/mnt/data/photos/, /mnt/data/appdata]
         unlock_page_public_key: ssh-ed25519 AAAAC3Nza unlock-page
 
+    - name: The same folders pass when the page does not run on this host
+      ansible.builtin.include_tasks: ../roles/encryption/tasks/check.yml
+      vars:
+        encrypted_folders: [/mnt/data/appdata]
+        unlock_page_enabled: false
+        caddy_data_dir: /mnt/data/appdata/caddy
+        tinyauth_data_dir: /mnt/data/appdata/tinyauth
+
     - name: A bad list is refused, and the message names the problem
       ansible.builtin.include_tasks: expect_encryption_failure.yml
       vars:
         encrypted_folders: "{{ case.folders }}"
         docker_data_root: "{{ case.docker_data_root | default('') }}"
+        unlock_page_enabled: "{{ case.page | default(false) }}"
+        caddy_data_dir: /mnt/data/appdata/caddy
+        tinyauth_data_dir: /mnt/data/appdata/tinyauth
         unlock_page_public_key: "{{ case.key | default('') }}"
         expect: "{{ case.expect }}"
       loop:
@@ -41,6 +52,10 @@
         - {folders: [/var], expect: /var/lib}
         - {folders: [/var/lib/docker], expect: /var/lib/docker}
         - {folders: [/mnt/docker], docker_data_root: /mnt/docker/data, expect: /mnt/docker/data}
+        # The unlock page on this host: a folder that holds Caddy's or Tinyauth's data would lock the page out of its own login.
+        - {folders: [/mnt/data/appdata], page: true, expect: /mnt/data/appdata/caddy}
+        - {folders: [/mnt/data/appdata], page: true, expect: /mnt/data/appdata/tinyauth}
+        - {folders: [/opt/services/unlock-page], page: true, expect: /opt/services/unlock-page}
         - {folders: [/mnt/data/photos], key: "not a key", expect: unlock_page_public_key}
         - {folders: [/mnt/data/photos], key: "ssh-ed25519 AAAA x\nssh-ed25519 BBBB y", expect: unlock_page_public_key}
       loop_control:

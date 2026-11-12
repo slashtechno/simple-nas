@@ -61,6 +61,16 @@ data_drive_mounts: >-
 # The start of the unlock page's line in authorized_keys: what the key may run (roles/encryption/tasks). The line is this, a space, then the key.
 # The page sends nothing, --lock or --status as the command, the shell puts it in as one argument, and unlock.sh accepts only those three.
 unlock_page_key_command: 'restrict,command="sudo {{ scripts_dir }}/unlock.sh \"$SSH_ORIGINAL_COMMAND\""'
+# How the unlock page reaches each host in unlock_page_hosts (roles/unlock_page): a name, the ssh user and the address. The page's own
+# host is reached through Docker's gateway, because a container may not resolve tailnet names.
+# Example: [{name: pi4, user: me, address: host.docker.internal}] on pi4 with the default unlock_page_hosts.
+unlock_page_targets: >-
+  {%- set targets = [] -%}
+  {%- for host in unlock_page_hosts -%}
+  {%- set _ = targets.append({'name': host, 'user': hostvars[host].ansible_user | default(ansible_user),
+        'address': 'host.docker.internal' if host == inventory_hostname else hostvars[host].ansible_host | default(host)}) -%}
+  {%- endfor -%}
+  {{ targets }}
 # The names of the containers that the last lock stopped, which the next unlock starts again (00-containers.sh). Kept on the root
 # drive: a reboot while locked must not forget them.
 encryption_stopped_file: "{{ scripts_dir }}/.stopped-for-lock"

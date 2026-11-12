@@ -127,6 +127,8 @@
           "gh.pi4.example.com": {redir: "https://github.com{uri}"}
         vault_tinyauth_users: [{name: owner, password: "pass$word", email: "owner@real.example"}, {name: second, password: second, totp: JBSWY3DPEHPK3PXP}]
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret"}
+        # The result of the unlock page role's slurp of each host's SSH identity (a task, so the render test supplies it).
+        unlock_page_host_keys: {results: [{content: "c3NoLWVkMjU1MTkgQUFBQUMzTnphRXhhbXBsZSByb290QHJlbmRlci1mdWxs"}]}
         immich_port: ""
         immich_extra_origins: ["https://photos.example.org"]
         pics_extra_origins: ["http://nas:8100"]
@@ -275,10 +277,10 @@
     - name: Every service has its flag, and a web service its port and subdomain, in the shared defaults files
       vars:
         shared_defaults: "{{ query('ansible.builtin.file', *shared_defaults_files) | map('from_yaml') | list | combine }}"
-        # Garage's web UI has no port setting: Tinyauth is its only way in.
+        # Garage's web UI and the unlock page have no port setting: Tinyauth is their only way in.
         needed: >-
           {{ [item.key ~ '_enabled']
-             + ([item.key ~ '_port'] if item.icon is defined and item.port is not defined and item.key != 'garage' else [])
+             + ([item.key ~ '_port'] if item.icon is defined and item.port is not defined and item.key not in ['garage', 'unlock_page'] else [])
              + ([item.key ~ '_subdomain'] if item.icon is defined and item.port is not defined else []) }}
       ansible.builtin.assert:
         that: needed | difference(shared_defaults.keys()) | length == 0
@@ -564,6 +566,10 @@
           # Lock: only the three arguments the page's key can send are accepted; --lock stops the containers through the hook, which
           # records them for the next unlock, then unmounts each folder.
           - "'\"\" | --status | --lock) ;;' in unlock_sh"
+          # The unlock page: it reaches its own host through Docker's gateway and trusts only the identity read from the host.
+          - "'UNLOCK_HOSTS: \"render-full=' in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
+          - "'@host.docker.internal' in lookup('ansible.builtin.file', out_dir ~ '/unlock_page/docker-compose.yml')"
+          - "lookup('ansible.builtin.file', out_dir ~ '/unlock_page/known_hosts') | trim == 'host.docker.internal ssh-ed25519 AAAAC3NzaExample'"
           - "'\"${1:-}\" = \"--lock\"' in unlock_sh and 'mountpoint -q /mnt/primary/immich/. && MOUNTED_NOW' in unlock_sh"
           - "'00-containers.sh --stop' in unlock_sh and 'umount \"$mount\"' in unlock_sh"
           - "(encryption_stopped_file ~ ' ') not in hook_sh and 'STOPPED_FILE=' ~ encryption_stopped_file in hook_sh"

@@ -22,7 +22,7 @@ services:
       context: .
       args:
         RESTIC_IMAGE: {{ restic_image }}
-        PYTHON_IMAGE: {{ backup_status_python_image }}
+        PYTHON_IMAGE: {{ python_image }}
     container_name: backup-status
     restart: unless-stopped
     # Every mount is read-only, so the container cannot change or delete a backup.

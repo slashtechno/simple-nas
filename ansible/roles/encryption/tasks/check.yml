@@ -28,12 +28,15 @@
 
 # Logging in and unlocking need these while every listed folder is locked: the scripts, the ssh keys in the home folder,
 # the system folders (sshd, Tailscale), and Docker's storage (overlay2 does not run on a FUSE filesystem, so Docker would
-# not start). A listed folder that is, or holds, one of them would lock the host out of its own unlock.
+# not start). A listed folder that is, or holds, one of them would lock the host out of its own unlock. When the unlock
+# page runs on this host it needs its own folder, and Caddy and Tinyauth, which put it on the web behind a login.
 - name: Check no encrypted folder holds something that unlocking needs
   vars:
+    unlock_page_here: "{{ unlock_page_enabled | default(false) | bool }}"
     encryption_needed_paths: >-
       {{ [scripts_dir, encryption_hooks_dir, '/home/' ~ ansible_user, '/root', '/etc', '/usr', '/boot', '/var/lib']
-         + [docker_data_root if docker_data_root | length > 0 else '/var/lib/docker'] }}
+         + [docker_data_root if docker_data_root | length > 0 else '/var/lib/docker']
+         + ([services_dir ~ '/unlock-page', caddy_data_dir, tinyauth_data_dir] if unlock_page_here else []) }}
   ansible.builtin.assert:
     that: not (item.1 ~ '/').startswith(item.0.mount ~ '/')
     fail_msg: "{{ item.0.mount }} is, or holds, {{ item.1 }}, which logging in and unlocking need while it is locked. List a folder below it."

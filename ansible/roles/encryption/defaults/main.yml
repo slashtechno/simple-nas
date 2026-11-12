@@ -1,4 +1,4 @@
 ---
-# The public SSH key of the unlock page (unlock-page/README.md), such as `ssh-ed25519 AAAA... unlock-page`. When set, the
+# The public SSH key of the unlock page (docs/encryption.md#unlock-page), such as `ssh-ed25519 AAAA... unlock-page`. When set, the
 # host accepts that key for one thing only: running unlock.sh. Empty means no page key. Needs `encrypted_folders`.
 unlock_page_public_key: ""

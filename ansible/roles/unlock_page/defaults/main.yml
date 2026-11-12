@@ -1,0 +1,4 @@
+---
+# The inventory names of the hosts this page unlocks and locks. Each needs `encrypted_folders` and `unlock_page_public_key`
+# (roles/encryption); the page opens the SSH connection to it, using the host's `ansible_host` address.
+unlock_page_hosts: ["{{ inventory_hostname }}"]

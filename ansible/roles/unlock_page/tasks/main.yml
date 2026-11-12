@@ -1,0 +1,102 @@
+---
+# A web page that shows, unlocks and locks the encrypted folders of hosts (docs/encryption.md#unlock-page). It runs
+# unlock.sh over SSH with a key that can run nothing else (roles/encryption), and sends the passphrase from the vault.
+- name: Check the page has a login and a name
+  ansible.builtin.assert:
+    that:
+      - tinyauth_enabled | bool
+      - caddy_enabled | bool
+      - caddy_private_domains | length > 0
+    fail_msg: >-
+      unlock_page_enabled needs tinyauth_enabled, caddy_enabled and caddy_private_domains on {{ inventory_hostname }}:
+      the page has no login of its own, and anyone who reaches it can unlock and lock the hosts.
+    quiet: true
+
+- name: Check the hosts it unlocks are in the inventory
+  ansible.builtin.assert:
+    that: item in groups['all']
+    fail_msg: "unlock_page_hosts lists {{ item }}, which is not a host in the inventory."
+    quiet: true
+  loop: "{{ unlock_page_hosts }}"
+
+- name: Check the vault has the page's key and the passphrase
+  ansible.builtin.assert:
+    that:
+      - vault_unlock_page_ssh_key is defined
+      - vault_encryption_passphrase is defined
+    fail_msg: "Set vault_unlock_page_ssh_key and vault_encryption_passphrase in group_vars/all/vault.yml (docs/encryption.md#unlock-page)."
+    quiet: true
+
+- name: Read each host's SSH identity
+  ansible.builtin.slurp:
+    src: /etc/ssh/ssh_host_ed25519_key.pub
+  delegate_to: "{{ item }}"
+  register: unlock_page_host_keys
+  loop: "{{ unlock_page_hosts }}"
+
+- name: Create the page's directory
+  ansible.builtin.file:
+    path: "{{ services_dir }}/unlock-page"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+# Only root can read these: the container runs as root and mounts the folder read-only.
+- name: Create the folder for the page's secrets
+  ansible.builtin.file:
+    path: "{{ services_dir }}/unlock-page/secrets"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write the page's key and passphrase
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "{{ services_dir }}/unlock-page/secrets/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0600"
+  loop:
+    - {name: ssh_key, content: "{{ vault_unlock_page_ssh_key | trim }}\n"}
+    - {name: passphrase, content: "{{ vault_encryption_passphrase }}"}
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
+# The page checks each host's identity against this file, so it cannot be sent to a fake host.
+- name: Write the hosts' SSH identities
+  ansible.builtin.template:
+    src: known_hosts.j2
+    dest: "{{ services_dir }}/unlock-page/secrets/known_hosts"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Deploy the page's files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ services_dir }}/unlock-page/{{ item }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+  loop:
+    - app.py
+    - Dockerfile
+
+- name: Render the page's docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ services_dir }}/unlock-page/docker-compose.yml"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0640"
+
+# build: always rebuilds the image from the copied files, and compose recreates the container when the image or the
+# compose file changed. The page reads the secrets at each request, so changing them needs no restart.
+- name: Build and start the unlock page
+  community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/unlock-page"
+    state: present
+    build: always

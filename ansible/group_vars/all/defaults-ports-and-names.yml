@@ -79,6 +79,9 @@ ntfy_subdomain: ntfy
 # The backup dashboard's name.
 backup_status_subdomain: backups
 
+# The unlock page's name.
+unlock_page_subdomain: unlock
+
 # Tinyauth's login page.
 tinyauth_subdomain: auth
 

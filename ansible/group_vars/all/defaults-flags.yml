@@ -82,6 +82,10 @@ backup_cloud_enabled: false
 # Read-only web dashboard of backup status and snapshots; needs backup_local_enabled.
 backup_status_enabled: false
 
+# A web page, behind the Tinyauth login, that shows, unlocks and locks the encrypted folders (docs/encryption.md#unlock-page).
+# Needs tinyauth_enabled and caddy_enabled.
+unlock_page_enabled: false
+
 # Mount drives through fstab (the storage role). Set false on a host whose drives are already mounted.
 storage_enabled: true
 

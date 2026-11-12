@@ -95,6 +95,9 @@ services:
      container: scrutiny, container_port: 8080, icon: scrutiny, description: Disk health}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
+  # No data directory: its secrets are in the compose directory on the root drive (roles/unlock_page).
+  - {name: Unlock, key: unlock_page, compose: unlock-page,
+     container: unlock-page, container_port: 8080, icon: mdi-lock-open-variant, description: Unlock encrypted folders}
   - {name: Homepage, key: homepage, compose: homepage,
      container: homepage, container_port: 3000, icon: homepage, description: Start page}
   # The tile and Caddy name are the web UI (behind Tinyauth); the S3 endpoint is published by the garage role's own compose file.

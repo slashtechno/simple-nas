@@ -25,3 +25,10 @@ vault_rclone_gdrive_token: ""
 vault_tinyauth_users:
   - name: you
     password: "change-me-generate-with-openssl-rand-base64-24"
+# The unlock page (docs/encryption.md#unlock-page): a private SSH key made for it, whose public half is unlock_page_public_key, and
+# the gocryptfs passphrase it sends. Needed only on a host with unlock_page_enabled. The key: `ssh-keygen -t ed25519 -N '' -C unlock-page -f key`.
+vault_unlock_page_ssh_key: |
+  -----BEGIN OPENSSH PRIVATE KEY-----
+  change-me
+  -----END OPENSSH PRIVATE KEY-----
+vault_encryption_passphrase: "change-me-the-passphrase-of-the-encrypted-folders"

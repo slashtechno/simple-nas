@@ -5,7 +5,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 | I want to | Go to |
 |---|---|
 | Unlock after a reboot, or lock again | [Unlocking](#unlocking) |
-| Unlock from a browser | [unlock-page/README.md](../unlock-page/README.md) |
+| Unlock or lock from a browser | [Unlock page](#unlock-page) |
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
 | Know what happens to containers | [Containers and locked folders](#containers-and-locked-folders) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
@@ -111,6 +111,7 @@ gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>  
 | A drive lost, stolen, sold or repaired. A thief with the whole host while it is off | A host that is running and unlocked |
 | File contents and names | The number, depth, size (to 4 KiB) and modification time of files |
 | | The root drive: it holds the restic password and the Tailscale and Cloudflare logins, so a thief with the whole host can open the backups |
+| | The passphrase, on a host that runs the [unlock page](#unlock-page): it is on the root drive too, so a thief with the whole host can unlock |
 | | Backup logs (they list every path) and service dumps, unless you list the dumps folder ([below](#dumps-and-backups)) |
 
 Use a long random passphrase from a password manager. It is the weak point, not the 256-bit cipher.
@@ -164,16 +165,15 @@ encrypted_folders:
 - The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
 - With the fast and primary roles on two drives, list `appdata` on each (two entries).
 
-**Keep these out of a listed folder** if you need them while the host is locked. The deploy does not stop you: it cannot know what you need.
+**Keep these out of a listed folder** if you need them while the host is locked:
 
 | Data | Setting | If it is in a listed folder |
 |---|---|---|
-| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. Use an ntfy on another host (`ntfy_alert_url`), or set `ntfy_data_dir` to a folder you do not list. |
-| Caddy | `caddy_data_dir` | No web access to any service until you unlock. |
-| Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. |
-| An unlock page on this host | the page's own folder | The page cannot start, so you cannot unlock with it. |
+| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. The deploy does not stop you: it cannot know what you need. Use an ntfy on another host (`ntfy_alert_url`), or keep this folder plain. |
+| Caddy | `caddy_data_dir` | No web access to any service until you unlock. The deploy refuses it on a host with the [unlock page](#unlock-page). |
+| Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. The deploy refuses it on a host with the unlock page. |
 
-The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list. The page: [unlock-page/README.md](../unlock-page/README.md#where-to-run-it).
+The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list, for example `/mnt/data/plain/ntfy`. Move the folder there before the deploy, while the service is stopped.
 
 ### Turning it off
 
@@ -189,6 +189,36 @@ The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so
 4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 
 The role removes the scripts when no folder remains, and gocryptfs stays installed. `teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` stops before it removes anything when the service's data folder is, or holds, a listed folder. Turn encryption off for that folder first.
+
+## Unlock page
+
+A web page that shows, unlocks and locks the encrypted folders from a browser. It is deployed by the `unlock_page` role (`unlock_page_enabled: true` in the host's `vars.yml`) and sits behind the Tinyauth login at `https://<unlock_page_subdomain>.<domain>`. `unlock.sh` over SSH (`just unlock`, `just lock`) always works without it.
+
+Set it up once:
+
+1. Make a key for the page: `ssh-keygen -t ed25519 -N '' -C unlock-page -f unlock-page-key`. Put the private key in the vault as `vault_unlock_page_ssh_key` and the public line in `group_vars/all/vars.yml` as `unlock_page_public_key`. Delete the two files.
+2. Put the gocryptfs passphrase in the vault as `vault_encryption_passphrase`. It is the one you type into `setup-encrypted-folder.sh`.
+3. List the folders to encrypt ([which folders](#which-folders-to-list)). Keep `caddy_data_dir` and `tinyauth_data_dir` outside every listed folder: the deploy refuses a listed folder that holds either, or the page's own folder.
+4. Run `just deploy encryption,unlock_page --limit <host>`. By default the page unlocks only its own host. `unlock_page_hosts: [pi4, pinas]` makes it unlock several: each of them needs `encryption` deployed with the same `unlock_page_public_key`.
+5. Check it: `docker compose -f /opt/services/unlock-page/docker-compose.yml exec unlock-page python3 app.py check` prints each host as locked or unlocked and exits 1 if one cannot be reached. Run it from cron if you rely on the page.
+
+The page shows each host's status. **Unlock** sends the passphrase and starts the containers that wait for the folders. **Lock** asks first, then stops those containers and unmounts the folders, as `unlock.sh --lock` does.
+
+<details>
+<summary>How the key is limited, and what a thief can do</summary>
+
+On each host, the key sits in `authorized_keys` as `restrict,command="sudo <scripts_dir>/unlock.sh \"$SSH_ORIGINAL_COMMAND\""`.
+
+- `command=` replaces whatever the client asks to run. The page sends nothing, `--status` or `--lock`, and `unlock.sh` accepts only those three. Anything else exits with a usage message.
+- `restrict` turns off port forwarding, agent forwarding, X11 and the terminal.
+- The ansible user has passwordless sudo, so without the forced command the key would be root.
+- The page refuses a POST whose `Origin` is another site, so a page on another site cannot press Lock for you.
+
+Someone who reaches the page past Tinyauth can unlock and lock your hosts, and so can anyone who steals the key. A stop of the services is the worst a key thief can do. Neither can log in, read files or see the passphrase. The passphrase and the key are in `/opt/services/unlock-page/secrets` (root only, root drive). Anyone who holds the whole host, switched off, can read them: see [What it protects](#what-it-protects).
+
+If a host is stolen, take it off the tailnet and remove `unlock_page_public_key`.
+
+</details>
 
 ## Dumps and backups
 

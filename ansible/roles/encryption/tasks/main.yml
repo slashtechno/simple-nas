@@ -43,7 +43,7 @@
         group: root
         mode: "0755"
 
-    # One key that can run unlock.sh and nothing else (unlock-page/README.md#how-the-key-is-limited). An empty setting removes it.
+    # One key that can run unlock.sh and nothing else (docs/encryption.md#unlock-page). An empty setting removes it.
     - name: Allow the unlock page's SSH key to run unlock.sh and nothing else
       ansible.builtin.lineinfile:
         path: "/home/{{ ansible_user }}/.ssh/authorized_keys"
