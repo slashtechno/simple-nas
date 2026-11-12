@@ -27,7 +27,7 @@ On pi4 (`/mnt/apps`): only `appdata/copyparty_config` and `appdata/copyparty-his
 
 Unchanged: `caddy`, `dozzle`, `dockge`, `homebridge`, `ntfy`, `scrutiny`, `tinyauth`, `files`, `collab`, `stacks`, `restic-cache`.
 
-Setting names that changed: `immich_upload_location` is `immich_photos_dir`, `immich_db_data_location` is `immich_postgres_dir`, `homebridge_config_dir` is `homebridge_data_dir`, `garage_data_dir` is `garage_meta_dir` plus `garage_blocks_dir`, `appdata_dir` is `fast_appdata_dir` (and `primary_appdata_dir` is new). The host vars files set none of them.
+Setting names that changed: `immich_upload_location` is `immich_photos_dir`, `immich_db_data_location` is `immich_postgres_dir`, `homebridge_config_dir` is `homebridge_data_dir`, `garage_data_dir` is `garage_meta_dir` plus `garage_blocks_dir`, `appdata_dir` is `fast_appdata_dir` (and `primary_appdata_dir` is new), `copyparty_fast_dir` and `copyparty_fast_enabled` are `copyparty_scratch_dir` and `copyparty_scratch_enabled`. The host vars files set none of them. A host that had the Copyparty `fast` volume on moves `fast` to `scratch` the same way (step 2).
 
 ## 0. Before anything
 
@@ -87,6 +87,8 @@ mv_new $T/apps/pics/photos             $T/appdata/pics/photos
 mv_new $T/apps/pics/trash              $T/appdata/pics/trash
 ```
 
+A host that used the Copyparty `/fast` volume also needs `mv_new $T/fast $T/scratch` here. Neither of your hosts does.
+
 Then check that nothing is left behind: `ls -A $T $T/appdata $T/apps`.
 
 ## 3. Stray folders on pinas
@@ -124,10 +126,10 @@ then `just deploy '' --limit pi4` and check Copyparty. pi4's `/mnt/t7/photos` is
 
 ## Rollback
 
-Stop the same containers, run the `mv` lines backwards (new to old; Gitea and pics in reverse order), `git checkout main`, and deploy. The deploy before the move is the only step that cannot be undone with `mv` alone (an empty Postgres cluster started on the new path): never do it.
+Stop the same containers and run the `mv` lines backwards (new to old). Gitea and pics first need their folder out of the way: `mv appdata/gitea/data appdata/gitea-old`, remove the empty `appdata/gitea` after moving `runner` back, then `mv appdata/gitea-old appdata/gitea`; the same for `appdata/pics` (and `install -d $T/apps/pics` before moving the photos back). Then `git checkout main` and deploy. The deploy before the move is the only step that cannot be undone with `mv` alone (an empty Postgres cluster started on the new path): never do it.
 
 ## Done
 
 - [ ] Both hosts migrated and checked, a backup after the move checked.
-- [ ] `git grep -w` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`, `appdata_dir`) finds nothing (`git grep <name> -- ':!plans'`; `-w` keeps `fast_appdata_dir` from matching `appdata_dir`).
+- [ ] `git grep -w` for each old setting name (`immich_upload_location`, `immich_db_data_location`, `homebridge_config_dir`, `garage_data_dir`, `appdata_dir`, `copyparty_fast_dir`) finds nothing (`git grep <name> -- ':!plans'`; `-w` keeps `fast_appdata_dir` from matching `appdata_dir`).
 - [ ] Merge the branch to `main`, then delete this file.

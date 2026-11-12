@@ -53,7 +53,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 
 ## Immich
 
-Photo library with a machine-learning container. Photos are in `immich_photos_dir` (`bulk/immich`, primary drive), its Postgres data in `immich_postgres_dir` (`appdata/immich`, fast drive).
+Photo library with a machine-learning container. Photos are in `immich_photos_dir` (`appdata/immich/photos`, primary drive), its Postgres data in `immich_postgres_dir` (`appdata/immich/postgres`, fast drive).
 
 - Public access: a `cloudflared_ingress` entry pointing at `http://immich_server:2283`.
 - `immich_sso_enabled: true` lets a Tinyauth login open Immich. The deploy sets it through Immich's API, which needs an API key ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)).
@@ -74,7 +74,7 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends in `vault_copyparty_collab_users`. The admin has access too. With it off there is no folder and no friend accounts.
 
-`/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). `/scratch` is a volume on the fast drive (`copyparty_scratch_dir`) when `copyparty_scratch_enabled: true`. It is worth it only when the fast and primary roles are on different drives (a `fast/` folder inside `files/` is hidden once it exists).
+`/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). `/scratch` is a volume on the fast drive (`copyparty_scratch_dir`) when `copyparty_scratch_enabled: true`. It is worth it only when the fast and primary roles are on different drives (a `scratch/` folder inside `files/` is hidden once it exists).
 
 Apps that store files in Copyparty (pics) get an account named after the app and their own volumes at `/apps/<app>/<folder>`. The app's `copyparty` field in `services.yml` declares them (its comment says how). The volumes are not part of `copyparty_files_dir`, so the admin's listing does not show them. Every admin (`copyparty_user` and, with SSO, `copyparty_sso_admins`) has full access. `/apps/` opens read-only and lists each app's folders. Leave out the `d` permission unless the app must delete: without it Copyparty also refuses overwrites.
 
@@ -248,7 +248,7 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_
 
 ## Crafty (Minecraft servers)
 
-One container runs every server. All data is under `crafty_data_dir` (`bulk/crafty`: `servers/ backups/ logs/ config/ import/`).
+One container runs every server. All data is under `crafty_data_dir` (`appdata/crafty` on the primary drive: `servers/ backups/ logs/ config/ import/`).
 
 - Panel: `https://<host-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (Crafty makes it and has no setting for it). Behind Tinyauth it is the second login, so change it in the panel to something short, then delete the file.
 - Each server needs a port inside `crafty_mc_ports` (default 25565-25575). Set it when creating the server.

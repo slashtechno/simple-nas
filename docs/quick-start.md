@@ -33,7 +33,7 @@ Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), t
   caddy_private_domains: [home.example.com]
   ```
 
-  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (the `appdata`, `bulk`, `stacks` and `files` folders: [which folders](./encryption.md#which-folders-to-list)).
+  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (the `appdata`, `stacks` and `files` folders: [which folders](./encryption.md#which-folders-to-list)).
 - The vault (`just edit vault`): the secrets `just setup` listed ([which file holds what](../ansible/README.md#vault-secrets)).
 
 ## 3. Prepare the host
