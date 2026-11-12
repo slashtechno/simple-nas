@@ -387,6 +387,24 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # The two lists teardown.yml prints before it asks for confirmation: the same expressions as its delete_paths and keep_paths.
+    - name: Teardown names what it deletes and what stays
+      vars:
+        selected_services: "{{ services | selectattr('key', 'in', ['dockge', 'copyparty']) | list }}"
+        delete_names: >-
+          {{ (selected_services | map(attribute='data', default=[]) | flatten + selected_services | map(attribute='no_backup', default=[]) | flatten)
+             | select | list }}
+        delete_paths: "{{ query('ansible.builtin.vars', *delete_names) | map('regex_replace', '/+$', '') | list }}"
+        keep_paths: "{{ query('ansible.builtin.vars', *(selected_services | map(attribute='keep', default=[]) | flatten | select | list)) }}"
+      ansible.builtin.assert:
+        that:
+          - dockge_data_dir in delete_paths
+          - copyparty_files_dir in delete_paths
+          - copyparty_hist_dir in delete_paths
+          - dockge_stacks_dir not in delete_paths
+          - keep_paths == [dockge_stacks_dir]
+        quiet: true
+
     # teardown.yml refuses remove_data when a data folder is, or holds, an encrypted folder (docs/encryption.md#turning-it-off).
     # The same selection of data settings and the same comparison, with the folder above pics' photos listed with a trailing slash.
     - name: List the folder above pics' photos as encrypted, with a trailing slash

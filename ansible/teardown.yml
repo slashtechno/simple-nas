@@ -42,6 +42,14 @@
     # Comma-separated service keys (-e only=copyparty,garage) to remove just those; empty removes everything.
     only: ""
     only_keys: "{{ only.split(',') if only | length > 0 else services | map(attribute='key') | list }}"
+    # The folders remove_data=true deletes (data and no_backup of the selected services) and the ones it leaves (keep). Read only
+    # when remove_data is true: a host without the drives never needs them otherwise.
+    selected_services: "{{ services | selectattr('key', 'in', only_keys) | list }}"
+    delete_names: >-
+      {{ (selected_services | map(attribute='data', default=[]) | flatten + selected_services | map(attribute='no_backup', default=[]) | flatten)
+         | select | list }}
+    delete_paths: "{{ query('ansible.builtin.vars', *delete_names) | map('regex_replace', '/+$', '') | list }}"
+    keep_paths: "{{ query('ansible.builtin.vars', *(selected_services | map(attribute='keep', default=[]) | flatten | select | list)) }}"
 
   tasks:
 
@@ -59,25 +67,22 @@
       ansible.builtin.assert:
         that: confirm_remove_data == inventory_hostname
         fail_msg: >-
-          remove_data=true deletes the data of {{ only_keys | join(', ') }} on {{ inventory_hostname }} with no undo.
+          remove_data=true deletes these folders on {{ inventory_hostname }}, with everything inside them, with no undo:
+          {{ delete_paths | join(', ') }}.{{ ' These stay: ' ~ keep_paths | join(', ') ~ '.' if keep_paths | length > 0 else '' }}
           Add -e confirm_remove_data={{ inventory_hostname }} to go ahead.
         quiet: true
       when: remove_data | bool
       tags: [always]
 
     - name: Check no data folder to delete is, or holds, an encrypted folder
-      vars:
-        selected: "{{ services | selectattr('key', 'in', only_keys) | list }}"
-        names: "{{ (selected | map(attribute='data', default=[]) | flatten + selected | map(attribute='no_backup', default=[]) | flatten) | select | list }}"
-        paths: "{{ query('ansible.builtin.vars', *names) | map('regex_replace', '/+$', '') | list }}"
       ansible.builtin.assert:
         that: not (item[0] == item[1] or item[0].startswith(item[1] ~ '/') or item[1].startswith(item[0] ~ '/'))
         fail_msg: >-
           {{ item[0] }} is, or holds, the encrypted folder {{ item[1] }}. Turn encryption off for it first
           (docs/encryption.md#turning-it-off); nothing was deleted.
         quiet: true
-      # encrypted_pairs (derived.yml) has the trailing slashes stripped, like paths above.
-      loop: "{{ paths | product(encrypted_pairs | map(attribute='mount') | list) | list if remove_data | bool else [] }}"
+      # encrypted_pairs (derived.yml) has the trailing slashes stripped, like delete_paths.
+      loop: "{{ delete_paths | product(encrypted_pairs | map(attribute='mount') | list) | list if remove_data | bool else [] }}"
       loop_control:
         label: "{{ item[0] }}"
       tags: [always]
