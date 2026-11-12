@@ -74,6 +74,11 @@
         label: "{{ item.name }}"
       tags: [always]
 
+    # The data directories of the enabled services are apart: none the same as, or inside, another.
+    - name: Check the data directories are apart
+      ansible.builtin.import_tasks: check_data_dirs.yml
+      tags: [always]
+
   tasks:
     # Drives first: docker_data_root (common) may sit on one.
     - name: Mount the drives

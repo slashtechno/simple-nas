@@ -167,6 +167,32 @@
           ansible.builtin.import_tasks: ../roles/backup/tasks/check_coverage.yml
           when: backup_local_enabled | bool
 
+        # Every service with data turned on, on each layout that has a fast and a primary role (a layout without one cannot
+        # resolve the paths). On a single drive the fast and primary folders are one folder, which is where a part could collide.
+        - name: No data directory is the same as, or inside, another
+          ansible.builtin.include_tasks: ../check_data_dirs.yml
+          vars:
+            enabled_service_keys: "{{ services | selectattr('data', 'defined') | map(attribute='key') | list }}"
+          when: "'fast' in drive_mounts and 'primary' in drive_mounts"
+
+        - name: A data directory inside another is refused
+          when: "'fast' in drive_mounts and 'primary' in drive_mounts"
+          block:
+            - name: Put Immich's photos inside its Postgres folder
+              ansible.builtin.include_tasks: ../check_data_dirs.yml
+              vars:
+                enabled_service_keys: [immich]
+                immich_photos_dir: "{{ immich_postgres_dir }}/photos"
+            - name: The check must have failed
+              ansible.builtin.fail:
+                msg: check_data_dirs.yml accepted a data directory inside another
+          rescue:
+            - name: Only the data directory check may fail here, naming both settings
+              ansible.builtin.assert:
+                that:
+                  - "'immich_photos_dir' in ansible_failed_result.msg"
+                  - "'immich_postgres_dir' in ansible_failed_result.msg"
+
         - name: A data directory outside every backed-up path is refused
           when: backup_local_enabled | bool
           block:

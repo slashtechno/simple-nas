@@ -1,0 +1,46 @@
+---
+# Run by site.yml before any role, and by tests/layouts.yml. Every enabled service's data directories (the data, keep and
+# no_backup lists in group_vars/all/services.yml, and each no_backup_in folder inside its data directory) must be apart:
+# none equal to another, none inside another. A directory inside another is lost with it: an exclude of the outer one
+# leaves the inner one out of the backup, and teardown of the outer one deletes the inner one. The one allowed nesting is a
+# service's own no_backup_in folder inside the data directory it names (Gitea's ssh inside gitea_data_dir).
+- name: Work out the data directories of the enabled services
+  ansible.builtin.set_fact:
+    data_dir_entries: >-
+      {%- set out = [] -%}
+      {%- for service in services if service.key in enabled_service_keys -%}
+      {%- for kind in ['data', 'keep', 'no_backup'] -%}
+      {%- for name in service[kind] | default([]) | select | list -%}
+      {%- set _ = out.append({'name': name, 'path': lookup('ansible.builtin.vars', name) | regex_replace('/+$', ''), 'parent': ''}) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {%- for name, folder in (service.no_backup_in | default({})).items() -%}
+      {%- set path = lookup('ansible.builtin.vars', name) | regex_replace('/+$', '') ~ '/' ~ folder -%}
+      {%- set _ = out.append({'name': name ~ '/' ~ folder, 'path': path, 'parent': name}) -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Find the data directories that are equal or inside one another
+  ansible.builtin.set_fact:
+    data_dir_collisions: >-
+      {%- set found = [] -%}
+      {%- for inner in data_dir_entries -%}
+      {%- for outer in data_dir_entries -%}
+      {%- set same = inner.path == outer.path -%}
+      {%- if inner.name != outer.name and (same or inner.path.startswith(outer.path ~ '/')) and inner.parent != outer.name -%}
+      {%- set how = 'the same as' if same else 'inside' -%}
+      {%- set _ = found.append(inner.name ~ ' (' ~ inner.path ~ ') is ' ~ how ~ ' ' ~ outer.name ~ ' (' ~ outer.path ~ ')') -%}
+      {%- endif -%}
+      {%- endfor -%}
+      {%- endfor -%}
+      {{ found }}
+
+- name: Check no data directory is inside another
+  ansible.builtin.assert:
+    that: data_dir_collisions | length == 0
+    fail_msg: >-
+      A data directory must not be the same as, or inside, another one: backup excludes and teardown would take the inner one
+      with the outer one. Change one of these settings in host_vars/{{ inventory_hostname }}/vars.yml (docs/storage.md#move-one-services-data):
+      {{ data_dir_collisions | join('; ') }}.
+    quiet: true

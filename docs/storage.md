@@ -125,7 +125,7 @@ To mount it again, plug it in, `sudo systemctl start mnt-backup.automount`, open
 
 ## Move one service's data
 
-Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`. Keep the layout rule when you set a new path.
+Each service's data directories are settings in `group_vars/all/defaults-data-dirs.yml`. Keep the layout rule when you set a new path. The deploy refuses a data directory that is the same as, or inside, another one (`ansible/check_data_dirs.yml`), because an exclude or teardown of the outer folder would take the inner one with it.
 
 1. Set its data directory settings in `host_vars/<host>/vars.yml` to paths under a drive with a role. The default local backup (`restic_local_rules`) covers only the `primary` and `fast` drives.
 2. `cd /opt/services/<service> && docker compose down`.
