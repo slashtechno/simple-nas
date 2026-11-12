@@ -70,9 +70,10 @@ if [ "$NEW" = 1 ]; then
   gocryptfs -info "$CIPHER"
 fi
 
-# 2. Mount it. unlock.sh gives gocryptfs.conf to the ansible user and runs the after-unlock scripts.
+# 2. Mount it. unlock.sh gives gocryptfs.conf to the ansible user and runs the after-unlock scripts. It also tries every other
+# listed folder and fails for one that is not set up yet, so its exit code says nothing about this folder: the check below does.
 if ! mountpoint -q "$FOLDER/."; then
-  printf '%s' "$PASS" | {{ (scripts_dir ~ '/unlock.sh') | quote }}
+  printf '%s' "$PASS" | {{ (scripts_dir ~ '/unlock.sh') | quote }} || true
 fi
 mountpoint -q "$FOLDER/." || { echo "ERROR: $FOLDER is not mounted." >&2; exit 1; }
 
