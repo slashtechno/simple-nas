@@ -19,35 +19,18 @@
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}
 {% endif %}
-{% if caddy_enabled | bool %}
-# Root-owned by the Caddy container, mode 700: the backup user cannot read it, so without this line
-# every local run fails with restic exit 3. The certificate and ACME key files regenerate after a restore.
-{{ caddy_data_dir }}/caddy
-{% endif %}
-{% if copyparty_enabled | bool %}
-# Root-owned by the Copyparty container, mode 700 (its salts and self-signed certificate): the backup user cannot
-# read it, so without this line every local run fails with restic exit 3. Both regenerate after a restore;
-# only share links made with the old file-key salt stop working.
-{{ copyparty_config_dir }}/copyparty
-{% endif %}
-{% if tinyauth_enabled | bool %}
-# Root-owned by the Tinyauth container (its OIDC signing keys): the backup user cannot read it, so without this line
-# every local run fails with restic exit 3. Tinyauth makes new keys when the folder is missing.
-{{ tinyauth_data_dir }}/oidc
-{% endif %}
 # Owned by the Cloudflare container's user, mode 400: the backup user cannot read it, so without this line every
 # run fails with restic exit 3. It stays on disk when cloudflared_enabled is turned off, so the line is unconditional.
 # A deploy writes it again from Cloudflare.
 {{ cloudflared_token_file }}
-{% if gitea_enabled | bool %}
-{{ gitea_data_dir }}/ssh
-{% endif %}
-# The directories each enabled service lists as no_backup in group_vars/all/services.yml.
+# The directories each enabled service lists as no_backup in group_vars/all/services.yml, and the folders inside its
+# data directories that it lists as no_backup_in (each with the reason). To back one up, add its "!" line to
+# restic_local_rules or restic_cloud_rules (docs/backups.md).
 {% for path in query('ansible.builtin.vars', *(services | selectattr('key', 'in', enabled_service_keys) | map(attribute='no_backup', default=[]) | flatten | select | list)) %}
 {{ path }}
 {% endfor %}
-{% if crafty_enabled | bool %}
-# Crafty's own backup archives: they dedupe badly and would grow the repo. The live servers/ copy is
-# still backed up. Add "!{{ crafty_data_dir }}/backups" as a "- !" line of restic_local_rules or restic_cloud_rules to back them up too.
-{{ crafty_data_dir }}/backups
-{% endif %}
+{% for entry in services | selectattr('key', 'in', enabled_service_keys) | map(attribute='no_backup_in', default={}) %}
+{% for setting, folder in entry.items() %}
+{{ query('ansible.builtin.vars', setting) | first }}/{{ folder }}
+{% endfor %}
+{% endfor %}

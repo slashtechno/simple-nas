@@ -12,6 +12,9 @@
 #              skipped, so "{{ 'x_dir' if x_enabled | bool else '' }}" makes a directory conditional.
 #   no_backup  setting names of directories teardown deletes but the backup leaves out on purpose
 #              (restic-excludes-services.txt.j2)
+#   no_backup_in
+#              {setting name: folder}: a folder inside a data directory that the backup leaves out on purpose (the
+#              backup user cannot read it, or it is made again). Write the reason in a comment by the entry.
 #   keep       setting names of directories the backup must cover but teardown never deletes (the owner's files)
 #   dump_required
 #              true when the backup's file copy of the live database is not the copy to restore (it is left out, or it
@@ -51,12 +54,16 @@ services:
      oidc_secret: vault_immich_oidc_secret,
      oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | list + immich_extra_origins)
                | product(['/auth/login', '/user-settings']) | map('join') | list + ['app.immich:///oauth-callback'] }}"}
+  # Copyparty's config/copyparty is root-owned, mode 700 (its salts and self-signed certificate): the backup user cannot read it, so
+  # without the exclude every local run fails with restic exit 3. Both regenerate after a restore; only share links made with the old
+  # file-key salt stop working.
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_files_dir, copyparty_config_dir, copyparty_collab_dir, copyparty_fast_dir],
-     no_backup: [copyparty_hist_dir],
+     no_backup: [copyparty_hist_dir], no_backup_in: {copyparty_config_dir: copyparty},
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
+  # Gitea's data/ssh holds the SSH host keys: unsafe to copy, and the compose file makes them again.
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
-     data: [gitea_data_dir, gitea_runner_data_dir],
+     data: [gitea_data_dir, gitea_runner_data_dir], no_backup_in: {gitea_data_dir: ssh},
      container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git, tile_url: gitea_root_url,
      oidc_secret: vault_gitea_oidc_secret,
      oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
@@ -69,14 +76,17 @@ services:
                | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_data_dir],
      port: 8581, icon: homebridge, description: HomeKit}
-  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir],
+  # Crafty's own backup archives (backups/) dedupe badly and would grow the repo; the live servers/ copy is still backed up.
+  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir], no_backup_in: {crafty_data_dir: backups},
      container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
   # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
   - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
   - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
      container: ntfy, container_port: 80, own_login: true, icon: ntfy, description: Alerts}
-  - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir],
+  # Tinyauth's oidc/ holds its OIDC signing keys, root-owned: the backup user cannot read it, so without the exclude every local run
+  # fails with restic exit 3. Tinyauth makes new keys when the folder is missing.
+  - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir], no_backup_in: {tinyauth_data_dir: oidc},
      container: tinyauth, container_port: 3000, own_login: true, icon: mdi-shield-account, description: Login}
   - {name: Dozzle, key: dozzle, compose: dozzle, data: [dozzle_data_dir],
      container: dozzle, container_port: 8080, icon: dozzle, description: Logs}
@@ -90,6 +100,8 @@ services:
   # The tile and Caddy name are the web UI (behind Tinyauth); the S3 endpoint is published by the garage role's own compose file.
   - {name: Garage, key: garage, compose: garage, dump_required: true, data: [garage_blocks_dir], no_backup: [garage_meta_dir],
      container: garage-webui, container_port: 3909, icon: garage, description: S3 storage}
-  - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir]}
+  # Caddy's data/caddy is root-owned, mode 700: the backup user cannot read it, so without the exclude every local run fails with
+  # restic exit 3. The certificate and ACME key files regenerate after a restore.
+  - {name: Caddy, key: caddy, compose: caddy, data: [caddy_data_dir], no_backup_in: {caddy_data_dir: caddy}}
   # The tunnel itself lives at Cloudflare and is found by name on the next deploy.
   - {name: Cloudflare Tunnel, key: cloudflared, compose: cloudflared}
