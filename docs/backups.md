@@ -85,7 +85,7 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`). `resti
 | Garage metadata | Dump only (`garage_meta_dir` excluded). Data blocks (`garage_blocks_dir`) are plain files | Dump only |
 | Restic password | No | No |
 
-The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager.
+The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager. Changing `vault_restic_password` does not change the key of an existing repository: the deploy keeps the old file beside the new one (`.restic-password.<date>~`), and the old password still opens the old snapshots.
 
 - **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The exceptions are the directories a service lists as `no_backup`: Immich's raw Postgres directory (a dump covers it), Scrutiny's history and Copyparty's thumbnails (both are written again). The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
 - **Not enforced (offsite):** the offsite list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
@@ -188,6 +188,7 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 # Gitea is stopped before the restore and started after, automatically
 ```
 
+The restore **replaces** Gitea's current data and repositories with the dump's: whatever was committed since is gone. Copy what you need first.
 ## Restore: Garage
 
 Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database. The file backup leaves out `<garage_meta_dir>` and carries it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`. The data blocks in `<garage_blocks_dir>` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when the blocks directory has files and the metadata directory is empty: Garage would start a new empty cluster beside the old blocks. Put the metadata back first.

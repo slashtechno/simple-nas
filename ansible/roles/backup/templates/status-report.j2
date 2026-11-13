@@ -1,5 +1,6 @@
 {# Shared by the backup scripts. Use: {% import 'status-report.j2' as job_status with context %}, then
-   job_status.setup('local') (or 'cloud', 'check') right after the mount guards. #}
+   job_status.setup('local') (or 'cloud', 'check') right after the mount guards: with the backup drive missing, the status file's folder is
+   on it, and writing there would create the folders on the root drive. The alert of a failed run covers that case. #}
 {% macro setup(job) -%}
 # The status file the backup-status dashboard reads; it never parses the log. It is written twice: as "failed" with
 # no finish time when the run starts, so a run killed by a reboot cannot leave the previous run's "ok", and with the

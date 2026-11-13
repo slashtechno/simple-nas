@@ -15,7 +15,7 @@ Tinyauth is the login in front of the web services: what it does and how a servi
 
 ## Users and passwords
 
-`vault_tinyauth_users` in `group_vars/all/vault.yml` gives every host's own Tinyauth the same logins. A host that wants different users sets `vault_tinyauth_users` in its own host vault, which wins. Each host runs its own Tinyauth, so a login on one host does not sign you in on another. To add a user or change a password, edit the vault and `just deploy tinyauth --limit <host>`.
+`vault_tinyauth_users` in `group_vars/all/vault.yml` gives every host's own Tinyauth the same logins. A host that wants different users sets `vault_tinyauth_users` in its own host vault, which wins. Each host runs its own Tinyauth, so a login on one host does not sign you in on another. To add a user or change a password, edit the vault and `just deploy tinyauth --limit <host>`. Tinyauth wants bcrypt hashes, so the deploy hashes the vault passwords with a fixed salt: the same password gives the same hash on every run, and the deploy reports no change until a password changes.
 
 ## Two-factor codes (TOTP)
 

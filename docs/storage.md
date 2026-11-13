@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). The `storage` role mounts them. It runs everywhere, and `storage_enabled: false` skips it on a host that mounts its drives another way.
+You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). The `storage` role mounts them and makes the ansible user the owner of each drive's top folder. It runs everywhere, and `storage_enabled: false` skips it on a host that mounts its drives another way.
 
 | Field | Meaning |
 |---|---|

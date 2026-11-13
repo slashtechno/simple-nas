@@ -24,7 +24,7 @@ SUMS="$FOLDER.plain.sha256"    # their checksums, taken before the move
 
 # A container that has the folder open keeps the old files. Stop it first: it would see the folder empty after the mount.
 if [ -x {{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} ]; then
-  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER") || true   # no Docker answer: carry on
+  BUSY=$({{ (encryption_hooks_dir ~ '/00-containers.sh') | quote }} -n "$FOLDER") || true   # no Docker answer means no container is running, so none holds the folder
   if [ -n "$BUSY" ]; then
     echo "ERROR: stop these containers first (docker stop <name>):" >&2
     echo "$BUSY" >&2

@@ -41,6 +41,8 @@
   loop:
     - restore-services.sh
 
+# This file is the only key to the existing snapshots, and restic cannot change a repository's password by changing this
+# one. A different vault value replaces the file, so backup: true keeps the old one beside it (docs/backups.md).
 - name: Write restic password file
   ansible.builtin.copy:
     content: "{{ vault_restic_password }}"
@@ -48,6 +50,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
+    backup: true
   no_log: true   # the password would show in --diff
 
 - name: Set up or remove the local backup
