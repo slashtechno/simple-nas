@@ -27,7 +27,7 @@ The optional reverse proxy (`caddy_enabled`). It watches Docker: a container's *
 
 ## Web addresses and HTTPS
 
-A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet. Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, pics, Dockge, Crafty, ntfy and Homebridge have a host port by default. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The Homepage lists every address ([services.md](./services.md#homepage)).
+A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet (Crafty uses `https` with a self-signed certificate). Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, pics, Dockge, Crafty, ntfy and Homebridge have a host port by default. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The backup dashboard and Homepage need a port on a host without Tinyauth. The Homepage lists every address ([services.md](./services.md#homepage)).
 
 For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name.
 
@@ -56,7 +56,7 @@ caddy_private_domains: [<host>.example.com]
 - Every DNS record carries the comment `managed by simple-nas, caddy <host>`. A name that already has a record without it stops the deploy. The deploy deletes records with it for a domain not in the list. `--check` prints the plan.
 - To delete the records, set the list to `[]` and run `just deploy caddy --limit <host>` before `teardown.yml -e only=caddy`. Teardown does not call Cloudflare.
 - Every name under the wildcard uses one certificate, so public certificate logs list `*.<domain>`, not each service name. A name outside it (the bare domain, a `caddy_sites` name on another domain) has its own certificate.
-- Caddy's token is in its compose file on the host, next to the Docker socket, and the compose files are in the offsite backup.
+- Caddy's token is in its compose file on the host, next to the Docker socket, and the compose files are in the cloud backup.
 
 </details>
 
@@ -81,7 +81,7 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
 ```
 
 - A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name. The Cloudflare Tunnel is no exception: even a service the tunnel serves on its own keeps a host port.
-- Keep a port while you rely on it to get in when Caddy or Cloudflare is down ([If Tinyauth is down](./auth-reference.md#if-tinyauth-is-down)).
+- Keep a port while you rely on it to get in when Caddy, Cloudflare or Tinyauth is down ([If Tinyauth is down](./auth-reference.md#if-tinyauth-is-down)).
 - A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
 - The names come from labels on the Caddy container, and the Homepage reads them when you deploy it.
 - After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). `just deploy caddy` runs only the Caddy role, so the `network` role (it creates the `services` network) must have run on the host once.

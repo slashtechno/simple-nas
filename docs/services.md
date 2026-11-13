@@ -56,7 +56,7 @@ The `common` role runs on every host. It:
 | Connectivity watchdog ([networking](./networking.md#connectivity-watchdog)) | Reconnects the network when TCP stops working | `roles/connectivity_watchdog` | NetworkManager |
 | Raspberry Pi tuning ([memory](./memory.md#memory-limits)) | Memory cgroup, so container memory limits work | `roles/pi` | a Raspberry Pi |
 | zram swap ([memory](./memory.md#swap)) | Compressed swap in RAM | `roles/zram` | none |
-| Direct Ethernet link ([networking](./networking.md#direct-ethernet-link)) | Cable from a Pi to a laptop for fast transfers | `roles/network` | none |
+| Direct Ethernet link ([networking](./networking.md#direct-ethernet-link)) | Cable from a host to a laptop for fast transfers | `roles/network` | none |
 
 ## Immich
 
@@ -100,7 +100,7 @@ copyparty_folders:
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`, not `drives` or `shares` (Copyparty's own).
-- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
+- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. When a folder uses the default `dir`, teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
 - **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
@@ -246,7 +246,7 @@ pics_alert_to: public        # pics' own alerts, to a different topic
 - **Public server:** a topic name on `ntfy.sh` works like a password.
   - Keep the address in the vault (`group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`.
   - Leave out `token`. `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
-  - The deploy writes the address into the sender's file on the host, where anyone on the host can read it. `alert.sh` and the token files are in no backup, but Scrutiny's compose file and pics' `pics.env` are in the offsite one.
+  - The deploy writes the address into the sender's file on the host, where anyone on the host can read it. `alert.sh` and the token files are in no backup, but Scrutiny's compose file and pics' `pics.env` are in the cloud one.
 - **A name that is not in `ntfy_destinations`, or a destination with no `url`,** stops the deploy and names the setting.
 - **A `vault_` name** in a destination must exist on the hosts that send to it.
 - **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.

@@ -33,7 +33,7 @@ Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), t
   caddy_private_domains: [home.example.com]
   ```
 
-  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (`appdata`, `stacks` and `shared`: [which folders](./encryption.md#which-folders-to-list)).
+  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (`appdata` on both the `fast` and `primary` drives, `stacks` and `shared`: [which folders](./encryption.md#which-folders-to-list)).
 - The vault (`just edit vault`): the secrets `just setup` listed ([which file holds what](../ansible/README.md#vault-secrets)). For Copyparty, add your own login to `vault_copyparty_accounts` with `admin: true` (`vault.yml.example` shows the shape).
 
 ## 3. Prepare the host
@@ -51,7 +51,7 @@ ssh <user>@<host> sudo tailscale up                     # open the link it print
 just deploy encryption --limit home
 ```
 
-Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in. The script stops on a folder that does not exist, so create the ones the storage deploy did not make, on your own mounts. For example: `sudo mkdir -p /mnt/fast/stacks /mnt/primary/shared`.
+Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in. The script stops on a folder that does not exist, so create the ones the storage deploy did not make, on your own mounts. For example, with the `fast` drive at `<fast mount>` and the `primary` drive at `<primary mount>`: `sudo mkdir -p <fast mount>/stacks <primary mount>/shared`.
 
 ## 5. Deploy everything
 
@@ -63,11 +63,11 @@ This also deploys the backup, after Immich: the backup refuses to deploy until I
 
 ## 6. Check it
 
-- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login, from a device on your tailnet (these names resolve only there). In Copyparty, sign in with your admin login: `/files` holds your files ([folders and logins](./services.md#copyparty-folders-and-logins)). [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health) do too.
+- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login, from a device on your tailnet (the names resolve everywhere, but the address answers only on the tailnet). In Copyparty, sign in with your admin login: `/files` holds your files ([folders and logins](./services.md#copyparty-folders-and-logins)). [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health) do too.
 - Dockge asks you to create its own account on the first visit. Create it, then run `just deploy dockge --limit home` ([why](./services.md#ad-hoc-app-platform)).
 - Run a backup by hand ([backups.md](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).
 
 ## Next
 
-[Offsite backup](./backups.md), [Immich with Tinyauth login](./auth-reference.md#sign-in-with-tinyauth-oidc), [more services](./services.md#services).
+[Cloud backup](./backups.md#cloud-repository-restic_cloud_repository), [Immich with Tinyauth login](./auth-reference.md#sign-in-with-tinyauth-oidc), [more services](./services.md#services).

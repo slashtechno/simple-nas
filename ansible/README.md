@@ -4,7 +4,7 @@ Each service is a role with its own Docker Compose project at `/opt/services/<co
 
 Ansible overwrites the files it manages on the next run, so change them here, not on the host. That means `/opt/services/*/docker-compose.yml`, cron jobs and rendered configs. Everything else on the host is yours, except these system files, each documented in its role:
 
-- fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers
+- fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers, the journald drop-in, Tailscale's apt source
 - the restic password file, `cmdline.txt`, the zram drop-ins, the terminal-tools block in `.bashrc`
 
 Restarting a container by hand is fine.

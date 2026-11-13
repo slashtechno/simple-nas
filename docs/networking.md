@@ -13,7 +13,7 @@ Manage wifi profiles on the host with `nmcli`, not Ansible. Ansible sets up the 
 
 Work down the list. Stop when you can reach it.
 
-1. **Tailscale.** If the host is online by any route (home wifi, a phone hotspot), `ssh user@<tailscale name>` reaches it from anywhere ([tailnet name](./glossary.md#names-logins-and-the-web)). Disable key expiry for each server in the Tailscale admin console: a headless host with an expired node key (180 days by default) locks you out.
+1. **Tailscale.** If the host is online by any route (home wifi, a phone hotspot), `ssh user@<tailnet name>` reaches it from anywhere ([tailnet name](./glossary.md#names-logins-and-the-web)). Disable key expiry for each server in the Tailscale admin console: a headless host with an expired node key (180 days by default) locks you out.
 2. **Direct Ethernet link**, if enabled: a cable between your laptop and the host. See [Direct Ethernet link](#direct-ethernet-link).
 3. **Local console:** monitor and keyboard.
 

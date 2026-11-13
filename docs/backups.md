@@ -18,7 +18,7 @@ Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs
 Two flags per host in `host_vars/<host>/vars.yml`. A host can set either or both. The restic password is `vault_restic_password` in `group_vars/all/vault.yml`.
 
 - `backup_local_enabled: true`: daily to a drive, plus a weekly check of that repository. The host needs a `drives` entry with the `backup` role and a `uuid` ([storage.md](./storage.md)). The deploy stops with a message if it has none.
-- `backup_cloud_enabled: true`: weekly to `restic_cloud_repository`. Give each host its own path. A prune takes an exclusive lock, so a second host backing up to the same repository at that moment fails. The deploy stops if the setting is empty.
+- `backup_cloud_enabled: true`: weekly to `restic_cloud_repository`. Give each host its own path. A prune (deleting old snapshots) takes an exclusive lock on the repository, so a second host backing up to the same repository at that moment fails. The deploy stops if the setting is empty.
 - The web dashboard (`backup_status_enabled`) reads the local repository, so it needs `backup_local_enabled`.
 
 The scripts run as the ansible user and refuse to run as anyone else: a root run leaves root-owned files that the nightly run cannot read. Files only root can read are covered in [Root-only files](#root-only-files).
@@ -242,7 +242,7 @@ The metadata is an [LMDB](./glossary.md) database. Keep `db.lmdb.old` until buck
    With the default rules it holds no photos or Copyparty files ([above](#what-is-backed-up-where)). Those come back only from an [offline copy](#offline-copy-on-a-second-drive).
 6. Restore the Immich and Gitea databases and Garage's metadata from the dumps restored in step 4 (the Restore sections above, using the restored `service-dumps` folder).
 
-On a host with encrypted folders, [unlock them](./encryption.md#dumps-and-backups) first: backups refuse to run while one is locked.
+On a host with encrypted folders, [unlock them](./encryption.md#unlocking) first: backups refuse to run while one is locked.
 
 ## If the backup drive disconnects
 

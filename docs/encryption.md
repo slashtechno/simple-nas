@@ -43,7 +43,7 @@ Do not keep the ntfy of this host in a locked folder: it cannot alert you then (
 
 ## Unlock page
 
-The unlock page is a web page on the host. It shows the encrypted folders, unlocks them and locks them. The `unlock_page` role installs it when `unlock_page_enabled: true` is in the host's `vars.yml`. Tinyauth protects it at `https://<unlock_page_subdomain>.<domain>`. The page has no login of its own, so it needs `tinyauth_enabled`, `caddy_enabled` and a private domain; the deploy stops without them. `just unlock` and `just lock` work without it.
+The unlock page is a web page on the host. It shows the listed folders, unlocks them and locks them. The `unlock_page` role installs it when `unlock_page_enabled: true` is in the host's `vars.yml`. Tinyauth protects it at `https://<unlock_page_subdomain>.<domain>`. The page has no login of its own, so it needs `tinyauth_enabled`, `caddy_enabled` and a private domain; the deploy stops without them. `just unlock` and `just lock` work without it.
 
 Set it up once:
 
@@ -116,7 +116,7 @@ encrypted_folders:
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
-- `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. Try your real workload before you list a folder that takes many writes ([speed on a Pi 4](#which-folders-to-list)).
+- `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. Try your real workload before you list a folder that takes many writes ([speed on a Pi 4](#which-folders-to-list), in the toggle at the end of that section).
 - A Copyparty folder with its own `dir` needs its own entry (or sits inside a listed folder).
 - The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
 - With the fast and primary roles on two drives, list `appdata` on each (two entries).
@@ -162,7 +162,7 @@ It takes seconds: the master key stays the same and nothing is re-encrypted. Do 
 
 ### Make a new master key
 
-gocryptfs cannot change the master key of a folder. You decrypt the folder and encrypt it again. Do this when someone may have had the master key, or both the conf and the passphrase. The two moves read and write every file at the encrypted speed, so a large folder takes hours ([speed](#which-folders-to-list)).
+gocryptfs cannot change the master key of a folder. You decrypt the folder and encrypt it again. Do this when someone may have had the master key, or both the conf and the passphrase. The two moves read and write every file at the encrypted speed, so a large folder takes hours ([speed](#which-folders-to-list), in the toggle at the end of that section).
 
 1. Run a backup. Stop the containers that use the folder.
 2. `sudo /opt/services/scripts/remove-encrypted-folder.sh <folder>` puts the files back as plain files ([turning it off](#turning-it-off)).

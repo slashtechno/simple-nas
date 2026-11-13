@@ -27,7 +27,7 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 
 ## Names, logins and the web
 
-- **Tailnet, tailnet name and MagicDNS.** Your tailnet is your private Tailscale network. Its *tailnet name* is the `<something>.ts.net` part of each device's address. MagicDNS gives each device a name that resolves anywhere on it, so `http://pi4:<port>` works from your laptop away from home.
+- **Tailnet, tailnet name and MagicDNS.** Your tailnet is your private Tailscale network. A device's *tailnet name* is its full address on it, `<host>.<tailnet>.ts.net`. MagicDNS gives each device a name that resolves anywhere on it, so `http://pi4:<port>` works from your laptop away from home.
 - **Forward auth.** Caddy asks the login service (Tinyauth) about each request before passing it on. A service joins by importing `tinyauth_forwarder` in its Caddy labels. One without it has no Tinyauth login at its Caddy name: it is open unless the app has its own.
 - **Redirect (302) and 401.** A browser follows a 302 to the login page. A script or phone app gets a 401 and fails loudly.
 - **TLS termination.** TLS is the encryption of https. Terminating it means decrypting there and passing plain http on. Behind a Cloudflare tunnel Cloudflare does it, so Caddy gets plain http and needs no certificate (ACME is how Caddy gets one).

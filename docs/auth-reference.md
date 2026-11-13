@@ -11,7 +11,7 @@
 | Reach a protected service away from Tailscale | [From outside](#reach-a-protected-service-from-outside-the-tailnet) |
 | Get in while Tinyauth is down | [If Tinyauth is down](#if-tinyauth-is-down) |
 
-Tinyauth is the login page in front of the web services. [services.md](./services.md#tinyauth-login) says what it does and how a service joins it. This page covers users, two-factor codes, GitHub and Google sign-in, OpenID Connect and sessions.
+Tinyauth is the login page in front of the web services. [services.md](./services.md#tinyauth-login) says what it does and how a service joins it. This page covers users, two-factor codes, GitHub and Google sign-in, OpenID Connect, Tailscale sign-in and sessions.
 
 Tinyauth's own settings are `TINYAUTH_*` environment variables ([all of them](https://tinyauth.app/docs/reference/configuration/)). Put extra ones in `tinyauth_environment` in the host's `vars.yml`.
 
@@ -165,7 +165,7 @@ The keys are service keys from `group_vars/all/services.yml`. The names must be 
 |---|---|---|
 | **Behind the Caddy login** (Crafty, Dockge, Dozzle, Scrutiny, Homepage, the backup dashboard, the unlock page, the Garage web UI; Copyparty with `copyparty_sso_enabled`) | Tinyauth gets a rule for the service's web address. A user not listed gets "forbidden" after signing in. | Every Tinyauth user can open it |
 | **pics** (`pics_sso_enabled`) | Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics. pics lets in only those users, and each is a full owner. | The deploy stops |
-| **Immich and Gitea** | Not used. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
+| **Immich and Gitea** | Not available: an entry for them stops the deploy. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
 
 - **Copyparty:** `service_users.copyparty` limits only who may open the page. Folder access comes from `vault_copyparty_accounts` ([Copyparty](./services.md#copyparty-folders-and-logins)). The entry needs `copyparty_sso_enabled`: the deploy stops without it.
 - **GitHub and Google users** are let in by email, so a list limits them through the emails of its users.
