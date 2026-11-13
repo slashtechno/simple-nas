@@ -56,7 +56,7 @@ Set it up once:
 The page is a container. It has no key. It connects to a socket (`/run/unlock-page/unlock.sock`, mode 0600, so only root can use it) and sends one word: `unlock`, `lock` or `status`. For `unlock` it sends the passphrase you typed on the next line. For each connection, systemd starts `unlock-page-request.sh` as root. The script compares the word with those three strings and runs one fixed command for each. It pipes the passphrase to `unlock.sh` on standard input, so the passphrase is in no file, argument, environment variable or log. Caddy forwards only the request's headers to Tinyauth, so Tinyauth never sees it.
 
 - The script never runs, expands or inserts text from the connection. It reads at most 16 characters for the word and 1024 for the passphrase line. It answers any other word with "unknown request". `tests/test_unlock_page.py` sends it shell syntax, long input and extra lines.
-- `unlock.sh` accepts only no argument, `--status` and `--lock`.
+- `unlock.sh` accepts only no argument, `--status`, `--lock` and `--alert` (cron's; the page never sends it).
 - The page's container mounts the socket's folder read-only.
 - The page refuses a POST whose `Origin` is another site. A page on another site cannot press Lock for you.
 
