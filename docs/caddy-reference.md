@@ -13,15 +13,21 @@ The optional reverse proxy (`caddy_enabled`). It watches Docker: a container's *
 
 ## What `roles/caddy` deploys
 
-- **Needs:** the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, the Cloudflare token in the vault and a host joined to the tailnet.
-- **Image:** built on the host from `roles/caddy/files/Dockerfile` (`caddy_version`, `caddy_docker_proxy_version` and `caddy_cloudflare_dns_version` in `versions.yml`). The first build compiles Caddy and takes 20+ minutes on a small host.
+- **Needs:** the `fast` drive role for its data. With `caddy_private_domains` it also needs `cloudflare_zones`, `vault_caddy_dns_api_token` and a host joined to the tailnet.
 - **Listens** on ports 80 and 443 of the host. Behind cloudflared the host ports are not needed: cloudflared reaches `caddy:80` over the Docker network.
 - **Data:** `caddy_data_dir` (`defaults-data-dirs.yml`). Losing it means Caddy issues its certificates again.
-- **Joins** the `services` network (created by `roles/network` on every host) and mounts the Docker socket. `CADDY_INGRESS_NETWORKS` in its compose file names the network it watches. The compose file is `roles/caddy/templates/docker-compose.yml.j2`.
+
+<details>
+<summary>The image and the network</summary>
+
+- **Image:** built on the host from `roles/caddy/files/Dockerfile` (`caddy_version`, `caddy_docker_proxy_version` and `caddy_cloudflare_dns_version` in `versions.yml`). The first build compiles Caddy and takes 20+ minutes on a small host.
+- **Network:** it joins the `services` network (`roles/network` creates it on every host) and mounts the Docker socket. `CADDY_INGRESS_NETWORKS` in its compose file (`roles/caddy/templates/docker-compose.yml.j2`) names the network it watches.
+
+</details>
 
 ## Web addresses and HTTPS
 
-Every service with a web UI listens on a host port (unless you set it to `""`, below). Any device on your tailnet reaches it at `http://<host's tailnet name>:<port>`. Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet. Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, pics, Dockge and Crafty have a host port by default. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The Homepage lists every address ([services.md](./services.md#homepage)).
 
 For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name.
 
@@ -38,7 +44,9 @@ caddy_private_domains: [<host>.example.com]
 
 - **Cloudflare:** the domain must equal, or be a subdomain of, one domain in `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
 - **DNS:** a deploy keeps two DNS-only records, `<host>.example.com` and `*.<host>.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
-- **Certificates:** one wildcard certificate per private domain from Let's Encrypt through the Cloudflare DNS challenge, so you open no router port. The challenge uses `vault_caddy_dns_api_token`, which reaches the host in Caddy's environment. Give it `Zone:DNS:Edit` on the zone of `caddy_private_domains` and nothing else. A thief with the host has it: revoke it after a theft. The account token the `cloudflared` role uses (`vault_cloudflared_api_token`) stays on your computer. If the private domain shares a zone with your public names, even the small token can edit those records.
+- **Certificates:** one wildcard certificate per private domain from Let's Encrypt. Let's Encrypt checks you own the domain through a DNS record that Caddy creates (the DNS challenge), so you open no router port.
+- **The token:** `vault_caddy_dns_api_token` does that. It reaches the host in Caddy's environment. Give it `Zone:DNS:Edit` on the zone of `caddy_private_domains` and nothing else. Anyone who steals the host has it, so revoke it after a theft.
+- **Two tokens:** the `cloudflared` role uses `vault_cloudflared_api_token`, which also edits tunnels. Keep it a different token, so it stays off the host's Caddy. If you use one token for both, a stolen host has the broad one. If the private domain shares a zone with your public names, even the small token can edit those records.
 - **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - **Public names** are not this: they are `cloudflared_ingress` entries, and Cloudflare serves their certificate. For a service behind the login: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet).
 
@@ -48,7 +56,7 @@ caddy_private_domains: [<host>.example.com]
 - Every DNS record carries the comment `managed by simple-nas, caddy <host>`. A name that already has a record without it stops the deploy. The deploy deletes records with it for a domain not in the list. `--check` prints the plan.
 - To delete the records, set the list to `[]` and run `just deploy caddy --limit <host>` before `teardown.yml -e only=caddy`. Teardown does not call Cloudflare.
 - Every name under the wildcard uses one certificate, so public certificate logs list `*.<domain>`, not each service name. A name outside it (the bare domain, a `caddy_sites` name on another domain) has its own certificate.
-- Caddy's Cloudflare token is in its compose file on the host, and Caddy sits next to the Docker socket. The compose files are in the offsite backup. It is the small `vault_caddy_dns_api_token`: DNS edit on one zone.
+- Caddy's token is in its compose file on the host, next to the Docker socket, and the compose files are in the offsite backup.
 
 </details>
 
@@ -73,7 +81,7 @@ dockge_port: ""              # "" publishes no host port; Dockge is then reachab
 ```
 
 - A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name. The Cloudflare Tunnel is no exception: even a service the tunnel serves on its own keeps a host port.
-- Keep the ports while you rely on them to get in when Caddy or Cloudflare is down.
+- Keep a port while you rely on it to get in when Caddy or Cloudflare is down ([If Tinyauth is down](./auth-reference.md#if-tinyauth-is-down)).
 - A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
 - The names come from labels on the Caddy container, and the Homepage reads them when you deploy it.
 - After any change here, run `just deploy caddy,homepage --limit <host>` (the Homepage on whichever host runs it). `just deploy caddy` runs only the Caddy role, so the `network` role (it creates the `services` network) must have run on the host once.
@@ -139,7 +147,7 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 - **First step when a name does not work:** read the generated file: `docker exec caddy cat /config/caddy/Caddyfile.autosave`.
 - **Shared network.** A stack must declare the external `services` network and join it. A container not on it is invisible to `{{upstreams}}`.
 - **Jinja collision.** `{{upstreams}}` is also Jinja syntax. In any file rendered by Ansible, wrap it: `{% raw %}{{upstreams 80}}{% endraw %}`. Dockge stacks are plain files and need no escaping.
-- **TLS.** Behind cloudflared, use an `http://` site address ([With cloudflared](#with-cloudflared)). Names under a `caddy_private_domains` entry get a certificate automatically. For any other name use `tls internal` unless the Cloudflare token covers its zone.
+- **TLS.** Names under a `caddy_private_domains` entry get a certificate automatically. Behind cloudflared use an `http://` address ([With cloudflared](#with-cloudflared)). For any other name use `tls internal`, unless the Caddy token covers its zone.
 - **Docker socket.** Caddy mounts it ([glossary](./glossary.md#drives-and-docker)), so anything that can set labels on a container can publish a route.
 
 <details>
@@ -148,7 +156,6 @@ Dots mean nesting: `caddy.basic_auth.alice: <hash>` produces a `basic_auth` bloc
 - **Apps that trust proxy headers.** Caddy sends `X-Forwarded-For`, `-Proto` and `-Host`. An app that rejects requests unless it reads them (Copyparty's `rproxy` and `xff-src` in `roles/copyparty/templates/copyparty.conf.j2`) must be told to trust the proxy's network.
 - **`caddy_sites` values.** Each directive becomes a label `caddy_N.<directive>`, so a value is one string and a dot in the key nests (`header.X-Frame-Options`). `{uri}` takes single braces, and write a `$` as `$$` (Compose reads it first).
 - **Let's Encrypt HTTP-01** needs the internet to reach ports 80/443, which a LAN or tailnet does not allow. Use `tls internal` and trust Caddy's root CA on each device, or the DNS challenge above.
-- **Modes.** The role runs the standalone mode (controller and server in one container). The controller/server split is for Swarm clusters.
 
 </details>
 
