@@ -34,7 +34,7 @@
 # restic_cloud_repository: "rclone:gdrive:/<host>-backups"
 
 # --- Copyparty extras ---
-# copyparty_extra_conf and copyparty_extra_ports: docs/services.md#copyparty-folders-and-logins
+# copyparty_folders, copyparty_extra_conf and copyparty_extra_ports: docs/services.md#copyparty-folders-and-logins
 
 # --- Cloudflare Tunnel ---
 # Public hostnames this host's tunnel serves (cloudflared_enabled; docs/services.md#cloudflare-add-a-public-hostname).

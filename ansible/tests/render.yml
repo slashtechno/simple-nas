@@ -105,8 +105,8 @@
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
-        # one list of logins: the admin and the people and the app have a password, sso-admin signs in through Tinyauth only
-        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'sso-admin', 'admin': true}] }}"
+        # one list of logins: the admin and the people and the app have a password, owner signs in through Tinyauth only
+        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}] }}"
         # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
         copyparty_folders:
           collab: {access: {friend1: rwmd, friend2: rwmd}}
@@ -395,6 +395,8 @@
         that:
           - item.key != 'dockge' or deleted == [dockge_data_dir]
           - item.key != 'copyparty' or copyparty_hist_dir in deleted
+          # collab names no dir, so it lives in copyparty_shared_dir, which is then a data directory
+          - item.key != 'copyparty' or copyparty_shared_dir in deleted
           - item.key != 'immich' or immich_postgres_dir in deleted
           - deleted | length == deleted | unique | length
         quiet: true
@@ -632,26 +634,26 @@
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # Admin access to /, the four folders, read-only on /drives.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 5"
-          - "'    r: sso-admin' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 5"
+          - "'    r: owner' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
           # A folder is its own volume at /vol/<name>: the admins have full access, each login in its access gets the letters written there.
           - >-
-            '[/collab]\n  /vol/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend1\n    rwmd: friend2\n'
+            '[/collab]\n  /vol/collab\n  accs:\n    A: yourusername\n    A: owner\n    rwmd: friend1\n    rwmd: friend2\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'  friend1: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # The admin login has a password. A login with no pass is not an account: only the Tinyauth header can name it.
           - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          - "'  sso-admin: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'  owner: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # One login can have different letters in different folders: friend1 only reads team.
           - >-
-            '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend2\n    r: friend1\n\n'
+            '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: owner\n    rwmd: friend2\n    r: friend1\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           # No dir: inside copyparty_shared_dir. A dir: that directory.
           - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'/mnt/primary/appdata/pics/photos:/vol/pics-photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # An app is a login like any other: pics has no delete in the photos and has it in the trash.
           - >-
-            '[/pics-photos]\n  /vol/pics-photos\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwm: pics\n'
+            '[/pics-photos]\n  /vol/pics-photos\n  accs:\n    A: yourusername\n    A: owner\n    rwm: pics\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'  pics: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"

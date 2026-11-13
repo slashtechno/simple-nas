@@ -53,7 +53,7 @@ services:
   # Copyparty's config/copyparty is root-owned, mode 700 (its salts and self-signed certificate). Both regenerate after a restore, which a non-root
   # restore could not write back into a root-owned folder; only share links made with the old file-key salt stop working.
   - {name: Copyparty, key: copyparty, compose: copyparty,
-     data: [copyparty_files_dir, copyparty_config_dir, "{{ 'copyparty_shared_dir' if copyparty_folders.values() | rejectattr('dir', 'defined') | list | length > 0 else '' }}"],
+     data: [copyparty_files_dir, copyparty_config_dir, "{{ 'copyparty_shared_dir' if copyparty_folders.values() | map(attribute='dir', default='') | reject | list | length > 0 else '' }}"],
      no_backup: [copyparty_hist_dir], no_backup_in: {copyparty_config_dir: copyparty},
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   # Gitea's data/ssh holds the SSH host keys: unsafe to copy, and the compose file makes them again.

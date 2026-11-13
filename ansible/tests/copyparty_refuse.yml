@@ -1,0 +1,34 @@
+---
+# Run by layouts.yml once per case, with `good` (the settings of a good setup) and the case laid over it. A case with `says` must be
+# stopped by the Copyparty checks with a message that holds it. A case without `says` must pass. include_tasks passes the settings as
+# include parameters, which outrank the example vars and the defaults the test loaded.
+- name: "{{ 'Refused' if case.says is defined else 'Accepted' }}: {{ case.name }}"
+  vars:
+    merged: "{{ good | combine(case.vars | default({})) }}"
+  block:
+    - name: Run the Copyparty checks
+      ansible.builtin.include_tasks: ../roles/copyparty/tasks/checks.yml
+      vars:
+        copyparty_sso_enabled: "{{ merged.copyparty_sso_enabled }}"
+        tinyauth_enabled: "{{ merged.tinyauth_enabled }}"
+        caddy_enabled: "{{ merged.caddy_enabled }}"
+        vault_tinyauth_users: "{{ merged.vault_tinyauth_users }}"
+        vault_copyparty_accounts: "{{ merged.vault_copyparty_accounts }}"
+        copyparty_folders: "{{ merged.copyparty_folders }}"
+        copyparty_shared_dir: /s   # the layout host may have no primary drive, which this setting resolves from
+        vault_copyparty_idp_key: "{{ merged.vault_copyparty_idp_key | default(undef()) }}"
+    - name: A bad setup must have failed
+      ansible.builtin.fail:
+        msg: "The Copyparty checks accepted: {{ case.name }}"
+      when: case.says is defined
+  rescue:
+    # A failed loop reports "One or more items failed" in msg and each item's message in results.
+    - name: Only the check for this input may fail, naming the problem
+      vars:
+        said: >-
+          {{ ansible_failed_result.msg }} {{ ansible_failed_result.results | default([]) | selectattr('msg', 'defined')
+             | map(attribute='msg') | join(' ') }}
+      ansible.builtin.assert:
+        that: case.says is defined and case.says in said
+        fail_msg: "{{ case.name }}: unexpected failure: {{ said }}"
+        quiet: true

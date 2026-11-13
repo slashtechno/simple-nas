@@ -147,7 +147,7 @@ oidc_service_keys: >-
 copyparty_volumes: >-
   {%- set out = {} -%}
   {%- for name, folder in copyparty_folders.items() -%}
-  {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name), 'access': folder.access | default({})}}) -%}
+  {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name, true), 'access': folder.access | default({})}}) -%}
   {%- endfor -%}
   {{ out }}
 

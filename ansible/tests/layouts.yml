@@ -218,6 +218,69 @@
               ansible.builtin.assert:
                 that: "'/not-backed-up/photos' in ansible_failed_result.msg"
 
+        # The Copyparty checks, on the first host only: good input passes, and each bad input is refused with a message that names it.
+        # Each case's vars are laid over `good`.
+        - name: The Copyparty checks accept a good setup and refuse each bad one
+          when: inventory_hostname == ansible_play_hosts | first
+          vars:
+            good:
+              copyparty_sso_enabled: false
+              tinyauth_enabled: true
+              caddy_enabled: true
+              vault_tinyauth_users: [{name: owner}]
+              vault_copyparty_accounts: [{user: adm, pass: p, admin: true}, {user: f1, pass: p}]
+              copyparty_folders: {c: {dir: /d, access: {f1: rw}}}
+            cases:
+              - {name: a good setup}
+              - {name: no folders, vars: {copyparty_folders: {}}}
+              - name: a login with no pass, signed in through Tinyauth by a Tinyauth user
+                vars:
+                  copyparty_sso_enabled: true
+                  vault_copyparty_idp_key: k
+                  copyparty_folders: {}
+                  vault_copyparty_accounts: [{user: adm, pass: p, admin: true}, {user: owner}]
+              - {name: no admin, says: "admin: true", vars: {vault_copyparty_accounts: [{user: f1, pass: p}]}}
+              - {name: no logins at all, says: "admin: true", vars: {vault_copyparty_accounts: []}}
+              - name: pass left empty in the vault
+                says: needs user, and pass
+                vars: {vault_copyparty_accounts: [{user: adm, pass: null, admin: true}]}
+              - name: pass is an empty string
+                says: needs user, and pass
+                vars: {vault_copyparty_accounts: [{user: adm, pass: "", admin: true}]}
+              - name: admin written as a string
+                says: admin is true or false
+                vars: {vault_copyparty_accounts: [{user: adm, pass: p, admin: "yes"}]}
+              - name: no pass while sign-in through Tinyauth is off
+                says: Tinyauth user name
+                vars: {vault_copyparty_accounts: [{user: adm, pass: p, admin: true}, {user: owner}]}
+              - name: no pass for a name Tinyauth does not have
+                says: Tinyauth user name
+                vars:
+                  copyparty_sso_enabled: true
+                  vault_copyparty_idp_key: k
+                  vault_copyparty_accounts: [{user: adm, pass: p, admin: true}, {user: typo}]
+              - name: a folder names a login that does not exist
+                says: ghost
+                vars: {copyparty_folders: {c: {dir: /d, access: {ghost: r}}}}
+              - name: a letter that is not a permission
+                says: from rwmdgGha
+                vars: {copyparty_folders: {c: {dir: /d, access: {f1: rx}}}}
+              - name: access written as a list
+                says: from rwmdgGha
+                vars: {copyparty_folders: {c: {dir: /d, access: [f1]}}}
+              - {name: a folder written as a string, says: "entry 'c'", vars: {copyparty_folders: {c: rwmd}}}
+              - {name: a folder named drives, says: "entry 'drives'", vars: {copyparty_folders: {drives: {dir: /d}}}}
+              - {name: a folder name with a slash, says: "entry 'a/b'", vars: {copyparty_folders: {a/b: {dir: /d}}}}
+              - {name: a relative dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: relative/dir}}}}
+              - {name: sign-in through Tinyauth without its header key, says: vault_copyparty_idp_key, vars: {copyparty_sso_enabled: true}}
+          block:
+            - name: Run every case
+              ansible.builtin.include_tasks: copyparty_refuse.yml
+              loop: "{{ cases }}"
+              loop_control:
+                loop_var: case
+                label: "{{ case.name }}"
+
         - name: An encrypted folder outside every backed-up path is refused
           when: backup_local_enabled | bool
           block:
