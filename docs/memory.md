@@ -1,6 +1,6 @@
 # Memory on a small host
 
-A host can run out of RAM when its services add up to more than it has. Immich's machine learning, Crafty and a build are the largest. Signs: load average far above the core count, SSH that stalls, kills in `journalctl -k | grep -i "out of memory"`. Check `free -m` after a deploy.
+A host can run out of RAM when its services add up to more than it has. Immich's machine learning, Crafty and a build are the largest. Signs: load average far above the core count, SSH that stalls, kills in `journalctl -k | grep -i "out of memory"`. Check `free -m` after a deploy. Terms like zram, cgroup and OOM kill are in the [glossary](./glossary.md#memory).
 
 | Problem | Fix |
 |---|---|
@@ -23,11 +23,14 @@ A host can run out of RAM when its services add up to more than it has. Immich's
 Raspberry Pi firmware starts the kernel with the memory cgroup off. It adds `cgroup_disable=memory` itself, so that argument never appears in `cmdline.txt`, and the `cgroup_enable=memory` that the deploy adds overrides it. Docker then ignores `mem_limit` (such as `crafty_memory_limit`) and one container can take all the RAM.
 
 - **On by default on a Raspberry Pi.** `pi_enabled` is `auto`: the deploy reads `/proc/device-tree/model`, and on a Pi adds `cgroup_enable=memory cgroup_memory=1` to the single line of `pi_cmdline_file`. The role skips other hosts. `false` turns it off.
-- **Apply:** deploy, `sudo reboot`, then recreate the containers that have a `mem_limit`: `just deploy <service> -e docker_recreate=always`. A container created while the cgroup was off stored no limit, and a reboot keeps it that way. A host with `encrypted_folders` needs `unlock.sh` after the reboot ([encryption.md](./encryption.md)).
+- **Apply:**
+  1. Deploy, then `sudo reboot`.
+  2. On a host with `encrypted_folders`, run `unlock.sh` ([encryption.md](./encryption.md)).
+  3. Recreate each container that has a `mem_limit`: `just deploy <service> -e docker_recreate=always`. A container created while the cgroup was off stored no limit, and a reboot does not add it.
 - **Check:** `memory` is in `cat /sys/fs/cgroup/cgroup.controllers`, `docker info` does not say `No memory limit support`, and the container's `HostConfig.Memory` is not `0`.
 - **Other limits:** `immich_machine_learning_memory_limit` caps Immich's machine-learning container, the usual cause of a load spike after an import.
 - **A limit below the app's need kills the app inside its container.** Crafty's servers must fit in `crafty_memory_limit` together.
-- **If the Pi does not boot** after a change: every change leaves the old file beside it as `cmdline.txt.bak`. Put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
+- **If a Raspberry Pi does not boot** after a change: every change leaves the old file beside it as `cmdline.txt.bak`. Put the root drive in another machine and copy it over `cmdline.txt` in the boot partition.
 - **Turn off:** `pi_enabled: false`, deploy, then `just teardown <host> --tags pi`, then reboot. Teardown cannot tell the two arguments from ones you added by hand, and removes them either way.
 
 ## Swap
