@@ -24,7 +24,7 @@ def load_app(work, cloud_enabled):
     config = {
         "sshUser": "u", "backupDrive": "/mnt/backup", "cloudEnabled": cloud_enabled, "resticRepoPath": "/r",
         "resticPasswordFile": "/p", "resticCloudRepository": "x", "resticLocalRetention": "a",
-        "resticCloudRetention": "b", "resticCloudRcloneArgs": "--x", "scriptsDir": "/s",
+        "resticCloudRetention": "b", "resticCloudRcloneArgs": "--x", "rcloneConfig": "/c/rclone.conf", "scriptsDir": "/s",
     }
     os.environ.update(
         RESTIC_REPO_PATH=str(work / "repo"), RESTIC_PASSWORD_FILE=str(work / "pw"),

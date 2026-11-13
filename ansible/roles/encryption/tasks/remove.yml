@@ -19,7 +19,7 @@
     name: "{{ item }}"
     user: root
     state: absent
-  loop: [unlock-alert-boot, unlock-alert]
+  loop: "{{ encryption_cron_jobs.values() | list }}"
 
 # rmdir only succeeds when the directory is empty.
 - name: Remove the after-unlock scripts directory (only if empty)

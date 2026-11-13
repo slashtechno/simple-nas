@@ -96,6 +96,10 @@ backup_cloud_scripts: [backup-restic-cloud.sh]
 backup_cloud_lists: [backup-paths.txt, restic-excludes-cloud.txt]
 backup_cloud_cron_jobs: [backup-cloud]
 
+# The cron jobs the encryption role creates, which alert while a folder is locked (docs/encryption.md#alert-while-locked). remove.yml, which
+# teardown.yml also runs, removes both.
+encryption_cron_jobs: {boot: unlock-alert-boot, hourly: unlock-alert}
+
 # Lists worked out from the services in services.yml and this host's switches.
 # The entries with a web UI, in the order above.
 web_services: "{{ services | selectattr('icon', 'defined') | list }}"

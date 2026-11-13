@@ -27,19 +27,27 @@ mounts = [m.group(2).strip("'") for m in folder_line.finditer(script)]
 assert mounts, "the --alert branch lists the folders"
 
 
-def cipher_dir(cipher):
+ciphers = {}
+
+
+def cipher_dir(mount, cipher):
     path = work / "cipher" / cipher.strip("'").strip("/").replace("/", "_")
     path.mkdir(parents=True, exist_ok=True)
+    ciphers[mount.strip("'")] = path
     return path
 
 
-script = folder_line.sub(lambda m: f"{m.group(1)}{m.group(2)} {cipher_dir(m.group(3))}{m.group(4)}", script)
+script = folder_line.sub(lambda m: f"{m.group(1)}{m.group(2)} {cipher_dir(m.group(2), m.group(3))}{m.group(4)}", script)
 script = re.sub(r"exec \S*alert\.sh", f"exec {work / 'alert.sh'}", script)
 (work / "unlock.sh").write_text(script)
 
 
-def run(unlocked):
+def run(unlocked, missing=()):
     sent.unlink(missing_ok=True)
+    for mount, path in ciphers.items():   # a folder whose drive is not mounted has no ciphertext folder
+        path.mkdir(exist_ok=True)
+        if mount in missing:
+            path.rmdir()
     (work / "unlocked").write_text("".join(f"{m}\n" for m in unlocked))
     env = {"PATH": f"{bin_dir}:/usr/bin:/bin", "FAKE": str(work)}
     done = subprocess.run(["bash", str(work / "unlock.sh"), "--alert"], env=env, capture_output=True, text=True, timeout=30)
@@ -57,9 +65,17 @@ for locked in mounts:
     message, tag, title = text.rstrip("\n").split("|")
     assert locked in message and all(m not in message for m in mounts if m != locked), message
     assert "Locked, waiting for the passphrase" in message and "nlock" in message, message
-    assert tag == "unlock" and "passphrase" in title, (tag, title)
+    assert tag == "unlock" and "attention" in title, (tag, title)
 
 done, text = run([])
 assert all(m in text for m in mounts), text
+
+# A folder with no ciphertext (its drive did not mount) alerts too, apart from the locked ones, and the others stay out of it.
+for gone in mounts:
+    done, text = run([m for m in mounts if m != gone], missing=[gone])
+    assert done.returncode == 0 and text.count("\n") == 1, (done, text)
+    message = text.split("|")[0]
+    assert "No encrypted files found" in message and gone in message and "Locked, waiting" not in message, message
+    assert all(m not in message for m in mounts if m != gone), message
 
 print("unlock.sh --alert: one alert naming the locked folders, none when everything is unlocked")

@@ -34,7 +34,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 ## Alert while locked
 
-With `host_alert_url` set ([ntfy alerts](./services.md#ntfy-failure-alerts)), the host sends an alert two minutes after each boot and then every hour while a listed folder is locked. It names the locked folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. An unlock ends it. A lock you made on purpose alerts too. With no `host_alert_url` there are no alerts and the jobs are removed. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
+With `host_alert_url` set ([ntfy alerts](./services.md#ntfy-failure-alerts)), the host sends an alert two minutes after each boot and then every hour while a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. An unlock ends it. A lock you made on purpose alerts too. With no `host_alert_url` there are no alerts and the jobs are removed. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
 
 ## Unlock page
 
@@ -238,12 +238,12 @@ Use a long random passphrase from a password manager. It is the weak point, not 
 
   ```yaml
   # host_vars/<host>/vars.yml
-  restic_password_file: /mnt/apps/appdata/backup-secrets/restic-password
-  rclone_config_dir: /mnt/apps/appdata/backup-secrets/rclone
-  service_dumps_dir: /mnt/apps/appdata/backup-secrets/service-dumps
+  restic_password_file: /mnt/data/appdata/backup-secrets/restic-password
+  rclone_config_dir: /mnt/data/appdata/backup-secrets/rclone
+  service_dumps_dir: /mnt/data/appdata/backup-secrets/service-dumps
   ```
 
-  With the folder unlocked, make it and move the logins before the deploy (the deploy writes a new `rclone.conf` from the vault where none exists, and rclone has refreshed the token in the old one): `mkdir -m 700 /mnt/apps/appdata/backup-secrets && mv ~/.restic-password /mnt/apps/appdata/backup-secrets/restic-password && mv ~/.config/rclone /mnt/apps/appdata/backup-secrets/rclone`. Then `just deploy backup --limit <host>`. The old dumps folder can be deleted: the next backup writes fresh dumps. The backups skip the password file and the rclone folder wherever they are. The Cloudflare and Tailscale logins stay on the root drive.
+  With the folder unlocked, make it and move the logins before the deploy (the deploy writes a new `rclone.conf` from the vault where none exists, and rclone has refreshed the token in the old one): `mkdir -m 700 /mnt/data/appdata/backup-secrets && mv ~/.restic-password /mnt/data/appdata/backup-secrets/restic-password && mv ~/.config/rclone /mnt/data/appdata/backup-secrets/rclone`. Then `just deploy backup --limit <host>`. The old dumps folder can be deleted: the next backup writes fresh dumps. The backups skip the password file and the rclone folder wherever they are. The Cloudflare and Tailscale logins stay on the root drive.
 - **Backups:** both scripts refuse to run while any listed folder stays locked. restic reads the folder through the mount (decrypted) and encrypts it with `vault_restic_password`. Every backup leaves out the ciphertext (it would be stored twice), but keeps each folder's `gocryptfs.conf`, so it restores with the data.
 - **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder ([backups.md](./backups.md)).
 

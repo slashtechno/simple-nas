@@ -193,7 +193,7 @@
   // Env prefix that points restic at a repo, for the commands shown in the UI.
   const resticEnv = (repoPath) => `RESTIC_PASSWORD_FILE=${NAS_CONFIG.resticPasswordFile} RESTIC_REPOSITORY=${repoPath}`;
   const localBase = resticEnv(NAS_CONFIG.resticRepoPath);
-  const cloudBase = resticEnv(NAS_CONFIG.resticCloudRepository);
+  const cloudBase = `${resticEnv(NAS_CONFIG.resticCloudRepository)} RCLONE_CONFIG=${NAS_CONFIG.rcloneConfig}`;
   // Same throttle the cloud backup script uses; without it Google Drive answers 403 RATE_LIMIT_EXCEEDED.
   const cloudRestic = `${cloudBase} restic -o "rclone.args=${NAS_CONFIG.resticCloudRcloneArgs}"`;
 

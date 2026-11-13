@@ -22,7 +22,7 @@ vault_copyparty_accounts:
     folders: [collab]
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
-    folders: [collab]
+    folders: [collab, team]
 # Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty browser
 # name, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.

@@ -96,7 +96,7 @@ The restic password is in no backup: it is in `vault_restic_password` and `resti
 
 - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)).
 - `restic_cache_dir`, the restic repository itself, `**/.cache` folders and the data drives' `lost+found`.
-- logins: the restic password file, the rclone config and Cloudflare's tunnel token (rewritten from the vault each deploy). They can be kept in an [encrypted folder](./encryption.md#dumps-and-backups).
+- logins: the restic password file, the rclone config and Cloudflare's tunnel token (the deploy writes the first and the last from the vault, and the rclone config once). They can be kept in an [encrypted folder](./encryption.md#dumps-and-backups).
 - rebuildable, root-owned data regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
 - unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist`, and Garage's metadata (carried as a dump, see [Restore: Garage](#restore-garage)).
 
@@ -259,7 +259,7 @@ The URL scheme picks the backend. The deploy runs `restic init` on it and fails 
 2. Put it in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
 3. `just deploy backup`. Ansible writes `rclone.conf` in `rclone_config_dir` (default `~/.config/rclone`) with a `gdrive` remote only if the file does not exist (rclone writes refreshed tokens back into it).
 
-To replace a broken login, remove `rclone.conf` from `rclone_config_dir` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
+To replace a broken login, remove `rclone.conf` from `rclone_config_dir` on the host and deploy again, or run `RCLONE_CONFIG=<rclone_config_dir>/rclone.conf rclone config reconnect gdrive:` there.
 
 <details>
 <summary>Google quotas and token expiry, and SFTP</summary>

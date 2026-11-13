@@ -51,7 +51,7 @@
   block:
     - name: Alert two minutes after boot if a folder is locked
       ansible.builtin.cron:
-        name: unlock-alert-boot
+        name: "{{ encryption_cron_jobs.boot }}"
         user: root
         special_time: reboot
         job: sleep 120 && {{ (scripts_dir ~ '/unlock.sh') | quote }} --alert
@@ -59,7 +59,7 @@
 
     - name: Alert every hour while a folder is locked
       ansible.builtin.cron:
-        name: unlock-alert
+        name: "{{ encryption_cron_jobs.hourly }}"
         user: root
         minute: "0"
         job: "{{ (scripts_dir ~ '/unlock.sh') | quote }} --alert"

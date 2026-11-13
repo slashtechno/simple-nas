@@ -111,7 +111,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
         rwmd: syncer
   ```
 
-- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files`. A person who needs a whole folder to themselves and no admin rights is a `vault_copyparty_accounts` entry with a shared folder instead. The user name is the Tinyauth user name:
+- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files`. A person who needs a folder of their own is a `vault_copyparty_accounts` entry with a shared folder instead. The user name is the Tinyauth user name:
 
   ```yaml
   copyparty_extra_conf: |
@@ -244,7 +244,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 - With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it so links and iOS push use that address. In a browser, sign in there, subscribe to the topic and allow notifications (browsers notify only from `https://`. The plain `http://` address lists messages without a pop-up).
 - The server denies everyone but that user and its token, even on the LAN. The page at `/alerts` loads without a login because it is only the app's shell. The compose file sets the user and token at every start. The data directory holds message history and the user database.
-- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers and while an [encrypted folder is locked](./encryption.md#alert-while-locked). It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `host_alert_url` is set (it defaults to `ntfy_alert_url`). A failed send times out after 15 seconds, so alerting cannot stall a backup.
+- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers and while an [encrypted folder is locked](./encryption.md#alert-while-locked). It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`, `-t unlock`). It sends to ntfy only if `host_alert_url` is set (it defaults to `ntfy_alert_url`). A failed send times out after 15 seconds, so alerting cannot stall a backup.
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends it the message ID and a hash of the topic URL, not the message. Android needs no relay.
 
 </details>

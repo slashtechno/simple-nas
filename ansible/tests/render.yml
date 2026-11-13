@@ -105,7 +105,7 @@
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
-        copyparty_shared_folders: [collab]
+        copyparty_shared_folders: [collab, team]
         copyparty_extra_conf: "[global]\n  sftp: 3922"
         copyparty_extra_ports: ["3922:3922"]
         copyparty_extra_volumes: ["/mnt/fast/shared:/fast:ro"]
@@ -613,8 +613,8 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to /, the shared folder and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 4"
+          # Admin access to /, the two shared folders and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 5"
           - >-
             '[/apps]\n  /apps\n  accs:\n    r: yourusername\n    r: sso-admin\n  flags:\n    -e2d\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
@@ -624,6 +624,10 @@
             '[/collab]\n  /shared/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    A: friend1\n    A: friend2\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'  friend1: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          # An account reaches only the folders it lists: friend2 is also in team, friend1 is not.
+          - >-
+            '[/team]\n  /shared/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    A: friend2\n\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "(copyparty_shared_dir ~ ':/shared:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
           - >-

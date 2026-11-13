@@ -37,15 +37,18 @@
 
 - name: Check the shared folder names
   ansible.builtin.assert:
-    that: item is match('^[A-Za-z0-9_-]+$')
-    fail_msg: "copyparty_shared_folders entry '{{ item }}' must be one name of letters, digits, - and _."
+    that: item is match('^[A-Za-z0-9_-]+$') and item not in ['apps', 'drives', 'shares']
+    fail_msg: >-
+      copyparty_shared_folders entry '{{ item }}' must be one name of letters, digits, - and _, and not apps, drives or shares
+      (Copyparty's own addresses).
     quiet: true
   loop: "{{ copyparty_shared_folders }}"
 
 - name: Check every account uses a folder that is listed
   ansible.builtin.assert:
     that:
-      - item.user is defined and item.pass is defined and item.folders is defined
+      - item.user is defined and item.pass | default('') | string | length > 0
+      - item.folders is defined and item.folders is sequence and item.folders is not string
       - item.folders | difference(copyparty_shared_folders) | length == 0
     fail_msg: >-
       Each entry of vault_copyparty_accounts needs user, pass and folders, and folders may name only what
