@@ -6,16 +6,22 @@
     fail_msg: "pi_enabled is {{ pi_enabled }}; use auto, or false to skip the Pi tweaks (docs/memory.md)."
     quiet: true
 
+# No file means no board model: not a Pi, and that is fine. A file that cannot be read stops the deploy instead of being taken for
+# "not a Pi", which would leave the memory cgroup off without a word.
+- name: Look for the board model
+  ansible.builtin.stat:
+    path: /proc/device-tree/model
+  register: pi_model_stat
+
 - name: Read the board model
-  ansible.builtin.command: cat /proc/device-tree/model
+  ansible.builtin.slurp:
+    src: /proc/device-tree/model
   register: pi_model
-  changed_when: false
-  failed_when: false
-  check_mode: false
+  when: pi_model_stat.stat.exists
 
 - name: Note whether this host is a Raspberry Pi
   ansible.builtin.set_fact:
-    pi_is_raspberry: "{{ 'Raspberry Pi' in pi_model.stdout }}"
+    pi_is_raspberry: "{{ pi_model_stat.stat.exists and 'Raspberry Pi' in (pi_model.content | b64decode) }}"
 
 - name: Tune a Raspberry Pi
   when: pi_is_raspberry
