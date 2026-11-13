@@ -1,6 +1,6 @@
 # Storage: drive roles
 
-You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). The `storage` role mounts them and makes the ansible user the owner of each drive's top folder. It runs everywhere, and `storage_enabled: false` skips it on a host that mounts its drives another way.
+You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). The deploy's `storage` step mounts them and makes the ansible user the owner of each drive's top folder. It runs everywhere, and `storage_enabled: false` skips it on a host that mounts its drives another way.
 
 | Field | Meaning |
 |---|---|
@@ -23,7 +23,7 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 ## What lives where
 
-Each service keeps its data in `appdata/<service>`. Services with more than one directory use one subfolder (a part) for each, for example `appdata/immich/postgres` and `appdata/immich/photos`. State goes on the `fast` drive. Bulk data goes on the `primary` drive. If one drive has both roles, the two `appdata` folders are the same folder.
+Each service keeps its data in `appdata/<service>`. Services with more than one directory use one subfolder for each, for example `appdata/immich/postgres` and `appdata/immich/photos`. State goes on the `fast` drive. Bulk data goes on the `primary` drive. If one drive has both roles, the two `appdata` folders are the same folder.
 
 Your own files have plain names: `stacks` and `shared`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
 
@@ -90,7 +90,7 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's
 
 For a drive new to the host, before it goes in `drives`. Run on the host.
 
-1. **Identify it.** `lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE`. Letters such as `sdc` change when you replug drives. Check the model and serial (`sudo smartctl -i -d sat /dev/sdX`) against the drive's label before wiping it, and give every command the `/dev/disk/by-id/...` path or a letter you just re-checked.
+1. **Identify it.** `lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE`. Letters such as `sdc` change when you replug drives. Check the model and serial against the drive's label before you wipe it: `sudo smartctl -i -d sat /dev/sdX` (`-d sat` makes it work through a USB adapter). Give every command the `/dev/disk/by-id/...` path, or a letter you just re-checked.
 2. **Look before wiping.** A second-hand drive can hold files: `sudo mount -o ro /dev/sdX1 /mnt/check` (`-t ntfs-3g` for NTFS), `sudo ls -la /mnt/check`, `sudo umount /mnt/check`.
 3. **Vet a used drive** with SMART and a read-only `badblocks` scan ([Drive damage and wear](#drive-damage-and-wear)).
 4. **Partition and format** (this wipes the drive):
@@ -109,7 +109,9 @@ For a drive new to the host, before it goes in `drives`. Run on the host.
 1. Prepare the drive ([above](#preparing-a-drive)). A drive bought as exFAT or NTFS will not mount until formatted ext4. Add or point a `drives` entry at it: a new `uuid`, on the same or a new `mount`, with `roles` updated. If the mount point stays, [detach the old drive](#detach-a-drive) first.
 2. `just deploy storage --limit <host>`.
 3. Copy the data over, for example `rsync -aHAX` ([what the flags mean](./glossary.md#commands)), with the services using it stopped (a database copied while running is corrupt). If the old drive died, restore from a backup instead ([backups.md](./backups.md#restore-files)).
-4. Recreate the containers that bind the drive. A container keeps its old mount until recreated, and a deploy does not recreate one whose compose file and image did not change. Run `docker compose up -d --force-recreate` in each project under `/opt/services` that uses the drive, including `backup-status`, which binds the restic repository.
+4. Recreate the containers that use the drive. A container keeps its old mount until you recreate it, and a deploy skips a container whose compose file and image did not change.
+   - In each project under `/opt/services` that uses the drive, run `docker compose up -d --force-recreate`.
+   - Include `backup-status`, which uses the restic repository.
 
 To retire a drive, remove its entry. The role never removes an fstab line: remove it by hand and `sudo umount` the drive.
 
