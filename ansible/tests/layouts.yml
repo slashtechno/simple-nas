@@ -163,14 +163,12 @@
             that: "fixture_excludes | select('in', local_excludes) | list | length == fixture_excludes | length"
           when: backup_local_enabled | bool
 
-        - name: Every drive with data has its lost+found and the repository left out of the local backup
+        - name: The repository is left out of the local backup
           vars:
             local_excludes: "{{ local_excludes_file.content | b64decode }}"
           ansible.builtin.assert:
             that:
-              - "(item ~ '/lost+found') in local_excludes"
               - "restic_repo_path in local_excludes"
-          loop: "{{ data_drive_mounts }}"
           when: backup_local_enabled | bool
 
         - name: Every service's data is inside a locally backed-up path

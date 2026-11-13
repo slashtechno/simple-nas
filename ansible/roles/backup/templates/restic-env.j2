@@ -19,7 +19,7 @@ export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-{{ restic_cache_dir }}}"
 
 # A hung restic (a stalled drive, rclone or network pipe) must end as a failed run: while it hangs it holds the
 # repository lock and blocks every later backup.
-restic() { timeout "{{ restic_command_timeout }}" /usr/bin/restic "$@"; }
+restic() { timeout "{{ restic_command_timeout }}" {{ restic_binary }} "$@"; }
 {%- endmacro %}
 {% macro unlock_note() -%}
 # A restic killed mid-run (reboot, power loss) leaves its lock behind, and every later forget --prune fails

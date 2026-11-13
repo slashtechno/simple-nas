@@ -95,10 +95,12 @@ The restic password is in no backup: it is in `vault_restic_password` and `resti
 <summary>Always excluded, and why</summary>
 
 - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)).
-- `restic_cache_dir`, the restic repository itself, `**/.cache` folders and the data drives' `lost+found`.
+- `restic_cache_dir`, the restic repository itself, `**/.cache` folders.
 - logins: the restic password file, the rclone config and Cloudflare's tunnel token (the deploy writes the first and the last from the vault, and the rclone config once). They can be kept in an [encrypted folder](./encryption.md#dumps-and-backups).
-- rebuildable, root-owned data regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
+- rebuildable, root-owned data that a restore as the ansible user could not write back, regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
 - unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist`, and Garage's metadata (carried as a dump, see [Restore: Garage](#restore-garage)).
+
+**Root-only files.** The backup runs as the ansible user, but with its own copy of restic (`/usr/local/bin/restic-backup`, mode 0750 for that user's group) that has the `cap_dac_read_search` capability, so it reads files only root can, such as a container's secrets. The packaged `/usr/bin/restic` has no capability and no other user gains it. A deploy copies restic again and sets the capability, so an apt upgrade of restic is picked up on the next deploy. Restic restores as the ansible user, so a restore cannot write into root-owned folders: use `sudo restic` for those.
 
 The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt.j2`. **Crafty:** to keep its `backups/` archives add `- !<crafty_data_dir>/backups`. Restic copies worlds while the server runs, so a world written mid-backup can be inconsistent. `teardown.yml -e remove_data=true` removes the archives too.
 

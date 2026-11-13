@@ -218,6 +218,11 @@
                 {{ backup_shared_scripts + backup_local_scripts + backup_local_lists
                    + backup_cloud_scripts + backup_cloud_lists }}
 
+            - name: Remove the copy of restic the backup runs
+              ansible.builtin.file:
+                path: "{{ restic_binary }}"
+                state: absent
+
             # rmdir only succeeds when the directory is empty.
             - name: Remove the dump.d and scripts directories (only if empty)
               ansible.builtin.command:
