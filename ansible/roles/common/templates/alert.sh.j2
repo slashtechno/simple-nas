@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run by a cron job that failed or recovered. Usage: alert.sh "message" [log tag] [ntfy title]
+# Run by a backup cron job that failed, and by the connectivity watchdog when the connection returns. Usage: alert.sh "message" [log tag] [ntfy title]
 # The tag and title default to the backup jobs'. Writes the message to the system log{% if host_alert_url | length > 0 %} and sends it to ntfy{% endif %}.
 logger -t "${2:-backup}" "$1"
 {% if host_alert_url | length > 0 %}

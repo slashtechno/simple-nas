@@ -908,6 +908,26 @@
       ansible.builtin.set_fact:
         backup_read_all_files: true
 
+    # Without a URL the locked-folder alert only writes to the system log.
+    # set_fact, not task vars: the set_fact above outranks them. The next task but one puts the shared values back.
+    - name: Turn the locked-folder alert off
+      ansible.builtin.set_fact:
+        unlock_alert_url: ""
+        unlock_alert_token: ""
+
+    - name: Render unlock.sh with no alert URL
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/encryption/templates/unlock.sh.j2"
+        dest: "{{ out_dir }}/sso-off/own-unlock-off.sh"
+        mode: "0644"
+
+    - name: Without a URL unlock.sh sends nothing
+      ansible.builtin.assert:
+        that:
+          - "'curl' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock-off.sh')"
+          - "'logger -t unlock' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock-off.sh')"
+        quiet: true
+
     - name: Put the senders back on the shared ntfy
       ansible.builtin.set_fact:
         scrutiny_alert_url: "{{ ntfy_alert_url }}"

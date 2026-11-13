@@ -1,6 +1,6 @@
 ---
 # Where the locked-folder alert goes (docs/encryption.md#alert-while-locked), and the token that server accepts. Defaults: ntfy_alert_url
-# and vault_ntfy_token (docs/services.md#ntfy-failure-alerts). With "" there is no alert.
+# and vault_ntfy_token (docs/services.md#ntfy-failure-alerts). With "" there is no alert; "" for the token sends no login.
 unlock_alert_url: "{{ ntfy_alert_url }}"
 unlock_alert_token: >-
   {{ (vault_ntfy_token | default(undef(hint='add vault_ntfy_token to the vault, or set unlock_alert_token to an empty string')))

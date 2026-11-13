@@ -30,7 +30,8 @@ for path in VAULT_EXAMPLES:
 sources = [p for p in ANSIBLE.glob("roles/**/*") if p.is_file()] + list(ANSIBLE.glob("group_vars/**/*.yml"))
 sources += [ANSIBLE / "site.yml", ANSIBLE / "teardown.yml"]
 for path in sources:
-    if path.name == "vault.yml":
+    # vars.yml is the owner's own values: a vault name they invent there (a sender's token) needs no example entry.
+    if path.name in ("vault.yml", "vars.yml"):
         continue
     try:
         text = path.read_text()
