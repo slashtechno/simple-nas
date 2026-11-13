@@ -606,7 +606,7 @@
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
           - "cloudflared_token_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           # The restic copy reads root-only scripts, so they need no exclude.
-          - "scripts_dir ~ '/unlock.sh' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - "alert_token_dir in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
@@ -916,7 +916,7 @@
           scrutiny-topic: {url: "https://ntfy.example.org/scrutiny", token: "tk_scrutiny"}
           pics-topic: {url: "https://ntfy.sh/pics-topic"}
           system-topic: {url: "https://ntfy.sh/host-topic"}
-          unlock-topic: {url: "https://ntfy.sh/unlock-topic"}
+          unlock-topic: {url: "https://ntfy.sh/unlock-topic", token: "tk_unlock"}
         scrutiny_alert_to: scrutiny-topic
         pics_alert_to: pics-topic
         system_alert_to: system-topic
@@ -931,7 +931,6 @@
         - scrutiny/templates/docker-compose.yml.j2
         - pics/templates/pics.env.j2
         - common/templates/alert.sh.j2
-        - encryption/templates/unlock.sh.j2
 
     - name: Each sender uses its own URL and token
       ansible.builtin.assert:
@@ -940,15 +939,11 @@
             'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_scrutiny@ntfy.example.org/scrutiny?scheme=https"'
             in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-docker-compose.yml')
           - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/pics-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-pics.env')"
+          # alert.sh has one branch per sender, with its own address and its own token file (only the unlock destination has a token).
           - "'https://ntfy.sh/host-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
-          - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
-          # A refused alert (HTTP 403) is an error that reaches the system log, not a silent success.
-          - "'--fail' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
-          # The locked-folder alert has its own URL and token, apart from the host's.
-          - "'https://ntfy.sh/unlock-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
-          - "'ntfy.sh/host-topic' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
-          - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
-          - "'the alert could not be sent' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          - "'https://ntfy.sh/unlock-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          - "(alert_token_dir ~ '/unlock') in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          - "(alert_token_dir ~ '/system') not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
         quiet: true
 
     # With backup_read_all_files off the scripts run the packaged restic, not the copy that has the capability.
@@ -967,24 +962,18 @@
       ansible.builtin.set_fact:
         backup_read_all_files: true
 
-    # Without a URL the locked-folder alert only writes to the system log.
-    # set_fact, not task vars: the set_fact above outranks them. The next task but one puts the shared values back.
-    - name: Turn the locked-folder alert off
+    # With no destination named, alert.sh only writes to the system log (tests/test_alert_sh.py runs it).
+    # set_fact, not task vars: the set_fact above outranks them. The next task puts the shared values back.
+    - name: Turn the script senders off
       ansible.builtin.set_fact:
+        system_alert_to: ""
         unlock_alert_to: ""
 
-    - name: Render unlock.sh with no alert URL
+    - name: Render alert.sh with no destinations
       ansible.builtin.template:
-        src: "{{ repo }}/roles/encryption/templates/unlock.sh.j2"
-        dest: "{{ out_dir }}/sso-off/own-unlock-off.sh"
+        src: "{{ repo }}/roles/common/templates/alert.sh.j2"
+        dest: "{{ out_dir }}/sso-off/own-alert-off.sh"
         mode: "0644"
-
-    - name: Without a URL unlock.sh sends nothing
-      ansible.builtin.assert:
-        that:
-          - "'curl' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock-off.sh')"
-          - "'logger -t unlock' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock-off.sh')"
-        quiet: true
 
     - name: Put the senders back on the shared ntfy
       ansible.builtin.set_fact:

@@ -1,15 +1,21 @@
 #!/bin/bash
-# Run by a backup cron job that failed, and by the connectivity watchdog when the connection returns. Usage: alert.sh "message" [log tag] [ntfy title]
-# The tag and title default to the backup jobs'. Writes the message to the system log{% if alert_targets.system.url | length > 0 %} and sends it to ntfy{% endif %}.
-logger -t "${2:-backup}" "$1"
-{% if alert_targets.system.url | length > 0 %}
+# Ansible-managed (roles/common). Usage: alert.sh <sender> <log tag> <title> <message>
+# Run by a failed backup cron job and the connectivity watchdog (sender system), and by unlock.sh (sender unlock). Writes the message
+# to the system log under the tag, then sends it to the ntfy destination that sender's *_alert_to setting names, if it names one.
+sender="$1" tag="$2" title="$3" message="$4"
+logger -t "$tag" "$message"
+case "$sender" in
+{% for sender in script_alert_senders %}
+{% set token_file = (alert_token_dir ~ '/' ~ sender) if alert_targets[sender].token | length > 0 else '' %}
+  {{ sender }}) url={{ alert_targets[sender].url | quote }}; token_file={{ token_file | quote }} ;;
+{% endfor %}
+  *) logger -t "$tag" "alert.sh: unknown sender $sender"; exit 1 ;;
+esac
+[ -n "$url" ] || exit 0
+auth=()
+[ -z "$token_file" ] || auth=(-H "Authorization: Bearer $(cat "$token_file")")
 # The send must never fail the job or hang it: --max-time stops a stuck connection. --fail makes a refused alert (a wrong
 # token is HTTP 403) an error, and the `||` writes that to the system log beside the alert, so it does not vanish.
-curl --silent --show-error --fail --max-time 15 \
-{% if alert_targets.system.token | length > 0 %}
-  -H "Authorization: Bearer $(cat {{ ntfy_token_file | quote }})" \
-{% endif %}
-  -H "Title: {{ inventory_hostname }}: ${3:-backup failed}" -H "Priority: high" \
-  -d "$1" {{ alert_targets.system.url | quote }} || logger -t "${2:-backup}" "the alert could not be sent to ntfy"
-
-{% endif %}
+curl --silent --show-error --fail --max-time 15 "${auth[@]}" \
+  -H "Title: {{ inventory_hostname }}: $title" -H "Priority: high" \
+  -d "$message" "$url" || logger -t "$tag" "the alert could not be sent to ntfy"

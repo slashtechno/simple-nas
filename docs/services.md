@@ -228,7 +228,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 1. Make the secrets: a user and password (`vault_ntfy_user`, `vault_ntfy_password` in `host_vars/<host>/vault.yml`, from `openssl rand -base64 24`) and a token (`vault_ntfy_token` in `group_vars/all/vault.yml`, from `docker run --rm binwiederhier/ntfy token generate`). The deploy hashes the password into the compose file, so the vault holds the plain one.
 2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then name the topic and pick who sends to it (below).
 3. In the ntfy app add the server `http://<host-tailscale-name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
-4. Test: on the host `bash /opt/services/scripts/alert.sh "test"` and check the phone.
+4. Test: on the host `/opt/services/scripts/alert.sh system test "test alert" "hello"` and check the phone.
 
 **Where alerts go.** `ntfy_destinations` maps a name to a topic. Each has a `url` (the full address of the topic, required) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts; a host's own `ntfy_destinations` replaces it whole, so list every name that host needs. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
 
@@ -256,7 +256,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 - With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it so links and iOS push use that address. In a browser, sign in there, subscribe to the topic and allow notifications (browsers notify only from `https://`. The plain `http://` address lists messages without a pop-up).
 - The server denies everyone but that user and its token, even on the LAN. The page at `/alerts` loads without a login because it is only the app's shell. The compose file sets the user and token at every start. The data directory holds message history and the user database.
-- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers. It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `system_alert_to` names a destination. A failed send times out after 15 seconds, so alerting cannot stall a backup.
+- `alert.sh <sender> <log tag> <title> <message>` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers (sender `system`), and at boot with a locked folder (sender `unlock`, from `unlock.sh`). It writes to the system log under the tag (`journalctl -t backup`, `-t connectivity`, `-t unlock`). It sends to ntfy only if that sender's `*_alert_to` names a destination. Each sender's token is a file in `alert_token_dir`; no backup copies them or the script. A failed send times out after 15 seconds, so alerting cannot stall a backup.
 - iOS push for a self-hosted server goes through ntfy.sh, so `ntfy_ios_push` is on by default: ntfy.sh gets the message ID and a hash of the topic URL, not the message. Set it to `false` to send nothing to ntfy.sh; an iPhone then shows messages only when the app is refreshed. Android needs no relay. After a change, re-add the subscription in the iOS app.
 
 </details>
@@ -269,7 +269,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 2. On the host set `tinyauth_enabled: true`. It needs Caddy with a private domain: the page only has that https name.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
-- With `tinyauth_enabled`, every service with a Caddy name is behind the login except those marked `own_login: true` in `services.yml`. Immich, Gitea, Copyparty, pics and ntfy have apps, git, WebDAV and push clients that cannot log in through a web page. Tinyauth is its own login. Copyparty's browser name joins with `copyparty_sso_enabled`. To exempt another service, add `own_login: true` to its entry.
+- With `tinyauth_enabled`, every service with a Caddy name is behind the login except those marked `own_login: true` in `services.yml`. A service marked that way has apps, git, WebDAV or push clients that cannot log in through a web page, so it keeps its own login. Tinyauth is its own login. Copyparty's web address joins with `copyparty_sso_enabled`. To exempt another service, add `own_login: true` to its entry.
 - Caddy serves a protected service under the first `caddy_private_domains` entry only ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). A published host port is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`. A name in `caddy_sites` uses the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). [SilverBullet](https://silverbullet.md/) expects an authentication proxy, so leave its `SB_USER` unset.
 

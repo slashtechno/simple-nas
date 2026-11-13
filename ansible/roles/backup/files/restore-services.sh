@@ -92,7 +92,7 @@ case "$TARGET" in
     ;;
 
   *)
-    echo "Unknown target: $TARGET" >&2
+    echo "Unknown target: $TARGET. This script restores immich and gitea; Garage is restored by hand (docs/backups.md#restore-garage)." >&2
     exit 1
     ;;
 esac

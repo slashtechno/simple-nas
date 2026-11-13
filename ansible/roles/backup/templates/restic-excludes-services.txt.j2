@@ -13,13 +13,10 @@
 {{ rclone_config_dir }}
 # The Cloudflare tunnel token: a deploy writes it again from Cloudflare. A line for it stays when cloudflared_enabled is off.
 {{ cloudflared_token_file }}
-# The tokens of the alerts: a deploy writes them again from the vault. The locked-folder alert's is root-only, which the backup's
-# restic copy can read.
-{{ ntfy_token_file }}
-{{ unlock_token_file }}
-# The alert scripts hold the destination address, which may be a secret topic name; a deploy writes them again.
+# The tokens of the alerts: a deploy writes them again from the vault.
+{{ alert_token_dir }}
+# The alert script holds the destination address, which may be a secret topic name; a deploy writes it again.
 {{ scripts_dir }}/alert.sh
-{{ scripts_dir }}/unlock.sh
 {% if docker_data_root | length > 0 %}
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}

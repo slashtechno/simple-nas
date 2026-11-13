@@ -1,27 +1,38 @@
 ---
-# alert.sh is run by the backup cron jobs and the connectivity watchdog, so it lives here: both work with the other off.
+# alert.sh is run by the backup cron jobs, the connectivity watchdog and unlock.sh (which runs as root), so it lives here: they work with
+# the other parts off, and root runs a file only root can change.
 - name: Render the alert script
   ansible.builtin.template:
     src: alert.sh.j2
     dest: "{{ scripts_dir }}/alert.sh"
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: root
+    group: root
     mode: "0755"
   diff: false
 
-# alert.sh reads the token from this file; with no system alert destination or no token the file is removed.
-- name: Write the ntfy token file
+- name: Create the alert token directory
+  ansible.builtin.file:
+    path: "{{ alert_token_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0700"
+
+# alert.sh reads a sender's token from its file; a sender with no destination or no token has no file.
+- name: Write the alert token files
   ansible.builtin.copy:
-    content: "{{ alert_targets.system.token }}"
-    dest: "{{ ntfy_token_file }}"
+    content: "{{ alert_targets[item].token }}"
+    dest: "{{ alert_token_dir }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
     mode: "0600"
   no_log: true
-  when: alert_targets.system.url | length > 0 and alert_targets.system.token | length > 0
+  loop: "{{ script_alert_senders }}"
+  when: alert_targets[item].url | length > 0 and alert_targets[item].token | length > 0
 
-- name: Remove the ntfy token file when alerts are off
+- name: Remove the token file of a sender with no destination or no token
   ansible.builtin.file:
-    path: "{{ ntfy_token_file }}"
+    path: "{{ alert_token_dir }}/{{ item }}"
     state: absent
-  when: alert_targets.system.url | length == 0 or alert_targets.system.token | length == 0
+  loop: "{{ script_alert_senders }}"
+  when: alert_targets[item].url | length == 0 or alert_targets[item].token | length == 0

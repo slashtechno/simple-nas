@@ -88,7 +88,7 @@
         job: >-
           /bin/bash {{ (scripts_dir ~ '/backup-restic-cloud.sh') | quote }}
           >> {{ (backup_logs_dir ~ '/backup-cron.log') | quote }} 2>&1 ||
-          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }}
+          /bin/bash {{ (scripts_dir ~ '/alert.sh') | quote }} system backup "backup failed"
           "backup-restic-cloud failed{{ ' or ' ~ backup_drive ~ ' not mounted' if backup_local_enabled | bool else '' }}"
 
 - name: Remove the weekly cloud backup job when the offsite backup is off

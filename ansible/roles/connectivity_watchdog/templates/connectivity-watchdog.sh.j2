@@ -23,7 +23,7 @@ done
 
 if $online; then
   if [ "$fails" -ge {{ connectivity_failures_before_action }} ]; then
-    {{ (scripts_dir ~ '/alert.sh') | quote }} "Back online after $fails failed checks and $reconnects reconnects." connectivity "connectivity restored"
+    {{ (scripts_dir ~ '/alert.sh') | quote }} system connectivity "connectivity restored" "Back online after $fails failed checks and $reconnects reconnects."
   fi
   rm -rf "$state"
   exit 0

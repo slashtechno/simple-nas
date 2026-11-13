@@ -118,13 +118,13 @@
         - name: Remove the alert script and the ntfy token
           tags: [alerts]
           block:
-            - name: Remove alert.sh and the token file
+            - name: Remove alert.sh and the token files
               ansible.builtin.file:
                 path: "{{ item }}"
                 state: absent
               loop:
                 - "{{ scripts_dir }}/alert.sh"
-                - "{{ ntfy_token_file }}"
+                - "{{ alert_token_dir }}"
 
         # What the common and network roles wrote outside our directories. cloud-init gets the network back and journald
         # returns to the OS default; both take effect at the next boot. SSH keys, the sudoers file, packages and the

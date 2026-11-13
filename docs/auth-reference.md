@@ -47,11 +47,11 @@ tinyauth_environment:
 
 ## Sign in with Tinyauth (OIDC)
 
-OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are. The app never sees your password. Gitea, Immich and pics can do this, so one Tinyauth login opens them, and each keeps its own accounts and permissions.
+OIDC stands for OpenID Connect, the login standard most apps support. The app sends your browser to Tinyauth to log in, and Tinyauth tells the app who you are. The app never sees your password. A service with an `oidc` field in `services.yml` can do this (the setup steps name them), so one Tinyauth login opens it, and each keeps its own accounts and permissions.
 
 Setup:
 
-1. Turn it on for an app on the host: `gitea_sso_enabled: true`, `immich_sso_enabled: true` or `pics_sso_enabled: true` in its `vars.yml`. It needs `tinyauth_enabled` and `caddy_enabled`.
+1. Turn it on for an app on the host: `<key>_sso_enabled: true` in its `vars.yml` (`gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled`). It needs `tinyauth_enabled` and `caddy_enabled`.
 2. The client secrets `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and `vault_pics_oidc_secret` are random values that `just setup <host>` adds to the host's vault. Rerun it if they are missing.
 3. Deploy: `just deploy tinyauth,gitea,immich,pics --limit <host>`.
 
@@ -141,7 +141,7 @@ service_users:
 
 How Tinyauth limits a listed service depends on how that service signs people in:
 
-- **Behind the Caddy login:** the deploy gives Tinyauth a rule for that service's exact web address. This group is Dozzle, Scrutiny, Dockge, the backup dashboard and the other services with a login in front. A user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are `copyparty_sso_admins`, not this list. `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-accounts-and-volumes)).
+- **Behind the Caddy login:** the deploy gives Tinyauth a rule for that service's exact web address. This group is every service Caddy puts behind the login. A user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are `copyparty_sso_admins`, not this list. `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-accounts-and-volumes)).
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 

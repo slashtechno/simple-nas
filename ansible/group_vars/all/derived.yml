@@ -149,6 +149,10 @@ copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) 
 # The address of the Tinyauth login page; Tinyauth and every OIDC client (Immich, Gitea, pics) read it.
 tinyauth_url: "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}"
 
+# The alert senders that alert.sh sends for: backup jobs and the connectivity watchdog (system) and unlock.sh (unlock). Scrutiny and
+# pics send themselves, from their own containers.
+script_alert_senders: [system, unlock]
+
 # The address and login of each alert sender, from its *_alert_to name and ntfy_destinations ("" gives url "" and token ""). A name that
 # is not in ntfy_destinations, or a destination with no url, stops the deploy. The roles read alert_targets.<sender>.url and .token. Never print it: it holds tokens.
 alert_targets: >-

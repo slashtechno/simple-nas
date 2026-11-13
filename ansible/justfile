@@ -39,6 +39,7 @@ _test:
     python3 -I tests/test_unlock_page.py "$out/unlock_page/unlock-page-request.sh"
     python3 -I tests/test_containers_hook.py "$out/encryption/00-containers.sh"
     python3 -I tests/test_unlock_alert.py "$out/encryption/unlock.sh"
+    python3 -I tests/test_alert_sh.py "$out/sso-off/own-alert.sh" "$out/sso-off/own-alert-off.sh"
     ansible-playbook -i tests/inventory.yml tests/layouts.yml -e "out_dir=$out"
     ansible-playbook -i tests/inventory.yml tests/encryption.yml
     find "$out" -name '*.sh' -print0 | xargs -0 uvx --from {{ shellcheck }} shellcheck --severity=warning

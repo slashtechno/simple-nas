@@ -81,10 +81,9 @@ scrutiny_alert_to: ""
 pics_alert_to: ""
 # The locked-folder alert after a reboot (unlock.sh).
 unlock_alert_to: ""
-# File on the host holding the system alert's token, read by alert.sh. Here because teardown.yml removes it.
-ntfy_token_file: "{{ services_dir }}/ntfy-token"
-# File on the host holding the unlock alert's token, read by unlock.sh as root. Here because teardown.yml removes it and the backup leaves it out.
-unlock_token_file: "{{ services_dir }}/unlock-ntfy-token"
+# Folder on the host with one token file per alert that alert.sh sends (named after the sender). Here because teardown.yml removes
+# it and the backup leaves it out.
+alert_token_dir: "{{ services_dir }}/alert-tokens"
 
 # File on the host holding the Cloudflare tunnel token, mounted into the tunnel's container. Here because the backup
 # role leaves it out (the container's user owns it, mode 400).

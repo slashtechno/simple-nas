@@ -43,7 +43,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
   echo "=== Cloud Backup: $(date) ==="
   {{ restic_env.unlock_note() | indent(2) }}
   restic "${RESTIC_RCLONE_OPT[@]}" unlock
-  # Dump the databases first (Immich, Gitea); the dumps are backed up below.
+  # Dump the databases first (every dump script in the dump directory); the dumps are backed up below.
   bash "$SCRIPT_DIR/backup-services.sh" || { echo "Service dump failed"; exit 1; }
 
   # Exit 0 is success. Exit 3 means the snapshot was saved but some source files could not be read:
