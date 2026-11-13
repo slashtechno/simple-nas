@@ -620,14 +620,14 @@
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    r: sso-admin' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
           # A shared folder is its own volume inside the one shared directory: the admins have full access, the accounts that list it
-          # read, write, move and delete (no admin rights), and xvol is set.
+          # read, write, move and delete (no admin rights).
           - >-
-            '[/collab]\n  /shared/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend1\n    rwmd: friend2\n  flags:\n    xvol\n'
+            '[/collab]\n  /shared/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend1\n    rwmd: friend2\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'  friend1: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # An account reaches only the folders it lists: friend2 is also in team, friend1 is not.
           - >-
-            '[/team]\n  /shared/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend2\n  flags:\n    xvol\n\n'
+            '[/team]\n  /shared/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend2\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "(copyparty_shared_dir ~ ':/shared:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.

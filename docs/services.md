@@ -73,9 +73,18 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 ## Copyparty accounts and volumes
 
-The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_shared_folders` adds one folder per name, such as `/collab`, for people who are not admins. The folders are inside `copyparty_shared_dir` (on the `primary` drive). Each person is an entry in `vault_copyparty_accounts` (`user`, `pass` and `folders`, the names they may use; shape in `host_vars/vault.yml.example`). The admin has access to every shared folder. A person can be in several folders, and a folder can have no one but the admin. With the list empty there are no folders and no accounts. A person in `vault_copyparty_accounts` has read, write, move and delete in their folders and no admin rights; `xvol` is set on each folder, so a symlink inside it cannot reach files outside it.
+The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_shared_folders` adds one folder per name, such as `/collab`, for people who are not admins. The folders are inside `copyparty_shared_dir` (on the `primary` drive). Each person is an entry in `vault_copyparty_accounts` (`user`, `pass` and `folders`, the names they may use; shape in `host_vars/vault.yml.example`). The admin has access to every shared folder. A person can be in several folders, and a folder can have no one but the admin. With the list empty there are no folders and no accounts. A person in `vault_copyparty_accounts` has read, write, move and delete in their folders and no admin rights. Copyparty follows a symlink that someone with shell access puts in a folder, so a symlink shares what it points at; uploads and WebDAV create only regular files.
 
-**Shared folders are not `service_users`.** `vault_copyparty_accounts` are Copyparty's own logins, used on its login page, WebDAV and apps: they decide which folders a person sees once inside. `service_users.copyparty` is the Tinyauth gate in front of the browser page ([who may use what](./auth-reference.md#who-may-use-what)): it decides who may open the page at all. A friend with only a Copyparty login needs nothing in `service_users`.
+Who signs in where:
+
+| Who | Set in | Signs in at | Gets |
+|---|---|---|---|
+| The admin | `copyparty_user`, `copyparty_password` | Copyparty's login page | everything |
+| A friend | `vault_copyparty_accounts` | Copyparty's login page, WebDAV, apps | read, write, move, delete in their shared folders |
+| An admin by SSO | `copyparty_sso_admins` (Tinyauth user names) | the browser name, with `copyparty_sso_enabled` | everything, no second login |
+| An app (pics) | `copyparty` in `services.yml` | its own volumes | what its entry grants |
+
+Copyparty has its own logins because Tinyauth keeps only password hashes, which Copyparty cannot check. Without `copyparty_sso_enabled` the browser name is open to Copyparty's login page alone, and `service_users.copyparty` has no effect ([who may use what](./auth-reference.md#who-may-use-what)). With it, a friend who is not a Tinyauth user opens Copyparty at the published port or the tunnel name instead.
 
 `/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). To add the fast drive, the backup drive or one folder of either, see [More drives and folders](#more-drives-and-folders).
 
