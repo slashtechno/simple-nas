@@ -14,4 +14,3 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md) — waits for: the new drive passing its vetting.
 - Encryption at rest: run each folder's real workload through a mounted folder on pi4 before listing it, starting with `stacks` (writes ran at 3 to 5 MB/s in a plain copy test; [encryption.md](./docs/encryption.md#which-folders-to-list)) — waits for: choosing which folders to list.
 - Encryption at rest ([encryption.md](./docs/encryption.md)): open the folder on a Mac (gocryptfs and macFUSE) before real data goes in — waits for: a spare drive.
-- Open items of [plans/next-steps.md](./plans/next-steps.md) — waits for: each item's own condition.
