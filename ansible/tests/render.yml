@@ -951,7 +951,7 @@
       ansible.builtin.set_fact:
         backup_read_all_files: false
 
-    - name: The backup scripts' restic follows backup_read_all_files
+    - name: The restic setting follows backup_read_all_files
       ansible.builtin.assert:
         that:
           - restic_binary == '/usr/bin/restic'
@@ -1011,6 +1011,7 @@
         - name: Give a destination a token and no url
           ansible.builtin.set_fact:
             ntfy_destinations:
+              home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
               broken: {token: "tk_x"}
             scrutiny_alert_to: broken
 
@@ -1019,9 +1020,9 @@
             msg: "{{ alert_targets.scrutiny.url }}"
           no_log: true
       rescue:
-        - name: The failure is reported
+        - name: The failure names scrutiny_alert_to and the missing url
           ansible.builtin.assert:
-            that: ansible_failed_result is defined
+            that: "'scrutiny_alert_to names a destination with no url' in ansible_failed_result.msg"
             quiet: true
       always:
         - name: Put the destinations back

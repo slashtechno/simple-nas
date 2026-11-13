@@ -40,7 +40,7 @@
       --name tinyauth
       --provider openidConnect
       --key gitea
-      --secret {{ vault_gitea_oidc_secret }}
+      --secret {{ vault_gitea_oidc_secret | quote }}
       --auto-discover-url {{ tinyauth_url }}/.well-known/openid-configuration
       --scopes openid --scopes email --scopes profile
   register: gitea_sso_source

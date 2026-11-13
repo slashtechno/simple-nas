@@ -1,6 +1,6 @@
 ---
 # alert.sh is run by the backup cron jobs, the connectivity watchdog and unlock.sh (which runs as root), so it lives here: they work with
-# the other parts off, and root runs a file only root can change.
+# the other parts off. It is root's file because root runs it, though scripts_dir belongs to the Ansible user (docs/encryption.md#what-it-protects).
 - name: Render the alert script
   ansible.builtin.template:
     src: alert.sh.j2

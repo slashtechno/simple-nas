@@ -11,8 +11,8 @@
     that: getent_passwd[ansible_user][1:3] == ['1000', '1000']
     fail_msg: >-
       Gitea runs as uid and gid 1000 but {{ ansible_user }} is uid {{ getent_passwd[ansible_user][1] }}, gid
-      {{ getent_passwd[ansible_user][2] }}, so Gitea could not write its data directories. Change USER_UID and
-      USER_GID in roles/gitea/templates/docker-compose.yml.j2.
+      {{ getent_passwd[ansible_user][2] }}, so Gitea could not write its data directories. Run Gitea as the Ansible user
+      (the compose file sets USER_UID and USER_GID to 1000 together with this check).
     quiet: true
 
 - name: Create Gitea data directories

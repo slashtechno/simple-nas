@@ -162,7 +162,8 @@ alert_targets: >-
   {%- if name | length > 0 -%}
   {%- set dest = ntfy_destinations[name]
         | default(undef(hint=sender ~ '_alert_to names a destination that ntfy_destinations does not have')) -%}
-  {%- set _ = out.update({sender: {'url': dest['url'], 'token': dest.get('token', '')}}) -%}
+  {%- set url = dest['url'] if 'url' in dest else undef(hint=sender ~ '_alert_to names a destination with no url') -%}
+  {%- set _ = out.update({sender: {'url': url, 'token': dest.get('token', '')}}) -%}
   {%- else -%}
   {%- set _ = out.update({sender: {'url': '', 'token': ''}}) -%}
   {%- endif -%}

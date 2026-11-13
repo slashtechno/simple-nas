@@ -1,5 +1,6 @@
 # Run from ansible/:  uvx ansible-lint   (needs the collections from requirements.yml installed)
 exclude_paths:
+  # Settings files, not playbooks: the linter has no rules for them.
   - group_vars/
 skip_list:
   # Role-private names such as `register: restic_init` are not worth a prefix; the shared

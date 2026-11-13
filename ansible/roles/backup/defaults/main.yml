@@ -3,7 +3,7 @@
 # something out, "- !pattern" puts it back. The service dumps dir is always added and caches and live database
 # directories are always skipped (roles/backup/templates/restic-excludes-*.txt.j2).
 # Default: the primary and fast drives; a host with neither role backs up the user's home. The backup runs as
-# the ansible user, so files only root can read are skipped and the run then fails so the alert fires.
+# the ansible user, with a restic copy that can read files only root can read (backup_read_all_files, docs/backups.md#root-only-files).
 # Adding or removing a "/path" line starts a new snapshot group: docs/backups.md#choosing-what-is-backed-up
 # To add to the default instead of replacing it, set restic_local_extra_rules.
 # Example: primary on /mnt/big and fast on /mnt/fast give [/mnt/big, /mnt/fast]; a host with neither gives [/home/<user>].

@@ -67,7 +67,7 @@ The page is a container. It has no key. It connects to a socket (`/run/unlock-pa
 
 A person who gets past Tinyauth, or a container on the same Docker network, can press Lock. The worst result is stopped services. That person cannot unlock without the passphrase, and cannot log in or read files through the page. A host that is switched off holds no passphrase ([What it protects](#what-it-protects)).
 
-To remove the page, run `teardown.yml --tags unlock_page` (the socket and the script) and `-e only=unlock_page` (the container).
+To remove the page, run `just teardown <host> --tags unlock_page` (the socket and the script) and `just teardown <host> -e only=unlock_page` (the container).
 
 If the page cannot reach the host:
 
@@ -78,7 +78,7 @@ If the page cannot reach the host:
 
 ## Set up a folder
 
-Do this **before the service first starts**, or it writes plain files into the folder. Run a backup first if the folder already holds data. Once you list a folder, the backups wait until you unlock it ([why](#dumps-and-backups)).
+Do this **before the service first starts**, or it writes plain files into the folder. Run a backup first if the folder already holds data. Once you list a folder, the backups refuse to run until you unlock it ([why](#dumps-and-backups)).
 
 1. Add the paths to `encrypted_folders` ([which folders](#which-folders-to-list)) and run `just deploy encryption,backup --limit <host>`.
 2. Stop the containers that use the folder (`docker stop <name>`). The script lists any that are still running.
@@ -205,7 +205,7 @@ gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>  
 3. Remove the path from `encrypted_folders` and run `just deploy encryption,backup --limit <host>`. Start the containers.
 4. When everything works, delete the encrypted files: `sudo rm -r /mnt/data/.photos.gocryptfs`.
 
-The role removes the scripts when no folder remains, and gocryptfs stays installed. `teardown.yml` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` stops before it removes anything when the service's data folder is, or holds, a listed folder. Turn encryption off for that folder first.
+The role removes the scripts when no folder remains, and gocryptfs stays installed. `just teardown <host>` (or `--tags encryption`) removes the scripts and the empty after-unlock folder, and never touches encrypted folders or your scripts. `-e remove_data=true` stops before it removes anything when the service's data folder is, or holds, a listed folder. Turn encryption off for that folder first.
 
 ## Containers and locked folders
 
@@ -231,6 +231,8 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 | File contents and names | The number, depth, size (to 4 KiB) and modification time of files |
 | | The root drive: it holds the restic password and the Tailscale and Cloudflare logins ([the Cloudflare token](./caddy-reference.md#web-addresses-and-https) can edit DNS and tunnels), so a thief with the whole host can open the backups |
 | | Backup logs (they list every path) and service dumps, unless you list the dumps folder ([below](#dumps-and-backups)) |
+
+The root-run scripts (`unlock.sh`, `alert.sh`) sit in `scripts_dir`, which the Ansible user owns: that user can replace them, so root and that user are one boundary on a host where the user has passwordless sudo.
 
 After a theft of the whole host, revoke the Cloudflare API and tunnel tokens and remove the host from Tailscale. The thief can read the backups on the host's drives: the restic key of an existing repository does not change with the vault value.
 

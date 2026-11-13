@@ -46,7 +46,7 @@ ssh <user>@<host> sudo tailscale up                     # open the link it print
 ## 4. Create the encrypted folders (before any service starts)
 
 ```bash
-just deploy encryption,backup --limit home
+just deploy encryption --limit home
 ```
 
 Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in.
@@ -57,7 +57,7 @@ Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock.
 just deploy '' --limit home
 ```
 
-Reboot once (`sudo reboot`) and [unlock](./encryption.md#unlocking).
+This also deploys the backup, after Immich: the backup refuses to deploy until Immich's dump script is installed. Reboot once (`sudo reboot`) and [unlock](./encryption.md#unlocking).
 
 ## 6. Check it
 

@@ -83,7 +83,7 @@ _tags tags playbook='site.yml':
 teardown host *flags:
     #!/usr/bin/env bash
     set -euo pipefail
-    tags=$(echo " {{ flags }} " | sed -n -E 's/.* (--tags|-t)[= ]([^ ]+).*/\2/p')
+    tags=$(echo " {{ flags }} " | { grep -oE -- ' (--tags|-t)[= ][^ ]+' || true; } | sed -E 's/^ (--tags|-t)[= ]//' | paste -sd, -)
     just _tags "$tags" teardown.yml
     ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
 

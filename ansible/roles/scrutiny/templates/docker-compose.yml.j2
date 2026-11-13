@@ -34,7 +34,7 @@ services:
       # Names this host in the dashboard. Unset, it comes from the container hostname, which changes when the container is recreated.
       COLLECTOR_HOST_ID: "{{ inventory_hostname }}"
 {% if alert_targets.scrutiny.url | length > 0 %}
-      # The alert address in Shoutrrr's syntax: http://pi4:8090/alerts + a token becomes ntfy://:<token>@pi4:8090/alerts?scheme=http
+      # The alert address in Shoutrrr's syntax: http://host:8090/alerts + a token becomes ntfy://:<token>@host:8090/alerts?scheme=http
       SCRUTINY_NOTIFY_URLS: {{ ('ntfy://' ~ (':' ~ alert_targets.scrutiny.token ~ '@' if alert_targets.scrutiny.token | length > 0 else '')
                                 ~ (alert_targets.scrutiny.url | urlsplit('netloc')) ~ (alert_targets.scrutiny.url | urlsplit('path'))
                                 ~ '?scheme=' ~ (alert_targets.scrutiny.url | urlsplit('scheme'))) | replace('$', '$$') | to_json }}

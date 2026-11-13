@@ -30,8 +30,6 @@ immich_sso_enabled: true
 immich_extra_origins: ["https://immich.slashtechno.com"]   # the tunnel hostname
 gitea_sso_enabled: true
 pics_sso_enabled: true
-# copyparty_sso_enabled: true
-# copyparty_sso_admins: [slashtechno]
 # Who may open pics (each is a full owner).
 service_users: {pics: [slashtechno]}
 # Names under pinas.slashtechno.com reach this host over the tailnet only, with Let's Encrypt certificates (docs/caddy-reference.md#web-addresses-and-https).

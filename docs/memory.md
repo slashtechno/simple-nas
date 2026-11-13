@@ -53,7 +53,7 @@ Immich keeps job settings in its database, so the backup dump saves them.
 - **Set them from the repo:** `immich_job_concurrency` maps a queue name to how many jobs run at once, for example `{thumbnailGeneration: 1, smartSearch: 1}`. Every deploy sets those queues and leaves all other Immich settings as saved. Empty (the default) sets nothing. It needs `vault_immich_api_key` (the key the [sign-in setup](./auth-reference.md#sign-in-with-tinyauth-oidc) also uses). With Immich down, a full deploy stops at this step. A queue name Immich does not have stops the deploy and lists the real ones.
 - **Or in the UI:** Administration → Settings → Job Settings. The next deploy overwrites a queue named in `immich_job_concurrency`.
 - **Heaviest:** smart search and face detection (machine learning). Pause them on Administration → Jobs during a large import and resume afterwards.
-- **Transcode policy:** every deploy sets `immich_transcode_policy`. `disabled` makes no second copy of any video. `required` copies only videos that will not play as they are. Transcoding runs `ffmpeg` on the CPU, so a policy that converts every video keeps the host busy for hours.
+- **Transcode policy:** when `immich_transcode_policy` is set, every deploy sets it. `disabled` makes no second copy of any video. `required` copies only videos that will not play as they are. Transcoding runs `ffmpeg` on the CPU, so a policy that converts every video keeps the host busy for hours.
 - **An import resumes all paused jobs at once** when it ends. Expect a burst of load then.
 
 <details>

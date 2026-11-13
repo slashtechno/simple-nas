@@ -18,4 +18,4 @@ auth=()
 # token is HTTP 403) an error, and the `||` writes that to the system log beside the alert, so it does not vanish.
 curl --silent --show-error --fail --max-time 15 "${auth[@]}" \
   -H "Title: {{ inventory_hostname }}: $title" -H "Priority: high" \
-  -d "$message" "$url" || logger -t "$tag" "the alert could not be sent to ntfy"
+  --data-raw "$message" "$url" || logger -t "$tag" "the alert could not be sent to ntfy"

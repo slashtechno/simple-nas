@@ -38,7 +38,7 @@ caddy_private_domains: [<host>.example.com]
 
 - **Cloudflare:** the domain must equal, or be a subdomain of, one domain in `cloudflare_zones`, and the Cloudflare token in the vault needs `Zone:DNS:Edit` on that zone ([ansible/README.md](../ansible/README.md#vault-secrets)).
 - **DNS:** a deploy keeps two DNS-only records, `<host>.example.com` and `*.<host>.example.com`, pointing at the host's Tailscale address. Anyone off the tailnet gets an address they cannot reach.
-- **Certificates:** one wildcard certificate per private domain from Let's Encrypt through the Cloudflare DNS challenge, so you open no router port. The challenge uses `vault_cloudflared_api_token`, the same token the `cloudflared` role uses on your computer. It reaches the host in Caddy's environment, and it can edit DNS on every zone in `cloudflare_zones` and edit tunnels. A thief with the host has it: revoke it after a theft. Caddy has its own vault entry, `vault_caddy_dns_api_token`, so the host can hold a smaller token: `Zone:DNS:Edit` on the zone of `caddy_private_domains` and nothing else. The same value as the account token works too. If the private domain shares a zone with your public names, even the small token can edit those records.
+- **Certificates:** one wildcard certificate per private domain from Let's Encrypt through the Cloudflare DNS challenge, so you open no router port. The challenge uses `vault_caddy_dns_api_token`, which reaches the host in Caddy's environment. Give it `Zone:DNS:Edit` on the zone of `caddy_private_domains` and nothing else. A thief with the host has it: revoke it after a theft. The account token the `cloudflared` role uses (`vault_cloudflared_api_token`) stays on your computer. If the private domain shares a zone with your public names, even the small token can edit those records.
 - **Port 443:** Caddy needs it on the host. Tailscale keeps `tailscale serve` settings across reboots, so a host that serves on 443 through it needs `sudo tailscale serve reset` first.
 - **Public names** are not this: they are `cloudflared_ingress` entries, and Cloudflare serves their certificate. For a service behind the login: [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet).
 
@@ -48,7 +48,7 @@ caddy_private_domains: [<host>.example.com]
 - Every DNS record carries the comment `managed by simple-nas, caddy <host>`. A name that already has a record without it stops the deploy. The deploy deletes records with it for a domain not in the list. `--check` prints the plan.
 - To delete the records, set the list to `[]` and run `just deploy caddy --limit <host>` before `teardown.yml -e only=caddy`. Teardown does not call Cloudflare.
 - Every name under the wildcard uses one certificate, so public certificate logs list `*.<domain>`, not each service name. A name outside it (the bare domain, a `caddy_sites` name on another domain) has its own certificate.
-- Caddy's Cloudflare token is in its compose file on the host, and Caddy sits next to the Docker socket. The compose files are in the offsite backup. It is the same vault token the tunnel uses: DNS edit on every zone plus the tunnel permission.
+- Caddy's Cloudflare token is in its compose file on the host, and Caddy sits next to the Docker socket. The compose files are in the offsite backup. It is the small `vault_caddy_dns_api_token`: DNS edit on one zone.
 
 </details>
 

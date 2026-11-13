@@ -41,7 +41,6 @@ script = re.sub(r"STOPPED_FILE=\S+", f"STOPPED_FILE={stopped}", script)
 (work / "hook.sh").write_text(script)
 
 # The lock stopped the containers that join the network first, as on a real host, and the one they join last.
-(work / "names").write_text("joiner-a\njoiner-b\nhost-net\nplain\n")
 (work / "mode.joiner-a").write_text("container:vpn")
 (work / "mode.joiner-b").write_text("container:vpn")
 (work / "mode.vpn").write_text("default")

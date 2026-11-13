@@ -85,7 +85,7 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`). `resti
 | Garage metadata | Dump only (`garage_meta_dir` excluded). Data blocks (`garage_blocks_dir`) are plain files | Dump only |
 | Restic password | No | No |
 
-The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager. Changing `vault_restic_password` does not change the key of an existing repository: the repository still opens only with the password it was created with, so every backup fails until the old one is back. The deploy keeps the replaced file beside the new one (`.restic-password.<pid>.<date>~`): copy it over `.restic-password` to undo.
+The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager. Changing `vault_restic_password` does not change the key of an existing repository: the repository still opens only with the password it was created with, so every backup fails until the old one is back. The deploy keeps the replaced file beside the new one (`.restic-password.<pid>.<date>@<time>~`): copy it over `.restic-password` to undo.
 
 - **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The exceptions are the directories a service lists as `no_backup`: Immich's raw Postgres directory (a dump covers it), Scrutiny's history and Copyparty's thumbnails (both are written again). The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
 - **Not enforced (offsite):** the offsite list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
@@ -108,7 +108,7 @@ The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt
 
 The backup runs as the ansible user. With `backup_read_all_files: true` (the default) it runs its own copy of restic (`/usr/local/bin/restic-backup`, mode 0750 for that user's group) with the `cap_dac_read_search` capability, so it reads files only root can, such as a container's secrets. The packaged `/usr/bin/restic` has no capability and no other user gains it. A deploy copies restic again and sets the capability, so an apt upgrade is picked up on the next deploy.
 
-The cost: whoever runs commands as the ansible user can read any file on the host through that copy, without sudo. On a host where that user has no passwordless sudo and you want to keep that boundary, set `backup_read_all_files: false`. The packaged restic then runs, and each root-only file makes a run exit 3 until you exclude it (`restic_local_rules`, `restic_cloud_rules`) or change its permissions.
+The cost: whoever runs commands as the ansible user can read any file on the host through that copy, without sudo. On a host where that user has no passwordless sudo and you want to keep that boundary, set `backup_read_all_files: false`. The packaged restic then runs, and each root-only file makes a run exit 3 until you exclude it (`restic_local_rules`, `restic_cloud_rules`) or change its permissions. Every drive's `lost+found` is one, and so are the root-only scripts in `scripts_dir`.
 
 Restic restores as the ansible user, so a restore cannot write into root-owned folders: use `sudo restic` for those.
 

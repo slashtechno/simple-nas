@@ -44,10 +44,10 @@ show_state() {
   fi
 }
 
-# Only these three are accepted: whatever calls this, the unlock page's request script included, cannot make it do anything else.
+# Only these four are accepted: whatever calls this, the unlock page's request script included, cannot make it do anything else.
 case "${1:-}" in
   "" | --status | --lock | --alert) ;;
-  *) echo "usage: unlock.sh [--status | --lock]" >&2; exit 2 ;;
+  *) echo "usage: unlock.sh [--status | --lock | --alert]" >&2; exit 2 ;;
 esac
 
 if [ "${1:-}" = "--lock" ]; then

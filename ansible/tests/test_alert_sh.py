@@ -52,7 +52,7 @@ done, curl, logged = run(on, "system", "backup", "backup failed", "disk full")
 assert done.returncode == 0, done
 assert logged == "backup|disk full\n", logged
 assert "https://ntfy.sh/host-topic" in curl and "--max-time 15" in curl and "--fail" in curl, curl
-assert "Title: " in curl and ": backup failed" in curl and "Priority: high" in curl and "-d disk full" in curl, curl
+assert "Title: " in curl and ": backup failed" in curl and "Priority: high" in curl and "--data-raw disk full" in curl, curl
 assert "Authorization" not in curl, curl
 
 # A sender with a token sends it as a Bearer login, read from its own file.

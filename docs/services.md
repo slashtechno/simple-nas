@@ -35,15 +35,15 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 | [Gitea](#gitea) | Git server | `roles/gitea` | `fast` drive role, `caddy_private_domains` or `gitea_root_url`, `vault_gitea_runner_token` optional |
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
 | [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
-| [Garage](#garage-s3) | S3-compatible object storage | `roles/garage` | `fast` drive role, a Caddy name, `tinyauth_enabled`, `vault_garage_rpc_secret`, `vault_garage_admin_token` |
-| [Crafty](#crafty-minecraft-servers) | Minecraft servers | `roles/crafty` | `fast` drive role, RAM headroom |
+| [Garage](#garage-s3) | S3-compatible object storage | `roles/garage` | `fast` and `primary` drive roles, a Caddy name, `tinyauth_enabled`, `vault_garage_rpc_secret`, `vault_garage_admin_token` |
+| [Crafty](#crafty-minecraft-servers) | Minecraft servers | `roles/crafty` | `primary` drive role, RAM headroom |
 | [ntfy](#ntfy-failure-alerts) | Push alerts for failed backups | `roles/ntfy` | `fast` drive role, `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` |
 | [Tinyauth](#tinyauth-login) | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role, a Caddy name, `vault_tinyauth_users` |
 | [Dozzle](#dozzle-container-logs) | Container logs in a browser | `roles/dozzle` | `fast` drive role, a Caddy name, `tinyauth_enabled` |
 | [Scrutiny](#scrutiny-drive-health) | Drive health (SMART) dashboard | `roles/scrutiny` | `fast` drive role, a Caddy name, `tinyauth_enabled`, a drive that answers SMART |
 | [Cloudflare Tunnel](#cloudflare-add-a-public-hostname) | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`, `vault_cloudflared_api_token`, `vault_cloudflared_account_id` |
 | Tailscale ([networking](./networking.md)) | Private remote access, installed unless `tailscale_enabled: false` | `roles/tailscale` | Tailscale joined by hand |
-| [Homepage](#homepage) | Start page with a tile per enabled service on every host | `roles/homepage` | none |
+| [Homepage](#homepage) | Start page with a tile per enabled service on every host | `roles/homepage` | `tinyauth_enabled` and `caddy_enabled`, or `homepage_port` |
 | [Dockge, Caddy](#ad-hoc-app-platform) | Dockge: web UI for your own compose stacks. Caddy: reverse proxy that names apps from container labels | `roles/dockge`, `roles/caddy` | `fast` drive role |
 | [Unlock page](./encryption.md#unlock-page) | Show, unlock and lock the encrypted folders from a browser | `roles/unlock_page` | `tinyauth_enabled`, a Caddy name, `encrypted_folders` |
 | Backups ([backups.md](./backups.md)) | Daily local and weekly cloud backups, a weekly check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) |
@@ -243,7 +243,7 @@ pics_alert_to: public        # drive alerts, to a different topic
 ```
 
 - **Turn a sender off:** set its `*_alert_to` to `""`. Write `""`, not an empty value.
-- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`, in `group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`. The deploy writes the address into the sender's script or file on the host, where anyone on the host can read it; no backup copies it. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
+- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`, in `group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`. The deploy writes the address into the sender's file on the host, where anyone on the host can read it: `alert.sh` and the token files are left out of every backup, but Scrutiny's compose file and pics' `pics.env` are in the offsite one. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
 - **A name that is not in `ntfy_destinations`, or a destination with no `url`,** stops the deploy and names the setting.
 - **A `vault_` name** in a destination must exist on the hosts that send to it.
 - **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.

@@ -52,7 +52,7 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | [docs/auth-reference.md](./docs/auth-reference.md) | Tinyauth: users, 2FA, sign in with GitHub or Google, OIDC |
 | [TODO.md](./TODO.md) | The owner's list of work waiting on time or hardware |
 | `.github/workflows/` | CI: runs `just check` on every push |
-| `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service. Shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)). The render test |
+| `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service, the shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)), and the render test |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
 Plans for unfinished work are in `plans/`. Each plan is deleted when its work is done (git history keeps it). Everything else under `docs/` describes how the repo works.

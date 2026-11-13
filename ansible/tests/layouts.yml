@@ -292,7 +292,7 @@
 
         # Rendered with and without a system alert destination (tests/test_alert_sh.py runs the script). The shell check runs on every output.
         # set_fact, not task vars: include_vars set the alert settings and outranks them. Keep this last.
-        - name: Render alert.sh with no ntfy topic
+        - name: Render alert.sh with no destination
           ansible.builtin.template:
             src: "{{ repo }}/roles/common/templates/alert.sh.j2"
             dest: "{{ out_dir }}/layouts/{{ inventory_hostname }}/alert.sh"
@@ -316,7 +316,7 @@
           loop: [alert.sh, alert-with-ntfy.sh]
           register: alert_scripts
 
-        - name: Only the ntfy render sends anything, and never lets a failed send fail the job
+        - name: The script names each sender's address, and logs a failed send
           ansible.builtin.assert:
             that:
               - >-
