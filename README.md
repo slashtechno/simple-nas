@@ -6,7 +6,7 @@ Runs on arm64 (tested on Raspberry Pi 4 and 5) and on x64, the 64-bit Intel/AMD 
 
 **New here?** [docs/quick-start.md](./docs/quick-start.md) takes a fresh clone to a complete server.
 
-You switch on every part per host, except `common` and `network`, which always run: [ansible/README.md](./ansible/README.md). The services and what each needs: [docs/services.md](./docs/services.md#services). Drive roles: [docs/storage.md](./docs/storage.md).
+You switch on each part per host, so use only what you want ([ansible/README.md](./ansible/README.md#pick-what-you-use)). The services and what each needs: [docs/services.md](./docs/services.md#services). Drive roles: [docs/storage.md](./docs/storage.md).
 
 ```
 A host
@@ -26,8 +26,6 @@ Internet → Cloudflare Tunnel (hostnames come from cloudflared_ingress)
 A drive can fill several roles, so two are enough (`[fast, primary]` and `[backup]`). The layouts are in [docs/storage.md](./docs/storage.md#examples).
 
 </details>
-
-To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server, or [ansible/README.md](./ansible/README.md) for commands and files.
 
 ## Docs
 
@@ -52,7 +50,7 @@ To set up and deploy: [quick-start](./docs/quick-start.md) for a complete server
 | [docs/auth-reference.md](./docs/auth-reference.md) | Tinyauth: users, 2FA, sign in with GitHub or Google, OIDC |
 | [TODO.md](./TODO.md) | The owner's list of work waiting on time or hardware |
 | `.github/workflows/` | CI: runs `just check` on every push |
-| `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service, the shared defaults, the owner's values and secrets (`vars.yml` files are the owner's: replace them if you copy the repo, [see how](./ansible/README.md#using-this-repo-for-your-own-hosts)), and the render test |
+| `ansible/roles/`, `ansible/group_vars/`, `ansible/host_vars/`, `ansible/tests/` | One role per service, the shared defaults, the owner's own values (replace them if you copy the repo: [how](./ansible/README.md#using-this-repo-for-your-own-hosts)), and the tests |
 | [AGENTS.md](./AGENTS.md) | Rules for AI agents (not for humans) |
 
 Plans for unfinished work are in `plans/`. Each plan is deleted when its work is done (git history keeps it). Everything else under `docs/` describes how the repo works.

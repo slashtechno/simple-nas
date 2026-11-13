@@ -33,8 +33,8 @@ Install the tools ([First-time setup](../ansible/README.md#first-time-setup)), t
   caddy_private_domains: [home.example.com]
   ```
 
-  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (the `appdata`, `stacks` and `files` folders: [which folders](./encryption.md#which-folders-to-list)).
-- The vault (`just edit vault`): the secrets `just setup` listed ([which file holds what](../ansible/README.md#vault-secrets)).
+  plus `drives` (one role each for `fast`, `primary` and `backup`: [the three-drive example](./storage.md#examples)) and `encrypted_folders` (`appdata`, `stacks` and `shared`: [which folders](./encryption.md#which-folders-to-list)).
+- The vault (`just edit vault`): the secrets `just setup` listed ([which file holds what](../ansible/README.md#vault-secrets)). For Copyparty, add your own login to `vault_copyparty_accounts` with `admin: true` (`vault.yml.example` shows the shape).
 
 ## 3. Prepare the host
 
@@ -61,7 +61,7 @@ This also deploys the backup, after Immich: the backup refuses to deploy until I
 
 ## 6. Check it
 
-- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login. [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health) do too.
+- `https://dockge.home.example.com`, `https://immich.home.example.com` and `https://copyparty.home.example.com` open after the Tinyauth login. In Copyparty, sign in with your admin login: `/files` holds your files ([folders and logins](./services.md#copyparty-folders-and-logins)). [Dozzle](./services.md#dozzle-container-logs) and [Scrutiny](./services.md#scrutiny-drive-health) do too.
 - Run a backup by hand ([backups.md](./backups.md)), then [check the encrypted folders are in it](./encryption.md#dumps-and-backups).
 - Practice a restore once: [backups.md](./backups.md).
 
