@@ -93,9 +93,10 @@ storage_enabled: true
 # Mounted at /run/media/system/<label>; Copyparty shows them under /drives (docs/storage.md).
 usb_automount_enabled: false
 
-# Turns on /collab, a shared Copyparty folder for friends. Needs vault_copyparty_collab_users
-# (vault.yml.example); the folder is created, mounted and checked for backup only when this is true.
-copyparty_collab_enabled: false
+# Copyparty folders for people who are not admins, such as [collab]: each is served at /<name>, as a folder of that name inside
+# copyparty_shared_dir. Who may use one is in vault_copyparty_accounts (vault.yml.example). The directory is created, mounted and
+# checked for backup only when this list is not empty.
+copyparty_shared_folders: []
 
 # Check every 2 minutes that the host can open TCP connections to the internet, and reconnect its network connection
 # when it cannot (docs/networking.md#connectivity-watchdog). Needs NetworkManager to reconnect.

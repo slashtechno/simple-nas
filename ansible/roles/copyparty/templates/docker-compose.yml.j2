@@ -19,8 +19,8 @@ services:
 {% if usb_automount_enabled | bool %}
       - /run/media/system:/host/usb:rslave
 {% endif %}
-{% if copyparty_collab_enabled | bool %}
-      - {{ copyparty_collab_dir }}:/collab:rw
+{% if copyparty_shared_folders | length > 0 %}
+      - {{ copyparty_shared_dir }}:/shared:rw
 {% endif %}
 {% for volume in copyparty_extra_volumes %}
       - {{ volume }}

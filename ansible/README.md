@@ -69,7 +69,7 @@ just setup <host>   # .vault-pass, host_vars/<host>/vars.yml, both vaults with r
 just edit vault     # add the secrets it listed, or change one later
 ```
 
-`just setup` never prints a secret, then lists the secrets it cannot generate (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_collab_users`).
+`just setup` never prints a secret, then lists the secrets it cannot generate (account names, Cloudflare, GitHub, Google Drive, lists such as `vault_copyparty_accounts`).
 
 <details>
 <summary>Without <code>just setup</code>, and checking a vault is encrypted</summary>

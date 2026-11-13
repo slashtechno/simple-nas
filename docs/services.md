@@ -31,7 +31,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 | Service | What it is | Role | Needs |
 |---|---|---|---|
 | [Immich](#immich) | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles, `vault_immich_db_password` |
-| [Copyparty](#copyparty-accounts-and-volumes) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_user`, `vault_copyparty_password`, `vault_copyparty_collab_users` with `copyparty_collab_enabled` |
+| [Copyparty](#copyparty-accounts-and-volumes) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_user`, `vault_copyparty_password`, `vault_copyparty_accounts` with `copyparty_shared_folders` |
 | [Gitea](#gitea) | Git server | `roles/gitea` | `fast` drive role, `caddy_private_domains` or `gitea_root_url`, `vault_gitea_runner_token` optional |
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
 | [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
@@ -73,7 +73,7 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 ## Copyparty accounts and volumes
 
-The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_collab_enabled: true` adds `/collab`, a shared folder (`copyparty_collab_dir`, on the `primary` drive) for the friends in `vault_copyparty_collab_users`. The admin has access too. With it off there is no folder and no friend accounts.
+The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_shared_folders` adds one folder per name, such as `/collab`, for people who are not admins. The folders are inside `copyparty_shared_dir` (on the `primary` drive). Each person is an entry in `vault_copyparty_accounts` (`user`, `pass` and `folders`, the names they may use; shape in `host_vars/vault.yml.example`). The admin has access to every shared folder. A person can be in several folders, and a folder can have no one but the admin. With the list empty there are no folders and no accounts.
 
 `/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). To add the fast drive, the backup drive or one folder of either, see [More drives and folders](#more-drives-and-folders).
 
@@ -82,7 +82,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
 `copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login. It adds to Copyparty's own passwords and does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep password logins.
 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`.
-- **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/` and `/collab`. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
+- **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/` and every shared folder. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
 
 <details>
 <summary>Give another app volumes, extra listeners (SFTP), one-folder users, share links</summary>
@@ -95,7 +95,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
 
   `perms`: `r` read, `w` write, `m` move, `d` delete.
 
-- **Any other Copyparty option** (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file. So the generated `/` and `/collab` cannot be extended ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders ([below](#more-drives-and-folders)). `copyparty_extra_ports` publishes a listener's port as `"host:container"` strings (without one it is reachable only from other containers).
+- **Any other Copyparty option** (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file. So the generated `/` and the shared folders cannot be extended ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders ([below](#more-drives-and-folders)). `copyparty_extra_ports` publishes a listener's port as `"host:container"` strings (without one it is reachable only from other containers).
 
   ```yaml
   # An SFTP login for a sync client (WebDAV lacks the modtimes rclone needs)
@@ -111,7 +111,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
         rwmd: syncer
   ```
 
-- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files` (or `/collab`). The user name is the Tinyauth user name:
+- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files`. A person who needs a whole folder to themselves and no admin rights is a `vault_copyparty_accounts` entry with a shared folder instead. The user name is the Tinyauth user name:
 
   ```yaml
   copyparty_extra_conf: |
@@ -230,7 +230,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 
 `ntfy_alert_url` is the setting that turns alerts on for every sender, in `group_vars/all/vars.yml` for every host or one host's `vars.yml`: the full URL of a topic. A host without it sends nothing. For this repo's ntfy it is the address from step 3 plus the topic (`http://<host-tailscale-name>:<ntfy_port>/alerts`). For another server, `https://ntfy.sh/<your-topic>`, with the sender's `*_token` set to `""` (below) because that topic has no login. One server serves the whole homelab. Scrutiny and pics send to the same topic with the same token and need no setting of their own (`just deploy scrutiny,pics --limit <host>` after changing it).
 
-**One ntfy for each sender.** Three senders can alert: `host_alert_url` (backup jobs and the connectivity watchdog), `scrutiny_alert_url` and `pics_alert_url`. Each defaults to `ntfy_alert_url`, and its token (`host_alert_token`, `scrutiny_alert_token`, `pics_alert_token`) defaults to `vault_ntfy_token`, which the vault must then hold. Set one to send only that sender elsewhere. Put its token in the vault under a name you choose and point the setting at it, so each URL travels with its own token. Backup alerts name no file contents, so they can go to a public topic while the other alerts stay on your own server:
+**One ntfy for each sender.** Three senders can alert: `host_alert_url` (backup jobs, the connectivity watchdog and the [locked-folder alert](./encryption.md#alert-while-locked)), `scrutiny_alert_url` and `pics_alert_url`. Each defaults to `ntfy_alert_url`, and its token (`host_alert_token`, `scrutiny_alert_token`, `pics_alert_token`) defaults to `vault_ntfy_token`, which the vault must then hold. Set one to send only that sender elsewhere. Put its token in the vault under a name you choose and point the setting at it, so each URL travels with its own token. Backup alerts name no file contents, so they can go to a public topic while the other alerts stay on your own server:
 
 ```yaml
 host_alert_url: "https://ntfy.sh/<a-long-random-topic-name>"
@@ -244,7 +244,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 - With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it so links and iOS push use that address. In a browser, sign in there, subscribe to the topic and allow notifications (browsers notify only from `https://`. The plain `http://` address lists messages without a pop-up).
 - The server denies everyone but that user and its token, even on the LAN. The page at `/alerts` loads without a login because it is only the app's shell. The compose file sets the user and token at every start. The data directory holds message history and the user database.
-- `alert.sh` (common role) runs when a backup cron job fails and when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers. It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `host_alert_url` is set (it defaults to `ntfy_alert_url`). A failed send times out after 15 seconds, so alerting cannot stall a backup.
+- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers and while an [encrypted folder is locked](./encryption.md#alert-while-locked). It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `host_alert_url` is set (it defaults to `ntfy_alert_url`). A failed send times out after 15 seconds, so alerting cannot stall a backup.
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends it the message ID and a hash of the topic URL, not the message. Android needs no relay.
 
 </details>

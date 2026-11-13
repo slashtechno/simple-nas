@@ -58,7 +58,7 @@ services:
   # without the exclude every local run fails with restic exit 3. Both regenerate after a restore; only share links made with the old
   # file-key salt stop working.
   - {name: Copyparty, key: copyparty, compose: copyparty,
-     data: [copyparty_files_dir, copyparty_config_dir, "{{ 'copyparty_collab_dir' if copyparty_collab_enabled | bool else '' }}"],
+     data: [copyparty_files_dir, copyparty_config_dir, "{{ 'copyparty_shared_dir' if copyparty_shared_folders | length > 0 else '' }}"],
      no_backup: [copyparty_hist_dir], no_backup_in: {copyparty_config_dir: copyparty},
      container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
   # Gitea's data/ssh holds the SSH host keys: unsafe to copy, and the compose file makes them again.

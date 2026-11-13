@@ -95,7 +95,7 @@
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template renders. Branches behind other settings (Copyparty's collab, extra ports
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's shared folders, extra ports
     # and volumes, USB volumes; Crafty Bedrock; ntfy iOS push; the Gitea runner; the optional Pics lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
@@ -105,7 +105,7 @@
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
-        copyparty_collab_enabled: true
+        copyparty_shared_folders: [collab]
         copyparty_extra_conf: "[global]\n  sftp: 3922"
         copyparty_extra_ports: ["3922:3922"]
         copyparty_extra_volumes: ["/mnt/fast/shared:/fast:ro"]
@@ -342,7 +342,7 @@
     # parts as subfolders. Only the owner's own folders are named plainly. Read as raw text, so a path is not resolved.
     - name: Every data directory is under fast_appdata_dir or primary_appdata_dir in its service's folder, or is an owner folder
       vars:
-        owner_folders: [dockge_stacks_dir, copyparty_files_dir, copyparty_collab_dir]
+        owner_folders: [dockge_stacks_dir, copyparty_files_dir, copyparty_shared_dir]
         # The service key is the first word of the setting name; a service key with an underscore needs a rule here first.
         service_folder: "{{ item.key.split('_')[0] }}"
         under_parent: "{{ item.value is match('^\\{\\{ (fast|primary)_appdata_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
@@ -613,12 +613,18 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to /, /collab and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
+          # Admin access to /, the shared folder and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
           - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 4"
           - >-
             '[/apps]\n  /apps\n  accs:\n    r: yourusername\n    r: sso-admin\n  flags:\n    -e2d\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    r: sso-admin' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
+          # A shared folder is its own volume inside the one shared directory: the admins and the accounts that list it have full access.
+          - >-
+            '[/collab]\n  /shared/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    A: friend1\n    A: friend2\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          - "'  friend1: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "(copyparty_shared_dir ~ ':/shared:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
           - >-
             '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwm: pics\n'

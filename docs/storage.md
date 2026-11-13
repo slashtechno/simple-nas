@@ -14,7 +14,7 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 | Role | Holds |
 |---|---|
 | `fast` | A service's own state (`appdata/<service>`: databases, configs, sessions), your Dockge `stacks/` and the restic cache |
-| `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `collab/`) |
+| `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files (`files/`, `shared/`) |
 | `backup` | The restic repo, service dumps, logs |
 
 To browse a drive, or one folder of it, in Copyparty: [More drives and folders](./services.md#more-drives-and-folders).
@@ -25,7 +25,7 @@ One drive can hold several roles. Each role is claimed by at most one drive per 
 
 Each service keeps its data in `appdata/<service>`. Services with more than one directory use one subfolder (a part) for each, for example `appdata/immich/postgres` and `appdata/immich/photos`. State goes on the `fast` drive. Bulk data goes on the `primary` drive. If one drive has both roles, the two `appdata` folders are the same folder.
 
-Your own files have plain names: `stacks`, `files` and `collab`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
+Your own files have plain names: `stacks`, `files` and `shared`. Mount points below are examples. Yours are the `mount` values. Most paths are settings in `group_vars/all/defaults-data-dirs.yml`. `services_dir` and `docker_data_root` are in `defaults.yml`. The restic cache is in `roles/backup/defaults/main.yml`.
 
 ```
 /mnt/fast/                      fast drive
@@ -34,7 +34,7 @@ Your own files have plain names: `stacks`, `files` and `collab`. Mount points be
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
 ├─ appdata/<service>/           primary_appdata_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
-└─ files/, collab/              your files in Copyparty
+└─ files/, shared/              your files in Copyparty
 /mnt/backup/                    backup drive: restic repository, dumps, logs
 /opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)
 /var/lib/docker/                root drive: Docker's images and layers (movable, see "Docker's own storage")

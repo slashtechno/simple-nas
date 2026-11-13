@@ -14,12 +14,15 @@ vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
 vault_copyparty_user: "yourusername"
 # Copyparty admin password.
 vault_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
-# Friends who can access /collab via WebDAV. Used only when copyparty_collab_enabled is true (vars.yml).
-vault_copyparty_collab_users:
+# People who may use Copyparty's shared folders, in the browser or over WebDAV. folders lists what each may use: names from
+# copyparty_shared_folders (vars.yml), which makes the folders; this is read only when that list is not empty.
+vault_copyparty_accounts:
   - user: "friend1"
     pass: "change-me-generate-with-openssl-rand-base64-32"
+    folders: [collab]
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
+    folders: [collab]
 # Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty browser
 # name, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.

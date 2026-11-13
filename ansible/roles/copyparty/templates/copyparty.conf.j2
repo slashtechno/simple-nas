@@ -38,11 +38,9 @@
 
 [accounts]
   {{ copyparty_user }}: {{ copyparty_password }}
-{% if copyparty_collab_enabled | bool %}
-{% for u in vault_copyparty_collab_users %}
+{% for u in copyparty_accounts %}
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
-{% endif %}
 {% for app in copyparty_clients %}
   {{ app.key }}: {{ lookup('ansible.builtin.vars', app.copyparty.password) }}
 {% endfor %}
@@ -80,17 +78,19 @@
 
 {% endfor %}
 {% endfor %}
-{% if copyparty_collab_enabled | bool %}
-[/collab]
-  /collab
+{# One volume per shared folder: the admins and the accounts that list the folder have full access. #}
+{% for folder in copyparty_shared_folders %}
+[/{{ folder }}]
+  /shared/{{ folder }}
   accs:
 {% for u in admins %}
     A: {{ u }}
 {% endfor %}
-{% for u in vault_copyparty_collab_users %}
+{% for u in copyparty_accounts if folder in u.folders %}
     A: {{ u.user }}
 {% endfor %}
-{% endif %}
+
+{% endfor %}
 
 {% if usb_automount_enabled | bool %}
 {# USB drives plugged into the host; /host/usb is /run/media/system. #}
