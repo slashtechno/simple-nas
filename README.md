@@ -39,7 +39,7 @@ A drive can fill several roles, so two are enough (`[fast, primary]` and `[backu
 |---|---|
 | [docs/backups.md](./docs/backups.md) | Schedules, restore, a dead or disconnected backup drive |
 | [docs/storage.md](./docs/storage.md) | Add or replace a drive, a drive that will not mount, drive wear |
-| [docs/networking.md](./docs/networking.md) | A Pi that dropped off the network |
+| [docs/networking.md](./docs/networking.md) | A host that dropped off the network |
 | [docs/memory.md](./docs/memory.md) | A host short of RAM |
 | [docs/encryption.md](./docs/encryption.md) | Encrypted folders: set up, unlock after a boot, lock, the unlock page |
 
