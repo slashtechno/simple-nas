@@ -141,7 +141,7 @@ service_users:
 
 How Tinyauth limits a listed service depends on how that service signs people in:
 
-- **Behind the Caddy login:** the deploy gives Tinyauth a rule for that service's exact web address. This group is every service Caddy puts behind the login. A user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are `copyparty_sso_admins`, not this list. `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-accounts-and-volumes)).
+- **Behind the Caddy login:** the deploy gives Tinyauth a rule for that service's exact web address. This group is every service Caddy puts behind the login. A user not listed gets "forbidden" after signing in. Copyparty is in this group only with `copyparty_sso_enabled`. Its admins are the logins with `admin: true`, not this list. `service_users.copyparty` only limits who may open the page ([Copyparty](./services.md#copyparty-folders-and-logins)).
 - **pics** (`pics_sso_enabled`): Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics, which lets in only those users. pics needs `service_users.pics`, and each listed user is a full owner. The deploy stops without it.
 - **Immich and Gitea** decide by their own accounts: a Tinyauth login creates none, so only people with an account there get in.
 
@@ -170,7 +170,7 @@ Tinyauth checks a Tailscale login like a password user: by user name against `se
 
 Password, GitHub, Google and Tailscale logins each give the session a different name, and Tinyauth cannot link them. A name that is not a user in `vault_tinyauth_users` is another person to the apps. Where the same person needs the same access under another name, add that name there too:
 
-- `copyparty_sso_admins` and `service_users.pics`: list both names.
+- The `user` of a Copyparty login (`vault_copyparty_accounts`) and `service_users.pics`: use the name in both.
 - Behind the Caddy login: a GitHub or Google login is let in by email, so there is nothing to add. A password or Tailscale login is let in by name, so list that name in `service_users`.
 - Immich and Gitea: the second name is a new login. Link it to the same account by hand ([first login](#sign-in-with-tinyauth-oidc)).
 

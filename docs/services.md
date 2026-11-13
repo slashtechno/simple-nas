@@ -31,7 +31,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 | Service | What it is | Role | Needs |
 |---|---|---|---|
 | [Immich](#immich) | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles, `vault_immich_db_password` |
-| [Copyparty](#copyparty-accounts-and-volumes) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_user`, `vault_copyparty_password`, `vault_copyparty_accounts` with `copyparty_shared_folders` |
+| [Copyparty](#copyparty-folders-and-logins) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_accounts` with at least one `admin: true` login, `copyparty_folders` for any folder besides `/` |
 | [Gitea](#gitea) | Git server | `roles/gitea` | `fast` drive role, `caddy_private_domains` or `gitea_root_url`, `vault_gitea_runner_token` optional |
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
 | [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
@@ -71,33 +71,70 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 - Web UI on `gitea_port` (3000), SSH clones on `gitea_ssh_port` (2222). Public access: a `cloudflared_ingress` entry pointing at `http://gitea:3000`.
 - `gitea_sso_enabled: true` lets a Tinyauth login open Gitea ([Sign in with Tinyauth](./auth-reference.md#sign-in-with-tinyauth-oidc)). `roles/gitea/files/dump.sh` dumps the database before each backup.
 
-## Copyparty accounts and volumes
+## Copyparty folders and logins
 
-The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_shared_folders` adds one folder per name, such as `/collab`, for people who are not admins. The folders are inside `copyparty_shared_dir` (on the `primary` drive). Each person is an entry in `vault_copyparty_accounts` (`user`, `pass` and `folders`, the names they may use; shape in `host_vars/vault.yml.example`). The admin has access to every shared folder. A person can be in several folders, and a folder can have no one but the admin. With the list empty there are no folders and no accounts. A person in `vault_copyparty_accounts` has read, write, move and delete in their folders and no admin rights. Copyparty follows a symlink that someone with shell access puts in a folder, so a symlink shares what it points at; uploads and WebDAV create only regular files.
+Copyparty serves folders. A login decides who can open each folder. The deploy writes the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
 
-Copyparty keeps its own logins (the admin, the people in `vault_copyparty_accounts`, apps) because Tinyauth stores only password hashes, which Copyparty cannot check. They work on Copyparty's login page, WebDAV and apps. Its web address (`<copyparty_subdomain>.<domain>`, served by Caddy) has no Tinyauth login in front of it unless `copyparty_sso_enabled` is on, so `service_users.copyparty` does nothing until then ([who may use what](./auth-reference.md#who-may-use-what)).
+There are two lists:
 
-`/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). To add the fast drive, the backup drive or one folder of either, see [More drives and folders](#more-drives-and-folders).
+- **Logins:** `vault_copyparty_accounts`, in the vault. Each entry is a person or an app: `user`, `pass` and, for an admin, `admin: true`.
+- **Folders:** `copyparty_folders`, in the host's `vars.yml`. Each entry is a folder and the logins that can open it.
 
-Apps that store files in Copyparty (pics) get an account named after the app and their own volumes at `/apps/<app>/<folder>`. The app's `copyparty` field in `services.yml` declares them (its comment says how). The volumes are not part of `copyparty_files_dir`, so the admin's listing does not show them. Every admin (`copyparty_user` and, with SSO, `copyparty_sso_admins`) has full access. `/apps/` opens read-only and lists each app's folders. Leave out the `d` permission unless the app must delete: without it Copyparty also refuses overwrites.
+| Login | What you write | What it can open |
+|---|---|---|
+| Admin | `admin: true` | Every folder, with full access. Also `/` and `/drives`. |
+| Person or app | Nothing more | Only the folders that name it in `access`. |
+| Tinyauth-only login | No `pass` (needs `copyparty_sso_enabled`) | Same as a person or an app. It has no password login. |
 
-`copyparty_sso_enabled: true` puts Copyparty's web address (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login. It adds to Copyparty's own passwords and does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep password logins.
+| Folder | It exists when | It holds |
+|---|---|---|
+| `/` | Always | `copyparty_files_dir`. Only admins open it. |
+| `/<name>` | `<name>` is in `copyparty_folders` | The folder `dir` of that entry |
+| `/drives` | `usb_automount_enabled: true` | The plugged-in USB drives ([storage.md](./storage.md#plugged-in-usb-drives-drives)). Read-only unless `usb_automount_writable`. |
 
-- **Needs:** `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`.
-- **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/` and every shared folder. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
+### Add a folder or a login
+
+1. Add the folder to `copyparty_folders` in the host's `vars.yml`.
+2. Add a login to `vault_copyparty_accounts` for each new user. Use `host_vars/vault.yml.example` as the shape.
+3. Run `just deploy copyparty --limit <host>`.
+
+```yaml
+copyparty_folders:
+  collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab, in copyparty_shared_dir/collab
+  team: {access: {friend2: rwmd, friend1: r}}                         # friend1 can only read
+  pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
+```
+
+- **Name:** letters, digits, `-` and `_`. The names `drives` and `shares` are not allowed (they are Copyparty's own).
+- **`dir`:** the folder on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. A `dir` on a mounted drive is in the local backup.
+- **`access`:** `{login: letters}`. `r` read, `w` write, `m` move, `d` delete. Copyparty's docs explain `g`, `G`, `h` and `a`.
+- **Names in the vault:** to keep user names out of the tracked file, write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault (`host_vars/vault.yml.example`).
+- **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file. Give `d` only to a login that must delete.
+- **No folders:** with `copyparty_folders` empty, Copyparty serves `/` and `/drives` only.
+
+A symlink that someone with shell access puts in a folder shares the target. Uploads and WebDAV create only regular files.
+
+### Logins and Tinyauth
+
+Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Copyparty cannot check a hash. The passwords work on Copyparty's login page, on WebDAV and in apps. The web address of Copyparty (`<copyparty_subdomain>.<domain>`, served by Caddy) has no Tinyauth login in front of it. `service_users.copyparty` does nothing until `copyparty_sso_enabled` is on ([who can use what](./auth-reference.md#who-may-use-what)).
+
+`copyparty_sso_enabled: true` puts that web address behind the Tinyauth login. It adds to the passwords. It does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep their password logins.
+
+- **Needs:** `tinyauth_enabled`, `caddy_enabled` and `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it).
+- **Who is who:** the Tinyauth user name is the Copyparty `user`, matched exactly. A person who has a login in `vault_copyparty_accounts` with the same name gets that login's folders after the Tinyauth sign-in.
+- **Admins:** a login with `admin: true` has full access. A Tinyauth user with no entry in the list sees nothing.
+- **No password:** leave out `pass` for a person who uses only the Tinyauth sign-in. The deploy stops if that `user` is not a Tinyauth user name.
 
 <details>
-<summary>Give another app volumes, extra listeners (SFTP), one-folder users, share links</summary>
+<summary>Give an app a folder, more drives, extra listeners (SFTP), share links</summary>
 
-- **Give another app volumes:**
-  1. add a `copyparty` field to its entry in `services.yml`.
-  2. add a directory setting per volume to `defaults-data-dirs.yml` and list it in the entry's `data`, so backup and teardown cover it.
-  3. name the password's vault variable in `copyparty.password` and put it in the vault.
-  4. point the app at `/apps/<key>/<folder>` through Copyparty (pics: `COPYPARTY_ROOT`, `COPYPARTY_TRASH_ROOT` in its env file. The app does not mount the folders itself).
-
-  `perms`: `r` read, `w` write, `m` move, `d` delete.
-
-- **Any other Copyparty option** (an SFTP or FTP listener, extra accounts, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config. Accounts, groups and global options combine, but a volume (a `[/path]` section) may appear in only one file. So the generated `/` and the shared folders cannot be extended ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders ([below](#more-drives-and-folders)). `copyparty_extra_ports` publishes a listener's port as `"host:container"` strings (without one it is reachable only from other containers).
+- **Give an app a folder** (the same steps for any app that stores files in Copyparty):
+  1. Add a data directory setting to `defaults-data-dirs.yml`. List it in `data` of the app's entry in `services.yml`. Backup and teardown then include it.
+  2. Add the folder to `copyparty_folders` with `dir` set to that setting.
+  3. Add the app's login to `vault_copyparty_accounts`. Put its password in the vault.
+  4. Point the app at `/<folder>` through Copyparty. The app does not mount the folder.
+- **Give a login another folder:** add it to the `access` of that folder. The app must request the new folder: Copyparty only decides what the login can open.
+- **Any other Copyparty option** (an SFTP or FTP listener, more accounts, more volumes) goes in `copyparty_extra_conf`. The deploy writes it to `extra.conf` beside the generated config. Accounts, groups and global options combine. A volume (a `[/path]` section) can appear in only one file, so you cannot extend a folder from `copyparty_folders` there ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders. `copyparty_extra_ports` publishes a listener port as `"host:container"` strings. Without it, only other containers reach the listener.
 
   ```yaml
   # An SFTP login for a sync client (WebDAV lacks the modtimes rclone needs)
@@ -113,67 +150,36 @@ Apps that store files in Copyparty (pics) get an account named after the app and
         rwmd: syncer
   ```
 
-- **A user with access to one folder only:** give them a volume of their own in `copyparty_extra_conf`, on a folder inside `/files`. A person who needs a whole folder to themselves, with no admin rights, is a `vault_copyparty_accounts` entry with a shared folder instead. The user name is the Tinyauth user name:
-
-  ```yaml
-  copyparty_extra_conf: |
-    [/shared]
-      /files/shared
-      accs:
-        rw: friend      # r for read-only
-  ```
-
-- **Provider logins:** Tinyauth sets `Remote-User` for a GitHub or Google login too (the provider's username). With `TINYAUTH_OAUTH_*` providers on, no whitelisted account may have a provider username equal to a name in `copyparty_sso_admins`.
-- **Share links** on the web address ask for the Tinyauth login too (Copyparty expects the `/shares` prefix to be exempt, [shares](https://github.com/9001/copyparty#shares)). Hand links out on the published port or the tunnel hostname instead.
+- **Provider logins:** Tinyauth sets `Remote-User` for a GitHub or Google login too (the name at the provider). With `TINYAUTH_OAUTH_*` providers on, no whitelisted account can have a provider name equal to a `user` in `vault_copyparty_accounts`.
+- **Share links** on the web address ask for the Tinyauth login too. Copyparty expects the `/shares` prefix to be exempt ([shares](https://github.com/9001/copyparty#shares)). Give out links from the published port or the tunnel hostname instead.
 
 </details>
 
 ### More drives and folders
 
-Copyparty shows a host folder only after you do two things: mount it into the container, then give it a volume. Set both in the host's `vars.yml`.
+To show a host folder in Copyparty, add it to `copyparty_folders` with its `dir`, then deploy.
+
+```yaml
+copyparty_folders:
+  fast: {dir: "{{ fast_drive }}/shared", access: {friend1: rw}}
+```
+
+Use `copyparty_extra_volumes` and `copyparty_extra_conf` only when `copyparty_folders` is not enough. One case is a read-only mount, for everyone:
 
 ```yaml
 copyparty_extra_volumes:                  # "host path:path in the container[:ro]"
-  - "{{ fast_drive }}/shared:/fast"
-  - "/mnt/backup/service-dumps:/backup:ro"   # :ro makes it read-only, whatever the access rules say
+  - "/mnt/backup/service-dumps:/backup:ro"
 copyparty_extra_conf: |
-  [accounts]
-    syncer: {{ vault_copyparty_syncer_pass }}   # a service account: a vault entry you name yourself
-  [/fast]
-    /fast
-    accs:
-      A: yourusername       # an admin
-      rw: friend            # read and write
-      rw: syncer
   [/backup]
     /backup
     accs:
-      A: yourusername
+      A: yourusername                     # your own volumes do not give admin access: name each admin
 ```
 
-Then run `just deploy copyparty --limit <host>`.
-
-- **Admins:** the generated volumes give admin access to `copyparty_user` and `copyparty_sso_admins`. Your own volumes do not: name each admin in `accs:`.
-- **Tinyauth users:** with `copyparty_sso_enabled`, the Tinyauth user name is the Copyparty user name. Name it in `accs:`, with no `[accounts]` entry. A user that no `accs:` line names sees nothing.
-- **Service accounts:** your own (the `syncer` line) needs a name and a vault password under `[accounts]`. An account Ansible manages (every service with a `copyparty` field in `services.yml`, such as `pics`) already exists with its password: name it in `accs:` ([example below](#give-an-ansible-managed-account-another-folder)). Passwords work on the published port and the tunnel hostname, not on the browser name: Tinyauth stops clients that cannot sign in through a web page.
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
-- **Locked folders:** a mounted folder that is, or sits in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty by itself.
+- **Locked folders:** a folder that is, or is in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty.
 
-#### Give an Ansible-managed account another folder
-
-This lets pics read and write the folder `/fast` from the example above. `pics` already has its own volumes (`/apps/pics/photos` and `/apps/pics/trash`). Do not redefine those: a volume may appear in only one file. Instead, change the `/fast` volume in your `copyparty_extra_conf` (a YAML key can appear only once) and add the account to its `accs:` block:
-
-```
-  [/fast]
-    /fast
-    accs:
-      A: yourusername
-      rw: pics          # the account exists already: no [accounts] entry and no password here
-```
-
-The app must send its requests to the new volume (`/fast`). A Copyparty account only decides what the app may open. It does not change where the app looks.
-
-To change anything else, edit `copyparty.conf.j2` or the variables, then `just deploy copyparty`.
+To change anything else, edit `copyparty.conf.j2` or the settings, then run `just deploy copyparty`.
 
 ## Clone a private GitHub repo
 
@@ -181,12 +187,13 @@ Token: `vault_github_read_token`, a read-only fine-grained token scoped to the o
 
 ## pics: photo culling and sharing
 
-The `pics` role clones the private repo in `pics_repo` and builds the image on the host (about 10 minutes on a Pi 5). Later runs rebuild only when the repo's commit changed. The role runs the app on `services`. It uses the Copyparty account `pics` and its volumes (`/apps/pics/photos` with no delete, `/apps/pics/trash` where it may delete). The build needs memory on top of the running services. On a 4 GB host deploy a changed `pics` while Immich and Crafty are idle, then check `free -m` and `journalctl -k | grep -i oom`.
+The `pics` role clones the private repo in `pics_repo` and builds the image on the host (about 10 minutes on a Pi 5). Later runs rebuild only when the repo's commit changed. The role runs the app on `services`. It uses the Copyparty login `pics` and two folders: `/pics-photos` (no delete) and `/pics-trash` (delete allowed). The build needs memory on top of the running services. On a 4 GB host deploy a changed `pics` while Immich and Crafty are idle, then check `free -m` and `journalctl -k | grep -i oom`.
 
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname. Two ports: the owner app (cull UI, password-gated) on `pics_port` (8100, the only published port, `http://<pi>:<pics_port>`). The guest surface (share pages, portfolio, no owner routes) runs on `pics_public_port` (8001, inside Docker only). The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule.
-2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password`, without single quotes.
-3. `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the account and volumes first).
-4. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
+2. In the host's vault add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password`, without single quotes. Add the login `pics` to `vault_copyparty_accounts` with `pass: "{{ vault_pics_copyparty_password }}"`.
+3. In the host's `vars.yml` add the two folders to `copyparty_folders`, as in the [example](#add-a-folder-or-a-login): `pics-photos` with `access: {pics: rwm}` and `dir: "{{ pics_photos_dir }}"`, and `pics-trash` with `access: {pics: rwmd}` and `dir: "{{ pics_trash_dir }}"`. The deploy stops if they are missing.
+4. `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the login and folders first).
+5. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
 
 The database is in `pics_data_dir`, covered by the daily backup (the app also writes its own daily snapshots there). `teardown.yml -e only=pics` keeps all of pics' data unless `-e remove_data=true`, which also deletes the photos and trash.
 
