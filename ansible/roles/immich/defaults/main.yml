@@ -23,3 +23,7 @@ immich_accepted_video_codecs: []
 # On a Raspberry Pi it is enforced once the memory cgroup is on (docs/memory.md#memory-limits). Too low a limit kills the
 # container during a job, which Docker then restarts.
 immich_machine_learning_memory_limit: ""
+# True when this deploy sets something through Immich's API, which needs vault_immich_api_key and a port. Derived: not a setting.
+immich_api_settings_set: >-
+  {{ immich_sso_enabled | bool or immich_job_concurrency | length > 0 or immich_transcode_policy != ""
+  or immich_accepted_video_codecs | length > 0 }}

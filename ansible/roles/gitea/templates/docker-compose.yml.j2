@@ -32,7 +32,7 @@ services:
       GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: "false"
       GITEA__oauth2_client__OPENID_CONNECT_SCOPES: "openid email profile"
 {% endif %}
-{% if vault_gitea_runner_token | default("") %}
+{% if gitea_runner_enabled %}
       GITEA_RUNNER_REGISTRATION_TOKEN: '{{ vault_gitea_runner_token | replace("$", "$$") }}'
 {% endif %}
     ports:
@@ -43,7 +43,7 @@ services:
     networks:
       - {{ docker_network }}
 
-{% if vault_gitea_runner_token | default("") %}
+{% if gitea_runner_enabled %}
   gitea-runner:
     image: {{ gitea_runner_image }}
     container_name: gitea-runner

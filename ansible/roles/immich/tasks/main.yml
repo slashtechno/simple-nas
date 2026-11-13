@@ -12,9 +12,7 @@
       systemConfig.read and systemConfig.update) and a non-empty immich_port, because the deploy sets them through Immich's
       API on that port (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/memory.md#immich).
     quiet: true
-  when: >-
-    immich_sso_enabled | bool or immich_job_concurrency | length > 0 or immich_transcode_policy != ""
-    or immich_accepted_video_codecs | length > 0
+  when: immich_api_settings_set
 
 - name: Check the Immich database password is in the vault
   ansible.builtin.assert:
@@ -63,15 +61,13 @@
 # setting, and the fields of these blocks not named here, as saved in Immich's settings page.
 # Immich stores the settings in its database, so the write happens only when they differ.
 - name: Set Immich's settings through its API
-  when: >-
-    immich_sso_enabled | bool or immich_job_concurrency | length > 0 or immich_transcode_policy != ""
-    or immich_accepted_video_codecs | length > 0
+  when: immich_api_settings_set
   vars:
     immich_api: "http://127.0.0.1:{{ immich_port }}/api"
     immich_oauth: >-
       {{ immich_settings.json.oauth | combine({
         'enabled': true,
-        'issuerUrl': 'https://' ~ tinyauth_subdomain ~ '.' ~ caddy_private_domains[0],
+        'issuerUrl': tinyauth_url,
         'clientId': 'immich',
         'clientSecret': vault_immich_oidc_secret,
         'scope': 'openid email profile',

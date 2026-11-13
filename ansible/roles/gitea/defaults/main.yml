@@ -6,3 +6,5 @@ gitea_domain: "{{ gitea_root_url | urlsplit('hostname') }}"
 gitea_ssh_domain: "{{ gitea_domain }}"
 # SSH port for git clones, published on the host.
 gitea_ssh_port: "2222"
+# True when vault_gitea_runner_token is set: the Actions runner is only deployed then. Derived: not a setting.
+gitea_runner_enabled: "{{ vault_gitea_runner_token | default('') | length > 0 }}"

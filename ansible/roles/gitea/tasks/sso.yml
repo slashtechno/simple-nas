@@ -41,7 +41,7 @@
       --provider openidConnect
       --key gitea
       --secret {{ vault_gitea_oidc_secret }}
-      --auto-discover-url https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}/.well-known/openid-configuration
+      --auto-discover-url {{ tinyauth_url }}/.well-known/openid-configuration
       --scopes openid --scopes email --scopes profile
   register: gitea_sso_source
   until: gitea_sso_source.rc == 0
