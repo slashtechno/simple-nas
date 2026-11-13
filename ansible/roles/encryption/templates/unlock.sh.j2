@@ -84,7 +84,7 @@ if [ "${1:-}" = "--alert" ]; then
   MESSAGE=""
   [ -z "${LOCKED[*]:-}" ] || MESSAGE="Locked, waiting for the passphrase: ${LOCKED[*]}. "
   [ -z "${MISSING[*]:-}" ] || MESSAGE="${MESSAGE}No encrypted files found (the drive is not mounted, or it was never set up): ${MISSING[*]}. "
-  # alert.sh logs the message and sends it to ntfy when host_alert_url is set (roles/common).
+  # alert.sh logs the message and sends it to ntfy when an alert address is set (roles/common).
   exec {{ (scripts_dir ~ '/alert.sh') | quote }} "${MESSAGE}Containers that use them stay down. $HOW" unlock "encrypted folders need attention"
 fi
 

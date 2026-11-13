@@ -34,11 +34,11 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 ## Alert while locked
 
-With `host_alert_url` set ([ntfy alerts](./services.md#ntfy-failure-alerts)), the host sends an alert two minutes after each boot and then every hour while a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. An unlock ends it. A lock you made on purpose alerts too. With no `host_alert_url` there are no alerts and the jobs are removed. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
+Two minutes after each boot the host sends one alert if a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. A lock you made on purpose is not reported: the alert runs only at boot. It goes to the system log (`journalctl -t unlock`) and, when `host_alert_url` is set ([ntfy alerts](./services.md#ntfy-failure-alerts)), to ntfy. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
 
 ## Unlock page
 
-The unlock page is a web page on the host. It shows the encrypted folders, unlocks them and locks them. The `unlock_page` role installs it when `unlock_page_enabled: true` is in the host's `vars.yml`. Tinyauth protects it at `https://<unlock_page_subdomain>.<domain>`. `just unlock` and `just lock` work without it.
+The unlock page is a web page on the host. It shows the encrypted folders, unlocks them and locks them. The `unlock_page` role installs it when `unlock_page_enabled: true` is in the host's `vars.yml`. Tinyauth protects it at `https://<unlock_page_subdomain>.<domain>`. The page has no login of its own, so it needs `tinyauth_enabled`, `caddy_enabled` and a private domain; the deploy stops without them. `just unlock` and `just lock` work without it.
 
 Set it up once:
 

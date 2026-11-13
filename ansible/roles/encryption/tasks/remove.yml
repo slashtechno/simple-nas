@@ -14,12 +14,11 @@
     - "{{ encryption_hooks_dir }}/00-containers.sh"
     - "{{ encryption_stopped_file }}"
 
-- name: Remove the locked-folder alert jobs
+- name: Remove the locked-folder alert job
   ansible.builtin.cron:
-    name: "{{ item }}"
+    name: "{{ encryption_alert_cron_job }}"
     user: root
     state: absent
-  loop: "{{ encryption_cron_jobs.values() | list }}"
 
 # rmdir only succeeds when the directory is empty.
 - name: Remove the after-unlock scripts directory (only if empty)

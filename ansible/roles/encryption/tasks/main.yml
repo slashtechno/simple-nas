@@ -43,27 +43,15 @@
         group: root
         mode: "0755"
 
-# A locked host runs nothing that uses those folders until someone types the passphrase, so an alert tells you it is waiting.
-# One run two minutes after boot (Tailscale and the network are up by then), then one every hour while a folder is locked.
-# They follow host_alert_url: with no alert address there is nothing to send to, and the jobs are removed.
-- name: Alert while a folder is locked
+# A locked host runs nothing that uses those folders until someone types the passphrase, so one alert after each boot tells you it
+# is waiting (Tailscale and the network are up two minutes after boot). alert.sh logs it and sends it to ntfy when host_alert_url is set.
+- name: Alert two minutes after boot if a folder is locked
   when: encrypted_folders | length > 0
-  block:
-    - name: Alert two minutes after boot if a folder is locked
-      ansible.builtin.cron:
-        name: "{{ encryption_cron_jobs.boot }}"
-        user: root
-        special_time: reboot
-        job: sleep 120 && {{ (scripts_dir ~ '/unlock.sh') | quote }} --alert
-        state: "{{ 'present' if host_alert_url | length > 0 else 'absent' }}"
-
-    - name: Alert every hour while a folder is locked
-      ansible.builtin.cron:
-        name: "{{ encryption_cron_jobs.hourly }}"
-        user: root
-        minute: "0"
-        job: "{{ (scripts_dir ~ '/unlock.sh') | quote }} --alert"
-        state: "{{ 'present' if host_alert_url | length > 0 else 'absent' }}"
+  ansible.builtin.cron:
+    name: "{{ encryption_alert_cron_job }}"
+    user: root
+    special_time: reboot
+    job: sleep 120 && {{ (scripts_dir ~ '/unlock.sh') | quote }} --alert
 
 - name: Remove the encryption scripts when no folder is listed
   ansible.builtin.import_tasks: remove.yml

@@ -78,7 +78,8 @@
 
 {% endfor %}
 {% endfor %}
-{# One volume per shared folder: the admins and the accounts that list the folder have full access. #}
+{# One volume per shared folder: the admins have full access, the accounts that list the folder read, write, move and delete in it (no
+   admin rights). xvol stops a symlink inside the folder from reaching files outside it. #}
 {% for folder in copyparty_shared_folders %}
 [/{{ folder }}]
   /shared/{{ folder }}
@@ -87,8 +88,10 @@
     A: {{ u }}
 {% endfor %}
 {% for u in copyparty_accounts if folder in u.folders %}
-    A: {{ u.user }}
+    rwmd: {{ u.user }}
 {% endfor %}
+  flags:
+    xvol
 
 {% endfor %}
 
