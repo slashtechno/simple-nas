@@ -95,8 +95,9 @@ There are two lists:
 ### Add a folder or a login
 
 1. Add the folder to `copyparty_folders` in the host's `vars.yml`.
-2. Name the logins in the `access` of the folder. Add each new login to `vault_copyparty_accounts` (shape: `host_vars/vault.yml.example`). Add `admin: true` for an admin.
-3. Run `just deploy copyparty --limit <host>`.
+2. Name the logins in the `access` of the folder.
+3. Add each new login to `vault_copyparty_accounts` (shape: `host_vars/vault.yml.example`). Add `admin: true` for an admin.
+4. Run `just deploy copyparty --limit <host>`.
 
 ```yaml
 copyparty_folders:
@@ -110,7 +111,7 @@ copyparty_folders:
 - **`access`:** `{login: letters}`. `r` read, `w` write, `m` move, `d` delete. Copyparty's docs explain `g`, `G`, `h` and `a`.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` instead of the mapping. Put the mapping in the vault (`host_vars/vault.yml.example`). The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file. Give `d` only to a login that must delete.
-- **No folders:** with `copyparty_folders` empty, Copyparty serves only `/`, and `/drives` with `usb_automount_enabled`.
+- **No folders:** with `copyparty_folders` empty, Copyparty serves `/`, `/shares`, and `/drives` with `usb_automount_enabled`.
 
 A symlink that someone with shell access puts in a folder shares the target. Uploads and WebDAV create only regular files.
 
@@ -133,7 +134,7 @@ Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Cop
   2. Add the folder to `copyparty_folders` with `dir` set to that setting.
   3. Add the app's login to `vault_copyparty_accounts`. Put its password in the vault.
   4. Point the app at `/<folder>` through Copyparty. The app does not mount the folder.
-- **Give a login another folder:** add the login to the `access` of that folder, then deploy. An app must also use the new address. `access` decides only what a login can open.
+- **Give a login another folder:** add the login to the `access` of that folder, then deploy. Point the app at `/<folder>`. `access` decides only what a login can open.
 - **Any other Copyparty option** (an SFTP or FTP listener, global options, more volumes) goes in `copyparty_extra_conf`. The deploy writes it to `extra.conf` beside the generated config. Accounts, groups and global options combine. A volume (a `[/path]` section) can appear in only one file, so you cannot extend a folder from `copyparty_folders` there ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders. `copyparty_extra_ports` publishes a listener port as `"host:container"` strings. Without it, only other containers reach the listener.
 
   ```yaml
@@ -187,7 +188,7 @@ The `pics` role clones the private repo in `pics_repo` and builds the image on t
 
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname. Two ports: the owner app (cull UI, password-gated) on `pics_port` (8100, the only published port, `http://<pi>:<pics_port>`). The guest surface (share pages, portfolio, no owner routes) runs on `pics_public_port` (8001, inside Docker only). The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule.
 2. Add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password` to the host's vault, without single quotes. Then add the login `pics` to `vault_copyparty_accounts` with `pass: "{{ vault_pics_copyparty_password }}"`.
-3. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `pics-photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `pics-trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops if a folder or a `dir` is wrong.
+3. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `pics-photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `pics-trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops when a folder or a `dir` is not valid.
 4. `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the login and folders first).
 5. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
 

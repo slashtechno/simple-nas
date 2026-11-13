@@ -30,7 +30,7 @@
       - item.key is match('^[A-Za-z0-9_-]+$') and item.key not in ['drives', 'shares']
       - item.value.access | default({}) is mapping
       - item.value.access | default({}) | dict2items | rejectattr('value', 'match', '^[rwmdgGha]+$') | list | length == 0
-      - item.value.dir | default('/', true) is match('^/')
+      - item.value.dir is not defined or (item.value.dir is string and item.value.dir is match('^/'))
     fail_msg: >-
       copyparty_folders entry '{{ item.key }}' must be {dir: /absolute/path, access: {login: letters}}. The name is letters, digits, - and _,
       and not drives or shares (Copyparty's own addresses). The letters are from rwmdgGha, such as {friend1: rwmd}.
@@ -43,11 +43,12 @@
   ansible.builtin.assert:
     that:
       - item.user is defined and item.user | string | length > 0
+      - copyparty_accounts | map(attribute='user') | list | length == copyparty_accounts | map(attribute='user') | unique | list | length
       - item.pass is not defined or (item.pass is not none and item.pass | string | length > 0)
       - item.admin | default(false) is boolean
       - item.pass is defined or (copyparty_sso_enabled | bool and item.user in vault_tinyauth_users | map(attribute='name') | list)
     fail_msg: >-
-      Each entry of vault_copyparty_accounts needs user, and pass (not empty) or no pass at all. A login with no pass signs in
+      Each user in vault_copyparty_accounts appears once. Each entry needs user, and pass (not empty) or no pass at all. A login with no pass signs in
       through Tinyauth: it needs copyparty_sso_enabled and a user that is a Tinyauth user name. admin is true or false (vault.yml.example).
     quiet: true
   loop: "{{ copyparty_accounts }}"

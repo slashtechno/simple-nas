@@ -271,6 +271,9 @@
               - {name: a folder written as a string, says: "entry 'c'", vars: {copyparty_folders: {c: rwmd}}}
               - {name: a folder named drives, says: "entry 'drives'", vars: {copyparty_folders: {drives: {dir: /d}}}}
               - {name: a folder name with a slash, says: "entry 'a/b'", vars: {copyparty_folders: {a/b: {dir: /d}}}}
+              - {name: a login listed twice, says: appears once, vars: {vault_copyparty_accounts: [{user: a, pass: p, admin: true}, {user: a, pass: q}]}}
+              - {name: an empty dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: ""}}}}
+              - {name: a null dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: null}}}}
               - {name: a relative dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: relative/dir}}}}
               - {name: sign-in through Tinyauth without its header key, says: vault_copyparty_idp_key, vars: {copyparty_sso_enabled: true}}
           block:
