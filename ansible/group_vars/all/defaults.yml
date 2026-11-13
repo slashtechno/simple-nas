@@ -61,19 +61,25 @@ docker_data_root: ""
 # 00-containers.sh (restarts the containers that use an unlocked folder); the scripts you add start any other software and are never touched (docs/encryption.md).
 encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
-# The topic the ntfy server this repo runs accepts alerts on (its access token is limited to it). End ntfy_alert_url with it.
+# The topic the ntfy server this repo runs accepts alerts on (its access token is limited to it). End its destination's url with it.
 ntfy_topic: alerts
 
-# Where alerts go by default, besides the system log (`journalctl -t backup`, `-t connectivity`, `-t unlock`): a failed backup job, a
-# recovered connection (alert.sh), the drive alerts of Scrutiny and pics, and the locked-folder alert (unlock.sh). The full URL of an ntfy topic: "http://pinas:8090/alerts" (the ntfy
-# this repo runs, over the tailnet), "https://ntfy.pinas.example.com/alerts" (its Caddy name) or "https://ntfy.sh/<your-topic>".
-# "" sends nothing. vault_ntfy_token is the login token; a topic with no login needs the sender's *_token set to "". Each sender can use its own
-# ntfy instead: host_alert_url, scrutiny_alert_url, pics_alert_url and unlock_alert_url, each with a *_token (docs/services.md#ntfy-failure-alerts).
-# A host that is down or unreachable cannot alert. Use https:// or a tailnet address: the token travels in the request.
-ntfy_alert_url: ""
-# File on the host holding host_alert_token, read by alert.sh. Here because teardown.yml removes it.
+# The ntfy topics alerts can go to, by name: {name: {url, token}}. Put it in vars.yml. The url is the full address of a topic, such as
+# "http://pinas:8090/alerts" (the ntfy this repo runs, over the tailnet) or "https://ntfy.sh/<your-topic>". The token is the login;
+# leave it out for a topic with no login. A topic name on a public server works like a password: keep it in the vault and write
+# "{{ vault_<name> }}" as the url. Use https:// or a tailnet address, because the token travels in the request.
+# Every value is read on every host, so a vault name used here must exist on every host (docs/services.md#ntfy-failure-alerts).
+ntfy_destinations: {}
+# Which destination each alert goes to: a name from ntfy_destinations. "" sends nothing, which is the default for all four.
+# system: failed backup jobs and the connectivity watchdog (alert.sh). scrutiny and pics: drive alerts. unlock: the locked-folder alert.
+# The system log (`journalctl -t backup`, `-t connectivity`, `-t unlock`) gets the alerts of the scripts in any case.
+system_alert_to: ""
+scrutiny_alert_to: ""
+pics_alert_to: ""
+unlock_alert_to: ""
+# File on the host holding the system alert's token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
-# File on the host holding unlock_alert_token, read by unlock.sh as root. Here because teardown.yml removes it and the backup leaves it out.
+# File on the host holding the unlock alert's token, read by unlock.sh as root. Here because teardown.yml removes it and the backup leaves it out.
 unlock_token_file: "{{ services_dir }}/unlock-ntfy-token"
 
 # File on the host holding the Cloudflare tunnel token, mounted into the tunnel's container. Here because the backup

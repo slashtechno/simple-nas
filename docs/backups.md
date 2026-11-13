@@ -1,6 +1,6 @@
 # Backups
 
-Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy with `just deploy backup,common` (`common` installs the alert script, so run it after changing `ntfy_alert_url`). Defaults for every setting here are in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) and `ansible/group_vars/all/defaults-backups.yml` (repositories, retention, logs).
+Backups use [restic](https://restic.readthedocs.io/). The `backup` role installs restic, the scripts and the cron jobs. Deploy with `just deploy backup,common` (`common` installs the alert script, so run it after changing `system_alert_to` or `ntfy_destinations`). Defaults for every setting here are in `ansible/roles/backup/defaults/main.yml` (rules, timeout, cache) and `ansible/group_vars/all/defaults-backups.yml` (repositories, retention, logs).
 
 **Something went wrong?**
 

@@ -145,3 +145,15 @@ oidc_service_keys: >-
 
 # The enabled entries with a copyparty field: the apps that get a Copyparty account and volumes on this host.
 copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('copyparty', 'defined') | list }}"
+
+# The address and login of each alert sender, from its *_alert_to name and ntfy_destinations ("" gives url "" and token ""). A name that
+# is not in ntfy_destinations stops the deploy. The roles read alert_targets.<sender>.url and .token. Never print it: it holds tokens.
+alert_targets: >-
+  {%- set senders = {'system': system_alert_to, 'scrutiny': scrutiny_alert_to, 'pics': pics_alert_to, 'unlock': unlock_alert_to} -%}
+  {%- set out = {} -%}
+  {%- for sender, name in senders.items() -%}
+  {%- set dest = (ntfy_destinations[name] if name | length > 0 else {})
+        | default(undef(hint=sender ~ '_alert_to names a destination that ntfy_destinations does not have')) -%}
+  {%- set _ = out.update({sender: {'url': dest.get('url', ''), 'token': dest.get('token', '')}}) -%}
+  {%- endfor -%}
+  {{ out }}

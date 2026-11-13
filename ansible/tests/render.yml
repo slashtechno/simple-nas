@@ -117,7 +117,6 @@
         homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
         ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
-        ntfy_alert_url: "http://pi4:8090/alerts"
         vault_ntfy_token: "tk_a$b"
         pics_artist: Render Test
         pics_links: [{text: example.com, url: "https://example.com", watermark: true}]
@@ -149,6 +148,15 @@
         caddy_dns_api_token: render-dns-token   # Caddy's token is its own setting, not the account token
         encrypted_folders: [/mnt/primary/immich/]   # the trailing slash is tolerated
 
+
+    - name: Send every alert to the ntfy on this host
+      ansible.builtin.set_fact:
+        ntfy_destinations:
+          home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
+        system_alert_to: home
+        scrutiny_alert_to: home
+        pics_alert_to: home
+        unlock_alert_to: home
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
         restic_cloud_repository: "rclone:gdrive:/render-full-backups"
@@ -698,7 +706,7 @@
           - "'SYS_RAWIO' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'- /dev/sdb:/dev/sdb' in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
           - "'8086' not in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')"
-          # ntfy_alert_url and the token reach both apps in their own URL syntax; the compose file escapes the `$`.
+          # The destination's url and token reach both apps in their own URL syntax; the compose file escapes the `$`.
           - >-
             'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_a$$b@pi4:8090/alerts?scheme=http"'
             in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')
@@ -827,8 +835,10 @@
     # A hosted ntfy with no login: https, no token. set_fact outranks task vars; the values are put back afterwards.
     - name: Use a hosted ntfy topic with no token
       ansible.builtin.set_fact:
-        ntfy_alert_url: "https://ntfy.sh/my-topic"
-        vault_ntfy_token: ""
+        ntfy_destinations:
+          public: {url: "https://ntfy.sh/my-topic"}
+        scrutiny_alert_to: public
+        pics_alert_to: public
 
     - name: Render the two apps' files with it
       ansible.builtin.template:
@@ -848,20 +858,23 @@
 
     - name: Put the ntfy settings back
       ansible.builtin.set_fact:
-        ntfy_alert_url: "http://pi4:8090/alerts"
-        vault_ntfy_token: "tk_a$b"
+        ntfy_destinations:
+          home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
+        scrutiny_alert_to: home
+        pics_alert_to: home
 
-    # Each sender has its own URL and token; a token of "" means no login for that sender whatever vault_ntfy_token is.
+    # Each sender names its own destination; a destination with no token means no login.
     - name: Give each sender its own ntfy
       ansible.builtin.set_fact:
-        scrutiny_alert_url: "https://ntfy.example.org/scrutiny"
-        scrutiny_alert_token: "tk_scrutiny"
-        pics_alert_url: "https://ntfy.sh/pics-topic"
-        pics_alert_token: ""
-        host_alert_url: "https://ntfy.sh/host-topic"
-        host_alert_token: ""
-        unlock_alert_url: "https://ntfy.sh/unlock-topic"
-        unlock_alert_token: ""
+        ntfy_destinations:
+          scrutiny-topic: {url: "https://ntfy.example.org/scrutiny", token: "tk_scrutiny"}
+          pics-topic: {url: "https://ntfy.sh/pics-topic"}
+          system-topic: {url: "https://ntfy.sh/host-topic"}
+          unlock-topic: {url: "https://ntfy.sh/unlock-topic"}
+        scrutiny_alert_to: scrutiny-topic
+        pics_alert_to: pics-topic
+        system_alert_to: system-topic
+        unlock_alert_to: unlock-topic
 
     - name: Render the senders' files with them
       ansible.builtin.template:
@@ -912,8 +925,7 @@
     # set_fact, not task vars: the set_fact above outranks them. The next task but one puts the shared values back.
     - name: Turn the locked-folder alert off
       ansible.builtin.set_fact:
-        unlock_alert_url: ""
-        unlock_alert_token: ""
+        unlock_alert_to: ""
 
     - name: Render unlock.sh with no alert URL
       ansible.builtin.template:
@@ -930,14 +942,33 @@
 
     - name: Put the senders back on the shared ntfy
       ansible.builtin.set_fact:
-        scrutiny_alert_url: "{{ ntfy_alert_url }}"
-        scrutiny_alert_token: "{{ vault_ntfy_token }}"
-        pics_alert_url: "{{ ntfy_alert_url }}"
-        pics_alert_token: "{{ vault_ntfy_token }}"
-        host_alert_url: "{{ ntfy_alert_url }}"
-        host_alert_token: "{{ vault_ntfy_token }}"
-        unlock_alert_url: "{{ ntfy_alert_url }}"
-        unlock_alert_token: "{{ vault_ntfy_token }}"
+        ntfy_destinations:
+          home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
+        scrutiny_alert_to: home
+        pics_alert_to: home
+        system_alert_to: home
+        unlock_alert_to: home
+
+    # A name that is not in ntfy_destinations stops the deploy, and the message names the setting.
+    - name: A sender naming no destination fails
+      block:
+        - name: Name a destination that does not exist
+          ansible.builtin.set_fact:
+            scrutiny_alert_to: nowhere
+
+        - name: Read the sender's address
+          ansible.builtin.debug:
+            msg: "{{ alert_targets.scrutiny.url }}"
+          no_log: true
+      rescue:
+        - name: The failure names scrutiny_alert_to
+          ansible.builtin.assert:
+            that: "'scrutiny_alert_to names a destination' in ansible_failed_result.msg"
+            quiet: true
+      always:
+        - name: Put the sender back on home
+          ansible.builtin.set_fact:
+            scrutiny_alert_to: home
 
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
     - name: Give Gitea a public address of its own

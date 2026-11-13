@@ -285,14 +285,14 @@
             quiet: true
           when: backup_local_enabled | bool
 
-        - name: Send nothing unless ntfy_alert_url is set
+        - name: Send nothing unless a destination is named
           ansible.builtin.assert:
-            that: ntfy_alert_url == ''
+            that: system_alert_to == ''
             quiet: true
 
-        # Rendered with and without ntfy_alert_url: without it the script must contain no curl, so a host
+        # Rendered with and without a system alert destination: without it the script must contain no curl, so a host
         # that does not use ntfy only writes to the system log. The shell check runs on both outputs.
-        # set_fact, not task vars: include_vars set ntfy_alert_url and outranks them. Keep this last.
+        # set_fact, not task vars: include_vars set the alert settings and outranks them. Keep this last.
         - name: Render alert.sh with no ntfy topic
           ansible.builtin.template:
             src: "{{ repo }}/roles/common/templates/alert.sh.j2"
@@ -301,7 +301,9 @@
 
         - name: Turn on ntfy alerts for this host
           ansible.builtin.set_fact:
-            ntfy_alert_url: http://localhost:8090/alerts
+            ntfy_destinations:
+              local: {url: "http://localhost:8090/alerts", token: "tk_layouts"}
+            system_alert_to: local
 
         - name: Render alert.sh with an ntfy topic set
           ansible.builtin.template:
@@ -329,7 +331,8 @@
         # A hosted topic with no login: an empty token gives a script with no Authorization header.
         - name: Leave the ntfy token out
           ansible.builtin.set_fact:
-            vault_ntfy_token: ""
+            ntfy_destinations:
+              local: {url: "http://localhost:8090/alerts"}
 
         - name: Render alert.sh with no token
           ansible.builtin.template:

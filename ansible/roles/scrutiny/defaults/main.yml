@@ -4,9 +4,3 @@
 scrutiny_devices: []
 # How often the collector reads every drive, as a cron expression. Scrutiny's own default is once a day at midnight.
 scrutiny_collect_schedule: "0 */6 * * *"
-# Where Scrutiny sends its drive alerts, and the token that server accepts. Defaults: ntfy_alert_url and vault_ntfy_token
-# (docs/services.md#ntfy-failure-alerts). "" for the URL sends nothing; "" for the token sends no login.
-scrutiny_alert_url: "{{ ntfy_alert_url }}"
-scrutiny_alert_token: >-
-  {{ (vault_ntfy_token | default(undef(hint='add vault_ntfy_token to the vault, or set scrutiny_alert_token to an empty string')))
-     if scrutiny_alert_url | length > 0 else '' }}

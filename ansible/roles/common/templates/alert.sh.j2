@@ -1,15 +1,15 @@
 #!/bin/bash
 # Run by a backup cron job that failed, and by the connectivity watchdog when the connection returns. Usage: alert.sh "message" [log tag] [ntfy title]
-# The tag and title default to the backup jobs'. Writes the message to the system log{% if host_alert_url | length > 0 %} and sends it to ntfy{% endif %}.
+# The tag and title default to the backup jobs'. Writes the message to the system log{% if alert_targets.system.url | length > 0 %} and sends it to ntfy{% endif %}.
 logger -t "${2:-backup}" "$1"
-{% if host_alert_url | length > 0 %}
+{% if alert_targets.system.url | length > 0 %}
 # The send must never fail the job or hang it: --max-time stops a stuck connection. --fail makes a refused alert (a wrong
 # token is HTTP 403) an error, and the `||` writes that to the system log beside the alert, so it does not vanish.
 curl --silent --show-error --fail --max-time 15 \
-{% if host_alert_token | length > 0 %}
+{% if alert_targets.system.token | length > 0 %}
   -H "Authorization: Bearer $(cat {{ ntfy_token_file | quote }})" \
 {% endif %}
   -H "Title: {{ inventory_hostname }}: ${3:-backup failed}" -H "Priority: high" \
-  -d "$1" {{ host_alert_url | quote }} || logger -t "${2:-backup}" "the alert could not be sent to ntfy"
+  -d "$1" {{ alert_targets.system.url | quote }} || logger -t "${2:-backup}" "the alert could not be sent to ntfy"
 
 {% endif %}

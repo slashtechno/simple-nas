@@ -13,7 +13,7 @@ vault_caddy_dns_api_token: "your_dns_only_token"
 # ID of the Cloudflare account that owns the tunnel.
 vault_cloudflared_account_id: "your_cloudflare_account_id"
 # Login token for the ntfy server (roles/ntfy), used by the server and by every host that sends alerts.
-# Needed wherever an alert URL is set. Every sender whose topic has no login (ntfy.sh) sets its own *_alert_token: "".
+# Referenced as "{{ vault_ntfy_token }}" by a destination in ntfy_destinations (docs/services.md#ntfy-failure-alerts). A topic with no login needs no token.
 # "tk_" and 29 letters or digits: `docker run --rm binwiederhier/ntfy token generate`.
 vault_ntfy_token: "tk_changeMe0123456789abcdefghijk"
 # Encrypts every restic repository the hosts write.

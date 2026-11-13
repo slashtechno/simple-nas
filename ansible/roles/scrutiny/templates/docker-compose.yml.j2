@@ -33,11 +33,11 @@ services:
       COLLECTOR_CRON_SCHEDULE: "{{ scrutiny_collect_schedule }}"
       # Names this host in the dashboard. Unset, it comes from the container hostname, which changes when the container is recreated.
       COLLECTOR_HOST_ID: "{{ inventory_hostname }}"
-{% if scrutiny_alert_url | length > 0 %}
-      # scrutiny_alert_url in Shoutrrr's syntax: http://pi4:8090/alerts + a token becomes ntfy://:<token>@pi4:8090/alerts?scheme=http
-      SCRUTINY_NOTIFY_URLS: {{ ('ntfy://' ~ (':' ~ scrutiny_alert_token ~ '@' if scrutiny_alert_token | length > 0 else '')
-                                ~ (scrutiny_alert_url | urlsplit('netloc')) ~ (scrutiny_alert_url | urlsplit('path'))
-                                ~ '?scheme=' ~ (scrutiny_alert_url | urlsplit('scheme'))) | replace('$', '$$') | to_json }}
+{% if alert_targets.scrutiny.url | length > 0 %}
+      # alert_targets.scrutiny in Shoutrrr's syntax: http://pi4:8090/alerts + a token becomes ntfy://:<token>@pi4:8090/alerts?scheme=http
+      SCRUTINY_NOTIFY_URLS: {{ ('ntfy://' ~ (':' ~ alert_targets.scrutiny.token ~ '@' if alert_targets.scrutiny.token | length > 0 else '')
+                                ~ (alert_targets.scrutiny.url | urlsplit('netloc')) ~ (alert_targets.scrutiny.url | urlsplit('path'))
+                                ~ '?scheme=' ~ (alert_targets.scrutiny.url | urlsplit('scheme'))) | replace('$', '$$') | to_json }}
 {% endif %}
     networks:
       - {{ docker_network }}

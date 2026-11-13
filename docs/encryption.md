@@ -36,7 +36,7 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 Two minutes after each boot the host sends one alert if a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. A lock you made on purpose is not reported: the alert runs only at boot.
 
-- **On or off:** `unlock_alert_url`. It defaults to `ntfy_alert_url` ([ntfy alerts](./services.md#ntfy-failure-alerts)); set it to a topic of its own, with `unlock_alert_token`, to send these apart from backup alerts. With `""` there is no alert and no cron job.
+- **On or off:** `unlock_alert_to`, the name of a destination in `ntfy_destinations` ([ntfy alerts](./services.md#ntfy-failure-alerts)). With `""` there is no alert and no cron job.
 - **Also:** the message goes to the system log (`journalctl -t unlock`).
 
 Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
@@ -126,7 +126,7 @@ encrypted_folders:
 
 | Data | Setting | If it is in a listed folder |
 |---|---|---|
-| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. The deploy does not stop you: it cannot know what you need. Use an ntfy on another host (`ntfy_alert_url`), or keep this folder plain. |
+| ntfy | `ntfy_data_dir` | No alerts from this host until you unlock. The deploy does not stop you: it cannot know what you need. Use an ntfy on another host (a destination in `ntfy_destinations`), or keep this folder plain. |
 | Caddy | `caddy_data_dir` | No web access to any service until you unlock. The deploy refuses it on a host with the [unlock page](#unlock-page). |
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. The deploy refuses it on a host with the unlock page. |
 

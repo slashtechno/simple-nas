@@ -12,7 +12,12 @@ cloudflare_zones:
 pics_repo: slashtechno/lab
 pics_public_url: "https://pics.angad.me"
 gitea_root_url: "https://git.slashtechno.com/"
-# Failure alerts from every host go to the ntfy on pi4 (docs/services.md#ntfy-failure-alerts).
-ntfy_alert_url: "http://pi4.ferret-ordinal.ts.net:{{ ntfy_port }}/alerts"
+# Alerts from every host go to the ntfy on pi4 (docs/services.md#ntfy-failure-alerts).
+ntfy_destinations:
+  home: {url: "http://pi4.ferret-ordinal.ts.net:{{ ntfy_port }}/alerts", token: "{{ vault_ntfy_token }}"}
+system_alert_to: home
+scrutiny_alert_to: home
+pics_alert_to: home
+unlock_alert_to: home
 copyparty_sso_enabled: true
 copyparty_sso_admins: [slashtechno]

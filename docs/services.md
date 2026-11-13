@@ -226,18 +226,28 @@ Every record the role writes carries the comment `managed by simple-nas, tunnel 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
 1. Make the secrets: a user and password (`vault_ntfy_user`, `vault_ntfy_password` in `host_vars/<host>/vault.yml`, from `openssl rand -base64 24`) and a token (`vault_ntfy_token` in `group_vars/all/vault.yml`, from `docker run --rm binwiederhier/ntfy token generate`). The deploy hashes the password into the compose file, so the vault holds the plain one.
-2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then set `ntfy_alert_url` (below) on every host that should send alerts and `just deploy common --limit <host>`.
+2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then name the topic and pick who sends to it (below), and run `just deploy common,scrutiny,pics,encryption --limit <host>` on each host that sends alerts.
 3. In the ntfy app add the server `http://<host-tailscale-name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
 4. Test: on the host `bash /opt/services/scripts/alert.sh "test"` and check the phone.
 
-`ntfy_alert_url` is the setting that turns alerts on for every sender, in `group_vars/all/vars.yml` for every host or one host's `vars.yml`: the full URL of a topic. A host that sets no sender's URL sends nothing. Write `""`, not an empty value. For this repo's ntfy it is the address from step 3 plus the topic (`http://<host-tailscale-name>:<ntfy_port>/alerts`). For another server, `https://ntfy.sh/<your-topic>`, with every sender's `*_token` set to `""` (`host_alert_token`, `scrutiny_alert_token`, `pics_alert_token`, `unlock_alert_token`) because that topic has no login, and the repo's own token must not be sent to it. One server serves the whole homelab. Every sender sends to the same topic with the same token and needs no setting of its own. Each one bakes the address in at deploy time, so after changing it run `just deploy common,scrutiny,pics,encryption --limit <host>`.
-
-**One ntfy for each sender.** Four senders can alert: `host_alert_url` (backup jobs and the connectivity watchdog), `scrutiny_alert_url`, `pics_alert_url` and `unlock_alert_url` (the [locked-folder alert](./encryption.md#alert-while-locked)). Each defaults to `ntfy_alert_url`, and its token (`host_alert_token`, `scrutiny_alert_token`, `pics_alert_token`, `unlock_alert_token`) defaults to `vault_ntfy_token`, which the vault must then hold. Set one to `""` to silence that sender while the others keep the shared default. Set one to a URL to send only that sender elsewhere; its token then still defaults to `vault_ntfy_token`, so set its `*_token` too. Put its token in the vault under a name you choose and point the setting at it, so each URL travels with its own token. Backup alerts name no file contents, so they can go to a public topic while the other alerts stay on your own server:
+**Where alerts go.** `ntfy_destinations` is a list of named topics. Each has a `url` (the full address of the topic) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
 
 ```yaml
-host_alert_url: "https://ntfy.sh/<a-long-random-topic-name>"
-host_alert_token: ""                                          # ntfy.sh would refuse this repo's own token
+ntfy_destinations:
+  home: {url: "http://<host-tailscale-name>:<ntfy_port>/alerts", token: "{{ vault_ntfy_token }}"}   # this repo's ntfy
+  public: {url: "{{ vault_ntfy_public_url }}"}                                                        # ntfy.sh: no login
+system_alert_to: home        # failed backup jobs and the connectivity watchdog
+unlock_alert_to: home        # the locked-folder alert
+scrutiny_alert_to: home      # drive alerts
+pics_alert_to: public        # drive alerts, to a different topic
 ```
+
+- **Turn a sender off:** set its `*_alert_to` to `""`.
+- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`) and write `"{{ vault_<name> }}"` as the `url`. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
+- **A name that is not in the list** stops the deploy and names the setting.
+- **Every host reads every destination.** A `vault_` name used in `ntfy_destinations` must exist on every host, so use the shared `group_vars/all/vault.yml`.
+- **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file.
+- **Use https:// or a tailnet address.** The token travels in the request.
 
 It cannot report the host being down or a backup that never started (cron not running, host off).
 
@@ -246,7 +256,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 - With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it so links and iOS push use that address. In a browser, sign in there, subscribe to the topic and allow notifications (browsers notify only from `https://`. The plain `http://` address lists messages without a pop-up).
 - The server denies everyone but that user and its token, even on the LAN. The page at `/alerts` loads without a login because it is only the app's shell. The compose file sets the user and token at every start. The data directory holds message history and the user database.
-- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers. It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `host_alert_url` is set (it defaults to `ntfy_alert_url`). A failed send times out after 15 seconds, so alerting cannot stall a backup.
+- `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers. It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `system_alert_to` names a destination. A failed send times out after 15 seconds, so alerting cannot stall a backup.
 - iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends it the message ID and a hash of the topic URL, not the message. Android needs no relay.
 
 </details>
@@ -281,7 +291,7 @@ How an app gets past its own login, for this repo's services and your own, is in
 1. Set `scrutiny_enabled: true` and `just deploy scrutiny --limit <host>`.
 2. The role reads the drive list from `smartctl --scan` at deploy time. Set `scrutiny_devices` to a list of device paths when that is wrong. SMART passes through a USB bridge only for some enclosures. When no drive answers the deploy stops with "no drive on this host answers SMART".
 3. After plugging in or unplugging a drive, `just deploy scrutiny --limit <host>` again so the container gets the new list.
-4. With `ntfy_alert_url` set ([ntfy](#ntfy-failure-alerts)), Scrutiny alerts there when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives. A stopped Scrutiny sends nothing. Test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
+4. With `scrutiny_alert_to` set ([ntfy](#ntfy-failure-alerts)), Scrutiny alerts there when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives. A stopped Scrutiny sends nothing. Test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
 
 Scrutiny can show a drive as failed while `smartctl -H` says PASSED. It also fails an attribute, such as `Current_Pending_Sector` (197), that Backblaze's fleet data ties to a high failure rate. A failed drive sends a notification at every collection until you fix or override the cause. The fork's device page can override one attribute: Ignore, Force passed, or Acknowledge current value (the fork's README has the details). Acknowledge current value stops the alerts, and Scrutiny keeps it in its database (lost if you wipe that data). It fails the attribute again if its value changes. Every backup leaves out the InfluxDB history in `scrutiny_influx_dir`, and covers `scrutiny_config_dir`. What the counters mean: [storage.md](./storage.md#drive-damage-and-wear).
 

@@ -44,22 +44,22 @@
         mode: "0755"
 
 # A locked host runs nothing that uses those folders until someone types the passphrase, so one alert after each boot tells you it
-# is waiting (Tailscale and the network are up two minutes after boot). It is sent to unlock_alert_url; with "" the job is removed.
+# is waiting (Tailscale and the network are up two minutes after boot). It is sent to the destination unlock_alert_to names; with "" the job is removed.
 - name: Write the ntfy token file for the locked-folder alert
   ansible.builtin.copy:
-    content: "{{ unlock_alert_token }}"
+    content: "{{ alert_targets.unlock.token }}"
     dest: "{{ unlock_token_file }}"
     owner: root
     group: root
     mode: "0600"
   no_log: true
-  when: encrypted_folders | length > 0 and unlock_alert_url | length > 0 and unlock_alert_token | length > 0
+  when: encrypted_folders | length > 0 and alert_targets.unlock.url | length > 0 and alert_targets.unlock.token | length > 0
 
 - name: Remove the ntfy token file when the alert has no token
   ansible.builtin.file:
     path: "{{ unlock_token_file }}"
     state: absent
-  when: encrypted_folders | length > 0 and (unlock_alert_url | length == 0 or unlock_alert_token | length == 0)
+  when: encrypted_folders | length > 0 and (alert_targets.unlock.url | length == 0 or alert_targets.unlock.token | length == 0)
 
 - name: Alert two minutes after boot if a folder is locked
   when: encrypted_folders | length > 0
@@ -68,7 +68,7 @@
     user: root
     special_time: reboot
     job: sleep 120 && {{ (scripts_dir ~ '/unlock.sh') | quote }} --alert
-    state: "{{ 'present' if unlock_alert_url | length > 0 else 'absent' }}"
+    state: "{{ 'present' if alert_targets.unlock.url | length > 0 else 'absent' }}"
 
 - name: Remove the encryption scripts when no folder is listed
   ansible.builtin.import_tasks: remove.yml
