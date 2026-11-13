@@ -122,7 +122,7 @@ encrypted_folders:
 - The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
 - With the fast and primary roles on two drives, list `appdata` on each (two entries).
 
-**Keep these out of a listed folder** if you need them while the host is locked:
+**Choose what stays up while locked.** A service whose data is in a listed folder stops when the host is locked. A service whose data is outside every listed folder keeps running. To keep any service up, set its `*_data_dir` (`just settings data_dir` lists them) to a folder you do not list. Three are worth deciding on first:
 
 | Data | Setting | If it is in a listed folder |
 |---|---|---|
@@ -130,7 +130,7 @@ encrypted_folders:
 | Caddy | `caddy_data_dir` | No web access to any service until you unlock. The deploy refuses it on a host with the [unlock page](#unlock-page). |
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. The deploy refuses it on a host with the unlock page. |
 
-The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. To keep one plain, set its `*_data_dir` to a folder you do not list, for example `/mnt/data/plain/ntfy`. Move the folder there before the deploy, while the service is stopped.
+The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. Use a plain folder such as `/mnt/data/plain/ntfy`, and move the existing folder there before the deploy, while the service is stopped.
 
 ## Keys and recovery
 
