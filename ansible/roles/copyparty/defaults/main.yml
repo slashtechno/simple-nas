@@ -4,7 +4,7 @@
 # (docs/services.md#copyparty-folders-and-logins). Keep passwords in the vault: the file is mode 0600 and --diff does not show it.
 copyparty_extra_conf: ""
 # Host folders to mount into the container, as "host:container" or "host:container:ro" strings, e.g. ["/mnt/fast/shared:/fast"].
-# A mounted folder is visible only after a volume for it is in copyparty_extra_conf (docs/services.md#more-drives-and-folders).
+# A mounted folder is visible only after a volume for it is in copyparty_extra_conf (docs/services.md#show-a-read-only-host-folder).
 copyparty_extra_volumes: []
 # Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
 copyparty_extra_ports: []

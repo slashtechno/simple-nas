@@ -1,6 +1,6 @@
 # Service notes
 
-Every service below is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. A few parts are on by default (the flags in [defaults-flags.yml](../ansible/group_vars/all/defaults-flags.yml) and `terminal_tools_enabled`). This page lists what each needs and the setup beyond the flag.
+Every service below is off until a host sets `<name>_enabled: true` in `ansible/host_vars/<host>/vars.yml`. Four things are on by default: `storage_enabled`, `tailscale_enabled`, `pi_enabled: auto` (it acts only on a Raspberry Pi) and `terminal_tools_enabled`. This page lists what each service needs and the setup beyond the flag.
 
 - **Deploy one:** `just deploy <tag>` from `ansible/` (tag = role name).
 - **Settings and defaults:** `ansible/group_vars/all/` and each role's `defaults/main.yml`. `just settings` lists them ([where files are](../ansible/README.md#which-files-hold-what)).
@@ -8,7 +8,13 @@ Every service below is off until a host sets `<name>_enabled: true` in `ansible/
 
 ## Every host
 
-The `common` role runs on every host. It installs the base packages (curl, git, vim, jq, python3, ca-certificates, gnupg, python3-docker) and sets the timezone. It masks sleep and hibernate, so a host never suspends. It adds `ssh_authorized_keys` and the passwordless sudoers file, and sets where Docker stores its data (`docker_data_root`). It keeps the system log on disk across reboots (`journal_storage`, so a host that froze leaves a record in `journalctl -b -1`). `volatile` spares the root drive the writes.
+The `common` role runs on every host. It:
+
+- installs the base packages (curl, git, vim, jq, python3, ca-certificates, gnupg, python3-docker) and sets the timezone;
+- masks sleep and hibernate, so the host never suspends;
+- adds your `ssh_authorized_keys` and a passwordless sudoers file;
+- sets where Docker keeps its data (`docker_data_root`);
+- keeps the system log on disk across reboots, so a host that froze leaves a record in `journalctl -b -1`. Set `journal_storage: volatile` to keep the log in RAM instead and spare the root drive the writes.
 
 <details>
 <summary>Terminal tools (<code>terminal_tools_enabled: false</code> skips them)</summary>
@@ -25,7 +31,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 
 - **Drive roles** (`fast`, `primary`, `backup`) come from entries in the host's `drives` ([storage.md](./storage.md)).
 - **Caddy name** means `caddy_enabled` with at least one `caddy_private_domains` entry. The address is `<subdomain>.<first private domain>` (each `<key>_subdomain` is in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml)). Caddy builds its names on each deploy, so deploy a newly enabled service with Caddy: `just deploy <service>,caddy --limit <host>`. The [Homepage](#homepage) tile follows with its own deploy.
-- **Behind the login:** a service marked "a Caddy name, `tinyauth_enabled`" has no login of its own. It takes the user Tinyauth names from a header ([Tinyauth](#tinyauth-login)), and the deploy stops without both.
+- **Behind the login:** a service whose "Needs" lists `tinyauth_enabled` has no login of its own. Tinyauth names the user in a header ([Tinyauth](#tinyauth-login)), and the deploy stops without both.
 - **Vault entries** go in `host_vars/<host>/vault.yml` (service secrets) or `group_vars/all/vault.yml` (shared): [ansible/README.md](../ansible/README.md#vault-secrets).
 
 | Service | What it is | Role | Needs |
@@ -94,7 +100,7 @@ copyparty_folders:
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`, not `drives` or `shares` (Copyparty's own).
-- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown never deletes a `dir` you chose, unless a service lists it. It deletes `copyparty_shared_dir` and every folder inside it.
+- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
 - **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
@@ -104,14 +110,14 @@ A symlink that someone with shell access puts in a folder shares the target. Upl
 
 ### Logins and Tinyauth
 
-Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Copyparty cannot check a hash. The passwords work on Copyparty's login page, on WebDAV and in apps. Caddy serves the web address `<copyparty_subdomain>.<domain>`. Tinyauth does not guard it. `service_users.copyparty` does nothing until you set `copyparty_sso_enabled` ([who can use it](./auth-reference.md#who-may-use-what)).
+Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Copyparty cannot check a hash. The passwords work on Copyparty's login page, on WebDAV and in apps. Caddy serves the web address `<copyparty_subdomain>.<domain>`, and Tinyauth does not guard it until you set `copyparty_sso_enabled`. `service_users.copyparty` needs that setting too: the deploy stops without it ([who can use it](./auth-reference.md#who-may-use-what)).
 
-`copyparty_sso_enabled: true` puts that web address behind the Tinyauth login. It adds to the passwords. It does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep their password logins.
+`copyparty_sso_enabled: true` puts that web address behind the Tinyauth login. It adds to the passwords. It does not replace them: the host port, the tunnel hostname, WebDAV, rclone and phone apps keep their password logins.
 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled` and `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it).
 - **Who is who:** the Tinyauth user name must equal the Copyparty `user`, character for character. Copyparty then gives that login's folders after the Tinyauth sign-in.
-- **Admins:** a login with `admin: true` has full access. A Tinyauth user with no entry in the list sees nothing.
 - **No password:** leave out `pass` for a person who uses only the Tinyauth sign-in. The deploy stops if that `user` is not a Tinyauth user name.
+- **Not in the list:** a Tinyauth user with no entry in `vault_copyparty_accounts` sees no folder.
 
 <details>
 <summary>Give an app a folder, more drives, extra listeners (SFTP), share links</summary>
@@ -135,20 +141,13 @@ Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Cop
   ```
 
 - **Provider logins:** Tinyauth sets `Remote-User` for a GitHub or Google login too (the name at the provider). With `TINYAUTH_OAUTH_*` providers on, a provider name must not equal a `user` in `vault_copyparty_accounts`.
-- **Share links** on the web address ask for the Tinyauth login too. Copyparty expects the `/shares` prefix to be exempt ([shares](https://github.com/9001/copyparty#shares)). Give out links from the published port or the tunnel hostname instead.
+- **Share links** on the web address ask for the Tinyauth login too. Copyparty expects the `/shares` prefix to be exempt ([shares](https://github.com/9001/copyparty#shares)). Give out links from the host port or the tunnel hostname instead.
 
 </details>
 
-### More drives and folders
+### Show a read-only host folder
 
-To show a host folder in Copyparty, add it to `copyparty_folders` with its `dir`, then deploy.
-
-```yaml
-copyparty_folders:
-  fast: {dir: "{{ fast_drive }}/shared", access: {friend1: rw}}
-```
-
-Use `copyparty_extra_volumes` and `copyparty_extra_conf` only when `copyparty_folders` is not enough. One case is a read-only mount, for everyone:
+`copyparty_folders` covers most needs. For a read-only mount, use `copyparty_extra_volumes` and `copyparty_extra_conf`:
 
 ```yaml
 copyparty_extra_volumes:                  # "host path:path in the container[:ro]"
@@ -161,7 +160,7 @@ copyparty_extra_conf: |
 ```
 
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
-- **Locked folders:** a folder that is, or is in, an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty.
+- **Locked folders:** a folder in an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty.
 
 To change anything else, edit `copyparty.conf.j2` or the settings, then run `just deploy copyparty`.
 
@@ -173,11 +172,12 @@ Token: `vault_github_read_token`, a read-only fine-grained token scoped to the o
 
 The `pics` role clones the private repo in `pics_repo` and builds the image on the host (about 10 minutes on a Pi 5). Later runs rebuild only when the repo's commit changed. The role runs the app on `services`. It uses the Copyparty login `pics` and two folders: `/pics-photos` (no delete) and `/pics-trash` (delete allowed). The build needs memory on top of the running services. On a 4 GB host deploy a changed `pics` while Immich and Crafty are idle, then check `free -m` and `journalctl -k | grep -i oom`.
 
-1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`) and add a `cloudflared_ingress` entry for the public hostname. Two ports: the owner app (cull UI, password-gated) on `pics_port` (8100, the only published port, `http://<pi>:<pics_port>`). The guest surface (share pages, portfolio, no owner routes) runs on `pics_public_port` (8001, inside Docker only). The tunnel points at `http://pics:<pics_public_port>`, so no `path` rule.
-2. Add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password` to the host's vault, without single quotes. Then add the login `pics` to `vault_copyparty_accounts` with `pass: "{{ vault_pics_copyparty_password }}"`.
-3. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `pics-photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `pics-trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops when a folder or a `dir` is not valid.
-4. `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the login and folders first).
-5. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
+1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`).
+2. Add a `cloudflared_ingress` entry for the public hostname, pointing at `http://pics:<pics_public_port>` (8001, inside Docker only). It serves the guest pages (shares, portfolio) and no owner routes, so it needs no `path` rule. The owner app (cull UI, password-gated) is on the host port `pics_port` (8100): `http://<host>:<pics_port>`.
+3. Add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password` to the host's vault, without single quotes. Then add the login `pics` to `vault_copyparty_accounts` with `pass: "{{ vault_pics_copyparty_password }}"`.
+4. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `pics-photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `pics-trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops when a folder or a `dir` is not valid.
+5. Run `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the login and folders first).
+6. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
 
 The database is in `pics_data_dir`, covered by the daily backup (the app also writes its own daily snapshots there). `teardown.yml -e only=pics` keeps all of pics' data unless `-e remove_data=true`, which also deletes the photos and trash.
 
@@ -216,25 +216,28 @@ Every record the role writes carries the comment `managed by simple-nas, tunnel 
 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
-1. Make the secrets: a user and password (`vault_ntfy_user`, `vault_ntfy_password` in `host_vars/<host>/vault.yml`, from `openssl rand -base64 24`) and a token (`vault_ntfy_token` in `group_vars/all/vault.yml`, from `docker run --rm binwiederhier/ntfy token generate`). The deploy hashes the password into the compose file, so the vault holds the plain one.
+1. Make the secrets in the vault: a user name you choose (`vault_ntfy_user`) and a password from `openssl rand -base64 24` (`vault_ntfy_password`), both in `host_vars/<host>/vault.yml`, and a token (`vault_ntfy_token` in `group_vars/all/vault.yml`, from `docker run --rm binwiederhier/ntfy token generate`). The deploy hashes the password into the compose file, so the vault holds the plain one.
 2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then name the topic and pick who sends to it (below).
-3. In the ntfy app add the server `http://<host-tailscale-name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
+3. In the ntfy app add the server `http://<tailnet name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
 4. Test: on the host `/opt/services/scripts/alert.sh system test "test alert" "hello"` and check the phone.
 
 **Where alerts go.** `ntfy_destinations` maps a name to a topic. Each has a `url` (the full address of the topic, required) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts; a host's own `ntfy_destinations` replaces it whole, so list every name that host needs. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
 
 ```yaml
 ntfy_destinations:
-  home: {url: "http://<host-tailscale-name>:<ntfy_port>/alerts", token: "{{ vault_ntfy_token }}"}   # this repo's ntfy
+  home: {url: "http://<tailnet name>:<ntfy_port>/alerts", token: "{{ vault_ntfy_token }}"}   # this repo's ntfy
   public: {url: "{{ vault_ntfy_public_url }}"}                                                        # ntfy.sh: no login
 system_alert_to: home        # failed backup jobs and the connectivity watchdog
 unlock_alert_to: home        # the locked-folder alert
-scrutiny_alert_to: home      # drive alerts
-pics_alert_to: public        # drive alerts, to a different topic
+scrutiny_alert_to: home      # drive health alerts
+pics_alert_to: public        # pics' own alerts, to a different topic
 ```
 
 - **Turn a sender off:** set its `*_alert_to` to `""`. Write `""`, not an empty value.
-- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`, in `group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`. The deploy writes the address into the sender's file on the host, where anyone on the host can read it: `alert.sh` and the token files are left out of every backup, but Scrutiny's compose file and pics' `pics.env` are in the offsite one. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
+- **Public server:** a topic name on `ntfy.sh` works like a password.
+  - Keep the address in the vault (`group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`.
+  - Leave out `token`. `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
+  - The deploy writes the address into the sender's file on the host, where anyone on the host can read it. `alert.sh` and the token files are in no backup, but Scrutiny's compose file and pics' `pics.env` are in the offsite one.
 - **A name that is not in `ntfy_destinations`, or a destination with no `url`,** stops the deploy and names the setting.
 - **A `vault_` name** in a destination must exist on the hosts that send to it.
 - **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.
@@ -261,7 +264,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
 - With `tinyauth_enabled`, every service with a Caddy name is behind the login except those marked `own_login: true` in `services.yml`. A service marked that way has apps, git, WebDAV or push clients that cannot log in through a web page, so it keeps its own login. Tinyauth is its own login. Copyparty's web address joins with `copyparty_sso_enabled`. To exempt another service, add `own_login: true` to its entry.
-- Caddy serves a protected service under the first `caddy_private_domains` entry only ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). A published host port is not protected.
+- Caddy serves a protected service under the first `caddy_private_domains` entry only ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). A host port is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`. A name in `caddy_sites` uses the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). [SilverBullet](https://silverbullet.md/) expects an authentication proxy, so leave its `SB_USER` unset.
 
 ### How an app joins
@@ -284,7 +287,17 @@ How an app gets past its own login, for this repo's services and your own, is in
 3. After plugging in or unplugging a drive, `just deploy scrutiny --limit <host>` again so the container gets the new list.
 4. With `scrutiny_alert_to` set ([ntfy](#ntfy-failure-alerts)), Scrutiny alerts there when a drive's SMART status fails, as often as `scrutiny_collect_schedule` reads the drives. A stopped Scrutiny sends nothing. Test: `docker exec scrutiny curl -X POST localhost:8080/api/health/notify`.
 
-Scrutiny can show a drive as failed while `smartctl -H` says PASSED. It also fails an attribute, such as `Current_Pending_Sector` (197), that Backblaze's fleet data ties to a high failure rate. A failed drive sends a notification at every collection until you fix or override the cause. The fork's device page can override one attribute: Ignore, Force passed, or Acknowledge current value (the fork's README has the details). Acknowledge current value stops the alerts, and Scrutiny keeps it in its database (lost if you wipe that data). It fails the attribute again if its value changes. Every backup leaves out the InfluxDB history in `scrutiny_influx_dir`, and covers `scrutiny_config_dir`. What the counters mean: [storage.md](./storage.md#drive-damage-and-wear).
+<details>
+<summary>Scrutiny shows a failed drive but <code>smartctl -H</code> says PASSED</summary>
+
+Scrutiny also fails an attribute such as `Current_Pending_Sector` (197) that Backblaze's fleet data ties to a high failure rate. A failed drive sends a notification at every collection until you fix or override the cause.
+
+- The fork's device page can override one attribute: Ignore, Force passed, or Acknowledge current value (the fork's README has the details).
+- Acknowledge current value stops the alerts. Scrutiny keeps it in its database, and fails the attribute again if its value changes.
+- Backups cover `scrutiny_config_dir` and leave out the InfluxDB history in `scrutiny_influx_dir`.
+- What the counters mean: [storage.md](./storage.md#drive-damage-and-wear).
+
+</details>
 
 ## Garage (S3)
 
@@ -293,7 +306,6 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_
 - The web UI is at `https://garage.<private domain>` (create buckets and access keys there). It holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
 - Apps connect to the hostname of the `garage-cors-proxy` container's `cloudflared_ingress` entry, with region `garage` and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`): [Restore: Garage](./backups.md#restore-garage).
-- Garage reads its cluster layout from `garage_meta_dir` (the object blocks are in `garage_blocks_dir`). A first deploy (empty meta dir) starts with `--single-node` so it auto-configures one node. Later starts omit the flag, which Garage requires once a layout exists (see the comment in `roles/garage/tasks/main.yml`).
 
 ## Crafty (Minecraft servers)
 
@@ -310,23 +322,23 @@ One container runs every server. All data is under `crafty_data_dir` (`appdata/c
 Runs with `network_mode: host` (HomeKit discovery needs it), so it is not on `services` and not in `cloudflared_ingress`. The role only deploys the container. The image creates `config.json` and `auth.json` on first start. Log in with `admin`/`admin` and change the password at once. You set the HomeKit PIN and plugins in the UI, and they persist across deploys.
 
 - Remote Apple Home access needs a HomeKit hub (Apple TV or HomePod) on your LAN. Tailscale does not replace it.
-- The admin UI is at `http://<tailscale-ip>:8581` (plain HTTP).
+- The admin UI is at `http://<tailnet name>:8581` (plain HTTP).
 
 ## Homepage
 
 A start page (`homepage_enabled`, [Homepage](https://gethomepage.dev)) for all your servers. Run it on one host: it shows a group of tiles for every host in the inventory. One tile per service that host has on and that has a host port or a Caddy name. A green or red dot shows whether the page answers.
 
-- With `tinyauth_enabled` and `caddy_private_domains` it is at `https://<homepage_subdomain>.<first private domain>` behind the login and publishes no port. Without Tinyauth, set `homepage_port` (for example 3001) and open `http://<homepage_host>:<homepage_port>`. Anyone on the network can then open it.
-- **The address must match.** `homepage_host` defaults to the address Ansible reaches the host at (the full tailnet name). The page also answers on the inventory name. Any other address gets a host validation error: set `homepage_host` to the one you use.
+- With `tinyauth_enabled`, `caddy_enabled` and `caddy_private_domains` it is at `https://<homepage_subdomain>.<first private domain>` behind the login and publishes no port. Without Tinyauth, set `homepage_port` (for example 3001) and open `http://<homepage_host>:<homepage_port>`. Anyone on the network can then open it.
+- **The address must match.** `homepage_host` defaults to the address Ansible reaches the host at (`ansible_host`). With `homepage_port` set, the page also answers on the inventory name. Any other address gets a host validation error: set `homepage_host` to the one you use.
 - A tile links to the service's `https://` name when that host runs Caddy with `caddy_private_domains` and the service has a subdomain ([caddy-reference.md](./caddy-reference.md#names-for-apps-caddy_private_domains)). Otherwise it links to that host's `ansible_host` and port. After switching a service on or off elsewhere, `just deploy homepage --limit <homepage host>`.
 - Tiles are the `services.yml` entries that have an `icon` (add an entry to add a tile), and Caddy and Cloudflare Tunnel have none. `homepage_links` adds your own tiles in a "Links" group: a public hostname, a machine outside the inventory, an app from Dockge (format in `roles/homepage/defaults/main.yml`).
-- Ansible writes every file Homepage reads (tiles, title, colours), so a deploy resets edits to them: change them in the repo. Homepage's own password login and live-number widgets are not set up on purpose: Tinyauth is the login and the page holds only links.
+- Ansible writes every file Homepage reads, so a deploy resets edits to them: change them in the repo. There is no Homepage login or widget on purpose: Tinyauth is the login and the page holds only links.
 
 ## Ad-hoc app platform
 
 **Dockge** (`dockge_enabled`) is a web UI at `http://<host>:<dockge_port>` (5001) over `compose.yaml` stacks in `dockge_stacks_dir` (`<fast drive>/stacks`). Create the account on first visit. **Caddy** (`caddy_enabled`) gives apps names from container labels ([caddy-reference.md](./caddy-reference.md)). With `caddy_private_domains` set, names under your own domain get Let's Encrypt certificates. Without it, apps are reachable over Tailscale at `http://<host>:<port>`. A stack that wants a name or a tunnel route joins the `services` network (the ingress `service` is `http://<container_name>:<port>`). Public access is off unless the host sets `cloudflared_enabled: true` ([Cloudflare](#cloudflare-add-a-public-hostname)).
 
-- **Dockge's login.** With a `dockge_port` set, the published port skips Caddy and Tinyauth, so Dockge keeps its own login. `dockge_port: ""` makes the Tinyauth login its only one. The deploy needs the first account before it can switch Dockge's login off, so create it, then deploy again. Then every name that reaches Dockge must import `tinyauth_forwarder`, including one in `caddy_sites`.
+- **Dockge's login.** With a `dockge_port` set, the host port skips Caddy and Tinyauth, so Dockge keeps its own login. `dockge_port: ""` makes the Tinyauth login its only one. The deploy needs the first account before it can switch Dockge's login off, so create it, then deploy again. Then every name that reaches Dockge must import `tinyauth_forwarder`, including one in `caddy_sites`.
 - **Risk.** With its login off, any container on the `services` network can reach Dockge, and so the Docker socket ([glossary](./glossary.md#drives-and-docker)), without a password. Keep untrusted containers off that network, or leave `dockge_port` set. Anyone who can set a label on a container can also publish a route through Caddy.
 - **If Tinyauth is down or removed**, Dockge has no way in from a browser. Use ssh, or set `tinyauth_enabled: false` (or publish `dockge_port`) and `just deploy dockge --limit <host>` to get its own login back.
 - **Ansible deploys Dockge only.** The stacks are yours and stay when you delete Dockge. A stack keeps state in bind mounts ([storage.md](./storage.md#dockers-own-storage)), so deleting a stack is deleting its directory. Stacks, Dockge's data and Caddy's data sit on the `fast` drive and the host's backup covers them.
