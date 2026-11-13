@@ -31,7 +31,7 @@ The `common` role runs on every host. It installs the base packages (curl, git, 
 | Service | What it is | Role | Needs |
 |---|---|---|---|
 | [Immich](#immich) | Photo library (Google Photos alternative) | `roles/immich` | `primary` and `fast` drive roles, `vault_immich_db_password` |
-| [Copyparty](#copyparty-folders-and-logins) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_accounts` with at least one `admin: true` login, `copyparty_folders` for any folder besides `/` |
+| [Copyparty](#copyparty-folders-and-logins) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_accounts` with at least one `admin: true` login, `copyparty_folders` for folders besides the default `files` |
 | [Gitea](#gitea) | Git server | `roles/gitea` | `fast` drive role, `caddy_private_domains` or `gitea_root_url`, `vault_gitea_runner_token` optional |
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
 | [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
@@ -73,45 +73,31 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 ## Copyparty folders and logins
 
-Copyparty serves folders. A login decides who can open each folder. The deploy writes the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`.
-
-There are two lists:
-
-- **Logins:** `vault_copyparty_accounts`, in the vault. Each entry is a person or an app: `user`, `pass` and, for an admin, `admin: true`.
-- **Folders:** `copyparty_folders`, in the host's `vars.yml`. Each entry is a folder and the logins that can open it.
-
-| Login | What you write | What it can open |
-|---|---|---|
-| Admin | `admin: true` | Every folder, with full access, and `/`. On `/drives`: read-only, or full access with `usb_automount_writable`. |
-| Person or app | Nothing more | Only the folders that name it in `access`. |
-| Tinyauth-only login | No `pass` (needs `copyparty_sso_enabled`) | Same as a person or an app. It has no password login. |
-
-| Folder | It exists when | It holds |
-|---|---|---|
-| `/` | Always | `copyparty_files_dir`. Only admins open it. |
-| `/<name>` | `<name>` is in `copyparty_folders` | The folder `dir` of that entry |
-| `/drives` | `usb_automount_enabled: true` | The plugged-in USB drives ([storage.md](./storage.md#plugged-in-usb-drives-drives)). Read-only unless `usb_automount_writable`. |
+Copyparty serves each folder in `copyparty_folders` (the host's `vars.yml`) at `/<name>`. A login in `vault_copyparty_accounts` (the vault) opens the folders that name it. `/` lists only the folders a login may open. The default is one folder, `files`, in `<copyparty_shared_dir>/files` for the admins.
 
 ### Add a folder or a login
 
-1. Add the folder to `copyparty_folders` in the host's `vars.yml`.
-2. Name the logins in the `access` of the folder.
-3. Add each new login to `vault_copyparty_accounts` (shape: `host_vars/vault.yml.example`). Add `admin: true` for an admin.
-4. Run `just deploy copyparty --limit <host>`.
+1. Add the folder to `copyparty_folders`, with `access: {login: letters}`.
+2. Add each new login to `vault_copyparty_accounts` (shape: `host_vars/vault.yml.example`). Add `admin: true` for an admin.
+3. Run `just deploy copyparty --limit <host>`.
 
 ```yaml
 copyparty_folders:
-  collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab, in copyparty_shared_dir/collab
-  team: {access: {friend2: rwmd, friend1: r}}                         # friend1 can only read
+  files: {}                                                           # /files, for the admins only
+  collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab
+  team: {access: {friend2: A, friend1: r}}                            # friend1 can only read
   pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
 ```
 
-- **Name:** letters, digits, `-` and `_`. The names `drives` and `shares` are not allowed (they are Copyparty's own).
-- **`dir`:** the folder on the host. It must be an absolute path. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use a `dir` on the `primary` or `fast` drive: the local backup covers those drives. Teardown never deletes a `dir` that you chose, unless a service lists it.
-- **`access`:** `{login: letters}`. `r` read, `w` write, `m` move, `d` delete. Copyparty's docs explain `g`, `G`, `h` and `a`.
-- **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` instead of the mapping. Put the mapping in the vault (`host_vars/vault.yml.example`). The tracked file then holds no user names.
-- **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file. Give `d` only to a login that must delete.
-- **No folders:** with `copyparty_folders` empty, Copyparty serves `/`, `/shares`, and `/drives` with `usb_automount_enabled`.
+- **Letters:** `A` everything. Or `r` read, `w` write, `m` move, `d` delete (Copyparty's docs explain `g`, `G`, `h` and `a`).
+- **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
+- **Person or app:** only the folders that name it in `access`.
+- **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
+- **Name:** letters, digits, `-` and `_`, not `drives` or `shares` (Copyparty's own).
+- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown never deletes a `dir` you chose, unless a service lists it.
+- **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
+- **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
+- **No folders:** `copyparty_folders: {}` serves `/shares` and, with `usb_automount_enabled`, `/drives`.
 
 A symlink that someone with shell access puts in a folder shares the target. Uploads and WebDAV create only regular files.
 

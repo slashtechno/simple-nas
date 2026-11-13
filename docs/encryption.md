@@ -111,14 +111,13 @@ List the folders that hold data, not a drive's mount point. `/mnt/data` would pu
 encrypted_folders:
   - /mnt/data/appdata  # `fast_appdata_dir` and `primary_appdata_dir`: every service's data, the compose files stay on the root drive
   - /mnt/data/stacks   # Dockge stacks
-  - /mnt/data/files    # Copyparty's files
-  - /mnt/data/shared   # Copyparty's folders that name no `dir`, if you use them
+  - /mnt/data/shared   # Copyparty's folders that name no `dir`, `files` among them
 ```
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
 - `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
-- List `shared` only if you use it. It holds data when a folder in `copyparty_folders` names no `dir`.
+- A Copyparty folder with its own `dir` needs its own entry (or sits inside a listed folder).
 - The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
 - With the fast and primary roles on two drives, list `appdata` on each (two entries).
 

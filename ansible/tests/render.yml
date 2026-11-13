@@ -103,6 +103,12 @@
         "{{ item }}_enabled": true
       loop: "{{ services | map(attribute='key') | list + ['backup_local', 'backup_cloud'] }}"
 
+    - name: The default folder list is one folder for the admins' files
+      ansible.builtin.assert:
+        that:
+          - "copyparty_folders == {'files': {}}"
+        quiet: true
+
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
         # one list of logins: the admin and the people and the app have a password, owner signs in through Tinyauth only
@@ -110,7 +116,7 @@
         # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
         copyparty_folders:
           collab: {access: {friend1: rwmd, friend2: rwmd}}
-          team: {access: {friend2: rwmd, friend1: r}}
+          team: {access: {friend2: A, friend1: r}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
           pics-photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
           pics-trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
@@ -356,7 +362,7 @@
     # parts as subfolders. Only the owner's own folders are named plainly. Read as raw text, so a path is not resolved.
     - name: Every data directory is under fast_appdata_dir or primary_appdata_dir in its service's folder, or is an owner folder
       vars:
-        owner_folders: [dockge_stacks_dir, copyparty_files_dir, copyparty_shared_dir]
+        owner_folders: [dockge_stacks_dir, copyparty_shared_dir]
         # The service key is the first word of the setting name; a service key with an underscore needs a rule here first.
         service_folder: "{{ item.key.split('_')[0] }}"
         under_parent: "{{ item.value is match('^\\{\\{ (fast|primary)_appdata_dir \\}\\}/' ~ service_folder ~ '(/[a-z0-9-]+)?$') }}"
@@ -416,7 +422,6 @@
       ansible.builtin.assert:
         that:
           - dockge_data_dir in delete_paths
-          - copyparty_files_dir in delete_paths
           - copyparty_hist_dir in delete_paths
           - dockge_stacks_dir not in delete_paths
           - keep_paths == [dockge_stacks_dir]
@@ -633,8 +638,10 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to /, the four folders, read-only on /drives.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 5"
+          # Admin access to the four folders, read-only on /drives. / is Copyparty's own list of folders: no volume.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 4"
+          - "'\n[/]\n' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "':/files:rw' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'    r: owner' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
           # A folder is its own volume at /vol/<name>: the admins have full access, each login in its access gets the letters written there.
           - >-
@@ -644,9 +651,9 @@
           # The admin login has a password. A login with no pass is not an account: only the Tinyauth header can name it.
           - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'  owner: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # One login can have different letters in different folders: friend1 only reads team.
+          # One login can have different letters in different folders: friend1 only reads team, and A gives friend2 everything there.
           - >-
-            '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: owner\n    rwmd: friend2\n    r: friend1\n\n'
+            '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: owner\n    A: friend2\n    r: friend1\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           # No dir: inside copyparty_shared_dir. A dir: that directory.
           - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
@@ -844,7 +851,7 @@
           - "'[/drives]' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
           - "':/vol/' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders-compose.yml')"
           - "'[/pics-' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
-          # The logins stay: the admin can still sign in to / and /drives.
+          # The logins stay: the admin can still sign in and open /drives.
           - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
         quiet: true
 

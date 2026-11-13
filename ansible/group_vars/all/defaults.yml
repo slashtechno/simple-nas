@@ -62,14 +62,17 @@ docker_data_root: ""
 # 00-containers.sh (restarts the containers that use an unlocked folder); the scripts you add start any other software and are never touched (docs/encryption.md).
 encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
-# The folders Copyparty serves besides /, /drives and /shares, for people and apps alike: {name: {dir, access}}. Each is served at /<name>.
+# The folders Copyparty serves, for people and apps alike: {name: {dir, access}}. Each is served at /<name>, and / lists the folders a login may open.
 # dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>). access is {login: permissions}, where a login is a user
-# of vault_copyparty_accounts and permissions are letters: r read, w write, m move, d delete (g, G, h and a: see Copyparty's docs).
-# Every admin has full access to every folder. A name is letters, digits, - and _, and not drives or shares. Example:
+# of vault_copyparty_accounts and permissions are letters: A everything, or r read, w write, m move, d delete (g, G, h and a: see Copyparty's docs).
+# Every admin has full access to every folder. A name is letters, digits, - and _, and not drives or shares. The default is one folder for
+# the admins' files; a host's own value replaces it whole. {} serves no folder. Example:
 #   copyparty_folders:
+#     files: {}
 #     collab: {access: {friend1: rwmd}}
 #     pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
-copyparty_folders: {}
+copyparty_folders:
+  files: {}
 
 # The topic the ntfy server this repo runs accepts alerts on (its access token is limited to it). A destination for this server ends its url with it.
 ntfy_topic: alerts

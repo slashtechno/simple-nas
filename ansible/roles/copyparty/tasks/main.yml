@@ -18,7 +18,6 @@
     group: "{{ ansible_user }}"
     mode: "0755"
   loop:
-    - "{{ copyparty_files_dir }}"
     - "{{ copyparty_config_dir }}"
     - "{{ copyparty_hist_dir }}"
 

@@ -233,6 +233,7 @@
             cases:
               - {name: a good setup}
               - {name: no folders, vars: {copyparty_folders: {}}}
+              - {name: A for full access, vars: {copyparty_folders: {c: {dir: /d, access: {f1: A}}}}}
               - name: a login with no pass, signed in through Tinyauth by a Tinyauth user
                 vars:
                   copyparty_sso_enabled: true

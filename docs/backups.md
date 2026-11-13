@@ -155,7 +155,7 @@ Get an ID from `restic snapshots` (or the dashboard). `latest` works in place of
 
 ```bash
 # Restore into a scratch path to inspect first (does not touch originals)
-restic restore latest --include /mnt/data/files --target /mnt/data/restore-scratch
+restic restore latest --include /mnt/data/shared/files --target /mnt/data/restore-scratch
 
 # Restore everything to original paths (replaces current files)
 restic restore latest --target /

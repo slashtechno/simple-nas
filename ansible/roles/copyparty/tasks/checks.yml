@@ -29,11 +29,11 @@
       - item.value is mapping
       - item.key is match('^[A-Za-z0-9_-]+$') and item.key not in ['drives', 'shares']
       - item.value.access | default({}) is mapping
-      - item.value.access | default({}) | dict2items | rejectattr('value', 'match', '^[rwmdgGha]+$') | list | length == 0
+      - item.value.access | default({}) | dict2items | rejectattr('value', 'match', '^[rwmdgGhaA]+$') | list | length == 0
       - item.value.dir is not defined or (item.value.dir is string and item.value.dir is match('^/'))
     fail_msg: >-
       copyparty_folders entry '{{ item.key }}' must be {dir: /absolute/path, access: {login: letters}}. The name is letters, digits, - and _,
-      and not drives or shares (Copyparty's own addresses). The letters are from rwmdgGha, such as {friend1: rwmd}.
+      and not drives or shares (Copyparty's own addresses). The letters are from rwmdgGhaA, such as {friend1: rwmd} or {friend1: A} for full access.
     quiet: true
   loop: "{{ copyparty_folders | dict2items }}"
   loop_control:

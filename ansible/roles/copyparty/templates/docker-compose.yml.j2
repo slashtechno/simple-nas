@@ -12,7 +12,6 @@ services:
     container_name: copyparty
     restart: unless-stopped
     volumes:
-      - {{ copyparty_files_dir }}:/files:rw
       - {{ copyparty_config_dir }}:/cfg:rw
       - {{ copyparty_hist_dir }}:/hist:rw
 {# rslave: drives plugged in after the container started still appear. #}
