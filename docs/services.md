@@ -89,14 +89,15 @@ copyparty_folders:
   pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
 ```
 
-- **Letters:** `A` everything. Or `r` read, `w` write, `m` move, `d` delete (Copyparty's docs explain `g`, `G`, `h` and `a`).
+- **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. Copyparty's docs explain `g`, `G` and `h`.
 - **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`, not `drives` or `shares` (Copyparty's own).
-- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown never deletes a `dir` you chose, unless a service lists it.
+- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. Teardown never deletes a `dir` you chose, unless a service lists it. It deletes `copyparty_shared_dir` and every folder inside it.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
+- **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
 - **No folders:** `copyparty_folders: {}` serves `/shares` and, with `usb_automount_enabled`, `/drives`.
 
 A symlink that someone with shell access puts in a folder shares the target. Uploads and WebDAV create only regular files.

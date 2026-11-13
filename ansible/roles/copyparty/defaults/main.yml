@@ -9,6 +9,6 @@ copyparty_extra_volumes: []
 # Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
 copyparty_extra_ports: []
 # Everyone who signs in to Copyparty, from the vault: a list of {user, pass, admin}. admin: true gives full access to every folder and to
-# / and /drives; no pass means a login through Tinyauth only (copyparty_sso_enabled), with the Tinyauth user name as user. Which folders
+# /drives; no pass means a login through Tinyauth only (copyparty_sso_enabled), with the Tinyauth user name as user. Which folders
 # a login can open is in copyparty_folders.
 copyparty_accounts: "{{ vault_copyparty_accounts }}"

@@ -115,6 +115,7 @@
         vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}] }}"
         # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
         copyparty_folders:
+          files: {}
           collab: {access: {friend1: rwmd, friend2: rwmd}}
           team: {access: {friend2: A, friend1: r}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
@@ -638,8 +639,8 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to the four folders, read-only on /drives. / is Copyparty's own list of folders: no volume.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 4"
+          # Admin access to the five folders, read-only on /drives. / is Copyparty's own list of folders: no volume.
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 5"
           - "'\n[/]\n' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "':/files:rw' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'    r: owner' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
@@ -656,6 +657,7 @@
             '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: owner\n    A: friend2\n    r: friend1\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           # No dir: inside copyparty_shared_dir. A dir: that directory.
+          - "(copyparty_shared_dir ~ '/files:/vol/files:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'/mnt/primary/appdata/pics/photos:/vol/pics-photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # An app is a login like any other: pics has no delete in the photos and has it in the trash.
