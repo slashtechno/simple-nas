@@ -1,7 +1,7 @@
 # Ansible-managed. Edit vars.yml or vault.yml and redeploy; changes made here are overwritten.
 
-{# Every admin has full access to every volume: the password admin and the people Tinyauth signs in as admins. #}
-{% set admins = [copyparty_user] + (copyparty_sso_admins if copyparty_sso_enabled | bool else []) %}
+{# Every admin has full access to every volume. An admin is a login with admin: true. #}
+{% set admins = copyparty_accounts | selectattr('admin', 'defined') | selectattr('admin') | map(attribute='user') | list %}
 [global]
   e2dsa
   e2ts
@@ -37,12 +37,8 @@
 {% endif %}
 
 [accounts]
-  {{ copyparty_user }}: {{ copyparty_password }}
-{% for u in copyparty_accounts %}
+{% for u in copyparty_accounts if u.pass is defined %}
   {{ u.user }}: {{ u.pass }}
-{% endfor %}
-{% for app in copyparty_clients %}
-  {{ app.key }}: {{ lookup('ansible.builtin.vars', app.copyparty.password) }}
 {% endfor %}
 
 [/]
@@ -52,47 +48,20 @@
     A: {{ u }}
 {% endfor %}
 
-{% if copyparty_clients | length > 0 %}
-{# The container's own /apps folder holds the bind mounts below, so /apps and /apps/<key> open as folders listing each app's volumes.
-   Read-only: a file written here would live in the container, not on a drive. Not indexed: the photos are indexed by their own volume. #}
-[/apps]
-  /apps
-  accs:
-{% for u in admins %}
-    r: {{ u }}
-{% endfor %}
-  flags:
-    -e2d
-
-{% endif %}
-{# One volume per app volume. The address, the path in the container and the mount in docker-compose.yml are all /apps/<key>/<folder>. #}
-{% for app in copyparty_clients %}
-{% for v in app.copyparty.volumes %}
-[/apps/{{ app.key }}/{{ v.folder }}]
-  /apps/{{ app.key }}/{{ v.folder }}
+{# One volume per folder. The address is /<name>; the container mounts the folder at /vol/<name> (docker-compose.yml). The admins have
+   full access, and each login in the folder's access gets the letters listed there. #}
+{% for name, folder in copyparty_volumes.items() %}
+[/{{ name }}]
+  /vol/{{ name }}
   accs:
 {% for u in admins %}
     A: {{ u }}
 {% endfor %}
-    {{ v.perms }}: {{ app.key }}
-
-{% endfor %}
-{% endfor %}
-{# One volume per shared folder: the admins have full access, the accounts that list the folder read, write, move and delete in it (no
-   admin rights). #}
-{% for folder in copyparty_shared_folders %}
-[/{{ folder }}]
-  /shared/{{ folder }}
-  accs:
-{% for u in admins %}
-    A: {{ u }}
-{% endfor %}
-{% for u in copyparty_accounts if folder in u.folders %}
-    rwmd: {{ u.user }}
+{% for user, perms in folder.access.items() %}
+    {{ perms }}: {{ user }}
 {% endfor %}
 
 {% endfor %}
-
 {% if usb_automount_enabled | bool %}
 {# USB drives plugged into the host; /host/usb is /run/media/system. #}
 [/drives]

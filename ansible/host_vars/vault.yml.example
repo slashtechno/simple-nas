@@ -10,24 +10,29 @@ vault_ntfy_user: "alerts"
 vault_ntfy_password: "change-me-generate-with-openssl-rand-base64-24"
 # Immich's Postgres password.
 vault_immich_db_password: "change-me-generate-with-openssl-rand-base64-32"
-# Copyparty admin user name.
-vault_copyparty_user: "yourusername"
-# Copyparty admin password.
-vault_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
-# People who may use Copyparty's shared folders, in the browser or over WebDAV. folders lists what each may use: names from
-# copyparty_shared_folders (vars.yml: this example assumes [collab, team]), which makes the folders; this is read only when that list is not empty.
+# Everyone who signs in to Copyparty, in the browser or over WebDAV: user, pass and admin. admin: true gives full access to every folder;
+# leave it out for a person or an app. Which folders a login can open is in copyparty_folders (vars.yml,
+# docs/services.md#copyparty-folders-and-logins). Leave out pass for a login through Tinyauth only (copyparty_sso_enabled): then user is the
+# Tinyauth user name. At least one login needs admin: true.
 vault_copyparty_accounts:
+  - user: "yourusername"
+    pass: "change-me-generate-with-openssl-rand-base64-32"
+    admin: true
   - user: "friend1"
     pass: "change-me-generate-with-openssl-rand-base64-32"
-    folders: [collab]
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
-    folders: [collab, team]
+  # pics' login: the same password as pics' own env file.
+  - user: "pics"
+    pass: "{{ vault_pics_copyparty_password }}"
+# Who may use the folder /collab and with which permissions, {login: letters}, when a host's vars.yml reads it there
+# (copyparty_folders: collab: {access: "{{ vault_copyparty_collab_access }}"}) to keep user names out of the tracked file.
+vault_copyparty_collab_access: {friend1: rwmd, friend2: rwmd}
 # Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty web
 # address, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.
 vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
-# pics' Copyparty account password (the copyparty field of pics in services.yml):
+# pics' password for its Copyparty login (the entry named pics in vault_copyparty_accounts):
 vault_pics_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
 # Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).
 # Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access

@@ -95,7 +95,7 @@
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
 
-    # Every service on, so every template renders. Branches behind other settings (Copyparty's shared folders, extra ports
+    # Every service on, so every template renders. Branches behind other settings (Copyparty's folders, extra ports
     # and volumes, USB volumes; Crafty Bedrock; the Gitea runner; the optional Pics lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
@@ -105,7 +105,15 @@
 
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
-        copyparty_shared_folders: [collab, team]
+        # one list of logins: the admin and the people and the app have a password, sso-admin signs in through Tinyauth only
+        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'sso-admin', 'admin': true}] }}"
+        # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
+        copyparty_folders:
+          collab: {access: {friend1: rwmd, friend2: rwmd}}
+          team: {access: {friend2: rwmd, friend1: r}}
+          # a dir written out: set_fact resolves it now, before this test host has a primary drive
+          pics-photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
+          pics-trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
         copyparty_extra_conf: "[global]\n  sftp: 3922"
         copyparty_extra_ports: ["3922:3922"]
         copyparty_extra_volumes: ["/mnt/fast/shared:/fast:ro"]
@@ -131,7 +139,6 @@
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
         copyparty_sso_enabled: true
-        copyparty_sso_admins: [sso-admin]
         vault_copyparty_idp_key: "idp$key"
         # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
         gitea_sso_enabled: true
@@ -624,32 +631,35 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to /, the two shared folders and pics' two volumes (the volumes that exist in this render), read-only on /apps and /drives.
+          # Admin access to /, the four folders, read-only on /drives.
           - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: sso-admin') == 5"
-          - >-
-            '[/apps]\n  /apps\n  accs:\n    r: yourusername\n    r: sso-admin\n  flags:\n    -e2d\n'
-            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    r: sso-admin' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
-          # A shared folder is its own volume inside the one shared directory: the admins have full access, the accounts that list it
-          # read, write, move and delete (no admin rights).
+          # A folder is its own volume at /vol/<name>: the admins have full access, each login in its access gets the letters written there.
           - >-
-            '[/collab]\n  /shared/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend1\n    rwmd: friend2\n'
+            '[/collab]\n  /vol/collab\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend1\n    rwmd: friend2\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'  friend1: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # An account reaches only the folders it lists: friend2 is also in team, friend1 is not.
+          # The admin login has a password. A login with no pass is not an account: only the Tinyauth header can name it.
+          - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'  sso-admin: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          # One login can have different letters in different folders: friend1 only reads team.
           - >-
-            '[/team]\n  /shared/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend2\n\n'
+            '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwmd: friend2\n    r: friend1\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
-          - "(copyparty_shared_dir ~ ':/shared:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          # pics' account is named after it, with its volumes outside the admin's /files and no delete on the photos.
+          # No dir: inside copyparty_shared_dir. A dir: that directory.
+          - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "'/mnt/primary/appdata/pics/photos:/vol/pics-photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          # An app is a login like any other: pics has no delete in the photos and has it in the trash.
           - >-
-            '[/apps/pics/photos]\n  /apps/pics/photos\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwm: pics\n'
+            '[/pics-photos]\n  /vol/pics-photos\n  accs:\n    A: yourusername\n    A: sso-admin\n    rwm: pics\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'  pics: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'/apps' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'- /mnt/fast/shared:/fast:ro' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "'/mnt/primary/appdata/pics/photos:/apps/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "\"COPYPARTY_ROOT='/apps/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"COPYPARTY_ROOT='/pics-photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"COPYPARTY_TRASH_ROOT='/pics-trash'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
           - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"
@@ -805,31 +815,40 @@
           - "'idp-h-usr' not in conf"
           - "'idp-h-key' not in conf"
           - "'auth-ord' not in conf"
-          - "'sso-admin' not in conf"
           - "copyparty_hosts in site"
           - "(site[copyparty_hosts] ~ '.import') not in labels"
           - "(site[copyparty_hosts] ~ '.reverse_proxy.header_up') not in labels"
         quiet: true
 
-    # set_fact outranks task vars, so the flag is switched off for one render and back on.
-    - name: Render Copyparty's config with no app that has volumes
+    # set_fact outranks task vars, so the setting is emptied for one render and put back.
+    - name: Render Copyparty's config and compose file with no folder
       ansible.builtin.set_fact:
-        pics_enabled: false
+        copyparty_folders_kept: "{{ copyparty_folders }}"
+        copyparty_folders: {}
 
-    - name: Write it
+    - name: Write them
       ansible.builtin.template:
-        src: "{{ repo }}/roles/copyparty/templates/copyparty.conf.j2"
-        dest: "{{ out_dir }}/sso-off/copyparty-no-apps.conf"
+        src: "{{ repo }}/roles/copyparty/{{ item.src }}"
+        dest: "{{ out_dir }}/sso-off/{{ item.dest }}"
         mode: "0644"
+      loop:
+        - {src: templates/copyparty.conf.j2, dest: copyparty-no-folders.conf}
+        - {src: templates/docker-compose.yml.j2, dest: copyparty-no-folders-compose.yml}
 
-    - name: Without an app that has volumes, there is no /apps volume
+    - name: With no folder, there is no folder volume and no mount
       ansible.builtin.assert:
-        that: "'[/apps' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-apps.conf')"
+        that:
+          - "'[/collab' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
+          - "'[/drives]' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
+          - "':/vol/' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders-compose.yml')"
+          - "'[/pics-' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
+          # The logins stay: the admin can still sign in to / and /drives.
+          - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/copyparty-no-folders.conf')"
         quiet: true
 
-    - name: Switch pics back on
+    - name: Put the folders back
       ansible.builtin.set_fact:
-        pics_enabled: true
+        copyparty_folders: "{{ copyparty_folders_kept }}"
 
     # ntfy_ios_push is on by default (checked above); false keeps the upstream line out of the server's compose file.
     - name: Turn iOS push off

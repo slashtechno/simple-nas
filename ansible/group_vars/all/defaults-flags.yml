@@ -24,7 +24,7 @@ immich_sso_enabled: false
 # Copyparty file server (web UI, WebDAV).
 copyparty_enabled: false
 
-# Copyparty's web address behind the Tinyauth login; apps and the published port keep their own passwords (docs/services.md#copyparty-accounts-and-volumes).
+# Copyparty's web address behind the Tinyauth login; apps and the published port keep their own passwords (docs/services.md#copyparty-folders-and-logins).
 copyparty_sso_enabled: false
 
 # Gitea git hosting and its Actions runner.

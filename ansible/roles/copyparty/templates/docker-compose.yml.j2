@@ -19,16 +19,11 @@ services:
 {% if usb_automount_enabled | bool %}
       - /run/media/system:/host/usb:rslave
 {% endif %}
-{% if copyparty_shared_folders | length > 0 %}
-      - {{ copyparty_shared_dir }}:/shared:rw
-{% endif %}
+{% for name, folder in copyparty_volumes.items() %}
+      - {{ folder.dir }}:/vol/{{ name }}:rw
+{% endfor %}
 {% for volume in copyparty_extra_volumes %}
       - {{ volume }}
-{% endfor %}
-{% for app in copyparty_clients %}
-{% for v in app.copyparty.volumes %}
-      - {{ lookup('ansible.builtin.vars', v.dir) }}:/apps/{{ app.key }}/{{ v.folder }}:rw
-{% endfor %}
 {% endfor %}
     environment:
       TZ: {{ timezone }}

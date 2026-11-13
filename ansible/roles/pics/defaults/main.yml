@@ -1,7 +1,6 @@
 ---
-# pics builds from a private repo with vault_github_read_token. It reaches Copyparty as the "pics" account
-# (the copyparty field of pics in group_vars/all/services.yml), whose volumes are /apps/pics/photos and
-# /apps/pics/trash. The container publishes <pics_port> on the host, so the whole app (owner pages included) is
+# pics builds from a private repo with vault_github_read_token. It reaches Copyparty as the "pics" login, in the
+# folders pics-photos and pics-trash (copyparty_folders). The container publishes <pics_port> on the host, so the whole app (owner pages included) is
 # on your LAN and tailnet. Only guest pages go public, through the cloudflared_ingress entry, which points at
 # pics_public_port; both ports are in group_vars/all/defaults-ports-and-names.yml.
 

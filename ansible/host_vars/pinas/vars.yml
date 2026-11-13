@@ -5,7 +5,12 @@
 # --- Services ---
 immich_enabled: true
 copyparty_enabled: true
-copyparty_shared_folders: [collab]   # /collab for the friends in vault_copyparty_accounts
+# The folders Copyparty serves, and who may use each (the logins are in vault_copyparty_accounts): /collab for the friends,
+# and pics' two folders (docs/services.md#copyparty-folders-and-logins).
+copyparty_folders:
+  collab: {access: "{{ vault_copyparty_collab_access }}"}   # who may use /collab is in the vault, with the user names
+  pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
+  pics-trash: {dir: "{{ pics_trash_dir }}", access: {pics: rwmd}}
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true
@@ -25,7 +30,7 @@ caddy_enabled: true   # names with real certificates for the services here
 tinyauth_enabled: true   # a login in front of every web service here that has no login of its own: https://auth.pinas.slashtechno.com
 dozzle_enabled: true   # container logs: https://dozzle.pinas.slashtechno.com
 scrutiny_enabled: true   # drive health: https://scrutiny.pinas.slashtechno.com
-# One Tinyauth login opens these (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/services.md#copyparty-accounts-and-volumes).
+# One Tinyauth login opens these (docs/auth-reference.md#sign-in-with-tinyauth-oidc, docs/services.md#copyparty-folders-and-logins).
 immich_sso_enabled: true
 immich_extra_origins: ["https://immich.slashtechno.com"]   # the tunnel hostname
 gitea_sso_enabled: true

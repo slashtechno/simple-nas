@@ -143,8 +143,13 @@ oidc_service_keys: >-
   {%- endfor -%}
   {{ on }}
 
-# The enabled entries with a copyparty field: the apps that get a Copyparty account and volumes on this host.
-copyparty_clients: "{{ services | selectattr('key', 'in', enabled_service_keys) | selectattr('copyparty', 'defined') | list }}"
+# copyparty_folders with every dir and access filled in: {name: {dir, access}}. The folder's directory is what the container mounts.
+copyparty_volumes: >-
+  {%- set out = {} -%}
+  {%- for name, folder in copyparty_folders.items() -%}
+  {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name), 'access': folder.access | default({})}}) -%}
+  {%- endfor -%}
+  {{ out }}
 
 # The address of the Tinyauth login page; Tinyauth and every OIDC client (Immich, Gitea, pics) read it.
 tinyauth_url: "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}"

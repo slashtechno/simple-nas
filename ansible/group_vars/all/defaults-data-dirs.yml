@@ -21,7 +21,7 @@ primary_appdata_dir: "{{ primary_drive }}/appdata"
 dockge_stacks_dir: "{{ fast_drive }}/stacks"
 # The files Copyparty serves (primary drive).
 copyparty_files_dir: "{{ primary_drive }}/files"
-# The folders of copyparty_shared_folders are inside this directory (primary drive).
+# The folders of copyparty_folders that name no dir are inside this directory (primary drive).
 copyparty_shared_dir: "{{ primary_drive }}/shared"
 
 # Dockge's own database (users, settings).
@@ -66,11 +66,11 @@ ntfy_data_dir: "{{ fast_appdata_dir }}/ntfy"
 # pics' data directory.
 pics_data_dir: "{{ fast_appdata_dir }}/pics/data"
 
-# Where pics keeps its photos. Copyparty serves them to pics only, as the volume /apps/pics/photos
-# (and the trash as /apps/pics/trash), so they are not part of copyparty_files_dir and the admin's file listing.
+# Where pics keeps its photos. Copyparty serves them as the folder pics-photos (copyparty_folders), so they are not part of
+# copyparty_files_dir and the admin's file listing.
 pics_photos_dir: "{{ primary_appdata_dir }}/pics/photos"
 
-# Where pics moves deleted photos; the only pics volume where files can be deleted.
+# Where pics moves deleted photos; the only pics folder where files can be deleted (served as pics-trash).
 pics_trash_dir: "{{ primary_appdata_dir }}/pics/trash"
 
 # Homebridge's configuration and pairings.

@@ -1,20 +1,14 @@
 ---
 # Extra Copyparty config, written to its own file next to the generated one; Copyparty merges the [global], [accounts] and
 # volume sections of both. For anything the settings here do not cover, e.g. an SFTP or FTP listener
-# (docs/services.md#copyparty-accounts-and-volumes). Keep passwords in the vault: the file is mode 0600 and --diff does not show it.
+# (docs/services.md#copyparty-folders-and-logins). Keep passwords in the vault: the file is mode 0600 and --diff does not show it.
 copyparty_extra_conf: ""
 # Host folders to mount into the container, as "host:container" or "host:container:ro" strings, e.g. ["/mnt/fast/shared:/fast"].
 # A mounted folder is visible only after a volume for it is in copyparty_extra_conf (docs/services.md#more-drives-and-folders).
 copyparty_extra_volumes: []
 # Ports to publish for what copyparty_extra_conf opens, as "host:container" strings, e.g. ["3922:3922"].
 copyparty_extra_ports: []
-# Tinyauth user names that get admin access (A) to / and every shared folder when copyparty_sso_enabled is true. A Tinyauth
-# user name is the Copyparty user name, matched exactly.
-copyparty_sso_admins: []
-# The people who may use the shared folders: user, pass and folders (names from copyparty_shared_folders), from the vault.
-# With no shared folder nobody needs one, so the vault entry is read only when a folder is listed.
-copyparty_accounts: "{{ vault_copyparty_accounts if copyparty_shared_folders | length > 0 else [] }}"
-# The Copyparty admin login, from the vault.
-copyparty_user: "{{ vault_copyparty_user }}"
-# The Copyparty admin password, from the vault.
-copyparty_password: "{{ vault_copyparty_password }}"
+# Everyone who signs in to Copyparty, from the vault: a list of {user, pass, admin}. admin: true gives full access to every folder and to
+# / and /drives; no pass means a login through Tinyauth only (copyparty_sso_enabled), with the Tinyauth user name as user. Which folders
+# a login can open is in copyparty_folders.
+copyparty_accounts: "{{ vault_copyparty_accounts }}"

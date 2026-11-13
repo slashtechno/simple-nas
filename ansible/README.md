@@ -56,7 +56,7 @@ A deploy restarts only what changed. Ansible recreates each compose service whos
 
 ## Vault (secrets)
 
-A vault file is YAML encrypted with `ansible-vault`, holding `vault_*` variables. Templates read them through a plain name (`copyparty_password` is `"{{ vault_copyparty_password }}"`), so committed files never hold a secret.
+A vault file is YAML encrypted with `ansible-vault`, holding `vault_*` variables. Templates read them through a plain name (`copyparty_accounts` is `"{{ vault_copyparty_accounts }}"`), so committed files never hold a secret.
 
 - **Password:** `ansible/.vault-pass` (one line, gitignored, `chmod 600`). Keep it in your password manager too: the restic backups cannot be read without it. Use one password for every vault file.
 - **Names:** a login's user and password sit together: `vault_<service>_user` and `vault_<service>_password`. Other secrets end in `_token`, `_key` or `_oidc_secret`. Names are flat (`vault_ntfy_token`, not `vault.ntfy.token`): Ansible replaces a dict instead of merging it, so a host file holding one key would hide the others.
