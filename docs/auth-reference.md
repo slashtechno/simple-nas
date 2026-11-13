@@ -39,7 +39,7 @@ Tinyauth asks a user with a `totp` key for a six-digit code after the password. 
 
 - **Lost phone:** there are no recovery codes. Delete that user's `totp` line, deploy, and enrol again with a new secret. Keep the vault password somewhere other than the phone.
 - **Skipped codes:** a login through GitHub, Google or Tailscale skips two-factor, so limit who may use those (below).
-- **No basic auth:** a script that sends a password cannot sign in as a user with two-factor.
+- **No basic auth:** Tinyauth accepts a password sent as HTTP Basic auth, but refuses it for a user with two-factor, so a script or WebDAV client cannot sign in as that user.
 
 ## Sign in with GitHub, Google or another OpenID Connect provider
 

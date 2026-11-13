@@ -66,7 +66,7 @@ cd ansible/
 just deps
 ```
 
-Install Ansible with brew or the `ansible` package from pip (not `ansible-core`): the package includes passlib and bcrypt, which hash the ntfy and Tinyauth passwords.
+Install Ansible with brew, or with pip as the `ansible` package (not `ansible-core`). The ntfy and Tinyauth passwords are hashed with the Python packages passlib and bcrypt. If a deploy fails on `password_hash`, run `pip install passlib bcrypt` in the same Python as Ansible.
 
 Then set up the [vault](#vault-secrets) and [add each host](#add-a-host). The first deploy to a host needs its sudo password once (`-K`). The sudoers file `common` installs makes `-K` unnecessary afterwards.
 

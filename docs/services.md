@@ -112,7 +112,16 @@ A symlink that someone with shell access puts in a folder shares the target. Upl
 
 Copyparty keeps its own passwords. Tinyauth stores only password hashes, and Copyparty cannot check a hash. The passwords work on Copyparty's login page, on WebDAV and in apps. Caddy serves the web address `<copyparty_subdomain>.<domain>`, and Tinyauth does not guard it until you set `copyparty_sso_enabled`. `service_users.copyparty` needs that setting too: the deploy stops without it ([who can use it](./auth-reference.md#who-may-use-what)).
 
-`copyparty_sso_enabled: true` puts that web address behind the Tinyauth login. It adds to the passwords. It does not replace them: the host port, the tunnel hostname, WebDAV, rclone and phone apps keep their password logins.
+`copyparty_sso_enabled: true` puts that web address behind the Tinyauth login. The host port and the tunnel hostname still use Copyparty's passwords. Which login applies depends on where you connect:
+
+| You connect to | Login |
+|---|---|
+| The host port (`http://<tailnet name>:3923`), or the tunnel hostname | Copyparty password (an account with a `pass`) |
+| The Caddy name, SSO off | Copyparty password |
+| The Caddy name, SSO on, in a browser | Tinyauth login page. Copyparty then uses the Tinyauth user name |
+| The Caddy name, SSO on, from WebDAV, rclone or a script | The Tinyauth user name and password, sent as HTTP Basic auth. It fails for a user with a `totp` secret, and Copyparty-only passwords are refused here |
+
+Tinyauth answers every request on the Caddy name before Copyparty sees it. So a client that needs two-factor or a Copyparty-only password uses the host port instead ([two-factor limit](./auth-reference.md#two-factor-codes-totp)). A user with no `pass` signs in only through Tinyauth.
 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled` and `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it).
 - **Who is who:** the Tinyauth user name must equal the Copyparty `user`, character for character. Copyparty then gives that login's folders after the Tinyauth sign-in.
