@@ -31,9 +31,9 @@ start_order() {
 
 names=$(docker ps -a --format '{{.Names}}' | start_order) || { echo "ERROR: cannot list containers. Is Docker running?" >&2; exit 1; }
 for name in $names; do
-  # Running, or created with an error (the failed start); anything else was stopped on purpose.
+  # Running, or a start that failed (state created, or exited by a restart policy after the error); anything else was stopped on purpose.
   state=$(docker inspect -f '{{.State.Status}}{{if .State.Error}} failed{{end}}' "$name") || { FAILED=1; continue; }
-  case "$state" in running | restarting | 'created failed') ;; *) continue ;; esac
+  case "$state" in running | restarting | 'created failed' | 'exited failed') ;; *) continue ;; esac
 
   hit=0
   while IFS= read -r source; do

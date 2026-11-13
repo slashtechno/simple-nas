@@ -214,7 +214,7 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 | Container | While locked | After you unlock |
 |---|---|---|
 | Mounts the locked folder, or one above it | Starts and sees it empty; writes fail with "Operation not permitted" | Restarted |
-| Mounts a folder inside it (`appdata/<service>`) | Never starts: Docker cannot create the folder (state `created`) | Started |
+| Mounts a folder inside it (`appdata/<service>`) | Never starts: Docker cannot create the folder (state `created`, or `exited` after a reboot) | Started |
 | Mounts no listed folder, including your own `docker run` | Runs normally | Not touched |
 | Stopped on purpose | Stays stopped | Stays stopped |
 | Stopped by a lock | Stays stopped | Started |

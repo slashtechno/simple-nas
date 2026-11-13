@@ -21,8 +21,10 @@ case "$1" in
   inspect)
     case "$3" in
       *NetworkMode*) cat "$FAKE/mode.$4" 2>/dev/null || echo default ;;
-      *State.Status*) echo exited ;;
+      *Mounts*) cat "$FAKE/mount.$4" 2>/dev/null ;;
+      *State.Status*) cat "$FAKE/state.$4" 2>/dev/null || echo exited ;;
     esac ;;
+  restart) echo "$2" >> "$FAKE/started" ;;
   start)
     mode=$(cat "$FAKE/mode.$2" 2>/dev/null || echo default)
     case "$mode" in
@@ -55,3 +57,18 @@ assert started.index("vpn") < started.index("joiner-a") and started.index("vpn")
 assert not stopped.exists()  # the list is used up
 
 print("00-containers.sh: containers that join another's network start after it")
+
+# With no lock list (a reboot while locked): a container whose start failed on the locked folder (exited with an error) is started;
+# one stopped on purpose (exited, no error) is not.
+(work / "started").unlink()
+(work / "names").write_text("failed-boot\nby-hand\n")
+(work / "state.failed-boot").write_text("exited failed")
+(work / "state.by-hand").write_text("exited")
+for name in ("failed-boot", "by-hand"):
+    (work / f"mount.{name}").write_text("/mnt/locked/app\n")
+done = subprocess.run(["bash", str(work / "hook.sh"), "/mnt/locked"], capture_output=True, text=True, timeout=30,
+                      env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE": str(work)})
+assert done.returncode == 0, (done.returncode, done.stdout, done.stderr)
+assert (work / "started").read_text().split() == ["failed-boot"], done.stdout
+
+print("00-containers.sh: a start that failed on a locked folder is retried, one stopped by hand is not")
