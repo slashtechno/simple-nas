@@ -57,7 +57,7 @@ Afterwards `restic snapshots` and `restic check` show a good repository ([Connec
 | `backup-cloud` | Sunday 04:00 | Runs the service dumps, then backs up to the cloud repository |
 | `restic-check` | Saturday 05:00 | `restic check` on the local repository, reading a 5% sample |
 
-- Jobs exist only for the flags that are on. Turning one off removes its jobs on the next deploy. With both off Ansible skips the role: remove the jobs with `just teardown <host> --tags backup` ([teardown](../ansible/README.md#disable-or-remove-a-service)).
+- Jobs exist only for the flags that are on. Turning one off removes its jobs on the next deploy. With both off Ansible skips the role: remove the jobs with `just teardown <host> --tags backup` ([teardown](../ansible/README.md#turn-off-or-remove-a-service)).
 - The local repository is `restic_repo_path` (`<backup drive mount>/restic-repo` unless set). Retention is `restic_local_retention` and `restic_cloud_retention`.
 - Dumps are in `service_dumps_dir` (see Dumps below), logs in `backup_logs_dir` (one file per job per day, plus `backup-cron.log`). They sit on the backup drive with a local backup, otherwise in `/var/lib/backup-work`.
 - The local backup refuses to start when the backup drive is 95% full or more, because `restic forget --prune` needs free room to clean up. The alert fires and the log says how full it is.

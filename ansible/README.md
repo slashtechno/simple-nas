@@ -2,7 +2,12 @@
 
 Each service is a role with its own Docker Compose project at `/opt/services/<compose dir>/` on the host. They share the Docker network `services` (Homebridge uses the host network for HomeKit discovery). Ansible runs on your Mac and SSHes into each host, which needs only SSH and Python. New to Ansible? The last section of [docs/glossary.md](../docs/glossary.md#ansible) lists the parts you will meet.
 
-Ansible overwrites the files it manages (`/opt/services/*/docker-compose.yml`, cron jobs, rendered configs) on the next run. Change them here. Everything else on the host is yours, except the system files a role documents: fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers. A role also documents the restic password file, `cmdline.txt`, the zram drop-ins, the terminal-tools block in `.bashrc`. Restarting a container by hand is fine.
+Ansible overwrites the files it manages on the next run, so change them here, not on the host. That means `/opt/services/*/docker-compose.yml`, cron jobs and rendered configs. Everything else on the host is yours, except these system files, each documented in its role:
+
+- fstab, udev rules, Docker and containerd config, cloud-init, netplan, dnsmasq, sudoers
+- the restic password file, `cmdline.txt`, the zram drop-ins, the terminal-tools block in `.bashrc`
+
+Restarting a container by hand is fine.
 
 Every service is opt-in: it runs on a host only when that host's `host_vars/<host>/vars.yml` sets `<name>_enabled: true`. Service flags default to false in `group_vars/all/defaults-flags.yml`. The base parts default on there: `storage_enabled`, `tailscale_enabled` and `pi_enabled` (`auto`: Raspberry Pi tuning on a Pi, skipped elsewhere). Groups never carry behaviour. You list hosts under `servers` in `inventory/hosts.yml`, and `site.yml` runs on all of them.
 
@@ -12,9 +17,9 @@ All commands run from `ansible/`.
 
 | I want to | Do | Then run |
 |---|---|---|
-| Set up a new server | [quick-start](../docs/quick-start.md), then [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
+| Set up a new server, or add a host | [quick-start](../docs/quick-start.md), then [add a host](#add-a-host) | `just deploy '' --limit <host> -K` ([what `''` is](#commands)) |
 | Turn a service on | `<name>_enabled: true` in `host_vars/<host>/vars.yml`, plus its drive roles and vault entries ([services](../docs/services.md)) | `just deploy <name> --limit <host>` (with Caddy names also `caddy,homepage`) |
-| Stop or remove a service, or everything on a host | flag `false`, then [tear it down](#disable-or-remove-a-service) | `just teardown <host> -e only=<name>` (leave `-e only=` off for the whole host) |
+| Stop or remove a service, or everything on a host | flag `false`, then [teardown](#turn-off-or-remove-a-service) | `just teardown <host> -e only=<name>` (leave `-e only=` off for the whole host) |
 | Change a setting | the file that owns it ([table below](#which-files-hold-what)) | `just deploy <tag>` |
 | Find a setting, its default and overrides | nothing | `just settings <word>` (or `grep -rn "^<name>:" group_vars host_vars roles/*/defaults`) |
 | Add or change a secret | `just edit vault` | `just deploy <tag>` |
@@ -22,8 +27,7 @@ All commands run from `ansible/`.
 | Update the OS, Docker or Tailscale | nothing | `just os-upgrade [host]` ([details](#update-software-that-is-not-a-docker-image)) |
 | Add or replace a drive | [docs/storage.md](../docs/storage.md#adding-replacing-or-retiring-a-drive) | `just deploy storage --limit <host>` |
 | Move one service's data to another drive | [docs/storage.md](../docs/storage.md#move-one-services-data) | `just deploy <service> --limit <host>` |
-| Add a host, or run several | [add a host](#add-a-host) | `just deploy '' --limit <host> -K` |
-| Move a working host to new hardware | [move a host](#move-a-working-host-to-new-hardware) | `just deploy '' --limit <host> -K` |
+| Move a working host to new hardware | [move a host](#move-a-working-host-to-new-hardware) | the deploy from the first row |
 | Give services `https://` names, or change a port | `caddy_private_domains`, `<name>_subdomain`, `<name>_port` ([HTTPS](../docs/caddy-reference.md#web-addresses-and-https)) | `just deploy caddy,homepage --limit <host>` and the service's tag |
 | Add a public hostname | `cloudflared_ingress` ([how](../docs/services.md#cloudflare-add-a-public-hostname)) | `just deploy cloudflared --limit <host>` |
 | Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption,backup --limit <host>`, then [set up the folder](../docs/encryption.md#set-up-a-folder) |
@@ -54,15 +58,27 @@ Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CA
 
 A deploy restarts only what changed. Ansible recreates each compose service whose rendered file changed, and roles with a `handlers/` directory restart their own software when its config changes.
 
+## First-time setup
+
+```bash
+brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters and `just edit`; Docker only for `just platforms`
+cd ansible/
+just deps
+```
+
+Install Ansible with brew or the `ansible` package from pip (not `ansible-core`): the package includes passlib and bcrypt, which hash the ntfy and Tinyauth passwords.
+
+Then set up the [vault](#vault-secrets) and [add each host](#add-a-host). The first deploy to a host needs its sudo password once (`-K`). The sudoers file `common` installs makes `-K` unnecessary afterwards.
+
 ## Vault (secrets)
 
 A vault file is YAML encrypted with `ansible-vault`, holding `vault_*` variables. Templates read them through a plain name (`copyparty_accounts` is `"{{ vault_copyparty_accounts }}"`), so committed files never hold a secret.
 
-- **Password:** `ansible/.vault-pass` (one line, gitignored, `chmod 600`). Keep it in your password manager too: the restic backups cannot be read without it. Use one password for every vault file.
+- **Password:** `ansible/.vault-pass` (one line, gitignored, `chmod 600`). Use one password for every vault file. Keep it in your password manager: without it the vault files cannot be opened.
 - **Names:** a login's user and password sit together: `vault_<service>_user` and `vault_<service>_password`. Other secrets end in `_token`, `_key` or `_oidc_secret`. Names are flat (`vault_ntfy_token`, not `vault.ntfy.token`): Ansible replaces a dict instead of merging it, so a host file holding one key would hide the others.
 - **Host over shared:** a name in both a host's vault and the shared vault takes the host's value.
 - **Where to look:** each service's needs are in [docs/services.md](../docs/services.md). The two `vault.yml.example` files hold names and meanings.
-- **Copies:** keep the vault files and their password somewhere that is not the Pi: a restore needs `vault_restic_password` ([docs/backups.md](../docs/backups.md)).
+- **Copies:** keep the vault files and the vault password somewhere that is not the host. The restic backups open only with `vault_restic_password`, which lives in the vault ([docs/backups.md](../docs/backups.md#disaster-recovery-all-drives-fail)).
 
 ```bash
 just setup <host>   # .vault-pass, host_vars/<host>/vars.yml, both vaults with random values; safe to rerun (adds only what is missing)
@@ -79,18 +95,6 @@ Put a password in `.vault-pass`, copy `host_vars/vault.yml.example` to `host_var
 A vault you forget to encrypt still deploys, with its secrets in plain text on your computer: `head -1 <file>` must print a line starting with `$ANSIBLE_VAULT`. `.gitignore` keeps every `vault.yml` and `inventory/hosts.yml` out of git.
 
 </details>
-
-## First-time setup
-
-```bash
-brew install ansible just uv rclone   # rclone only for the Google Drive backup; uv runs the linters and `just edit`; Docker only for `just platforms`
-cd ansible/
-just deps
-```
-
-Install Ansible with brew or the `ansible` package from pip (not `ansible-core`): the package includes passlib and bcrypt, which hash the ntfy, Garage and Tinyauth passwords.
-
-Then create the files in the table above and [add each host](#add-a-host). The first deploy to a host needs its sudo password once (`-K`). The sudoers file `common` installs makes `-K` unnecessary afterwards.
 
 ## Add a host
 
@@ -115,7 +119,7 @@ The old host keeps running until you check the new one.
 2. Plug in the data drives, or restore onto new ones ([backups.md](../docs/backups.md#restore-files)). A drive holds a service's data wherever you plug it in: [detach](../docs/storage.md#detach-a-drive) it from the old host first, and move one drive at a time.
 3. Deploy the new host, then check each service with its flag on.
 4. Move public names last: a hostname may appear in only one host's `cloudflared_ingress` ([why](../docs/services.md#cloudflare-add-a-public-hostname)), so take it out of the old host and deploy both.
-5. Retire the old host: flags to `false`, then [teardown](#disable-or-remove-a-service).
+5. Retire the old host: flags to `false`, then [teardown](#turn-off-or-remove-a-service).
 
 <details>
 <summary>Optional: Raspberry Pi Connect (remote shell from a browser)</summary>
@@ -139,7 +143,7 @@ To add your own service as a fork, follow [Add a new service](#add-a-new-service
 The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs). If you copy the repo, replace them:
 
 1. Copy `group_vars/all/vars.yml.example` over `group_vars/all/vars.yml` and remove any existing `host_vars/<host>/` directories.
-2. Replace at least `ssh_authorized_keys` (Ansible would otherwise add the owner's key to your hosts), `timezone`, and the Cloudflare, Gitea and pics values. Set `restic_cloud_repository` in each host's `vars.yml` that turns the offsite backup on.
+2. Replace at least `ssh_authorized_keys` (Ansible would otherwise add the owner's key to your hosts), `timezone`, and the Cloudflare, Gitea and pics values. Set `restic_cloud_repository` in each host's `vars.yml` that turns the cloud backup on.
 3. Create `inventory/hosts.yml`, the vaults and your own `host_vars/<host>/` files as in the table.
 
 ## Commands
@@ -154,11 +158,12 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just setup <host>` | First-run setup for a host ([vault](#vault-secrets)) |
 | `just deploy [tags] [flags]` | `site.yml`, e.g. `just deploy immich` or `just deploy '' --limit pinas -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
-| `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#disable-or-remove-a-service)) |
+| `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#turn-off-or-remove-a-service)) |
 | `just os-upgrade [host]` | `apt upgrade` on every server or one host |
 | `just platforms` | Checks every pinned image has arm64 and x64 builds (needs Docker and network, not part of `check`) |
 | `just deps` | Installs the collections and roles in `requirements.yml` |
 
+- **`''`** is the empty list of tags, which means every role. `just deploy` takes the tags first, so a command that has flags but no tags still needs it (`just deploy '' --limit pinas`).
 - **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,pics` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host.
 - **`-K`** asks for the host's sudo password. Only a first deploy needs it.
@@ -177,7 +182,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 
 Every image version is a line in `group_vars/all/versions.yml`, most with a release-notes link above. To update one: read the notes, edit the line (the registry's tags page lists what exists), `just preview <service>`, then `just deploy <service>`.
 
-- A floating tag (`latest`, `release`, `nightly`) does not move until you ask: `ansible-playbook site.yml --tags gitea -e docker_pull_policy=always --vault-password-file .vault-pass`. Pin it to the running version once it works (`docker inspect <container>` shows `org.opencontainers.image.version`).
+- A floating tag (`latest`, `release`, `nightly`) does not move until you ask: `just deploy gitea -e docker_pull_policy=always` (`-e` sets a variable for this run). Pin it to the running version once it works (`docker inspect <container>` shows `org.opencontainers.image.version`).
 - Moving Immich to a newer version can run database migrations. Read its notes first. Its Postgres and Valkey use a pinned digest: change them only when Immich's notes say to.
 - Caddy, Copyparty and backup-status build on the host and always rebuild. The pics role rebuilds when its repository's commit changed. `docker_pull_policy` does not apply to them.
 
@@ -193,14 +198,14 @@ Every image version is a line in `group_vars/all/versions.yml`, most with a rele
 
 Upgrade at a quiet time: a Docker Engine upgrade restarts the containers. Tailscale keeps its login.
 
-## Disable or remove a service
+## Turn off or remove a service
 
-Set `<name>_enabled: false` (or remove the line) to stop deploying it. That alone does not stop what is running. Tear it down, then leave the flag false so later runs do not bring it back. `teardown.yml` refuses to run without `--limit <host>`.
+Set `<name>_enabled: false` (or remove the line) to stop deploying it. That alone does not stop what is running: run teardown too, and leave the flag false so later runs do not bring it back. `just teardown` needs the host name.
 
 ```bash
-ansible-playbook teardown.yml --limit <host> -e only=garage --vault-password-file .vault-pass   # one service, data kept (names: the keys in services.yml)
-ansible-playbook teardown.yml --limit <host> --vault-password-file .vault-pass                  # everything the repo deployed, data kept
-ansible-playbook teardown.yml --limit <host> -e remove_data=true -e confirm_remove_data=<host> --vault-password-file .vault-pass   # also wipes data: no undo without a backup
+just teardown <host> -e only=garage                                      # one service, data kept (names: the keys in services.yml)
+just teardown <host>                                                     # everything the repo deployed, data kept
+just teardown <host> -e remove_data=true -e confirm_remove_data=<host>   # also wipes data: no undo without a backup
 ```
 
 `remove_data=true` stops unless `confirm_remove_data` is the host's inventory name, and unless no folder to remove is, or holds, an [encrypted folder](../docs/encryption.md#turning-it-off). The paths it removes are the `data` and `no_backup` fields of the service's entry in `services.yml`. The `stacks` folder always stays. Check a restore first.
@@ -225,10 +230,13 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (copy `roles/gitea`). A service that builds its own image or restarts on config changes writes its own tasks instead: copy `roles/backup_status`, the smallest.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/`: `myservice_enabled: false` in `defaults-flags.yml`, the data directories in `defaults-data-dirs.yml` and, for a web UI, `myservice_port` and `myservice_subdomain` in `defaults-ports-and-names.yml`, each with a comment. A value with no sensible default goes in `vars.yml.example`.
-6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}` (no `data` if it has no data directories). The comment at the top of the file describes each field. Write each default in `defaults-data-dirs.yml` as `{{ fast_appdata_dir }}/<key>` or `{{ primary_appdata_dir }}/<key>`. Give each directory its own part (`/<key>/<part>`) if the service has more than one. `just check` fails if a default breaks this rule.
+6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}`. The comment at the top of the file describes each field. Leave out `data` if the service has no data directories.
+   - In `defaults-data-dirs.yml`, write each default as `{{ fast_appdata_dir }}/<key>` or `{{ primary_appdata_dir }}/<key>`.
+   - A service with several directories gives each its own part: `/<key>/<part>`.
+   - `just check` fails if a default breaks this rule.
 7. `site.yml`: an `import_role` task with the tag `myservice` and `when: myservice_enabled | bool`.
 8. Its secrets go in the matching `vault.yml.example`, and a row naming `roles/myservice` in the table in [docs/services.md](../docs/services.md).
-9. Optional: a public hostname needs a `cloudflared_ingress` rule. A live database needs `files/dump.sh` and `dump_required: true` in its entry (copy `roles/gitea`, [backups.md](../docs/backups.md)). Data outside the offsite backup goes in `restic_cloud_extra_rules`.
+9. Optional: a public hostname needs a `cloudflared_ingress` rule. A live database needs `files/dump.sh` and `dump_required: true` in its entry (copy `roles/gitea`, [backups.md](../docs/backups.md)). Data outside the cloud backup goes in `restic_cloud_extra_rules`.
 10. `just check` fails with the exact missing line if steps 5 to 8 are incomplete. Then `just deploy myservice`.
 
 Teardown, backup coverage, the Homepage tile and the Caddy name all come from the `services.yml` entry. The port and subdomain give the tile its link and the service its Caddy name under `caddy_private_domains`.
