@@ -26,7 +26,7 @@
 - name: Let the copy of restic read any file
   community.general.capabilities:
     path: "{{ restic_copy_path }}"
-    capability: cap_dac_read_search+ep
+    capability: cap_dac_read_search=ep
     state: present
   # A preview does not create the copy, so there is nothing to read the capability of yet.
   when: backup_read_all_files | bool and not (ansible_check_mode and restic_copied is changed)
