@@ -102,7 +102,7 @@ The same steps add a second or third host. Each host has its own `host_vars/<hos
    - Enough RAM for what you switch on: Immich, Crafty and Gitea are the largest, and a build (pics, Caddy) needs more than the running service. See [memory.md](../docs/memory.md).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file`. The key (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. `just setup <host>`. Set `drives` ([docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags the host should run, and add the secrets `just setup` listed for them.
-4. `just deploy '' --limit <host> -K`.
+4. `just deploy '' --limit <host> -K`. The first connection saves the host's SSH key in `~/.ssh/known_hosts`. A reinstalled host has a new key, and SSH then refuses it: remove the old entry with `ssh-keygen -R <ansible_host>`.
 5. Join the tailnet once by hand: `sudo tailscale up`. With `caddy_private_domains` set, Caddy stops this first deploy until you join: join, then deploy again.
 6. Reboot once (`sudo reboot`): the drive guard ([storage.md](../docs/storage.md#how-a-drive-is-mounted)) arms only at boot, and on a Raspberry Pi the memory cgroup does too.
 7. Set `ansible_host` to the host's tailnet name (`<host>.<tailnet>.ts.net`). It works from anywhere, and Homepage and the service links use it.

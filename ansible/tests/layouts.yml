@@ -321,7 +321,8 @@
               - "'curl' not in (alert_scripts.results[0].content | b64decode)"
               - "'curl' in (alert_scripts.results[1].content | b64decode)"
               - "'--max-time' in (alert_scripts.results[1].content | b64decode)"
-              - "'|| true' in (alert_scripts.results[1].content | b64decode)"
+              - "'--fail' in (alert_scripts.results[1].content | b64decode)"
+              - "'the alert could not be sent to ntfy' in (alert_scripts.results[1].content | b64decode)"
               - "'logger -t \"${2:-backup}\"' in (alert_scripts.results[0].content | b64decode)"
               - "'Authorization: Bearer' in (alert_scripts.results[1].content | b64decode)"
 

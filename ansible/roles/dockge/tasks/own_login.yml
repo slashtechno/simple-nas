@@ -30,6 +30,13 @@
     - dockge_login_off | bool
     - (dockge_disable_auth.stdout | trim) in ['no-db', 'no-user']
 
+- name: Say that Dockge's own login is about to change
+  ansible.builtin.debug:
+    msg: >-
+      Dockge's own login is switched {{ 'off: Tinyauth is the only login' if dockge_login_off | bool else 'on' }}.
+      This stops Dockge for a moment to write its database.
+  when: dockge_login_changes | bool
+
 - name: Make Dockge's own login follow Tinyauth
   when: dockge_login_changes | bool
   block:

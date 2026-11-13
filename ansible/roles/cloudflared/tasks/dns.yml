@@ -27,8 +27,10 @@
 # The plan trusts this list to be complete, so a second page stops the deploy.
 - name: Stop if the tunnel list has more than one page
   ansible.builtin.assert:
-    that: cloudflared_live_tunnels.json.result_info.total_pages | default(1) <= 1
-    fail_msg: The account has more than 1000 tunnels. This role reads one page only.
+    that:
+      - cloudflared_live_tunnels.json.result_info.total_pages is defined
+      - cloudflared_live_tunnels.json.result_info.total_pages <= 1
+    fail_msg: Cloudflare's tunnel list has no page count, or the account has more than 1000 tunnels. This role reads one page only.
     quiet: true
 
 - name: Start the DNS action list (it stays empty when cloudflared_ingress is empty)

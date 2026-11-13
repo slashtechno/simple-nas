@@ -865,6 +865,9 @@
           - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/pics-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-pics.env')"
           - "'https://ntfy.sh/host-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
           - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          # A refused alert (HTTP 403) is an error that reaches the system log, not a silent success.
+          - "'--fail' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          - "'the alert could not be sent' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
         quiet: true
 
     - name: Put the senders back on the shared ntfy

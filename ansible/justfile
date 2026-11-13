@@ -66,19 +66,23 @@ check: _lint _syntax _vars _links _precedence _test
 deploy tags='' *flags: (_tags tags)
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
-# Stops a deploy or preview whose tag matches no role: ansible runs nothing for an unknown tag and exits 0.
-_tags tags:
+# Stops a deploy, preview or teardown whose tag matches no role: ansible runs nothing for an unknown tag and exits 0.
+_tags tags playbook='site.yml':
     #!/usr/bin/env bash
     set -euo pipefail
     [ -n "{{ tags }}" ] || exit 0
-    known=$(ansible-playbook site.yml --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
+    known=$(ansible-playbook {{ playbook }} --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
     [ -n "$known" ] || { echo "Could not read the tags from 'ansible-playbook --list-tags' (its output format changed?)." >&2; exit 1; }
     for tag in $(echo "{{ tags }}" | tr ',' ' '); do
-      echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in site.yml. Tags: $known" >&2; exit 1; }
+      echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in {{ playbook }}. Tags: $known" >&2; exit 1; }
     done
 
 # Remove services from a host (teardown.yml refuses to run without a host): `just teardown pi4 -e only=garage`
 teardown host *flags:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tags=$(echo " {{ flags }} " | sed -n -E 's/.* (--tags|-t)[= ]([^ ]+).*/\2/p')
+    just _tags "$tags" teardown.yml
     ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
 
 # apt upgrade on every server, or one: `just os-upgrade pinas`. Reboot afterwards if the kernel or firmware changed.

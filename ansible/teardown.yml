@@ -256,9 +256,8 @@
           tags: [network]
           community.docker.docker_network:
             name: "{{ docker_network }}"
-            state: absent
+            state: absent   # a network that is already gone is not an error
             force: true
-          ignore_errors: true   # noqa: ignore-errors (best effort: the target may already be gone)
 
         - name: Remove the base directory (only if empty)
           tags: [always]

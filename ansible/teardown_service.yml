@@ -3,12 +3,19 @@
 #   service: directory name under services_dir (also the compose project)
 #   service_key: the service's key in services.yml
 #   data_paths: directories deleted only when remove_data=true (default: none)
+# A service that was never deployed has no compose file, so there is nothing to stop. Any other failure to stop a project stops
+# the teardown: the next tasks delete its files, and its containers would keep running with no definition on disk.
+- name: Look for {{ service }}'s compose file
+  ansible.builtin.stat:
+    path: "{{ services_dir }}/{{ service }}/docker-compose.yml"
+  register: compose_file
+
 - name: Down {{ service }} compose project
   community.docker.docker_compose_v2:
     project_src: "{{ services_dir }}/{{ service }}"
     state: absent
     remove_volumes: false
-  ignore_errors: true   # noqa: ignore-errors (the project may already be gone)
+  when: compose_file.stat.exists
 
 - name: Remove {{ service }} dump script (only exists for services with a database)
   ansible.builtin.file:
