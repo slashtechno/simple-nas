@@ -150,6 +150,19 @@ copyparty_volumes: >-
   {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name, true), 'access': folder.access | default({}), 'root': folder.root | default(false)}}) -%}
   {%- endfor -%}
   {{ out }}
+# Parents of nested folder names (pics for pics/photos) that are not folders themselves: {parent: [logins]}. Each becomes a read-only volume so the parent address opens and lists its children. The logins are those named in the children's access.
+copyparty_parents: >-
+  {%- set out = {} -%}
+  {%- for name, folder in copyparty_volumes.items() -%}
+  {%- set parts = name.split('/') -%}
+  {%- for i in range(1, parts | length) -%}
+  {%- set parent = parts[:i] | join('/') -%}
+  {%- if parent not in copyparty_volumes -%}
+  {%- set _ = out.update({parent: ((out[parent] | default([])) + (folder.access | list)) | unique | list}) -%}
+  {%- endif -%}
+  {%- endfor -%}
+  {%- endfor -%}
+  {{ out }}
 
 # The address of the Tinyauth login page; Tinyauth and every OIDC client (Immich, Gitea, pics) read it.
 tinyauth_url: "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}"

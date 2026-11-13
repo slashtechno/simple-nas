@@ -10,8 +10,8 @@ copyparty_enabled: true
 copyparty_folders:
   files: {root: true}
   collab: {access: "{{ vault_copyparty_collab_access }}"}   # who may use /collab is in the vault, with the user names
-  pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
-  pics-trash: {dir: "{{ pics_trash_dir }}", access: {pics: rwmd}}
+  pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
+  pics/trash: {dir: "{{ pics_trash_dir }}", access: {pics: rwmd}}
 gitea_enabled: true
 homebridge_enabled: true
 cloudflared_enabled: true

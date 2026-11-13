@@ -272,7 +272,13 @@
                 vars: {copyparty_folders: {c: {dir: /d, access: [f1]}}}
               - {name: a folder written as a string, says: "entry 'c'", vars: {copyparty_folders: {c: rwmd}}}
               - {name: a folder named drives, says: "entry 'drives'", vars: {copyparty_folders: {drives: {dir: /d}}}}
-              - {name: a folder name with a slash, says: "entry 'a/b'", vars: {copyparty_folders: {a/b: {dir: /d}}}}
+              - {name: a nested folder name, vars: {copyparty_folders: {a/b: {dir: /d}, a: {dir: /e}}}}
+              - {name: a name inside drives, says: "entry 'drives/x'", vars: {copyparty_folders: {drives/x: {dir: /d}}}}
+              - {name: an empty level in a name, says: "entry 'a//b'", vars: {copyparty_folders: {a//b: {dir: /d}}}}
+              - {name: a name ending in a slash, says: "entry 'a/'", vars: {copyparty_folders: {a/: {dir: /d}}}}
+              - {name: a name ending in a newline, says: "entry 'a/b", vars: {copyparty_folders: {"a/b\n": {dir: /d}}}}
+              - {name: a name inside shares, says: "entry 'shares/x'", vars: {copyparty_folders: {shares/x: {dir: /d}}}}
+              - {name: a name with a dot level, says: "entry 'a/..'", vars: {copyparty_folders: {a/..: {dir: /d}}}}
               - {name: a login listed twice, says: appears once, vars: {vault_copyparty_accounts: [{user: a, pass: p, admin: true}, {user: a, pass: q}]}}
               - name: two folders at /
                 says: Only one copyparty_folders entry may have root

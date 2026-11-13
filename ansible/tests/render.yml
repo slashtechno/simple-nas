@@ -119,8 +119,8 @@
           collab: {access: {friend1: rwmd, friend2: rwmd}}
           team: {access: {friend2: A, friend1: r}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
-          pics-photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
-          pics-trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
+          pics/photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
+          pics/trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
         copyparty_extra_conf: "[global]\n  sftp: 3922"
         copyparty_extra_ports: ["3922:3922"]
         copyparty_extra_volumes: ["/mnt/fast/shared:/fast:ro"]
@@ -661,18 +661,22 @@
           # No dir: inside copyparty_shared_dir. A dir: that directory.
           - "(copyparty_shared_dir ~ '/files:/vol/files:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "'/mnt/primary/appdata/pics/photos:/vol/pics-photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - "'/mnt/primary/appdata/pics/photos:/vol/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           # An app is a login like any other: pics has no delete in the photos and has it in the trash.
           - >-
-            '[/pics-photos]\n  /vol/pics-photos\n  accs:\n    A: yourusername\n    A: owner\n    rwm: pics\n'
+            '[/pics/photos]\n  /vol/pics/photos\n  accs:\n    A: yourusername\n    A: owner\n    rwm: pics\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          # pics is no folder, so it is a read-only volume for the logins in its children's access.
+          - >-
+            '[/pics]\n  /vol/pics\n  accs:\n    r: yourusername\n    r: owner\n    r: pics\n  flags:\n    -e2d\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'  pics: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'/apps' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'- /mnt/fast/shared:/fast:ro' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "\"COPYPARTY_ROOT='/pics-photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"COPYPARTY_TRASH_ROOT='/pics-trash'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"COPYPARTY_ROOT='/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+          - "\"COPYPARTY_TRASH_ROOT='/pics/trash'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
           - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"

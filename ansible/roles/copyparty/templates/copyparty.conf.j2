@@ -55,6 +55,21 @@
 {% endfor %}
 
 {% endfor %}
+{# A parent of nested names (pics for pics/photos) is a read-only volume on an empty directory, so its address opens and lists the children. -e2d turns indexing off. #}
+{% for parent, logins in copyparty_parents.items() %}
+[/{{ parent }}]
+  /vol/{{ parent }}
+  accs:
+{% for u in admins %}
+    r: {{ u }}
+{% endfor %}
+{% for u in logins if u not in admins %}
+    r: {{ u }}
+{% endfor %}
+  flags:
+    -e2d
+
+{% endfor %}
 {% if usb_automount_enabled | bool %}
 {# USB drives plugged into the host; /host/usb is /run/media/system. #}
 [/drives]

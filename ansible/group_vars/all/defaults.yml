@@ -64,14 +64,14 @@ encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
 # The folders Copyparty serves, for people and apps alike: {name: {dir, access, root}}. Each is served at /<name>, and / lists the folders a login may open.
 # One folder may have root: true: it is served at / instead. A folder inside it named like another folder, shares or drives is hidden.
-# dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>). access is {login: permissions}, where a login is a user
+# dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>, so pics/photos is <copyparty_shared_dir>/pics/photos). access is {login: permissions}, where a login is a user
 # of vault_copyparty_accounts and permissions are letters: A everything, or r read, w write, m move, d delete (g, G, h and a: see Copyparty's docs).
-# Every admin has full access to every folder. A name is letters, digits, - and _, and not drives or shares. The default is one folder for
+# Every admin has full access to every folder. A name is letters, digits, - and _, with / between levels (pics/photos; the parent opens read-only and lists its children). The first level is not drives or shares. The default is one folder for
 # the admins' files; a host's own value replaces it whole. {} serves no folder. Example:
 #   copyparty_folders:
 #     files: {}
 #     collab: {access: {friend1: rwmd}}
-#     pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
+#     pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
 copyparty_folders:
   files: {}
 
