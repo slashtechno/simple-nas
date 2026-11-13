@@ -28,6 +28,9 @@ vault_copyparty_accounts:
 # Who may use the folder /collab and with which permissions, {login: letters}, when a host's vars.yml reads it there
 # (copyparty_folders: collab: {access: "{{ vault_copyparty_collab_access }}"}) to keep user names out of the tracked file.
 vault_copyparty_collab_access: {friend1: rwmd, friend2: rwmd}
+# Only for pics_sso_enabled: the Tinyauth user names that may open pics, each a full owner. A host's vars.yml can read it
+# (service_users: {pics: "{{ vault_pics_users }}"}) to keep user names out of the tracked file.
+vault_pics_users: [yourusername]
 # Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty web
 # address, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.
