@@ -95,8 +95,10 @@ backup_local_cron_jobs: [backup-local, restic-check]
 backup_cloud_scripts: [backup-restic-cloud.sh]
 backup_cloud_lists: [backup-paths.txt, restic-excludes-cloud.txt]
 backup_cloud_cron_jobs: [backup-cloud]
-# The copy of restic the backup scripts run, with the capability to read any file (roles/backup/tasks/main.yml). Teardown removes it.
-restic_binary: /usr/local/bin/restic-backup
+# The restic the backup scripts run: with backup_read_all_files, a copy with the capability to read any file (roles/backup/tasks/main.yml),
+# which teardown removes.
+restic_binary: "{{ restic_copy_path if backup_read_all_files | bool else '/usr/bin/restic' }}"
+restic_copy_path: /usr/local/bin/restic-backup
 
 # The cron job the encryption role creates, which alerts after boot while a folder is locked (docs/encryption.md#alert-while-locked).
 # remove.yml, which teardown.yml also runs, removes it.

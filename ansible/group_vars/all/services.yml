@@ -41,7 +41,7 @@
 #              service's sign-in has to start there instead of on its Caddy name (Gitea: gitea_root_url).
 #   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
 #   own_login  true when Tinyauth must not sit in front of the Caddy name, because the service's clients cannot sign in
-#              through a web page (apps, git, WebDAV, push) or it is the login itself; Copyparty's browser name is
+#              through a web page (apps, git, WebDAV, push) or it is the login itself; Copyparty's web address is
 #              behind it with copyparty_sso_enabled. Every other web service is behind Tinyauth on a host that has
 #              tinyauth_enabled, even one with a login page of its own (Crafty).
 #   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/

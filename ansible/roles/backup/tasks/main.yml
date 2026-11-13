@@ -8,27 +8,34 @@
     state: present
     update_cache: true
 
-# The backup runs as the ansible user, which cannot read root-only files (a container's secrets, say), and restic would
-# exit 3 on each. A private copy of restic gets the capability to read any file; the packaged binary stays as it is, so no other user
-# gains it. Only the ansible user's group may run the copy. A restic upgrade by apt is copied again on the next deploy, which also
-# sets the capability again. The copy is on the root drive: file capabilities do not work on mounts with nosuid.
+# With backup_read_all_files the backup, which runs as the ansible user, gets its own copy of restic with the capability to read any file,
+# so root-only files (a container's secrets, say) do not make a run exit 3. The packaged binary stays as it is, so no other user gains
+# it, and only the ansible user's group may run the copy. A restic upgrade by apt is copied again on the next deploy, which sets the
+# capability again. The copy is on the root drive: file capabilities do not work on mounts with nosuid.
 - name: Copy restic for the backup
   ansible.builtin.copy:
     src: /usr/bin/restic
     remote_src: true
-    dest: "{{ restic_binary }}"
+    dest: "{{ restic_copy_path }}"
     owner: root
     group: "{{ ansible_user }}"
     mode: "0750"
-  register: restic_copy
+  register: restic_copied
+  when: backup_read_all_files | bool
 
 - name: Let the copy of restic read any file
   community.general.capabilities:
-    path: "{{ restic_binary }}"
+    path: "{{ restic_copy_path }}"
     capability: cap_dac_read_search+ep
     state: present
   # A preview does not create the copy, so there is nothing to read the capability of yet.
-  when: not (ansible_check_mode and restic_copy is changed)
+  when: backup_read_all_files | bool and not (ansible_check_mode and restic_copied is changed)
+
+- name: Remove the copy of restic when backup_read_all_files is off
+  ansible.builtin.file:
+    path: "{{ restic_copy_path }}"
+    state: absent
+  when: not backup_read_all_files | bool
 
 # With a local backup the work dir is the backup drive's mount root, so it is not listed: this task would change its mode.
 - name: Create the backup directories

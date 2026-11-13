@@ -23,6 +23,11 @@ backup_work_dir: "{{ drive_mounts.backup if backup_local_enabled | bool else '/v
 # Where the backup logs are written.
 backup_logs_dir: "{{ backup_work_dir }}/logs"
 
+# true: the backup runs its own copy of restic that can read any file (the Linux capability cap_dac_read_search), so root-only files
+# such as a container's secrets are backed up. Anyone who can run the backup as the ansible user can then read any file on the host
+# without sudo. false: the packaged restic runs, root-only files make a run exit 3, and each one needs an exclude (docs/backups.md#root-only-files).
+backup_read_all_files: true
+
 # restic forget options for the local repository: snapshots kept per day, week and month.
 restic_local_retention: "--keep-daily 7 --keep-weekly 4 --keep-monthly 1"
 

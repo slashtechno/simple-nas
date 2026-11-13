@@ -75,22 +75,13 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 The deploy renders the config from `roles/copyparty/templates/copyparty.conf.j2` into `copyparty_config_dir`. The admin account is `copyparty_user` / `copyparty_password`. `copyparty_shared_folders` adds one folder per name, such as `/collab`, for people who are not admins. The folders are inside `copyparty_shared_dir` (on the `primary` drive). Each person is an entry in `vault_copyparty_accounts` (`user`, `pass` and `folders`, the names they may use; shape in `host_vars/vault.yml.example`). The admin has access to every shared folder. A person can be in several folders, and a folder can have no one but the admin. With the list empty there are no folders and no accounts. A person in `vault_copyparty_accounts` has read, write, move and delete in their folders and no admin rights. Copyparty follows a symlink that someone with shell access puts in a folder, so a symlink shares what it points at; uploads and WebDAV create only regular files.
 
-Who signs in where:
-
-| Who | Set in | Signs in at | Gets |
-|---|---|---|---|
-| The admin | `copyparty_user`, `copyparty_password` | Copyparty's login page | everything |
-| A friend | `vault_copyparty_accounts` | Copyparty's login page, WebDAV, apps | read, write, move, delete in their shared folders |
-| An admin by SSO | `copyparty_sso_admins` (Tinyauth user names) | the browser name, with `copyparty_sso_enabled` | everything, no second login |
-| An app (pics) | `copyparty` in `services.yml` | its own volumes | what its entry grants |
-
-Copyparty has its own logins because Tinyauth keeps only password hashes, which Copyparty cannot check. Without `copyparty_sso_enabled` the browser name is open to Copyparty's login page alone, and `service_users.copyparty` has no effect ([who may use what](./auth-reference.md#who-may-use-what)). With it, a friend who is not a Tinyauth user opens Copyparty at the published port or the tunnel name instead.
+Copyparty keeps its own logins (the admin, the people in `vault_copyparty_accounts`, apps) because Tinyauth stores only password hashes, which Copyparty cannot check. They work on Copyparty's login page, WebDAV and apps. Its web address (`<copyparty_subdomain>.<domain>`, served by Caddy) has no Tinyauth login in front of it unless `copyparty_sso_enabled` is on, so `service_users.copyparty` does nothing until then ([who may use what](./auth-reference.md#who-may-use-what)).
 
 `/` is the bulk volume. `/drives` shows plugged-in USB drives when `usb_automount_enabled: true` ([storage.md](./storage.md#plugged-in-usb-drives-drives)). To add the fast drive, the backup drive or one folder of either, see [More drives and folders](#more-drives-and-folders).
 
 Apps that store files in Copyparty (pics) get an account named after the app and their own volumes at `/apps/<app>/<folder>`. The app's `copyparty` field in `services.yml` declares them (its comment says how). The volumes are not part of `copyparty_files_dir`, so the admin's listing does not show them. Every admin (`copyparty_user` and, with SSO, `copyparty_sso_admins`) has full access. `/apps/` opens read-only and lists each app's folders. Leave out the `d` permission unless the app must delete: without it Copyparty also refuses overwrites.
 
-`copyparty_sso_enabled: true` puts the browser name (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login. It adds to Copyparty's own passwords and does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep password logins.
+`copyparty_sso_enabled: true` puts Copyparty's web address (`<copyparty_subdomain>.<first private domain>`) behind the Tinyauth login. It adds to Copyparty's own passwords and does not replace them: the published port, the tunnel hostname, WebDAV, rclone and phone apps keep password logins.
 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled`, `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it) and `copyparty_sso_admins` in the host's `vars.yml`.
 - **Admins:** `copyparty_sso_admins` lists Tinyauth user names, matched exactly, with admin access to `/` and every shared folder. Every other signed-in user has only what `copyparty_extra_conf` grants. `service_users.copyparty` can limit who may open the page at all.
@@ -133,7 +124,7 @@ Apps that store files in Copyparty (pics) get an account named after the app and
   ```
 
 - **Provider logins:** Tinyauth sets `Remote-User` for a GitHub or Google login too (the provider's username). With `TINYAUTH_OAUTH_*` providers on, no whitelisted account may have a provider username equal to a name in `copyparty_sso_admins`.
-- **Share links** on the browser name ask for the Tinyauth login too (Copyparty expects the `/shares` prefix to be exempt, [shares](https://github.com/9001/copyparty#shares)). Hand links out on the published port or the tunnel hostname instead.
+- **Share links** on the web address ask for the Tinyauth login too (Copyparty expects the `/shares` prefix to be exempt, [shares](https://github.com/9001/copyparty#shares)). Hand links out on the published port or the tunnel hostname instead.
 
 </details>
 

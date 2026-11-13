@@ -33,7 +33,7 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 - **TLS termination.** TLS is the encryption of https. Terminating it means decrypting there and passing plain http on. Behind a Cloudflare tunnel Cloudflare does it, so Caddy gets plain http and needs no certificate (ACME is how Caddy gets one).
 - **OAuth app.** To offer "sign in with GitHub", you register an application with GitHub. It gives you a *client id* (its name) and a *client secret* (its password). You tell it the *callback URL* it may send the browser back to.
 - **OpenID Connect (OIDC).** The same arrangement with Tinyauth as the provider and Gitea, Immich or pics as the apps. The *client secret* is a random value only that app and Tinyauth know.
-- **IdP header key.** A header whose *name* is a secret (`vault_copyparty_idp_key`), added by Caddy on Copyparty's browser name only. Copyparty trusts `Remote-User` only on requests that carry it, so the published port and the tunnel cannot claim to be a user.
+- **IdP header key.** A header whose *name* is a secret (`vault_copyparty_idp_key`), added by Caddy on Copyparty's web address only. Copyparty trusts `Remote-User` only on requests that carry it, so the published port and the tunnel cannot claim to be a user.
 - **Hash and salt.** A hash is a one-way scramble of a password, so a config file can check a login without holding the password. A salt is random input so equal passwords hash differently. Some hashes here use a fixed salt, so the file does not change on every deploy.
 - **S3, bucket and access key.** S3 is Amazon's storage API, which Garage also answers. A bucket is a named container for objects. An access key is the id and secret an app signs in with.
 

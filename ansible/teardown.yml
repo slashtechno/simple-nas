@@ -220,7 +220,7 @@
 
             - name: Remove the copy of restic the backup runs
               ansible.builtin.file:
-                path: "{{ restic_binary }}"
+                path: "{{ restic_copy_path }}"
                 state: absent
 
             # rmdir only succeeds when the directory is empty.

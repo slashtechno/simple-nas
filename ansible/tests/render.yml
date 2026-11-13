@@ -885,6 +885,22 @@
           - "'the alert could not be sent' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
         quiet: true
 
+    # With backup_read_all_files off the scripts run the packaged restic, not the copy that has the capability.
+    - name: Turn backup_read_all_files off
+      ansible.builtin.set_fact:
+        backup_read_all_files: false
+
+    - name: The backup scripts' restic follows backup_read_all_files
+      ansible.builtin.assert:
+        that:
+          - restic_binary == '/usr/bin/restic'
+          - restic_copy_path != restic_binary
+        quiet: true
+
+    - name: Turn backup_read_all_files back on
+      ansible.builtin.set_fact:
+        backup_read_all_files: true
+
     - name: Put the senders back on the shared ntfy
       ansible.builtin.set_fact:
         scrutiny_alert_url: "{{ ntfy_alert_url }}"

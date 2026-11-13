@@ -29,7 +29,7 @@
 {% if copyparty_sso_enabled | bool %}
   # The user Tinyauth's login names in the Remote-User header is the Copyparty user, without a second login. Copyparty
   # ignores that header unless the request also carries a header whose NAME is the secret below (idp-h-key), and Caddy
-  # sends it on the browser name only, so the published port and the tunnel cannot claim a user. auth-ord tries that
+  # sends it on the web address only, so the published port and the tunnel cannot claim a user. auth-ord tries that
   # header first and Copyparty's own passwords second, so WebDAV and apps keep their accounts.
   idp-h-usr: remote-user
   idp-h-key: {{ vault_copyparty_idp_key }}
