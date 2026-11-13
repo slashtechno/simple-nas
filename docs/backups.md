@@ -21,7 +21,7 @@ Two flags per host in `host_vars/<host>/vars.yml`. A host can set either or both
 - `backup_cloud_enabled: true`: weekly to `restic_cloud_repository`. **Each host needs its own path**: hosts sharing a repository prune each other's snapshots. The deploy stops if it is empty.
 - The web dashboard (`backup_status_enabled`) reads the local repository, so it needs `backup_local_enabled`.
 
-The scripts run as the ansible user and refuse to run as anyone else (a root run leaves root-owned files the nightly run cannot read). Restic skips files that only root can read (data owned by a container's user) and reports them as `error:` lines. It still saves the snapshot (exit 3) and prunes old snapshots, then the run fails so the alert fires. For such a stack, dump its data or change its owner.
+The scripts run as the ansible user and refuse to run as anyone else (a root run leaves root-owned files the nightly run cannot read). Files only root can read (data owned by a container's user) are read through a restic copy with a capability ([Root-only files](#root-only-files)); with `backup_read_all_files: false` restic reports each as an `error:` line, saves the snapshot (exit 3) and prunes, then the run fails so the alert fires.
 
 <details>
 <summary>A cloud-only host, locks and the cache</summary>

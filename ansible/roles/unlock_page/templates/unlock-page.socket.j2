@@ -7,6 +7,7 @@ ListenStream={{ unlock_page_socket_dir }}/unlock.sock
 DirectoryMode=0700
 SocketMode=0600
 # One copy of the service per connection (unlock-page@.service).
+# No MaxConnections: a limit would make a Lock press wait for a slow Unlock, and only the page's container can connect.
 Accept=yes
 
 [Install]

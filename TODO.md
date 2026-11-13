@@ -11,9 +11,7 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - A pics `archive_dir` option, with its path under a drive that has a role so the backup covers it — waits for: the owner writing it in the pics repository.
 - Delete the stale `pi-nas-runner` entry in Gitea — waits for: a few minutes in Gitea's admin page.
 - `restic forget` the snapshot group for the old `/opt/nas` path ([backups.md](./docs/backups.md#choosing-what-is-backed-up)) — waits for: the next Sunday offsite backup.
-- Test the unlock page ([encryption.md](./docs/encryption.md#unlock-page)) on a real host: `check`, a real unlock and lock from the browser. Waiting for: pi4 with encryption on.
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md) — waits for: the new drive passing its vetting.
 - Encryption at rest: run each folder's real workload through a mounted folder on pi4 before listing it, starting with `stacks` (writes ran at 3 to 5 MB/s in a plain copy test; [encryption.md](./docs/encryption.md#which-folders-to-list)) — waits for: choosing which folders to list.
 - Encryption at rest ([encryption.md](./docs/encryption.md)): open the folder on a Mac (gocryptfs and macFUSE) before real data goes in — waits for: a spare drive.
 - Open items of [plans/next-steps.md](./plans/next-steps.md) — waits for: each item's own condition.
-- pi4's backup cannot read three root-owned files in `stacks/cortex/data` (`.secrets.json`, `auth.json`, `box/token`), so each run ends with a read error and leaves them out — waits for: deciding to change their owner or exclude them.
