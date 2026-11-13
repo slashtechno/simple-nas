@@ -10,4 +10,6 @@ terminal_tools_enabled: true
 # token that server accepts. The defaults are the shared ntfy_alert_url and vault_ntfy_token (a URL that is set needs the vault
 # entry). An empty URL sends nothing; an empty token sends no login.
 host_alert_url: "{{ ntfy_alert_url }}"
-host_alert_token: "{{ vault_ntfy_token if host_alert_url | length > 0 else '' }}"
+host_alert_token: >-
+  {{ (vault_ntfy_token | default(undef(hint='add vault_ntfy_token to the vault, or set host_alert_token to an empty string')))
+     if host_alert_url | length > 0 else '' }}
