@@ -34,7 +34,12 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 
 ## Alert while locked
 
-Two minutes after each boot the host sends one alert if a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. A lock you made on purpose is not reported: the alert runs only at boot. It goes to the system log (`journalctl -t unlock`) and, when `host_alert_url` is set ([ntfy alerts](./services.md#ntfy-failure-alerts)), to ntfy. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
+Two minutes after each boot the host sends one alert if a listed folder is locked or has no encrypted files (the drive is not mounted, or the folder was never set up). It names those folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. A lock you made on purpose is not reported: the alert runs only at boot.
+
+- **On or off:** `unlock_alert_url`. It defaults to `ntfy_alert_url` ([ntfy alerts](./services.md#ntfy-failure-alerts)); set it to a topic of its own, with `unlock_alert_token`, to send these apart from backup alerts. With `""` there is no alert and no cron job.
+- **Also:** the message goes to the system log (`journalctl -t unlock`).
+
+Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
 
 ## Unlock page
 

@@ -68,11 +68,13 @@ ntfy_topic: alerts
 # (alert.sh), and the drive alerts of Scrutiny and pics. The full URL of an ntfy topic: "http://pinas:8090/alerts" (the ntfy
 # this repo runs, over the tailnet), "https://ntfy.pinas.example.com/alerts" (its Caddy name) or "https://ntfy.sh/<your-topic>".
 # "" sends nothing. vault_ntfy_token is the login token; a topic with no login needs the sender's *_token set to "". Each sender can use its own
-# ntfy instead: host_alert_url, scrutiny_alert_url and pics_alert_url, each with a *_token (docs/services.md#ntfy-failure-alerts).
+# ntfy instead: host_alert_url, scrutiny_alert_url, pics_alert_url and unlock_alert_url, each with a *_token (docs/services.md#ntfy-failure-alerts).
 # A host that is down or unreachable cannot alert. Use https:// or a tailnet address: the token travels in the request.
 ntfy_alert_url: ""
 # File on the host holding host_alert_token, read by alert.sh. Here because teardown.yml removes it.
 ntfy_token_file: "{{ services_dir }}/ntfy-token"
+# File on the host holding unlock_alert_token, read by unlock.sh as root. Here because teardown.yml removes it and the backup leaves it out.
+unlock_token_file: "{{ services_dir }}/unlock-ntfy-token"
 
 # File on the host holding the Cloudflare tunnel token, mounted into the tunnel's container. Here because the backup
 # role leaves it out (the container's user owns it, mode 400).

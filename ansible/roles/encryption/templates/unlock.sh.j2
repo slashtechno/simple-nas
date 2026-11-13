@@ -84,8 +84,19 @@ if [ "${1:-}" = "--alert" ]; then
   MESSAGE=""
   [ -z "${LOCKED[*]:-}" ] || MESSAGE="Locked, waiting for the passphrase: ${LOCKED[*]}. "
   [ -z "${MISSING[*]:-}" ] || MESSAGE="${MESSAGE}No encrypted files found (the drive is not mounted, or it was never set up): ${MISSING[*]}. "
-  # alert.sh logs the message and sends it to ntfy when an alert address is set (roles/common).
-  exec {{ (scripts_dir ~ '/alert.sh') | quote }} "${MESSAGE}Containers that use them stay down. $HOW" unlock "encrypted folders need attention"
+  MESSAGE="${MESSAGE}Containers that use them stay down. $HOW"
+  logger -t unlock "$MESSAGE"
+{% if unlock_alert_url | length > 0 %}
+  # The send must never hang: --max-time stops a stuck connection. --fail makes a refused alert (a wrong token is HTTP 403)
+  # an error, and the `||` writes that to the system log beside the alert.
+  curl --silent --show-error --fail --max-time 15 \
+{% if unlock_alert_token | length > 0 %}
+    -H "Authorization: Bearer $(cat {{ unlock_token_file | quote }})" \
+{% endif %}
+    -H "Title: {{ inventory_hostname }}: encrypted folders need attention" -H "Priority: high" \
+    -d "$MESSAGE" {{ unlock_alert_url | quote }} || logger -t unlock "the alert could not be sent to ntfy"
+{% endif %}
+  exit 0
 fi
 
 if [ "${1:-}" = "--status" ]; then

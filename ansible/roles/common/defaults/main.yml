@@ -6,7 +6,7 @@ ssh_authorized_keys: []
 # and eza (an `ls` with colours, on Debian 13 / Ubuntu 24.04 and later). zoxide, bat and eza are set up in the Ansible
 # user's ~/.bashrc, interactive shells only. Set false to leave all of them out.
 terminal_tools_enabled: true
-# Where alert.sh sends the backup jobs', the connectivity watchdog's and the locked-folder alerts (docs/services.md#ntfy-failure-alerts).
+# Where alert.sh sends the backup jobs' and the connectivity watchdog's alerts (docs/services.md#ntfy-failure-alerts).
 # An empty URL sends nothing but the system log.
 host_alert_url: "{{ ntfy_alert_url }}"
 # The token for host_alert_url. The default is vault_ntfy_token (a URL that is set needs the vault entry). An empty token sends no login.

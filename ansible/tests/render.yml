@@ -860,6 +860,8 @@
         pics_alert_token: ""
         host_alert_url: "https://ntfy.sh/host-topic"
         host_alert_token: ""
+        unlock_alert_url: "https://ntfy.sh/unlock-topic"
+        unlock_alert_token: ""
 
     - name: Render the senders' files with them
       ansible.builtin.template:
@@ -870,6 +872,7 @@
         - scrutiny/templates/docker-compose.yml.j2
         - pics/templates/pics.env.j2
         - common/templates/alert.sh.j2
+        - encryption/templates/unlock.sh.j2
 
     - name: Each sender uses its own URL and token
       ansible.builtin.assert:
@@ -882,6 +885,10 @@
           - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
           # A refused alert (HTTP 403) is an error that reaches the system log, not a silent success.
           - "'--fail' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
+          # The locked-folder alert has its own URL and token, apart from the host's.
+          - "'https://ntfy.sh/unlock-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
+          - "'ntfy.sh/host-topic' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
+          - "'Authorization' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-unlock.sh')"
           - "'the alert could not be sent' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
         quiet: true
 
@@ -909,6 +916,8 @@
         pics_alert_token: "{{ vault_ntfy_token }}"
         host_alert_url: "{{ ntfy_alert_url }}"
         host_alert_token: "{{ vault_ntfy_token }}"
+        unlock_alert_url: "{{ ntfy_alert_url }}"
+        unlock_alert_token: "{{ vault_ntfy_token }}"
 
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.
     - name: Give Gitea a public address of its own

@@ -18,8 +18,14 @@ sent = work / "sent"
 # mountpoint -q <path>/. succeeds for every path listed in "unlocked" (one path per line).
 (bin_dir / "mountpoint").write_text('#!/bin/bash\npath="${2%/.}"\ngrep -qxF "$path" "$FAKE/unlocked"\n')
 (bin_dir / "mountpoint").chmod(0o755)
-(work / "alert.sh").write_text(f'#!/bin/bash\nprintf "%s|%s|%s\\n" "$1" "$2" "$3" >> {sent}\n')
-(work / "alert.sh").chmod(0o755)
+# curl records "message|unlock|title" for the ntfy post; logger records "tag|message" for the system log.
+(bin_dir / "curl").write_text(
+    '#!/bin/bash\nmsg=""; title=""\n'
+    'while [ $# -gt 0 ]; do case "$1" in -d) msg="$2"; shift;; -H) case "$2" in Title:*) title="${2#Title: }";; esac; shift;; esac; shift; done\n'
+    f'printf "%s|unlock|%s\\n" "$msg" "$title" >> {sent}\n')
+(bin_dir / "curl").chmod(0o755)
+(bin_dir / "logger").write_text(f'#!/bin/bash\nprintf "%s|%s\\n" "$2" "$3" >> {work / "logged"}\n')
+(bin_dir / "logger").chmod(0o755)
 
 script = Path(sys.argv[1]).read_text()
 folder_line = re.compile(r"^(\s*show_state )(\S+) (\S+)( >/dev/null)$", re.M)
@@ -38,12 +44,13 @@ def cipher_dir(mount, cipher):
 
 
 script = folder_line.sub(lambda m: f"{m.group(1)}{m.group(2)} {cipher_dir(m.group(2), m.group(3))}{m.group(4)}", script)
-script = re.sub(r"exec \S*alert\.sh", f"exec {work / 'alert.sh'}", script)
+script = re.sub(r"cat \S*unlock-ntfy-token", f"echo token", script)
 (work / "unlock.sh").write_text(script)
 
 
 def run(unlocked, missing=()):
     sent.unlink(missing_ok=True)
+    (work / "logged").unlink(missing_ok=True)
     for mount, path in ciphers.items():   # a folder whose drive is not mounted has no ciphertext folder
         path.mkdir(exist_ok=True)
         if mount in missing:
@@ -66,6 +73,8 @@ for locked in mounts:
     assert locked in message and all(m not in message for m in mounts if m != locked), message
     assert "Locked, waiting for the passphrase" in message and "nlock" in message, message
     assert tag == "unlock" and "attention" in title, (tag, title)
+    logged = (work / "logged").read_text()
+    assert logged.startswith("unlock|") and locked in logged, logged   # the system log gets it too
 
 done, text = run([])
 assert all(m in text for m in mounts), text

@@ -35,5 +35,5 @@ For AI agents, not humans. Keep it short; detail lives in the linked docs.
 - Treating `--list-tasks` as proof that a `when:` works. It ignores `when:`; the render test is the check.
 - Adding an option the user should not need, or deriving something the user is better off setting and seeing.
 - Adding a mechanism the system or tool already provides (a tmpfiles entry, udev rule, handler, guard, workaround, task or setting). Before adding one, name what breaks without it and show it (read the tool's docs, or test on a host). If nothing breaks, leave it out. A mechanism kept for tidiness, not function, is also out.
-- Gating a job on a sender's alert URL (`host_alert_url`). The job calls `alert.sh` (or its own `*_alert_url`) and the sender decides: with no URL it logs only.
+- Reading another sender's alert settings. Each sender (host, scrutiny, pics, unlock) reads only its own `*_alert_url` and `*_alert_token`; `ntfy_alert_url` is the shared default they fall back to.
 - Piling on guards and special cases for rare failures. One plain check that fails loudly beats several layers; delete a layer when another already covers it.

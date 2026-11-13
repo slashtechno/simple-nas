@@ -13,6 +13,8 @@
 {{ rclone_config_dir }}
 # The Cloudflare tunnel token: a deploy writes it again from Cloudflare. A line for it stays when cloudflared_enabled is off.
 {{ cloudflared_token_file }}
+# The token of the locked-folder alert, root-only: the backup's restic copy can read it.
+{{ unlock_token_file }}
 {% if docker_data_root | length > 0 %}
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}
