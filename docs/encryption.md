@@ -1,6 +1,6 @@
 # Encryption at rest
 
-Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.net/gocryptfs/) stores their files encrypted. You unlock them by hand after each boot. A full walk-through on a new host: [quick-start.md](./quick-start.md).
+Optional. List folders in `encrypted_folders` (the *listed folders*) and [gocryptfs](https://nuetzlich.net/gocryptfs/) stores their files encrypted. You unlock them by hand after each boot. A full walk-through on a new host: [quick-start.md](./quick-start.md).
 
 | I want to | Go to |
 |---|---|
@@ -29,8 +29,8 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - From your computer: `just unlock <host>`, `just lock <host>` and `just encryption-status <host>` for the status below.
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
-- Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
-- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It refuses while a backup runs, and reports a busy folder (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
+- Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Which folders to list](#which-folders-to-list).
+- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It refuses while a backup runs. It reports a busy folder: `fuser -vm <folder>` lists the processes that hold it. The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
 
 ## Alert while locked
 
@@ -53,7 +53,7 @@ Set it up once:
 
 **Unlock** asks for the passphrase, unlocks the folders and starts the containers that wait for them. Nothing stores the passphrase: type it for each unlock, or let your password manager fill it in. **Lock** asks you first. It then stops those containers and unmounts the folders, as `unlock.sh --lock` does.
 
-**Outside the tailnet:** like every Tinyauth site, the page opens only where the private names resolve. That is on the tailnet. To open it through Cloudflare, publish the page and the login under the private domain. Follow [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet) and use `unlock` where it says `dockge`. Cloudflared, Caddy and Tinyauth are on the root drive, so they run while the folders are locked. Give every user a `totp` secret. Cloudflare ends TLS, so on that route it can see the passphrase you type.
+**Outside the tailnet:** like every Tinyauth site, the page opens only where the private names resolve. That is on the tailnet. To open it through Cloudflare, publish the page and the login under the private domain. Follow [Reach a protected service from outside the tailnet](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet) and use `unlock` where it says `dockge`. Cloudflared, Caddy and Tinyauth are on the root drive, so they run while the folders are locked. Give every user a `totp` secret (a one-time code from an authenticator app). Cloudflare ends TLS, so on that route it can see the passphrase you type.
 
 <details>
 <summary>How it works, and what a thief can do</summary>
@@ -82,7 +82,7 @@ Do this **before the service first starts**, or it writes plain files into the f
 
 1. Add the paths to `encrypted_folders` ([which folders](#which-folders-to-list)) and run `just deploy encryption,backup --limit <host>`.
 2. Stop the containers that use the folder (`docker stop <name>`). The script lists any that are still running.
-3. Run the script for each folder, in a terminal (`ssh -t <host>`). It asks for the passphrase and shows the master key only in a terminal:
+3. Run the script for each folder, in a terminal. It asks for the passphrase and shows the master key only in a terminal. Over SSH, `ssh -t <host>` gives one:
 
    ```bash
    sudo /opt/services/scripts/setup-encrypted-folder.sh /mnt/data/photos
@@ -116,7 +116,7 @@ encrypted_folders:
 
 - A listed folder must not sit inside another. The deploy fails if one does.
 - The deploy also fails for a folder that is, or holds, something you need to log in and unlock: `scripts_dir`, your home folder, `/etc`, `/usr`, `/boot`, `/root`, `/var/lib` or `docker_data_root`.
-- `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. On one Raspberry Pi 4 with a USB stick, files written through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Try your real workload before you list a folder that takes many writes.
+- `appdata` includes every database, Immich's Postgres too. Writes are the slow part of encryption, and databases write often. Try your real workload before you list a folder that takes many writes ([speed on a Pi 4](#which-folders-to-list)).
 - A Copyparty folder with its own `dir` needs its own entry (or sits inside a listed folder).
 - The defaults cover a service added later with its data under `fast_appdata_dir` or `primary_appdata_dir`. Anything else stays plain.
 - With the fast and primary roles on two drives, list `appdata` on each (two entries).
@@ -130,6 +130,13 @@ encrypted_folders:
 | Tinyauth | `tinyauth_data_dir` | No Tinyauth login until you unlock. The deploy refuses it on a host with the unlock page. |
 
 The defaults put all three under `fast_appdata_dir` (`<fast drive>/appdata`), so listing it locks them. Use a plain folder such as `/mnt/data/plain/ntfy`, and move the existing folder there before the deploy, while the service is stopped.
+
+<details>
+<summary>Speed: Raspberry Pi 4 with a USB stick</summary>
+
+Writes through the mount ran at 3 to 5 MB/s and reads at about 65 MB/s. The same stick without encryption wrote at 7 to 39 MB/s and read at 126 MB/s. Making a new master key moves every file twice, so 21 GB takes hours.
+
+</details>
 
 ## Keys and recovery
 
@@ -149,13 +156,13 @@ It prints the key as one line of 64 characters. The setup script prints the same
 
 It takes seconds: the master key stays the same and nothing is re-encrypted. Do it after you type the passphrase on a device you do not trust. That helps only if nobody copied `gocryptfs.conf`. If someone may have both the conf and the passphrase, [make a new master key](#make-a-new-master-key).
 
-1. For each folder, in a terminal (`ssh -t <host>`): `sudo gocryptfs -passwd <the .gocryptfs folder>`. `-passwd` changes the passphrase of that one folder. Use the same new passphrase for every folder, so one prompt unlocks them all.
+1. For each folder, in a terminal (`ssh -t <host>`): `sudo gocryptfs -passwd <the .gocryptfs folder>`. `-passwd` changes the passphrase of that one folder. Use the same new passphrase for all of them.
 2. Run `sudo /opt/services/scripts/unlock.sh`. It gives the rewritten `gocryptfs.conf` to the ansible user, so backups can read it. Then run a backup. Older snapshots keep the old `gocryptfs.conf`, and it opens only with the old passphrase.
 3. Update your password manager, and copy the new `gocryptfs.conf` off the host.
 
 ### Make a new master key
 
-gocryptfs cannot change the master key of a folder. You decrypt the folder and encrypt it again. Do this when someone may have had the master key, or both the conf and the passphrase. The two moves read and write every file at the encrypted speed ([how slow](#which-folders-to-list)). On a Raspberry Pi 4, 21 GB takes hours.
+gocryptfs cannot change the master key of a folder. You decrypt the folder and encrypt it again. Do this when someone may have had the master key, or both the conf and the passphrase. The two moves read and write every file at the encrypted speed, so a large folder takes hours ([speed](#which-folders-to-list)).
 
 1. Run a backup. Stop the containers that use the folder.
 2. `sudo /opt/services/scripts/remove-encrypted-folder.sh <folder>` puts the files back as plain files ([turning it off](#turning-it-off)).
@@ -194,7 +201,7 @@ gocryptfs -ro -xchacha -masterkey=stdin <the .gocryptfs folder> <empty folder>  
 ## Turning it off
 
 1. Stop the containers that use the folder (`docker stop <name>`; the script lists any still running).
-2. Run the script in a terminal (`ssh -t <host>`). It unlocks the folder, moves the files out, compares checksums, and puts them back in the folder as plain files:
+2. Run the script in a terminal (`ssh -t <host>`, as in [Set up a folder](#set-up-a-folder)). It unlocks the folder, moves the files out, compares checksums, and puts them back in the folder as plain files:
 
    ```bash
    sudo /opt/services/scripts/remove-encrypted-folder.sh /mnt/data/photos
@@ -233,14 +240,19 @@ Docker, SSH and Tailscale live on the root drive, so they run while folders are 
 
 The root-run scripts (`unlock.sh`, `alert.sh`) sit in `scripts_dir`, which the Ansible user owns: that user can replace them, so root and that user are one boundary on a host where the user has passwordless sudo.
 
-After a theft of the whole host, revoke the Cloudflare API and tunnel tokens and remove the host from Tailscale. The thief can read the backups on the host's drives: the restic key of an existing repository does not change with the vault value.
+After a theft of the whole host, revoke the Cloudflare API and tunnel tokens and remove the host from Tailscale. The thief can read the backups on the host's drives, and a new `vault_restic_password` does not lock an existing repository ([backups.md](./backups.md#what-is-backed-up-where)).
 
 Use a long random passphrase from a password manager. It is the weak point, not the 256-bit cipher.
 
 
 ## Dumps and backups
 
-- **Dumps and backup logins:** the Immich, Gitea and Garage dumps (`service_dumps_dir`, default `<backup drive>/service-dumps`), the restic password (`restic_password_file`) and the Drive login (`rclone_config_dir`) are plain files. Anyone who holds the host or the backup drive can read the databases, open the local repository and use the Drive token. To lock them, point the three settings into a listed folder:
+- **Dumps and backup logins** are plain files:
+  - the Immich, Gitea and Garage dumps in `service_dumps_dir` (default `<backup_work_dir>/service-dumps`, which sits on the backup drive with a local backup);
+  - the restic password, `restic_password_file`;
+  - the Drive login, `rclone_config_dir`.
+
+  Anyone who holds the host or the backup drive can read the databases, open the local repository and use the Drive token. To lock them, point the three settings into a listed folder:
 
   ```yaml
   # host_vars/<host>/vars.yml
@@ -249,7 +261,15 @@ Use a long random passphrase from a password manager. It is the weak point, not 
   service_dumps_dir: /mnt/data/appdata/backup-secrets/service-dumps
   ```
 
-  With the folder unlocked, make it and move the logins before the deploy (the deploy writes a new `rclone.conf` from the vault where none exists, and rclone has refreshed the token in the old one): `mkdir -m 700 /mnt/data/appdata/backup-secrets && mv ~/.restic-password /mnt/data/appdata/backup-secrets/restic-password && mv ~/.config/rclone /mnt/data/appdata/backup-secrets/rclone`. Then `just deploy backup --limit <host>`. The old dumps folder can be deleted: the next backup writes fresh dumps. The backups skip the password file and the rclone folder wherever they are. The Cloudflare and Tailscale logins stay on the root drive.
+  With the folder unlocked, move the logins before the deploy. The deploy writes a new `rclone.conf` from the vault where none exists, and rclone has refreshed the token in the old one.
+
+  ```bash
+  mkdir -m 700 /mnt/data/appdata/backup-secrets
+  mv ~/.restic-password /mnt/data/appdata/backup-secrets/restic-password
+  mv ~/.config/rclone /mnt/data/appdata/backup-secrets/rclone
+  ```
+
+  Then run `just deploy backup --limit <host>`. The old dumps folder can be deleted: the next backup writes fresh dumps. The backups skip the password file and the rclone folder wherever they are. The Cloudflare and Tailscale logins stay on the root drive.
 - **Backups:** both scripts refuse to run while any listed folder stays locked. restic reads the folder through the mount (decrypted) and encrypts it with `vault_restic_password`. Every backup leaves out the ciphertext (it would be stored twice), but keeps each folder's `gocryptfs.conf`, so it restores with the data.
 - **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder ([backups.md](./backups.md)).
 
