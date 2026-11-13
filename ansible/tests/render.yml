@@ -115,7 +115,7 @@
         vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}] }}"
         # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
         copyparty_folders:
-          files: {}
+          files: {root: true, access: {friend2: r}}
           collab: {access: {friend1: rwmd, friend2: rwmd}}
           team: {access: {friend2: A, friend1: r}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
@@ -639,10 +639,12 @@
           - "'idp-h-usr: remote-user' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          # Admin access to the five folders, read-only on /drives. / is Copyparty's own list of folders: no volume.
+          # Admin access to the five folders, read-only on /drives. The folder with root: true is the volume at /, and has no /<name> address.
           - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 5"
-          - "'\n[/]\n' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          - "':/files:rw' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          - >-
+            '\n[/]\n  /vol/files\n  accs:\n    A: yourusername\n    A: owner\n    r: friend2\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
+          - "'[/files]' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'    r: owner' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').split('[/drives]')[1]"
           # A folder is its own volume at /vol/<name>: the admins have full access, each login in its access gets the letters written there.
           - >-

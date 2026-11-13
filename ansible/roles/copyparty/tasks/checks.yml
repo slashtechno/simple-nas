@@ -31,13 +31,23 @@
       - item.value.access | default({}) is mapping
       - item.value.access | default({}) | dict2items | rejectattr('value', 'match', '^[rwmdgGhaA]+$') | list | length == 0
       - item.value.dir is not defined or (item.value.dir is string and item.value.dir is match('^/'))
+      - item.value.root is not defined or item.value.root is boolean
     fail_msg: >-
-      copyparty_folders entry '{{ item.key }}' must be {dir: /absolute/path, access: {login: letters}}. The name is letters, digits, - and _,
-      and not drives or shares (Copyparty's own addresses). The letters are from rwmdgGhaA, such as {friend1: rwmd} or {friend1: A} for full access.
+      copyparty_folders entry '{{ item.key }}' must be {dir: /absolute/path, access: {login: letters}, root: true or false}.
+      The name is letters, digits, - and _, and not drives or shares (Copyparty's own addresses).
+      The letters are from rwmdgGhaA, such as {friend1: rwmd} or {friend1: A} for full access.
     quiet: true
   loop: "{{ copyparty_folders | dict2items }}"
   loop_control:
     label: "{{ item.key }}"
+
+- name: Check that at most one folder is served at /
+  ansible.builtin.assert:
+    that: copyparty_volumes | dict2items | selectattr('value.root') | list | length <= 1
+    fail_msg: >-
+      Only one copyparty_folders entry may have root: true, because / is one folder. These have it:
+      {{ copyparty_volumes | dict2items | selectattr('value.root') | map(attribute='key') | list }}.
+    quiet: true
 
 - name: Check every login is complete
   ansible.builtin.assert:

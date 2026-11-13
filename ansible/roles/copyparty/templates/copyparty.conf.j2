@@ -41,10 +41,10 @@
   {{ u.user }}: {{ u.pass }}
 {% endfor %}
 
-{# One volume per folder. The address is /<name>; the container mounts the folder at /vol/<name> (docker-compose.yml). The admins have
+{# One volume per folder. The address is /<name>, or / for the folder with root: true; the container mounts the folder at /vol/<name> (docker-compose.yml). The admins have
    full access, and each login in the folder's access gets the letters listed there. #}
 {% for name, folder in copyparty_volumes.items() %}
-[/{{ name }}]
+[/{{ '' if folder.root else name }}]
   /vol/{{ name }}
   accs:
 {% for u in admins %}

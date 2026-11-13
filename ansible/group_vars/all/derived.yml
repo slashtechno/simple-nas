@@ -143,11 +143,11 @@ oidc_service_keys: >-
   {%- endfor -%}
   {{ on }}
 
-# copyparty_folders with every dir and access filled in: {name: {dir, access}}. The folder's directory is what the container mounts.
+# copyparty_folders with every dir, access and root filled in: {name: {dir, access, root}}. The folder's directory is what the container mounts.
 copyparty_volumes: >-
   {%- set out = {} -%}
   {%- for name, folder in copyparty_folders.items() -%}
-  {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name, true), 'access': folder.access | default({})}}) -%}
+  {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name, true), 'access': folder.access | default({}), 'root': folder.root | default(false)}}) -%}
   {%- endfor -%}
   {{ out }}
 

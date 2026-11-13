@@ -27,7 +27,7 @@ connectivity_watchdog_enabled: true
 copyparty_enabled: true
 # The admins' files stay in the encrypted /mnt/apps/files (docs/services.md#copyparty-folders-and-logins).
 copyparty_folders:
-  files: {dir: "{{ primary_drive }}/files"}
+  files: {dir: "{{ primary_drive }}/files", root: true}
 usb_automount_enabled: true
 usb_automount_writable: true
 

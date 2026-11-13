@@ -79,7 +79,7 @@ Git hosting with an optional Actions runner (it starts only when `vault_gitea_ru
 
 ## Copyparty folders and logins
 
-Copyparty serves each folder in `copyparty_folders` (the host's `vars.yml`) at `/<name>`. A login in `vault_copyparty_accounts` (the vault) opens the folders that name it. `/` lists only the folders a login may open. The default is one folder, `files`, in `<copyparty_shared_dir>/files` for the admins.
+Copyparty serves each folder in `copyparty_folders` (the host's `vars.yml`) at `/<name>`. A login in `vault_copyparty_accounts` (the vault) opens the folders that name it. `/` lists only the folders a login may open, unless one folder has [`root: true`](#add-a-folder-or-a-login). The default is one folder, `files`, in `<copyparty_shared_dir>/files` for the admins.
 
 ### Add a folder or a login
 
@@ -100,6 +100,7 @@ copyparty_folders:
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`, not `drives` or `shares` (Copyparty's own).
+- **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
 - **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>`, on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. When a folder uses the default `dir`, teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
@@ -137,7 +138,7 @@ Tinyauth answers every request on the Caddy name before Copyparty sees it. So a 
   3. Add the app's login to `vault_copyparty_accounts`. Put its password in the vault.
   4. Point the app at `/<folder>` through Copyparty. The app does not mount the folder.
 - **Give a login another folder:** add the login to the `access` of that folder, then deploy. Point the app at `/<folder>`. `access` decides only what a login can open.
-- **Any other Copyparty option** (an SFTP or FTP listener, global options, more volumes) goes in `copyparty_extra_conf`. The deploy writes it to `extra.conf` beside the generated config. Accounts, groups and global options combine. A volume (a `[/path]` section) can appear in only one file, so you cannot extend a folder from `copyparty_folders` there ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders. `copyparty_extra_ports` publishes a listener port as `"host:container"` strings. Without it, only other containers reach the listener.
+- **Any other Copyparty option** (an SFTP or FTP listener, global options, more volumes) goes in `copyparty_extra_conf`. The deploy writes it to `extra.conf` beside the generated config. Accounts, groups and global options combine. A volume (a `[/path]` section; `[/]` is taken when a folder has `root: true`) can appear in only one file, so you cannot extend a folder from `copyparty_folders` there ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders. `copyparty_extra_ports` publishes a listener port as `"host:container"` strings. Without it, only other containers reach the listener.
 
   ```yaml
   # An SFTP listener for a sync client (WebDAV lacks the modtimes rclone needs).

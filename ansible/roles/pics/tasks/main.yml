@@ -28,10 +28,11 @@
       - copyparty_enabled | bool
       - "['pics-photos', 'pics-trash'] | difference(copyparty_folders.keys() | list) | length == 0"
       - "copyparty_volumes['pics-photos'].dir == pics_photos_dir and copyparty_volumes['pics-trash'].dir == pics_trash_dir"
+      - "not copyparty_volumes['pics-photos'].root and not copyparty_volumes['pics-trash'].root"
     fail_msg: >-
       pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add the folders pics-photos and
-      pics-trash to copyparty_folders, with dir pics_photos_dir and pics_trash_dir, which the backup covers
-      (docs/services.md#pics-photo-culling-and-sharing).
+      pics-trash to copyparty_folders, with dir pics_photos_dir and pics_trash_dir, which the backup covers.
+      Neither may have root: true: pics reaches them at /pics-photos and /pics-trash (docs/services.md#pics-photo-culling-and-sharing).
     quiet: true
 
 - name: Create pics directories

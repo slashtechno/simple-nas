@@ -5,10 +5,10 @@
 # --- Services ---
 immich_enabled: true
 copyparty_enabled: true
-# The folders Copyparty serves, and who may use each (the logins are in vault_copyparty_accounts): /files for the admins, /collab for the
+# The folders Copyparty serves, and who may use each (the logins are in vault_copyparty_accounts): the admins' files at /, /collab for the
 # friends, and pics' two folders (docs/services.md#copyparty-folders-and-logins).
 copyparty_folders:
-  files: {}
+  files: {root: true}
   collab: {access: "{{ vault_copyparty_collab_access }}"}   # who may use /collab is in the vault, with the user names
   pics-photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
   pics-trash: {dir: "{{ pics_trash_dir }}", access: {pics: rwmd}}

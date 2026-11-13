@@ -62,7 +62,8 @@ docker_data_root: ""
 # 00-containers.sh (restarts the containers that use an unlocked folder); the scripts you add start any other software and are never touched (docs/encryption.md).
 encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
-# The folders Copyparty serves, for people and apps alike: {name: {dir, access}}. Each is served at /<name>, and / lists the folders a login may open.
+# The folders Copyparty serves, for people and apps alike: {name: {dir, access, root}}. Each is served at /<name>, and / lists the folders a login may open.
+# One folder may have root: true: it is served at / instead. A folder inside it named like another folder, shares or drives is hidden.
 # dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>). access is {login: permissions}, where a login is a user
 # of vault_copyparty_accounts and permissions are letters: A everything, or r read, w write, m move, d delete (g, G, h and a: see Copyparty's docs).
 # Every admin has full access to every folder. A name is letters, digits, - and _, and not drives or shares. The default is one folder for

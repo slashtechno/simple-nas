@@ -233,6 +233,7 @@
             cases:
               - {name: a good setup}
               - {name: no folders, vars: {copyparty_folders: {}}}
+              - {name: one folder at /, vars: {copyparty_folders: {c: {dir: /d, root: true}, e: {dir: /e}}}}
               - {name: A for full access, vars: {copyparty_folders: {c: {dir: /d, access: {f1: A}}}}}
               - name: a login with no pass, signed in through Tinyauth by a Tinyauth user
                 vars:
@@ -273,6 +274,11 @@
               - {name: a folder named drives, says: "entry 'drives'", vars: {copyparty_folders: {drives: {dir: /d}}}}
               - {name: a folder name with a slash, says: "entry 'a/b'", vars: {copyparty_folders: {a/b: {dir: /d}}}}
               - {name: a login listed twice, says: appears once, vars: {vault_copyparty_accounts: [{user: a, pass: p, admin: true}, {user: a, pass: q}]}}
+              - name: two folders at /
+                says: Only one copyparty_folders entry may have root
+                vars: {copyparty_folders: {c: {dir: /d, root: true}, e: {dir: /e, root: true}}}
+              - {name: root written as a string, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: /d, root: "false"}}}}
+              - {name: root written as a number, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: /d, root: 1}}}}
               - {name: an empty dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: ""}}}}
               - {name: a null dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: null}}}}
               - {name: a relative dir, says: "entry 'c'", vars: {copyparty_folders: {c: {dir: relative/dir}}}}
