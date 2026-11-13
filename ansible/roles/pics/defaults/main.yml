@@ -18,4 +18,4 @@ pics_links: []
 # Where pics sends its drive alerts, and the token that server accepts. Defaults: ntfy_alert_url and vault_ntfy_token
 # (docs/services.md#ntfy-failure-alerts).
 pics_alert_url: "{{ ntfy_alert_url }}"
-pics_alert_token: "{{ vault_ntfy_token | default('') }}"
+pics_alert_token: "{{ vault_ntfy_token if pics_alert_url | length > 0 else '' }}"
