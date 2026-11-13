@@ -8,7 +8,6 @@ Decisions: encrypt `/mnt/apps/appdata`, `/mnt/apps/stacks` and `/mnt/apps/files`
 
 ## 1. Settings (on your machine)
 
-- [ ] Delete `vault_encryption_passphrase` from the vault (`ansible-vault edit --vault-password-file .vault-pass host_vars/pi4/vault.yml`). Nothing reads it any more: the unlock page asks for the passphrase you typed in step 5.
 - [ ] In `host_vars/pi4/vars.yml`:
 
   ```yaml
