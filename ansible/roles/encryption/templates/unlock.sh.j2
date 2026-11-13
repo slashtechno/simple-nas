@@ -1,6 +1,7 @@
 #!/bin/bash
 # Ansible-managed (roles/encryption). Run after every boot: sudo {{ scripts_dir }}/unlock.sh   (--status: show what is locked)
 # --lock stops the containers that use the folders and unmounts them (the next unlock starts those again).
+# --alert, run by cron, sends an alert while a folder is locked (docs/encryption.md#alert-while-locked).
 # Asks for the passphrase once (only if a folder is locked) and mounts each encrypted folder. If it mounted any, it
 # runs every *.sh in {{ encryption_hooks_dir }}, in name order, giving each the folders it mounted (docs/encryption.md).
 # The deploy installs 00-containers.sh there; your own start commands go beside it.
@@ -43,7 +44,7 @@ show_state() {
 
 # Only these three are accepted: whatever calls this, the unlock page's request script included, cannot make it do anything else.
 case "${1:-}" in
-  "" | --status | --lock) ;;
+  "" | --status | --lock | --alert) ;;
   *) echo "usage: unlock.sh [--status | --lock]" >&2; exit 2 ;;
 esac
 
@@ -70,6 +71,15 @@ if [ "${1:-}" = "--lock" ]; then
   done
   [ "$FAILED" = 0 ] || echo "The containers stopped for the lock stay stopped. Close what holds the folder and lock again, or unlock to start them." >&2
   exit "$FAILED"
+fi
+
+if [ "${1:-}" = "--alert" ]; then
+{% for folder in encrypted_pairs %}
+  show_state {{ folder.mount | quote }} {{ folder.cipher | quote }} >/dev/null
+{% endfor %}
+  [ -n "${LOCKED[*]:-}" ] || exit 0
+  # alert.sh logs the message and sends it to ntfy when host_alert_url is set (roles/common).
+  exec {{ (scripts_dir ~ '/alert.sh') | quote }} "Locked, waiting for the passphrase: ${LOCKED[*]}. Containers that use them stay down. {{ ('Unlock at https://' ~ unlock_page_subdomain ~ '.' ~ caddy_private_domains[0]) if unlock_page_enabled | bool else ('Run on the host: sudo ' ~ scripts_dir ~ '/unlock.sh') }}" unlock "locked, needs the passphrase"
 fi
 
 if [ "${1:-}" = "--status" ]; then

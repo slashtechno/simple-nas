@@ -6,6 +6,7 @@ Optional. List folders in `encrypted_folders` and [gocryptfs](https://nuetzlich.
 |---|---|
 | Unlock after a reboot, or lock again | [Unlocking](#unlocking) |
 | Unlock or lock from a browser | [Unlock page](#unlock-page) |
+| Get an alert when a host waits for the passphrase | [Alert while locked](#alert-while-locked) |
 | Encrypt a folder | [Set up a folder](#set-up-a-folder) |
 | Show the master key, change the passphrase, make a new master key | [Keys and recovery](#keys-and-recovery) |
 | Recover after losing `gocryptfs.conf` | [If gocryptfs.conf is lost](#if-gocryptfsconf-is-lost) |
@@ -30,6 +31,10 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Keep these out of a listed folder](#which-folders-to-list).
 - To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It refuses while a backup runs, and reports a busy folder (`fuser -vm <folder>` shows what holds it). The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
+
+## Alert while locked
+
+With `host_alert_url` set ([ntfy alerts](./services.md#ntfy-failure-alerts)), the host sends an alert two minutes after each boot and then every hour while a listed folder is locked. It names the locked folders and the way to unlock: the [page](#unlock-page)'s address, or the command on the host. An unlock ends it. A lock you made on purpose alerts too. With no `host_alert_url` there are no alerts and the jobs are removed. Do not keep the ntfy of this host in a locked folder: it cannot alert you then ([What it protects](#what-it-protects)).
 
 ## Unlock page
 

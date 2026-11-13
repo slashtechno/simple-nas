@@ -564,7 +564,7 @@
           - "'00-containers.sh -n' in unlock_sh"
           # Lock: only the three arguments the page's key can send are accepted; --lock stops the containers through the hook, which
           # records them for the next unlock, then unmounts each folder.
-          - "'\"\" | --status | --lock) ;;' in unlock_sh"
+          - "'\"\" | --status | --lock | --alert) ;;' in unlock_sh"
           - "'\"${1:-}\" = \"--lock\"' in unlock_sh and 'mountpoint -q /mnt/primary/immich/. && MOUNTED_NOW' in unlock_sh"
           - "'00-containers.sh --stop' in unlock_sh and 'umount \"$mount\"' in unlock_sh"
           - "(encryption_stopped_file ~ ' ') not in hook_sh and 'STOPPED_FILE=' ~ encryption_stopped_file in hook_sh"
