@@ -18,8 +18,8 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 - **UUID.** An ID written when you format a drive. Names like `/dev/sdb1` change with plug order. The UUID does not, so `drives` and `/etc/fstab` use it. A reformatted drive has a new UUID.
 - **fstab and mount units.** `/etc/fstab` lists what to mount, where and how. systemd turns each line into units (`mnt-data.mount`, `mnt-data.automount`). See [how a drive is mounted](./storage.md#how-a-drive-is-mounted).
 - **Bind mount and volume.** A *volume* is a private store inside Docker's own directory. A *bind mount* shows a host folder (such as `/mnt/data/photos`) inside the container. This repo uses bind mounts for all state, so every service's data is a folder on a drive you chose and the backup sees it.
-- **Published port.** A compose `ports:` entry (`host:container`) listens on the host's real address, reachable by anything on your network, and skips Caddy and Tinyauth.
-- **Docker socket.** `/var/run/docker.sock`. Whatever can read it can do everything Docker can, including reading every container's files. Caddy, Dockge and Dozzle mount it, so give it only to software you trust.
+- **Host port.** A compose `ports:` entry (`host:container`) listens on the host's real address, reachable by anything on your network, and skips Caddy and Tinyauth.
+- **Docker socket.** `/var/run/docker.sock`. Whatever can read it can do everything Docker can, including reading every container's files. Caddy, Dockge, Dozzle and the Gitea runner mount it, so give it only to software you trust.
 - **`network_mode: host`.** The container shares the host's network address. Homebridge needs it for HomeKit discovery. The cost is that Caddy names and the Cloudflare tunnel cannot reach it by container name.
 - **FUSE and overlay2.** FUSE lets a program present a folder (gocryptfs shows the decrypted view this way). overlay2, Docker's storage driver, does not work on a FUSE folder, so Docker's own storage cannot be in an encrypted folder.
 - **LMDB.** A key-value database held in one memory-mapped file. Garage keeps its metadata in one.
@@ -27,13 +27,13 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 
 ## Names, logins and the web
 
-- **Tailnet and MagicDNS.** Your tailnet is your private Tailscale network. MagicDNS gives each device a name that resolves anywhere on it, so `http://pi4:<port>` works from your laptop away from home.
-- **Forward auth.** Caddy asks the login service (Tinyauth) about each request before passing it on. A service joins by importing `tinyauth_forwarder` in its Caddy labels. One without it has no login at its Caddy name.
+- **Tailnet, tailnet name and MagicDNS.** Your tailnet is your private Tailscale network. Its *tailnet name* is the `<something>.ts.net` part of each device's address. MagicDNS gives each device a name that resolves anywhere on it, so `http://pi4:<port>` works from your laptop away from home.
+- **Forward auth.** Caddy asks the login service (Tinyauth) about each request before passing it on. A service joins by importing `tinyauth_forwarder` in its Caddy labels. One without it has no Tinyauth login at its Caddy name: it is open unless the app has its own.
 - **Redirect (302) and 401.** A browser follows a 302 to the login page. A script or phone app gets a 401 and fails loudly.
 - **TLS termination.** TLS is the encryption of https. Terminating it means decrypting there and passing plain http on. Behind a Cloudflare tunnel Cloudflare does it, so Caddy gets plain http and needs no certificate (ACME is how Caddy gets one).
 - **OAuth app.** To offer "sign in with GitHub", you register an application with GitHub. It gives you a *client id* (its name) and a *client secret* (its password). You tell it the *callback URL* it may send the browser back to.
 - **OpenID Connect (OIDC).** The same arrangement with Tinyauth as the provider and Gitea, Immich or pics as the apps. The *client secret* is a random value only that app and Tinyauth know.
-- **IdP header key.** A header whose *name* is a secret (`vault_copyparty_idp_key`), added by Caddy on Copyparty's web address only. Copyparty trusts `Remote-User` only on requests that carry it, so the published port and the tunnel cannot claim to be a user.
+- **IdP header key.** (IdP: identity provider, here Tinyauth.) A header whose *name* is a secret (`vault_copyparty_idp_key`), added by Caddy on Copyparty's web address only. Copyparty trusts `Remote-User` only on requests that carry it, so the host port and the tunnel cannot claim to be a user.
 - **Hash and salt.** A hash is a one-way scramble of a password, so a config file can check a login without holding the password. A salt is random input so equal passwords hash differently. Some hashes here use a fixed salt, so the file does not change on every deploy.
 - **S3, bucket and access key.** S3 is Amazon's storage API, which Garage also answers. A bucket is a named container for objects. An access key is the id and secret an app signs in with.
 
@@ -88,7 +88,7 @@ You describe the desired state in YAML and a run makes each host match it. Each 
 
   `template` substitutes `{{ variable }}`. `copy` copies the bytes. `copy` on a file containing `{{ }}` does not error, it leaves the text as is, which is why Dockerfiles get their base image through `ARG` and compose `build.args`.
 - **Modules.** Every task calls one. The ones this repo uses most: `assert` (fail early with a message), `file`, `template`, `copy`, `stat`, `set_fact`, `command`, `uri` (HTTP APIs, such as Cloudflare's), `docker_compose_v2` (`up`/`down` a compose directory), `cron` (one entry, found by its `name:`, so a re-run updates it and teardown removes it), `apt`, `systemd`. For any other, `ansible-doc <module>`. Dedicated modules check state and change only what is wrong. `command` always runs, so it carries `changed_when` or `failed_when`.
-- **Task keywords.** `when` (run conditionally), `loop`, `register` (capture a result), `changed_when` / `failed_when`, `notify` (a changed task triggers a handler once at the end of the play, so an unchanged `docker-compose.yml` leaves the container alone), `delegate_to: localhost` (run on your Mac: the Cloudflare calls), `check_mode: false` (run a read-only task under `--check`), `block` (group tasks under one `when` or `tags`). `ignore_errors` carries a `noqa` comment saying why.
+- **Task keywords.** `when` (run conditionally), `loop`, `register` (capture a result), `changed_when` / `failed_when`, `notify` (a changed task triggers a handler once at the end of the play, so an unchanged `docker-compose.yml` leaves the container alone), `delegate_to: localhost` (run on your Mac: the Cloudflare calls), `check_mode: false` (run a read-only task under `--check`), `block` (group tasks under one `when` or `tags`).
 - **Tags.** `--tags immich` or `--tags backup,storage` runs a subset.
 - **Jinja.** `{{ ... }}` is Jinja2. `|` passes the value through a filter like a shell pipe. Most of the repo uses `{{ name }}`, `| bool`, `| length`, `| default(x)`, `| list`, `| map(...)`, `| selectattr(...)` and `| quote` (shell-quotes a value). The less common ones:
 
