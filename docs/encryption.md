@@ -229,7 +229,16 @@ Use a long random passphrase from a password manager. It is the weak point, not 
 
 ## Dumps and backups
 
-- **Dumps:** `backup-services.sh` writes the Immich, Gitea and Garage dumps to `service_dumps_dir`. That is `<backup drive>/service-dumps`, or the root drive on a host with no local backup. Nothing encrypts it unless you list it. Until then, anyone who holds that drive can read Immich's database, Gitea's dump and Garage's node key. To list it, add it to `encrypted_folders` and `restic_local_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where) checks that every listed folder appears in a rule).
+- **Dumps and backup logins:** the Immich, Gitea and Garage dumps (`service_dumps_dir`, default `<backup drive>/service-dumps`), the restic password (`restic_password_file`) and the Drive login (`rclone_config_dir`) are plain files. Anyone who holds the host or the backup drive can read the databases, open the local repository and use the Drive token. To lock them, point the three settings into a listed folder:
+
+  ```yaml
+  # host_vars/<host>/vars.yml
+  restic_password_file: /mnt/apps/appdata/backup-secrets/restic-password
+  rclone_config_dir: /mnt/apps/appdata/backup-secrets/rclone
+  service_dumps_dir: /mnt/apps/appdata/backup-secrets/service-dumps
+  ```
+
+  With the folder unlocked, make it and move the logins before the deploy (the deploy writes a new `rclone.conf` from the vault where none exists, and rclone has refreshed the token in the old one): `mkdir -m 700 /mnt/apps/appdata/backup-secrets && mv ~/.restic-password /mnt/apps/appdata/backup-secrets/restic-password && mv ~/.config/rclone /mnt/apps/appdata/backup-secrets/rclone`. Then `just deploy backup --limit <host>`. The old dumps folder can be deleted: the next backup writes fresh dumps. The backups skip the password file and the rclone folder wherever they are. The Cloudflare and Tailscale logins stay on the root drive.
 - **Backups:** both scripts refuse to run while any listed folder stays locked. restic reads the folder through the mount (decrypted) and encrypts it with `vault_restic_password`. Every backup leaves out the ciphertext (it would be stored twice), but keeps each folder's `gocryptfs.conf`, so it restores with the data.
 - **Check after the first backup:** `restic ls latest | grep gocryptfs.conf` prints one line per listed folder ([backups.md](./backups.md)).
 

@@ -69,6 +69,7 @@
       environment:
         RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
         RESTIC_REPOSITORY: "{{ restic_cloud_repository }}"
+        RCLONE_CONFIG: "{{ rclone_config_dir }}/rclone.conf"
       register: restic_cloud_init
       changed_when: "'created restic repository' in restic_cloud_init.stdout"
       failed_when:

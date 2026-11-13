@@ -10,6 +10,8 @@ fi
 
 # The password-file path is set at deploy time; the environment variable overrides it for a manual run.
 export RESTIC_PASSWORD_FILE="${RESTIC_PASSWORD_FILE:-{{ restic_password_file }}}"
+# restic starts rclone for an rclone: repository, and rclone reads its remote from here (rclone_config_dir).
+export RCLONE_CONFIG="${RCLONE_CONFIG:-{{ rclone_config_dir }}/rclone.conf}"
 export RESTIC_REPOSITORY="{{ repository }}"
 # restic's index and snapshot cache. It helps only when its drive differs from the repository's (over a network it
 # saves re-reading packs). The environment variable overrides it for a manual run.

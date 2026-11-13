@@ -85,7 +85,7 @@ Two rules lists decide it (defaults in `roles/backup/defaults/main.yml`). `resti
 | Garage metadata | Dump only (`garage_meta_dir` excluded). Data blocks (`garage_blocks_dir`) are plain files | Dump only |
 | Restic password | No | No |
 
-The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager. Changing `vault_restic_password` does not change the key of an existing repository: the deploy keeps the old file beside the new one (`.restic-password.<date>~`), and the old password still opens the old snapshots.
+The restic password is in no backup: it is in `vault_restic_password` and `restic_password_file` on the host, and the vault password is in your password manager. Changing `vault_restic_password` does not change the key of an existing repository: the repository still opens only with the password it was created with, so every backup fails until the old one is back. The deploy keeps the replaced file beside the new one (`.restic-password.<date>~`): copy it over `.restic-password` to undo.
 
 - **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The exceptions are the directories a service lists as `no_backup`: Immich's raw Postgres directory (a dump covers it), Scrutiny's history and Copyparty's thumbnails (both are written again). The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
 - **Not enforced (offsite):** the offsite list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
@@ -96,7 +96,7 @@ The restic password is in no backup: it is in `vault_restic_password` and `resti
 
 - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)).
 - `restic_cache_dir`, the restic repository itself, `**/.cache` folders and the data drives' `lost+found`.
-- logins: the restic password file, the rclone config and Cloudflare's tunnel token (rewritten from the vault each deploy).
+- logins: the restic password file, the rclone config and Cloudflare's tunnel token (rewritten from the vault each deploy). They can be kept in an [encrypted folder](./encryption.md#dumps-and-backups).
 - rebuildable, root-owned data regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
 - unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist`, and Garage's metadata (carried as a dump, see [Restore: Garage](#restore-garage)).
 
@@ -134,7 +134,7 @@ export RESTIC_PASSWORD_FILE=~/.restic-password
 export RESTIC_REPOSITORY=/mnt/backup/restic-repo   # local repo (restic_repo_path)
 ```
 
-For the cloud repository: `export RESTIC_REPOSITORY="<your restic_cloud_repository>"` and add `-o rclone.args="<restic_cloud_rclone_args>"` (default `serve restic --stdio --tpslimit=10`) to each restic command.
+For the cloud repository: `export RESTIC_REPOSITORY="<your restic_cloud_repository>"` and `export RCLONE_CONFIG="<rclone_config_dir>/rclone.conf"` (default `~/.config/rclone/rclone.conf`), and add `-o rclone.args="<restic_cloud_rclone_args>"` (default `serve restic --stdio --tpslimit=10`) to each restic command.
 
 ## Inspecting a snapshot
 
@@ -189,6 +189,7 @@ ls -lh /mnt/backup/service-dumps/gitea-dump-*.zip
 ```
 
 The restore **replaces** Gitea's current data and repositories with the dump's: whatever was committed since is gone. Copy what you need first.
+
 ## Restore: Garage
 
 Garage's metadata (which objects and buckets exist, and the node key) is root-owned and a live database. The file backup leaves out `<garage_meta_dir>` and carries it as `garage-meta-<timestamp>.tar.gz` in `service-dumps`. The data blocks in `<garage_blocks_dir>` are plain files. The tarball holds the node key: keep it as private as the vault. A deploy stops when the blocks directory has files and the metadata directory is empty: Garage would start a new empty cluster beside the old blocks. Put the metadata back first.
@@ -256,9 +257,9 @@ The URL scheme picks the backend. The deploy runs `restic init` on it and fails 
 
 1. On your Mac (needs `rclone`): `rclone authorize "drive" --drive-scope drive.file`, sign in. It prints a JSON token.
 2. Put it in `group_vars/all/vault.yml` as `vault_rclone_gdrive_token` (single-quoted).
-3. `just deploy backup`. Ansible writes `~/.config/rclone/rclone.conf` with a `gdrive` remote only if the file does not exist (rclone writes refreshed tokens back into it).
+3. `just deploy backup`. Ansible writes `rclone.conf` in `rclone_config_dir` (default `~/.config/rclone`) with a `gdrive` remote only if the file does not exist (rclone writes refreshed tokens back into it).
 
-To replace a broken login, remove `~/.config/rclone/rclone.conf` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
+To replace a broken login, remove `rclone.conf` from `rclone_config_dir` on the host and deploy again, or run `rclone config reconnect gdrive:` there.
 
 <details>
 <summary>Google quotas and token expiry, and SFTP</summary>
