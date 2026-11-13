@@ -96,7 +96,7 @@
               repo + '/group_vars/all/vault.yml.example'] }}
 
     # Every service on, so every template renders. Branches behind other settings (Copyparty's shared folders, extra ports
-    # and volumes, USB volumes; Crafty Bedrock; ntfy iOS push; the Gitea runner; the optional Pics lines) are
+    # and volumes, USB volumes; Crafty Bedrock; the Gitea runner; the optional Pics lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
       ansible.builtin.set_fact:
@@ -115,7 +115,6 @@
       ansible.builtin.set_fact:
         crafty_bedrock_enabled: true
         homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
-        ntfy_ios_push: true
         vault_gitea_runner_token: "runner$token"
         vault_ntfy_token: "tk_a$b"
         pics_artist: Render Test
@@ -831,6 +830,27 @@
     - name: Switch pics back on
       ansible.builtin.set_fact:
         pics_enabled: true
+
+    # ntfy_ios_push is on by default (checked above); false keeps the upstream line out of the server's compose file.
+    - name: Turn iOS push off
+      ansible.builtin.set_fact:
+        ntfy_ios_push: false
+
+    - name: Render the ntfy server's compose file with iOS push off
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/ntfy/templates/docker-compose.yml.j2"
+        dest: "{{ out_dir }}/sso-off/ntfy-no-ios-push.yml"
+        mode: "0644"
+
+    - name: The upstream line is gone
+      ansible.builtin.assert:
+        that:
+          - "'NTFY_UPSTREAM_BASE_URL' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/ntfy-no-ios-push.yml')"
+        quiet: true
+
+    - name: Put iOS push back on
+      ansible.builtin.set_fact:
+        ntfy_ios_push: true
 
     # A hosted ntfy with no login: https, no token. set_fact outranks task vars; the values are put back afterwards.
     - name: Use a hosted ntfy topic with no token

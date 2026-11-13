@@ -257,7 +257,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 - With Caddy and a private domain, `https://ntfy.<host>.<your domain>` also works: set `ntfy_base_url` to it so links and iOS push use that address. In a browser, sign in there, subscribe to the topic and allow notifications (browsers notify only from `https://`. The plain `http://` address lists messages without a pop-up).
 - The server denies everyone but that user and its token, even on the LAN. The page at `/alerts` loads without a login because it is only the app's shell. The compose file sets the user and token at every start. The data directory holds message history and the user database.
 - `alert.sh` (common role) runs when a backup cron job fails, when the [connectivity watchdog](./networking.md#connectivity-watchdog) recovers. It writes to the system log under its tag (`journalctl -t backup`, `-t connectivity`). It sends to ntfy only if `system_alert_to` names a destination. A failed send times out after 15 seconds, so alerting cannot stall a backup.
-- iOS push for a self-hosted server goes through ntfy.sh: `ntfy_ios_push: true` sends it the message ID and a hash of the topic URL, not the message. Android needs no relay.
+- iOS push for a self-hosted server goes through ntfy.sh, so `ntfy_ios_push` is on by default: ntfy.sh gets the message ID and a hash of the topic URL, not the message. Set it to `false` to send nothing to ntfy.sh; an iPhone then shows messages only when the app is refreshed. Android needs no relay. After a change, re-add the subscription in the iOS app.
 
 </details>
 

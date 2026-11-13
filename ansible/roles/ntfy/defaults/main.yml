@@ -5,6 +5,7 @@
 ntfy_base_url: >-
   {{ 'http://' ~ (ansible_host | default(inventory_hostname)) ~ ':' ~ ntfy_port if ntfy_port != ''
   else undef(hint='ntfy_port is empty: set ntfy_base_url to the Caddy name') }}
-# iOS only delivers push for a self-hosted server through ntfy.sh. true sends ntfy.sh the message ID
-# and a hash of the topic URL, never the message. Android and the web UI do not need it.
-ntfy_ios_push: false
+# iOS only delivers push for a self-hosted server through ntfy.sh, so without this an iPhone shows a message only when the app
+# is opened or refreshed. true sends ntfy.sh the message ID and a hash of the topic URL, never the message. false keeps
+# everything on your own server. Android and the web UI do not need it.
+ntfy_ios_push: true
