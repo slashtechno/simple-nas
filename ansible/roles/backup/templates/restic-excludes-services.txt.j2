@@ -17,6 +17,9 @@
 # restic copy can read.
 {{ ntfy_token_file }}
 {{ unlock_token_file }}
+# The alert scripts hold the destination address, which may be a secret topic name; a deploy writes them again.
+{{ scripts_dir }}/alert.sh
+{{ scripts_dir }}/unlock.sh
 {% if docker_data_root | length > 0 %}
 # Docker's images and layers: root-owned and rebuilt by pulling.
 {{ docker_data_root }}

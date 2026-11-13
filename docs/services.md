@@ -226,11 +226,11 @@ Every record the role writes carries the comment `managed by simple-nas, tunnel 
 A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed backup job writes to, so a failure reaches your phone instead of waiting in a log.
 
 1. Make the secrets: a user and password (`vault_ntfy_user`, `vault_ntfy_password` in `host_vars/<host>/vault.yml`, from `openssl rand -base64 24`) and a token (`vault_ntfy_token` in `group_vars/all/vault.yml`, from `docker run --rm binwiederhier/ntfy token generate`). The deploy hashes the password into the compose file, so the vault holds the plain one.
-2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then name the topic and pick who sends to it (below), and run `just deploy common,scrutiny,pics,encryption --limit <host>` on each host that sends alerts.
+2. On the ntfy host set `ntfy_enabled: true`, then `just deploy ntfy,caddy --limit <host>`. Then name the topic and pick who sends to it (below).
 3. In the ntfy app add the server `http://<host-tailscale-name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
 4. Test: on the host `bash /opt/services/scripts/alert.sh "test"` and check the phone.
 
-**Where alerts go.** `ntfy_destinations` is a list of named topics. Each has a `url` (the full address of the topic) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
+**Where alerts go.** `ntfy_destinations` maps a name to a topic. Each has a `url` (the full address of the topic, required) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts; a host's own `ntfy_destinations` replaces it whole, so list every name that host needs. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
 
 ```yaml
 ntfy_destinations:
@@ -242,11 +242,11 @@ scrutiny_alert_to: home      # drive alerts
 pics_alert_to: public        # drive alerts, to a different topic
 ```
 
-- **Turn a sender off:** set its `*_alert_to` to `""`.
-- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`) and write `"{{ vault_<name> }}"` as the `url`. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
-- **A name that is not in the list** stops the deploy and names the setting.
-- **Every host reads every destination.** A `vault_` name used in `ntfy_destinations` must exist on every host, so use the shared `group_vars/all/vault.yml`.
-- **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file.
+- **Turn a sender off:** set its `*_alert_to` to `""`. Write `""`, not an empty value.
+- **Public server:** a topic name on `ntfy.sh` works like a password, so keep the address in the vault (`just edit vault`, in `group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`. The deploy writes the address into the sender's script or file on the host, where anyone on the host can read it; no backup copies it. Leave out `token`: `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
+- **A name that is not in `ntfy_destinations`, or a destination with no `url`,** stops the deploy and names the setting.
+- **A `vault_` name** in a destination must exist on the hosts that send to it.
+- **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.
 - **Use https:// or a tailnet address.** The token travels in the request.
 
 It cannot report the host being down or a backup that never started (cron not running, host off).

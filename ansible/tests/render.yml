@@ -607,7 +607,7 @@
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')
           - "cloudflared_token_file in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           # The restic copy reads root-only scripts, so they need no exclude.
-          - "scripts_dir ~ '/unlock.sh' not in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
+          - "scripts_dir ~ '/unlock.sh' in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')"
           - >-
             '/mnt/primary/.immich.gocryptfs/*\n!/mnt/primary/.immich.gocryptfs/gocryptfs.conf'
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
@@ -837,8 +837,10 @@
       ansible.builtin.set_fact:
         ntfy_destinations:
           public: {url: "https://ntfy.sh/my-topic"}
+        system_alert_to: ""
         scrutiny_alert_to: public
         pics_alert_to: public
+        unlock_alert_to: ""
 
     - name: Render the two apps' files with it
       ansible.builtin.template:
@@ -856,12 +858,36 @@
           - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/my-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/hosted-pics.env')"
         quiet: true
 
+    # With both senders off, neither file mentions an alert address.
+    - name: Switch the two apps' alerts off
+      ansible.builtin.set_fact:
+        scrutiny_alert_to: ""
+        pics_alert_to: ""
+
+    - name: Render the two apps' files with alerts off
+      ansible.builtin.template:
+        src: "{{ repo }}/roles/{{ item }}"
+        dest: "{{ out_dir }}/sso-off/off-{{ item | basename | regex_replace('\\.j2$', '') }}"
+        mode: "0644"
+      loop:
+        - scrutiny/templates/docker-compose.yml.j2
+        - pics/templates/pics.env.j2
+
+    - name: Neither file has an alert address
+      ansible.builtin.assert:
+        that:
+          - "'SCRUTINY_NOTIFY_URLS' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/off-docker-compose.yml')"
+          - "'HUB_ALERT_URLS' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/off-pics.env')"
+        quiet: true
+
     - name: Put the ntfy settings back
       ansible.builtin.set_fact:
         ntfy_destinations:
           home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
+        system_alert_to: home
         scrutiny_alert_to: home
         pics_alert_to: home
+        unlock_alert_to: home
 
     # Each sender names its own destination; a destination with no token means no login.
     - name: Give each sender its own ntfy
@@ -968,6 +994,31 @@
       always:
         - name: Put the sender back on home
           ansible.builtin.set_fact:
+            scrutiny_alert_to: home
+
+    # A destination with no url stops the deploy too, instead of turning its sender off.
+    - name: A destination with no url fails
+      block:
+        - name: Give a destination a token and no url
+          ansible.builtin.set_fact:
+            ntfy_destinations:
+              broken: {token: "tk_x"}
+            scrutiny_alert_to: broken
+
+        - name: Read the sender's address
+          ansible.builtin.debug:
+            msg: "{{ alert_targets.scrutiny.url }}"
+          no_log: true
+      rescue:
+        - name: The failure is reported
+          ansible.builtin.assert:
+            that: ansible_failed_result is defined
+            quiet: true
+      always:
+        - name: Put the destinations back
+          ansible.builtin.set_fact:
+            ntfy_destinations:
+              home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
             scrutiny_alert_to: home
 
     # A service whose entry has tile_url links to that setting's address; the default (checked above) equals its Caddy name.

@@ -6,6 +6,7 @@
     tasks_from: require_tinyauth
   vars:
     compose_service_name: scrutiny
+    compose_service_has_secrets: true
 
 - name: Read the drives from the host unless they are set
   ansible.builtin.import_tasks: devices.yml
