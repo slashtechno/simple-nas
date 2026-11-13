@@ -92,16 +92,16 @@ copyparty_folders:
   files: {}                                                           # /files, for the admins only
   collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab
   team: {access: {friend2: A, friend1: r}}                            # friend1 can only read
-  pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
+  services/pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
 ```
 
 - **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. Copyparty's docs explain `g`, `G` and `h`.
 - **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
-- **Name:** letters, digits, `-` and `_`. A `/` between levels (`pics/photos`) makes a longer address. The parent (`/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).
+- **Name:** letters, digits, `-` and `_`. A `/` between levels (`services/pics/photos`) makes a longer address. A parent (`/services`, `/services/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).
 - **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
-- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>` (`.../pics/photos` for `pics/photos`), on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. When a folder uses the default `dir`, teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
+- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>` (`.../services/pics/photos` for `services/pics/photos`), on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. When a folder uses the default `dir`, teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
 - **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
@@ -185,7 +185,7 @@ The `pics` role clones the private repo in `pics_repo` and builds the image on t
 1. Set `pics_repo` and `pics_public_url` (see `group_vars/all/vars.yml.example`).
 2. Add a `cloudflared_ingress` entry for the public hostname, pointing at `http://pics:<pics_public_port>` (8001, inside Docker only). It serves the guest pages (shares, portfolio) and no owner routes, so it needs no `path` rule. The owner app (cull UI, password-gated) is on the host port `pics_port` (8100): `http://<host>:<pics_port>`.
 3. Add `vault_pics_password` (12+ characters), `vault_pics_secret_key` (`openssl rand -base64 48`) and `vault_pics_copyparty_password` to the host's vault, without single quotes. Then add the login `pics` to `vault_copyparty_accounts` with `pass: "{{ vault_pics_copyparty_password }}"`.
-4. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `pics/photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `pics/trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops when a folder or a `dir` is not valid.
+4. Add two folders to `copyparty_folders` in the host's `vars.yml`, as in the [example](#add-a-folder-or-a-login). Add `services/pics/photos` with `dir: "{{ pics_photos_dir }}"` and `access: {pics: rwm}`. Add `services/pics/trash` with `dir: "{{ pics_trash_dir }}"` and `access: {pics: rwmd}`. The deploy stops when a folder or a `dir` is not valid.
 5. Run `just deploy copyparty,pics,cloudflared --limit <host>` (`copyparty` creates the login and folders first).
 6. Optional: sign in with Tinyauth (`pics_sso_enabled`, [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc)). The password login and the importer's token stay, and pics' Caddy name is not behind Tinyauth: pics has its own login.
 

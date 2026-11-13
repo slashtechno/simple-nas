@@ -64,10 +64,10 @@ ntfy_data_dir: "{{ fast_appdata_dir }}/ntfy"
 # pics' data directory.
 pics_data_dir: "{{ fast_appdata_dir }}/pics/data"
 
-# Where pics keeps its photos. Copyparty serves them as the folder pics/photos (copyparty_folders).
+# Where pics keeps its photos. Copyparty serves them as the folder services/pics/photos (copyparty_folders).
 pics_photos_dir: "{{ primary_appdata_dir }}/pics/photos"
 
-# Where pics moves deleted photos; the only pics folder where files can be deleted (served as pics/trash).
+# Where pics moves deleted photos; the only pics folder where files can be deleted (served as services/pics/trash).
 pics_trash_dir: "{{ primary_appdata_dir }}/pics/trash"
 
 # Homebridge's configuration and pairings.
