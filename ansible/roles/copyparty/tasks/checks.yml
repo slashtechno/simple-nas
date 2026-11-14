@@ -30,6 +30,7 @@
       - item.key | string is match('^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*\\Z') and (item.key | string).split('/')[0] not in ['drives', 'shares']
       - item.value.access | default({}) is mapping
       - item.value.access | default({}) | dict2items | rejectattr('value', 'match', '^[rwmdgGhaA]+\\Z') | list | length == 0
+      - item.value.access | default({}) | dict2items | selectattr('key', 'eq', '*') | rejectattr('value', 'match', '^[rg]+\\Z') | list | length == 0
       - item.value.dir is not defined or (item.value.dir is string and item.value.dir is match('^/'))
       - item.value.root is not defined or item.value.root is boolean
     fail_msg: >-
@@ -37,6 +38,7 @@
       The name is letters, digits, - and _, with / between levels (pics/photos). No level may be empty,
       and the first level is not drives or shares (Copyparty's own addresses).
       The letters are from rwmdgGhaA, such as {friend1: rwmd} or {friend1: A} for full access.
+      The login * is everyone, signed in or not, and may have only r or g.
     quiet: true
   loop: "{{ copyparty_folders | dict2items }}"
   loop_control:
@@ -54,12 +56,14 @@
   ansible.builtin.assert:
     that:
       - item.user is defined and item.user | string | length > 0
+      - item.user | default('') != '*'
       - copyparty_accounts | map(attribute='user') | list | length == copyparty_accounts | map(attribute='user') | unique | list | length
       - item.pass is not defined or (item.pass is not none and item.pass | string | length > 0)
       - item.admin | default(false) is boolean
       - item.pass is defined or (copyparty_sso_enabled | bool and item.user in vault_tinyauth_users | map(attribute='name') | list)
     fail_msg: >-
-      Each user in vault_copyparty_accounts appears once. Each entry needs user, and pass (not empty) or no pass at all. A login with no pass signs in
+      Each user in vault_copyparty_accounts appears once and is not * (Copyparty's name for everyone).
+      Each entry needs user, and pass (not empty) or no pass at all. A login with no pass signs in
       through Tinyauth: it needs copyparty_sso_enabled and a user that is a Tinyauth user name. admin is true or false (vault.yml.example).
     quiet: true
   loop: "{{ copyparty_accounts }}"
@@ -74,4 +78,4 @@
       {{ used | difference(copyparty_accounts | map(attribute='user') | list) }}.
     quiet: true
   vars:
-    used: "{{ copyparty_volumes.values() | map(attribute='access') | map('list') | flatten | unique | list }}"
+    used: "{{ copyparty_volumes.values() | map(attribute='access') | map('list') | flatten | unique | reject('eq', '*') | list }}"

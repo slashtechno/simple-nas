@@ -97,6 +97,7 @@ copyparty_folders:
 
 - **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. Copyparty's docs explain `g`, `G` and `h`.
 - **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
+- **Everyone:** the login `*` is everyone, signed in or not, with `r` (browse and download) or `g` (download with the exact link, no listing), for example `public: {access: {"*": r}}`. It is public wherever Copyparty is reachable without Tinyauth, including a `cloudflared_ingress` entry that points at it (that entry cannot be limited to a path, so the internet reaches the whole Copyparty). Anything in the folder is downloadable. A login named beside `*` with the same letters can log a harmless `CRIT ... not mentioned in any volume` at start; give it other letters or a folder of its own.
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`. A `/` between levels (`services/pics/photos`) makes a longer address. A parent (`/services`, `/services/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).

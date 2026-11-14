@@ -273,6 +273,11 @@
               - {name: a folder written as a string, says: "entry 'c'", vars: {copyparty_folders: {c: rwmd}}}
               - {name: a folder named drives, says: "entry 'drives'", vars: {copyparty_folders: {drives: {dir: /d}}}}
               - {name: a nested folder name, vars: {copyparty_folders: {a/b: {dir: /d}, a: {dir: /e}}}}
+              - {name: everyone may read a folder, vars: {copyparty_folders: {c: {dir: /d, access: {"*": r}}}}}
+              - {name: everyone and a login in one folder, vars: {copyparty_folders: {c: {dir: /d, access: {"*": g, f1: r}}}}}
+              - {name: everyone may not have full access, says: "may have only r or g", vars: {copyparty_folders: {c: {dir: /d, access: {"*": A}}}}}
+              - {name: a login named *, says: "not *", vars: {vault_copyparty_accounts: [{user: a, pass: p, admin: true}, {user: "*", pass: q}]}}
+              - {name: everyone may only read or get, says: "may have only r or g", vars: {copyparty_folders: {c: {dir: /d, access: {"*": rw}}}}}
               - {name: a name inside drives, says: "entry 'drives/x'", vars: {copyparty_folders: {drives/x: {dir: /d}}}}
               - {name: an empty level in a name, says: "entry 'a//b'", vars: {copyparty_folders: {a//b: {dir: /d}}}}
               - {name: a name ending in a slash, says: "entry 'a/'", vars: {copyparty_folders: {a/: {dir: /d}}}}

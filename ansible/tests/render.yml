@@ -118,6 +118,8 @@
           files: {root: true, access: {friend2: r}}
           collab: {access: {friend1: rwmd, friend2: rwmd}}
           team: {access: {friend2: A, friend1: r}}
+          # * is everyone: it renders as a login, and friend1 is named beside it
+          public: {access: {"*": g, friend1: r}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
           services/pics/photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
           services/pics/trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
@@ -640,7 +642,7 @@
           - "'idp-h-key: idp$key' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'auth-ord: idp,pw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           # Admin access to the five folders, read-only on /drives. The folder with root: true is the volume at /, and has no /<name> address.
-          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 5"
+          - "lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf').count('    A: owner') == 6"
           - >-
             '\n[/]\n  /vol/files\n  accs:\n    A: yourusername\n    A: owner\n    r: friend2\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
@@ -654,6 +656,9 @@
           # The admin login has a password. A login with no pass is not an account: only the Tinyauth header can name it.
           - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'  owner: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - >-
+            '[/public]\n  /vol/public\n  accs:\n    A: yourusername\n    A: owner\n    g: *\n    r: friend1\n\n'
+            in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           # One login can have different letters in different folders: friend1 only reads team, and A gives friend2 everything there.
           - >-
             '[/team]\n  /vol/team\n  accs:\n    A: yourusername\n    A: owner\n    A: friend2\n    r: friend1\n\n'
