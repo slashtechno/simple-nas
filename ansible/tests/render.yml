@@ -118,8 +118,8 @@
           files: {root: true, access: {friend2: r}}
           collab: {access: {friend1: rwmd, friend2: rwmd}}
           team: {access: {friend2: A, friend1: r}}
-          # * is everyone: it renders as a login, and friend1 is named beside it
-          public: {access: {"*": g, friend1: r}}
+          # * is everyone and @acct is every login: both render as logins
+          public: {access: {"*": r, "@acct": w}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
           services/pics/photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
           services/pics/trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
@@ -657,7 +657,7 @@
           - "'  yourusername: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'  owner: ' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - >-
-            '[/public]\n  /vol/public\n  accs:\n    A: yourusername\n    A: owner\n    g: *\n    r: friend1\n\n'
+            '[/public]\n  /vol/public\n  accs:\n    A: yourusername\n    A: owner\n    r: *\n    w: @acct\n\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           # One login can have different letters in different folders: friend1 only reads team, and A gives friend2 everything there.
           - >-
