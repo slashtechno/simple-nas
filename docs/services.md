@@ -96,11 +96,11 @@ copyparty_folders:
   public: {access: {"*": r, "@acct": w}}                              # anyone reads, any login uploads
 ```
 
-- **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. Copyparty's docs explain `g`, `G` and `h`.
+- **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. `g` downloads a file only with its exact link and shows no listing. Copyparty's docs explain `G` and `h`.
 - **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
 - **Everyone and every login:** `*` is everyone, signed in or not. `@acct` is every login, Tinyauth sign-ins included. Neither needs a `vault_copyparty_accounts` entry.
 - **Public folders:** `*` is open wherever Copyparty is reachable without Tinyauth, which includes a `cloudflared_ingress` entry that points at it (it cannot be limited to a path). With `w`, `m`, `d` or `A` strangers can change or remove files. A login with the same letters as `*` in one folder can log a harmless `CRIT ... not mentioned in any volume` at start: give it other letters.
-- **Person or app:** only the folders that name it in `access`.
+- **Person or app:** only the folders that name it in `access`, plus any open to `*` or `@acct`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`. A `/` between levels (`services/pics/photos`) makes a longer address. A parent (`/services`, `/services/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).
 - **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
@@ -130,7 +130,7 @@ Tinyauth answers every request on the Caddy name before Copyparty sees it. So a 
 - **Needs:** `tinyauth_enabled`, `caddy_enabled` and `vault_copyparty_idp_key` ([the header key](./glossary.md#names-logins-and-the-web); `just setup` makes it).
 - **Who is who:** the Tinyauth user name must equal the Copyparty `user`, character for character. Copyparty then gives that login's folders after the Tinyauth sign-in.
 - **No password:** leave out `pass` for a person who uses only the Tinyauth sign-in. The deploy stops if that `user` is not a Tinyauth user name.
-- **Not in the list:** a Tinyauth user with no entry in `vault_copyparty_accounts` sees no folder.
+- **Not in the list:** a Tinyauth user with no entry in `vault_copyparty_accounts` sees only the folders open to `*` or `@acct`.
 
 <details>
 <summary>Give an app a folder, more drives, extra listeners (SFTP), share links</summary>
