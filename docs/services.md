@@ -102,9 +102,10 @@ copyparty_folders:
 - **Public folders:** `*` is open wherever Copyparty is reachable without Tinyauth, which includes a `cloudflared_ingress` entry that points at it (it cannot be limited to a path). With `w`, `m`, `d` or `A` strangers can change or remove files. A login with the same letters as `*` in one folder can log a harmless `CRIT ... not mentioned in any volume` at start: give it other letters.
 - **Person or app:** only the folders that name it in `access`, plus any open to `*` or `@acct`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
-- **Name:** letters, digits, `-` and `_`. A `/` between levels (`services/pics/photos`) makes a longer address. A parent (`/services`, `/services/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).
+- **Name:** letters, digits, `-` and `_`, with `/` between levels (`services/pics/photos`). The first level is not `drives` or `shares`.
+- **Parent folders:** `/services` and `/services/pics` open read-only and list their children, for the logins named in the children's `access` and the admins.
 - **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
-- **`dir`:** an absolute path on the host. The default is `<copyparty_shared_dir>/<name>` (`.../services/pics/photos` for `services/pics/photos`), on the `primary` drive. The deploy creates it. Use the `primary` or `fast` drive: the local backup covers those. When a folder uses the default `dir`, teardown with `remove_data` deletes `copyparty_shared_dir` and every folder inside it. It keeps a `dir` outside it, unless a service lists that `dir` as its data.
+- **`dir`:** an absolute path on the host, created by the deploy. Default `<copyparty_shared_dir>/<name>` on the `primary` drive. Keep it on the `primary` or `fast` drive: the local backup covers those.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
 - **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
@@ -133,8 +134,9 @@ Tinyauth answers every request on the Caddy name before Copyparty sees it. So a 
 - **Not in the list:** a Tinyauth user with no entry in `vault_copyparty_accounts` sees only the folders open to `*` or `@acct`.
 
 <details>
-<summary>Give an app a folder, more drives, extra listeners (SFTP), share links</summary>
+<summary>Teardown of folders, give an app a folder, extra listeners (SFTP), share links</summary>
 
+- **Teardown:** with the default `dir`, `remove_data` deletes `copyparty_shared_dir` and every folder inside it. A `dir` outside it is kept, unless a service lists that `dir` as its data.
 - **Give an app a folder** (the same steps for any app that stores files in Copyparty):
   1. Add a data directory setting to `defaults-data-dirs.yml`. List it in `data` of the app's entry in `services.yml`. Backup and teardown then include it.
   2. Add the folder to `copyparty_folders` with `dir` set to that setting.
