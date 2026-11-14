@@ -93,11 +93,13 @@ copyparty_folders:
   collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab
   team: {access: {friend2: A, friend1: r}}                            # friend1 can only read
   services/pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
+  public: {access: {"*": r, "@acct": w}}                              # anyone reads, any login uploads
 ```
 
 - **Letters:** `r` read, `w` write, `m` move, `d` delete. `A` is all four, plus `a` (Copyparty's folder admin) and dotfiles. Copyparty's docs explain `g`, `G` and `h`.
 - **Admin** (`admin: true`): full access to every folder, so no `access` entry. On `/drives`: read-only, or full with `usb_automount_writable`.
-- **Everyone and every login:** `*` is everyone, signed in or not, and `@acct` is every login; neither needs an entry in `vault_copyparty_accounts`. Both take the letters above: `public: {access: {"*": r, "@acct": w}}` lets anyone read and any login upload. Wherever Copyparty is reachable without Tinyauth, including a `cloudflared_ingress` entry that points at it (that entry cannot be limited to a path), the internet reaches it, so `w`, `m`, `d` or `A` on `*` lets strangers change or remove files. A login named beside `*` with the same letters can log a harmless `CRIT ... not mentioned in any volume` at start; give it other letters.
+- **Everyone and every login:** `*` is everyone, signed in or not. `@acct` is every login, Tinyauth sign-ins included. Neither needs a `vault_copyparty_accounts` entry.
+- **Public folders:** `*` is open wherever Copyparty is reachable without Tinyauth, which includes a `cloudflared_ingress` entry that points at it (it cannot be limited to a path). With `w`, `m`, `d` or `A` strangers can change or remove files. A login with the same letters as `*` in one folder can log a harmless `CRIT ... not mentioned in any volume` at start: give it other letters.
 - **Person or app:** only the folders that name it in `access`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
 - **Name:** letters, digits, `-` and `_`. A `/` between levels (`services/pics/photos`) makes a longer address. A parent (`/services`, `/services/pics`) opens read-only and lists its children; only the logins named in the children's `access` (and admins) see it. The first level is not `drives` or `shares` (Copyparty's own addresses).
