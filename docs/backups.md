@@ -96,7 +96,7 @@ Changing `vault_restic_password` does not change an existing repository: it stil
 
 - **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The exceptions are the directories a service lists as `no_backup`: Immich's raw Postgres directory (a dump covers it), Scrutiny's history and Copyparty's thumbnails (both are written again). The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
 - **Not enforced (cloud):** the cloud list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
-- **Dumps:** one script per service with a live database (`files/dump.sh` in the role of Immich, Gitea or Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's) or plugin ([how](./writing-a-plugin.md#do-what-the-service-needs)), its files starting with `<service>-`. For software this repo does not run, put a `<name>.sh` in `service_dump_scripts_dir` by hand.
+- **Dumps:** one script per service with a live database (`files/dump.sh` in the role of Immich, Gitea or Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's) or plugin ([how](./writing-a-plugin.md#recipes)), its files starting with `<service>-`. For software this repo does not run, put a `<name>.sh` in `service_dump_scripts_dir` by hand.
 
 <details>
 <summary>Always excluded, and why</summary>
@@ -104,10 +104,10 @@ Changing `vault_restic_password` does not change an existing repository: it stil
 - the encrypted copy of each listed folder, except its `gocryptfs.conf` ([encryption.md](./encryption.md#dumps-and-backups)).
 - `restic_cache_dir`, the restic repository itself, `**/.cache` folders.
 - logins: the restic password file, the rclone config, Cloudflare's tunnel token and the alert tokens (`alert_token_dir`), with the alert script that holds a destination address. The deploy writes them from the vault, the rclone config once. They can be kept in an [encrypted folder](./encryption.md#dumps-and-backups).
-- rebuildable, root-owned data that a restore as the ansible user could not write back, regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. Crafty's own `backups/` archives belong here too.
+- rebuildable, root-owned data that a restore as the ansible user could not write back, regenerated after a restore: Docker's storage with `docker_data_root` set, Caddy's certificate storage, Tinyauth's OIDC signing keys, Copyparty's salts and certificate. An app's own backup archives (`no_backup` in its entry) belong here too.
 - unsafe or useless to copy: Gitea's SSH host keys, Immich's raw database directory, Copyparty's `hist`, and Garage's metadata (carried as a dump, see [Restore: Garage](#restore-garage)).
 
-The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt.j2`. **Crafty:** to keep its `backups/` archives add `- !<crafty_data_dir>/backups`. Restic copies worlds while the server runs, so a world written mid-backup can be inconsistent. `teardown.yml -e remove_data=true` removes the archives too.
+The lists are `roles/backup/templates/restic-excludes-{local,cloud,services}.txt.j2`.
 
 </details>
 

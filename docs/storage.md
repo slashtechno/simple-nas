@@ -14,7 +14,7 @@ You list drives per host in `host_vars/<host>/vars.yml` (`drives: []` if none). 
 | Role | Holds |
 |---|---|
 | `fast` | A service's own state (`appdata/<service>`: databases, configs, sessions), your Dockge `stacks/` and the restic cache |
-| `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, Crafty's worlds) and your files in Copyparty (`shared/`) |
+| `primary` | Bulk data (`appdata/<service>`: photos, Garage's object blocks, game worlds) and your files in Copyparty (`shared/`) |
 | `backup` | The restic repo, service dumps, logs |
 
 To browse a drive, or one folder of it, in Copyparty: [add a folder](./services.md#add-a-folder-or-a-login) with its `dir`.
@@ -33,7 +33,7 @@ Your own files have plain names: `stacks` and `shared`. Mount points below are e
 ├─ stacks/<stack>/              your Dockge stacks: a compose.yaml and its data each
 └─ restic-cache/                restic's cache
 /mnt/primary/                   primary drive
-├─ appdata/<service>/           primary_appdata_dir: each service's bulk data (Immich's photos, Garage's blocks, Crafty, pics' photos and trash)
+├─ appdata/<service>/           primary_appdata_dir: each service's bulk data (Immich's photos, Garage's blocks, a plugin's bulk data)
 └─ shared/                      your files in Copyparty (a folder each)
 /mnt/backup/                    backup drive: restic repository, dumps, logs
 /opt/services/<service>/        root drive: the compose.yaml and .env Ansible generates (overwritten each deploy)
@@ -44,7 +44,7 @@ Your own files have plain names: `stacks` and `shared`. Mount points below are e
 
 A host needs a drive for each role its enabled services use. An unclaimed role fails the deploy with a message naming it. A host needs `backup` where `backup_local_enabled` is true ([backups.md](./backups.md)). The root drive (the SD card, USB or NVMe drive the OS boots from) is not listed.
 
-One USB drive for everything (`[fast, primary, backup]`), or for apps and backups (`[fast, backup]`). Immich, Garage, Crafty, pics and Copyparty's folders keep data on the `primary` drive. A host without that role cannot run them. The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
+One USB drive for everything (`[fast, primary, backup]`), or for apps and backups (`[fast, backup]`). Immich, Garage, Copyparty's folders and any plugin with bulk data keep data on the `primary` drive. A host without that role cannot run them. The backup drive needs a `uuid`. A backup on the drive that holds the data is lost with it: fine for replaceable data, and `backup_cloud_enabled: true` adds an offsite copy.
 
 ```yaml
 drives:

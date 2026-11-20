@@ -34,7 +34,7 @@
       - item.value.root is not defined or item.value.root is boolean
     fail_msg: >-
       copyparty_folders entry '{{ item.key }}' must be {dir: /absolute/path, access: {login: letters}, root: true or false}.
-      The name is letters, digits, - and _, with / between levels (pics/photos). No level may be empty,
+      The name is letters, digits, - and _, with / between levels (myapp/photos). No level may be empty,
       and the first level is not drives or shares (Copyparty's own addresses).
       The letters are from rwmdgGhaA, such as {friend1: rwmd} or {friend1: A} for full access.
     quiet: true

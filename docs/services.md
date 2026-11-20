@@ -48,6 +48,7 @@ The `common` role runs on every host. It:
 | [Cloudflare Tunnel](#cloudflare-add-a-public-hostname) | Public hostnames without port forwarding | `roles/cloudflared` | `cloudflare_zones`, `cloudflared_ingress`, `vault_cloudflared_api_token`, `vault_cloudflared_account_id` |
 | Tailscale ([networking](./networking.md)) | Private remote access, installed unless `tailscale_enabled: false` | `roles/tailscale` | Tailscale joined by hand |
 | [Homepage](#homepage) | Start page with a tile per enabled service on every host | `roles/homepage` | `tinyauth_enabled` and `caddy_enabled`, or `homepage_port` |
+| [Plugins](./writing-a-plugin.md) | Services kept outside the core roles, such as a game server or your own app | `ansible/plugins/<key>` | The plugin's own README |
 | [Dockge, Caddy](#ad-hoc-app-platform) | Dockge: web UI for your own compose stacks. Caddy: reverse proxy that names apps from container labels | `roles/dockge`, `roles/caddy` | `fast` drive role |
 | [Unlock page](./encryption.md#unlock-page) | Show, unlock and lock the encrypted folders from a browser | `roles/unlock_page` | `tinyauth_enabled`, a Caddy name, `encrypted_folders` |
 | Backups ([backups.md](./backups.md)) | Daily local and weekly cloud backups, a weekly check, a read-only status dashboard | `roles/backup`, `roles/backup_status` | [backups.md](./backups.md) |
@@ -90,7 +91,7 @@ copyparty_folders:
   files: {}                                                           # /files, for the admins only
   collab: {access: {friend1: rwmd, friend2: rwmd}}                    # /collab
   team: {access: {friend2: A, friend1: r}}                            # friend1 can only read
-  services/pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}    # an app (see pics)
+  services/myapp/photos: {dir: "{{ myapp_photos_dir }}", access: {myapp: rwm}}  # an app's own folder
   public: {access: {"*": r, "@acct": w}}                              # anyone reads, any login uploads
 ```
 
@@ -100,9 +101,9 @@ copyparty_folders:
 - **Public folders:** `*` is open wherever Copyparty is reachable without Tinyauth, which includes a `cloudflared_ingress` entry that points at it (it cannot be limited to a path). With `w`, `m`, `d` or `A` strangers can change or remove files. A login with the same letters as `*` in one folder can log a harmless `CRIT ... not mentioned in any volume` at start: give it other letters.
 - **Person or app:** only the folders that name it in `access`, plus any open to `*` or `@acct`.
 - **Tinyauth-only login:** no `pass` (needs `copyparty_sso_enabled`). It has no password login.
-- **Name:** letters, digits, `-` and `_`, with `/` between levels (`services/pics/photos`). The first level is not `drives` or `shares`.
-- **Parent folders:** `/services` and `/services/pics` open read-only and list their children, for the logins named in the children's `access` and the admins.
-- **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
+- **Name:** letters, digits, `-` and `_`, with `/` between levels (`services/myapp/photos`). The first level is not `drives` or `shares`.
+- **Parent folders:** `/services` and `/services/myapp` open read-only and list their children, for the logins named in the children's `access` and the admins.
+- **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a `services/` folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
 - **`dir`:** an absolute path on the host, created by the deploy. Default `<copyparty_shared_dir>/<name>` on the `primary` drive (`shared/` holds your own files). An app's folder sets `dir` to the app's own data folder under `appdata/`, so `shared/` stays yours. Keep it on the `primary` or `fast` drive: the local backup covers those.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
@@ -217,7 +218,7 @@ A private [ntfy](https://docs.ntfy.sh/) server (`ntfy_enabled`) that a failed ba
 3. In the ntfy app add the server `http://<tailnet name>:<ntfy_port>` with that user and password (`just edit vault --host <host>` shows them) and subscribe to `ntfy_topic` (default `alerts`). The phone must be on Tailscale.
 4. Test: on the host `/opt/services/scripts/alert.sh system test "test alert" "hello"` and check the phone.
 
-**Where alerts go.** `ntfy_destinations` maps a name to a topic. Each has a `url` (the full address of the topic, required) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts; a host's own `ntfy_destinations` replaces it whole, so list every name that host needs. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all four:
+**Where alerts go.** `ntfy_destinations` maps a name to a topic. Each has a `url` (the full address of the topic, required) and an optional `token` (the login). Put it in `group_vars/all/vars.yml` to share it between hosts; a host's own `ntfy_destinations` replaces it whole, so list every name that host needs. Then each sender picks a destination by name. A sender with `""` sends nothing, and that is the default for all of them:
 
 ```yaml
 ntfy_destinations:
@@ -226,17 +227,17 @@ ntfy_destinations:
 system_alert_to: home        # failed backup jobs and the connectivity watchdog
 unlock_alert_to: home        # the locked-folder alert
 scrutiny_alert_to: home      # drive health alerts
-pics_alert_to: public        # pics' own alerts, to a different topic
+myapp_alert_to: public       # a plugin's own alerts (`alert_to` in its entry), to a different topic
 ```
 
 - **Turn a sender off:** set its `*_alert_to` to `""`. Write `""`, not an empty value.
 - **Public server:** a topic name on `ntfy.sh` works like a password.
   - Keep the address in the vault (`group_vars/all/vault.yml`) and write `"{{ vault_<name> }}"` as the `url`.
   - Leave out `token`. `ntfy.sh` has no login, and this repo's own token must not go there. This repo's own ntfy has no anonymous access, so a destination for it needs the token.
-  - The deploy writes the address into the sender's file on the host, where anyone on the host can read it. `alert.sh` and the token files are in no backup, but Scrutiny's compose file and pics' `pics.env` are in the cloud one.
+  - The deploy writes the address into the sender's file on the host, where anyone on the host can read it. `alert.sh` and the token files are in no backup, but Scrutiny's compose file and an app's settings file are in the cloud one.
 - **A name that is not in `ntfy_destinations`, or a destination with no `url`,** stops the deploy and names the setting.
 - **A `vault_` name** in a destination must exist on the hosts that send to it.
-- **After a change** run `just deploy common,scrutiny,pics,encryption --limit <host>`. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.
+- **After a change** run `just deploy common,scrutiny,encryption --limit <host>`, adding the key of each plugin that sends alerts. Each role writes the address into its own script or file. After you change `vault_ntfy_token`, also run `just deploy ntfy` so the server accepts the new token.
 - **Use https:// or a tailnet address.** The token travels in the request.
 
 It cannot report the host being down or a backup that never started (cron not running, host off).
@@ -265,7 +266,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 ### How an app joins
 
-How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). Crafty has none, so behind Tinyauth you sign in twice (Crafty, a bundled plugin). Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
+How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). An app with no way past its own login means signing in twice. Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
 
 ## Dozzle: container logs
 

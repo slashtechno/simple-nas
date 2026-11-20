@@ -46,7 +46,7 @@ All commands run from `ansible/`.
 | `inventory/hosts.yml` | no | The hosts under `servers`: SSH address, user, key. Copy `hosts.yml.example`. |
 | `group_vars/all/defaults.yml`, `defaults-<topic>.yml` | yes | Every shared setting with its default and a comment. A setting is in exactly one. Not edited: override in `vars.yml`. |
 | `roles/<role>/defaults/main.yml` | yes | Settings only that role reads. |
-| `group_vars/all/vars.yml` | yes | Your values for every host: timezone, SSH keys, Cloudflare zones, Gitea and pics URLs. Copy `vars.yml.example`. |
+| `group_vars/all/vars.yml` | yes | Your values for every host: timezone, SSH keys, Cloudflare zones, the Gitea URL, plugin settings. Copy `vars.yml.example`. |
 | `host_vars/<host>/vars.yml` | yes | One host: `<name>_enabled` flags, `drives`, data paths, tunnel hostnames, backup repository. Copy `host_vars/vars.yml.example`, keep what the host needs. |
 | `group_vars/all/vault.yml`, `host_vars/<host>/vault.yml` | no | Secrets: shared (Cloudflare token, restic password, ntfy token) and per host (database passwords, logins). Copy the `.example`, fill in, encrypt. |
 | `group_vars/all/versions.yml` | yes | Every image version. |
@@ -106,7 +106,7 @@ The same steps add a second or third host. Each host has its own `host_vars/<hos
 1. Check the host:
    - Debian-family OS: Raspberry Pi OS, Debian 12 or newer, or Ubuntu. (Debian 11 is too old: its restic 0.11 cannot read the `- !` backup rules.)
    - SSH and Python are installed, and your SSH key is on it. No Docker snap (the deploy stops if it finds one).
-   - Enough RAM for what you switch on: Immich, Crafty and Gitea are the largest, and a build (pics, Caddy) needs more than the running service. See [memory.md](../docs/memory.md).
+   - Enough RAM for what you switch on: Immich and Gitea are the largest, and an image built on the host (a plugin that builds, Caddy) needs more than the running service. See [memory.md](../docs/memory.md).
 2. In `inventory/hosts.yml`, add it under `servers: hosts:` with `ansible_host`, `ansible_user` and `ansible_ssh_private_key_file`. The key (for example `pinas`) is its nickname and names its `host_vars` directory.
 3. `just setup <host>`. Set `drives` ([docs/storage.md](../docs/storage.md)) and the `<name>_enabled` flags the host should run, and add the secrets `just setup` listed for them.
 4. `just deploy '' --limit <host> -K`. The first connection saves the host's SSH key in `~/.ssh/known_hosts`. A reinstalled host has a new key, and SSH then refuses it: remove the old entry with `ssh-keygen -R <ansible_host>`.
@@ -146,7 +146,7 @@ To add your own service as a fork, follow [Add a new service](#add-a-new-service
 The tracked `vars.yml` files hold the repo owner's values (domains, SSH public key, timezone, drive UUIDs). If you copy the repo, replace them:
 
 1. Copy `group_vars/all/vars.yml.example` over `group_vars/all/vars.yml` and remove any existing `host_vars/<host>/` directories.
-2. Replace at least `ssh_authorized_keys` (Ansible would otherwise add the owner's key to your hosts), `timezone`, and the Cloudflare, Gitea and pics values. Set `restic_cloud_repository` in each host's `vars.yml` that turns the cloud backup on.
+2. Replace at least `ssh_authorized_keys` (Ansible would otherwise add the owner's key to your hosts), `timezone`, and the Cloudflare and Gitea values and any `plugins` entries. Set `restic_cloud_repository` in each host's `vars.yml` that turns the cloud backup on.
 3. Create `inventory/hosts.yml`, the vaults and your own `host_vars/<host>/` files as in the table.
 
 ## Commands
@@ -237,7 +237,7 @@ A service you want to keep out of the core files, or share, is a [plugin](../doc
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (copy `roles/gitea`). A service that builds its own image or restarts on config changes writes its own tasks instead: copy `roles/backup_status`, the smallest.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/`: `myservice_enabled: false` in `defaults-flags.yml`, the data directories in `defaults-data-dirs.yml` and, for a web UI, `myservice_port` and `myservice_subdomain` in `defaults-ports-and-names.yml`, each with a comment. A value with no sensible default goes in `vars.yml.example`.
-6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}`. The comment at the top of the file describes each field. Leave out `data` if the service has no data directories.
+6. `group_vars/all/services.yml`: one entry, e.g. `- {name: Myservice, key: myservice, compose: myservice, data: [myservice_data_dir]}`. [plugin-reference.md](../docs/plugin-reference.md#the-service-entry) describes each field. Leave out `data` if the service has no data directories.
    - In `defaults-data-dirs.yml`, write each default as `{{ fast_appdata_dir }}/<key>` or `{{ primary_appdata_dir }}/<key>`.
    - A service with several directories gives each its own part: `/<key>/<part>`.
    - `just check` fails if a default breaks this rule.

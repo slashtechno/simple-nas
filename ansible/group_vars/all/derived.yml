@@ -130,7 +130,7 @@ protected_service_keys: >-
      + (['copyparty'] if copyparty_sso_enabled | bool else []) }}
 
 # The keys service_users may name: the services Tinyauth limits (above) and the apps that limit their own users from service_users
-# (login tinyauth_users). Not cut down to this host's switches: with pics_sso_enabled off during a Tinyauth outage, service_users.pics
+# (login tinyauth_users). Not cut down to this host's switches: with <key>_sso_enabled off during a Tinyauth outage, service_users.<key>
 # must not stop the deploy.
 # Example: [dockge, dozzle, scrutiny].
 limitable_service_keys: >-
@@ -161,7 +161,7 @@ copyparty_volumes: >-
   {%- set _ = out.update({name: {'dir': folder.dir | default(copyparty_shared_dir ~ '/' ~ name, true), 'access': folder.access | default({}), 'root': folder.root | default(false)}}) -%}
   {%- endfor -%}
   {{ out }}
-# Parents of nested folder names (pics for pics/photos) that are not folders themselves: {parent: [logins]}. Each becomes a read-only volume so the parent address opens and lists its children. The logins are those named in the children's access.
+# Parents of nested folder names (myapp for myapp/photos) that are not folders themselves: {parent: [logins]}. Each becomes a read-only volume so the parent address opens and lists its children. The logins are those named in the children's access.
 copyparty_parents: >-
   {%- set out = {} -%}
   {%- for name, folder in copyparty_volumes.items() -%}
@@ -175,7 +175,7 @@ copyparty_parents: >-
   {%- endfor -%}
   {{ out }}
 
-# The address of the Tinyauth login page; Tinyauth and every OIDC client (Immich, Gitea, pics) read it.
+# The address of the Tinyauth login page; Tinyauth and every OIDC client (Immich, Gitea, the plugins) read it.
 tinyauth_url: "https://{{ tinyauth_subdomain }}.{{ caddy_private_domains[0] }}"
 
 # The alert senders that alert.sh sends for: backup jobs and the connectivity watchdog (system) and unlock.sh (unlock). The services

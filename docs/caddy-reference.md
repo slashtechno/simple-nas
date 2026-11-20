@@ -27,7 +27,7 @@ The optional reverse proxy (`caddy_enabled`). It watches Docker: a container's *
 
 ## Web addresses and HTTPS
 
-A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet (Crafty uses `https` with a self-signed certificate). Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, pics, Dockge, Crafty, ntfy and Homebridge have a host port by default. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The backup dashboard and Homepage need a port on a host without Tinyauth. The Homepage lists every address ([services.md](./services.md#homepage)).
+A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet (`https` for a container with a self-signed certificate). Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, Dockge, ntfy and Homebridge have a host port by default, and a plugin has one if its `defaults.yml` sets `<key>_port`. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The backup dashboard and Homepage need a port on a host without Tinyauth. The Homepage lists every address ([services.md](./services.md#homepage)).
 
 For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name.
 
@@ -67,7 +67,7 @@ On a host that runs Caddy, every web service from this repo that you switch on g
 - The container names and ports are in [services.yml](../ansible/group_vars/all/services.yml), the `<key>_subdomain` settings in [defaults-ports-and-names.yml](../ansible/group_vars/all/defaults-ports-and-names.yml). A subdomain is a single label.
 - Homebridge has no name: it runs on the host network. Gitea's links come from one address ([Gitea](./services.md#gitea)).
 - With more than one domain in `caddy_private_domains`, Caddy serves a service with a `login` (or with Tinyauth off) under every domain. One behind the login gets the first domain only, because the session cookie covers one parent domain ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). The Homepage links to the first.
-- Crafty's panel serves a self-signed certificate. Caddy accepts it, and browsers see Caddy's.
+- A container that serves a self-signed certificate (`scheme: https` in its entry): Caddy accepts it, and browsers see Caddy's.
 
 #### Ports and names
 
@@ -80,7 +80,7 @@ ntfy_subdomain: ""           # "" gives ntfy no name; it keeps http://<host>:<po
 dockge_port: ""              # "" publishes no host port; Dockge is then reachable only at its https name
 ```
 
-- A port set to `""` publishes no host port for the web UI (Gitea's SSH port and Crafty's game ports are separate). The deploy stops if a service then has neither a port nor a name. The Cloudflare Tunnel is no exception: even a service the tunnel serves on its own keeps a host port.
+- A port set to `""` publishes no host port for the web UI (Gitea's SSH port is separate). The deploy stops if a service then has neither a port nor a name. The Cloudflare Tunnel is no exception: even a service the tunnel serves on its own keeps a host port.
 - Keep a port while you rely on it to get in when Caddy, Cloudflare or Tinyauth is down ([If Tinyauth is down](./auth-reference.md#if-tinyauth-is-down)).
 - A changed port also needs the service's own tag (`just deploy gitea --limit <host>`).
 - The names come from labels on the Caddy container, and the Homepage reads them when you deploy it.

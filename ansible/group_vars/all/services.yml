@@ -6,7 +6,7 @@
 # a list is replaced whole by a host, so keep values out of it.
 core_services:
   # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
-  # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one; pics sends the address it was opened on, like Immich.
+  # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_photos_dir], no_backup: [immich_postgres_dir],
      container: immich_server, container_port: 2283, login: tinyauth, icon: immich, description: Photos,
