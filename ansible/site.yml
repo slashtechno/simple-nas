@@ -54,6 +54,22 @@
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
       tags: [always]
 
+    # The login field and the data it needs agree, for every built-in and plugin entry (services.yml).
+    - name: Check every service's login matches its oidc and oidc_secret
+      ansible.builtin.assert:
+        that:
+          - item.login | default('own') in ['own', 'tinyauth', 'tinyauth_users']
+          - (item.login | default('') in ['tinyauth', 'tinyauth_users']) == (item.oidc is defined and item.oidc_secret is defined)
+          - (item.oidc is defined) == (item.oidc_secret is defined)
+        fail_msg: >-
+          {{ item.name }}: login is own, tinyauth or tinyauth_users (or absent), and oidc and oidc_secret are set exactly
+          when it is tinyauth or tinyauth_users (see the header of group_vars/all/services.yml).
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [always]
+
     # An app that signs in through Tinyauth needs the login page's name (Tinyauth with Caddy and a private domain) and
     # the client secret Tinyauth checks (oidc in services.yml, docs/auth-reference.md#sign-in-with-tinyauth-oidc).
     - name: Check every app that signs in through Tinyauth has what it needs
@@ -70,6 +86,19 @@
           (vault.yml.example says how to make it).
         quiet: true
       loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [always]
+
+    # An app that lets in only the users in service_users (login tinyauth_users) with nobody listed would lock everyone out.
+    - name: Check every app that limits its own users has some
+      ansible.builtin.assert:
+        that: service_users[item.key] | default([]) | length > 0
+        fail_msg: >-
+          Signing {{ item.name }} in through Tinyauth needs service_users.{{ item.key }}: the Tinyauth user names that may open {{ item.name }}, e.g.
+          service_users: {{ '{' }}{{ item.key }}: [alice]{{ '}' }} (docs/auth-reference.md#who-may-use-what).
+        quiet: true
+      loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | selectattr('login', 'eq', 'tinyauth_users') | list }}"
       loop_control:
         label: "{{ item.name }}"
       tags: [always]

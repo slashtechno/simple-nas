@@ -258,7 +258,7 @@
           - tailscale
           - zram
         role_dir_names: "{{ role_dirs.files | map(attribute='path') | map('basename') | list }}"
-        unlisted: "{{ role_dir_names | difference(services | map(attribute='key') | list) | difference(not_services) }}"
+        unlisted: "{{ role_dir_names | difference(core_services | map(attribute='key') | list) | difference(not_services) }}"
       ansible.builtin.assert:
         that: unlisted | length == 0
         fail_msg: >-
@@ -279,7 +279,7 @@
           site.yml needs one task for {{ item.key }}: import_role name {{ item.key }}, tags [{{ item.key }}],
           when: {{ item.key }}_enabled | bool
         quiet: true
-      loop: "{{ services }}"
+      loop: "{{ core_services }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -292,7 +292,7 @@
         that: item.key ~ '_sso_enabled' in shared_defaults
         fail_msg: "{{ item.key }} has oidc, so {{ item.key }}_sso_enabled must be in the shared defaults files."
         quiet: true
-      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
+      loop: "{{ core_services | selectattr('oidc', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -308,7 +308,7 @@
         that: needed | difference(shared_defaults.keys()) | length == 0
         fail_msg: the shared defaults files in group_vars/all/ need {{ needed | difference(shared_defaults.keys()) }} (with a comment above each).
         quiet: true
-      loop: "{{ services }}"
+      loop: "{{ core_services }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -324,7 +324,7 @@
         that: "('roles/' ~ item.key) in lookup('ansible.builtin.file', repo + '/../docs/services.md')"
         fail_msg: docs/services.md needs a row naming `roles/{{ item.key }}` in its table.
         quiet: true
-      loop: "{{ services }}"
+      loop: "{{ core_services }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -462,7 +462,7 @@
         that: deployed_by | length > 0
         fail_msg: "No role or site.yml deploys {{ item.key }} to {{ services_dir }}/{{ item.compose }}: fix `compose` in services.yml."
         quiet: true
-      loop: "{{ services | selectattr('compose', 'defined') | list }}"
+      loop: "{{ core_services | selectattr('compose', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -476,10 +476,10 @@
           gitea: ["roles/gitea/tasks/sso.yml", "--key gitea"]
       ansible.builtin.assert:
         that:
-          - app_id_lines.keys() | list | sort == services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
+          - app_id_lines.keys() | list | sort == core_services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
           - app_id_lines[item.key][1] in lookup('ansible.builtin.file', repo + '/' + app_id_lines[item.key][0])
         quiet: true
-      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
+      loop: "{{ core_services | selectattr('oidc', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 

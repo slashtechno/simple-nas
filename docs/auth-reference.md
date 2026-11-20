@@ -163,9 +163,9 @@ The keys are service keys from `group_vars/all/services.yml`. The names must be 
 
 | Service | What `service_users` does | With no entry |
 |---|---|---|
-| **Behind the Caddy login** (Crafty, Dockge, Dozzle, Scrutiny, Homepage, the backup dashboard, the unlock page, the Garage web UI; Copyparty with `copyparty_sso_enabled`) | Tinyauth gets a rule for the service's web address. A user not listed gets "forbidden" after signing in. | Every Tinyauth user can open it |
-| **pics** (`pics_sso_enabled`) | Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics. pics lets in only those users, and each is a full owner. | The deploy stops |
-| **Immich and Gitea** | Not available: an entry for them stops the deploy. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
+| **Behind the Caddy login** (no `login` in `services.yml`: Crafty, Dockge, Dozzle, Scrutiny, Homepage, the backup dashboard, the unlock page, the Garage web UI; Copyparty with `copyparty_sso_enabled`) | Tinyauth gets a rule for the service's web address. A user not listed gets "forbidden" after signing in. | Every Tinyauth user can open it |
+| **pics** (`login: tinyauth_users`, with `pics_sso_enabled`) | Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics. pics lets in only those users, and each is a full owner. | The deploy stops |
+| **Immich and Gitea** (`login: tinyauth`) | Not available: an entry for them stops the deploy. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
 
 - **Copyparty:** `service_users.copyparty` limits only who may open the page. Folder access comes from `vault_copyparty_accounts` ([Copyparty](./services.md#copyparty-folders-and-logins)). The entry needs `copyparty_sso_enabled`: the deploy stops without it.
 - **GitHub and Google users** are let in by email, so a list limits them through the emails of its users.

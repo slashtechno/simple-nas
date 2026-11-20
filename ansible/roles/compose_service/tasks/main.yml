@@ -1,5 +1,6 @@
 ---
-# Deploys roles/<compose_service_name>/templates/docker-compose.yml.j2 to {{ services_dir }}/<compose_service_name>.
+# Deploys docker-compose.yml.j2 from the templates folder of the role that calls this (built-in or plugin) to
+# {{ services_dir }}/<compose_service_name>.
 # `state: present` recreates containers whose definition changed, so these services need no restart handler.
 # A service whose compose file holds a secret sets `compose_service_has_secrets: true`, which keeps the file out of --diff.
 # Not for a service that builds an image from files in its role (caddy, copyparty, garage, backup_status, pics): those
@@ -17,7 +18,7 @@
 
 - name: Render {{ compose_service_name }} docker-compose.yml
   ansible.builtin.template:
-    src: "{{ playbook_dir }}/roles/{{ compose_service_name }}/templates/docker-compose.yml.j2"
+    src: "{{ ansible_parent_role_paths | first }}/templates/docker-compose.yml.j2"
     dest: "{{ services_dir }}/{{ compose_service_name }}/docker-compose.yml"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"

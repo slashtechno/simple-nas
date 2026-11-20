@@ -12,15 +12,6 @@
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
 
-- name: Check pics has the users who may sign in through Tinyauth
-  ansible.builtin.assert:
-    that: service_users.pics | default([]) | length > 0
-    fail_msg: >-
-      pics_sso_enabled needs service_users.pics: the Tinyauth user names that may open pics, e.g.
-      service_users: {pics: [alice]} (docs/auth-reference.md#who-may-use-what).
-    quiet: true
-  when: pics_sso_enabled | bool
-
 # pics reaches Copyparty by container name on the Docker network, with the login named pics.
 - name: Check Copyparty runs on this host and serves the two pics folders
   ansible.builtin.assert:

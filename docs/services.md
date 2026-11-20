@@ -278,7 +278,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 2. On the host set `tinyauth_enabled: true`. It needs Caddy with a private domain: the page only has that https name.
 3. `just deploy tinyauth,caddy,homepage --limit <host>`.
 
-- With `tinyauth_enabled`, every service with a Caddy name is behind the login except those marked `own_login: true` in `services.yml`. A service marked that way has apps, git, WebDAV or push clients that cannot log in through a web page, so it keeps its own login. Tinyauth is its own login. Copyparty's web address joins with `copyparty_sso_enabled`. To exempt another service, add `own_login: true` to its entry.
+- With `tinyauth_enabled`, every service with a Caddy name is behind the login except those with a `login` in `services.yml` (`own`, `tinyauth` or `tinyauth_users`; the header there says what each means). `login: own` is for apps, git, WebDAV or push clients that cannot log in through a web page, so the service keeps its own login. Tinyauth is its own login. Copyparty's web address joins with `copyparty_sso_enabled`. To exempt another service, give its entry a `login`.
 - Caddy serves a protected service under the first `caddy_private_domains` entry only ([why](./auth-reference.md#reach-a-protected-service-from-outside-the-tailnet)). A host port is not protected.
 - An app you run in Dockge opts in with one label, `caddy.import: tinyauth_forwarder`. A name in `caddy_sites` uses the same import ([Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own)). [SilverBullet](https://silverbullet.md/) expects an authentication proxy, so leave its `SB_USER` unset.
 
