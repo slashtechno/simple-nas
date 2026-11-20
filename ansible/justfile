@@ -75,7 +75,7 @@ plugins:
     ansible-playbook update_plugins.yml --vault-password-file .vault-pass
 
 # Deploy everything, or one service: `just deploy immich`. Extra flags go after: `just deploy '' --limit pinas -K`
-deploy tags='' *flags: plugins (_tags tags)
+deploy tags='' *flags: (_tags tags)
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
 # Stops a deploy, preview or teardown whose tag matches no role: ansible runs nothing for an unknown tag and exits 0.
@@ -85,8 +85,9 @@ _tags tags playbook='site.yml':
     [ -n "{{ tags }}" ] || exit 0
     known=$(ansible-playbook {{ playbook }} --list-tags | sed -n 's/.*TASK TAGS: \[\(.*\)\]/\1/p' | tr -d ',')
     [ -n "$known" ] || { echo "Could not read the tags from 'ansible-playbook --list-tags' (its output format changed?)." >&2; exit 1; }
-    # A looped include shows only `always` here: the plugins' keys are in plugins.yml, and `plugins` is the tag for all of them.
-    known="$known plugins $(sed -n -E 's/^ +(- )?key: *([a-z0-9_]+) *$/\2/p' group_vars/all/plugins.yml 2>/dev/null | tr '\n' ' ')"
+    # A looped include shows only `always` here: a plugin's tag is its folder name (plugins/, or plugins/.fetched/ once fetched) or its
+    # key in the `plugins` list of vars.yml, and `plugins` is the tag for all of them.
+    known="$known plugins $(ls plugins plugins/.fetched 2>/dev/null | tr '\n' ' ') $(sed -n -E 's/^ +- key: *([a-z0-9_]+) *$/\1/p' group_vars/all/vars.yml | tr '\n' ' ')"
     for tag in $(echo "{{ tags }}" | tr ',' ' '); do
       echo "$known" | tr ' ' '\n' | grep -qx -- "$tag" || { echo "No tag '$tag' in {{ playbook }}. Tags: $known" >&2; exit 1; }
     done
@@ -95,7 +96,6 @@ _tags tags playbook='site.yml':
 teardown host *flags:
     #!/usr/bin/env bash
     set -euo pipefail
-    just plugins
     tags=$(echo " {{ flags }} " | { grep -oE -- ' (--tags|-t)[= ][^ ]+' || true; } | sed -E 's/^ (--tags|-t)[= ]//' | paste -sd, -)
     just _tags "$tags" teardown.yml
     ansible-playbook teardown.yml --limit {{ host }} --vault-password-file .vault-pass {{ flags }}
@@ -114,7 +114,7 @@ edit *args:
     uv run --quiet tools/edit.py "$@"
 
 # Preview a deploy without changing anything. Takes the same arguments as deploy.
-preview tags='' *flags: plugins (_tags tags)
+preview tags='' *flags: (_tags tags)
     ansible-playbook site.yml --check --diff --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 
 # Unlock a host's encrypted folders over SSH (the scripts are in the default scripts_dir; the recipe assumes that default); it asks for the passphrase here: `just unlock pinas` (docs/encryption.md)
