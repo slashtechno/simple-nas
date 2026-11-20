@@ -3,7 +3,7 @@
 
   - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example,
   - no setting is written in two of the files that hold defaults (the later file would silently win),
-  - every file in group_vars/all/ is a known one (defaults.yml, defaults-<topic>.yml, vars, vault, derived, services, versions),
+  - every file in group_vars/all/ is a known one (defaults.yml, defaults-<topic>.yml, vars, vault, derived, services, versions, plugins),
   - every shared defaults file in group_vars/all/ sorts before vars.yml (the later file wins), and no version is set in vars.yml,
   - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example.
 """
@@ -14,9 +14,12 @@ from pathlib import Path
 ANSIBLE = Path(__file__).resolve().parent.parent
 VAULT_EXAMPLES = [ANSIBLE / "group_vars/all/vault.yml.example", ANSIBLE / "host_vars/vault.yml.example"]
 VARS_EXAMPLE = ANSIBLE / "group_vars/all/vars.yml.example"
-NOT_DEFAULTS = {"vars.yml", "vault.yml", "versions.yml", "derived.yml", "services.yml"}
+# plugins.yml is written by `just plugins` from the plugins, which are checked where they are (it is not committed, so CI has none).
+NOT_DEFAULTS = {"vars.yml", "vault.yml", "versions.yml", "derived.yml", "services.yml", "plugins.yml"}
 SHARED = sorted((ANSIBLE / "group_vars/all").glob("defaults*.yml"))
+PLUGIN_DIRS = sorted(ANSIBLE.glob("plugins/*")) + [ANSIBLE / "plugin-template"]   # the ones kept in this repo, not plugins/.fetched
 DEFAULTS = SHARED + sorted(ANSIBLE.glob("roles/*/defaults/main.yml"))
+DEFAULTS += sorted(p / f for p in PLUGIN_DIRS for f in ("defaults.yml", "defaults/main.yml") if (p / f).exists())
 
 problems = []
 
@@ -28,10 +31,11 @@ documented = set()
 for path in VAULT_EXAMPLES:
     documented |= set(re.findall(r"^(vault_[a-z0-9_]+):", path.read_text(), re.M))
 sources = [p for p in ANSIBLE.glob("roles/**/*") if p.is_file()] + list(ANSIBLE.glob("group_vars/**/*.yml"))
+sources += [p for d in PLUGIN_DIRS for p in d.glob("**/*") if p.is_file()]
 sources += [ANSIBLE / "site.yml", ANSIBLE / "teardown.yml"]
 for path in sources:
     # vars.yml is the owner's own values: a vault name they invent there (a sender's token) needs no example entry.
-    if path.name in ("vault.yml", "vars.yml"):
+    if path.name in ("vault.yml", "vars.yml", "plugins.yml"):
         continue
     try:
         text = path.read_text()

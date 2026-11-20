@@ -18,7 +18,8 @@
 #   # Remove everything from one host
 #   ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass
 #
-#   # Remove specific services only (the keys in group_vars/all/services.yml)
+#   # Remove specific services only (the keys in group_vars/all/services.yml, or a plugin's). For a plugin use `just teardown`,
+#   # which first runs `just plugins` so the service is known; this raw playbook never does.
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
 #   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, the USB rule,

@@ -1,6 +1,7 @@
 ---
 # Every image version in one place. How to update one, and what a floating
 # tag does: ansible/README.md#update-service-images
+# A plugin's image version lives in the plugin's defaults.yml, and `just platforms` does not check it.
 
 # Immich: the server and machine-learning images must use the same version. Release notes https://github.com/immich-app/immich/releases
 immich_version: v3.1.0

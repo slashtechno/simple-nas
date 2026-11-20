@@ -22,6 +22,25 @@
       ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/../group_vars/all/derived.yml"
 
+    # A plugin's settings and entry reach every host through group_vars/all/plugins.yml; the test loads them the same way.
+    - name: Find the plugins' settings and entries
+      ansible.builtin.find:
+        paths: ["{{ playbook_dir }}/../plugins", "{{ playbook_dir }}/../plugin-template"]
+        patterns: ["defaults.yml", "service.yml"]
+        recurse: true
+      register: peer_plugin_files
+
+    - name: Load the plugins' settings
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      loop: "{{ peer_plugin_files.files | map(attribute='path') | select('search', '/defaults[.]yml$') | reject('search', '/[.]fetched/') | sort }}"
+
+    - name: Load the plugins' entries
+      ansible.builtin.set_fact:
+        plugin_services: >-
+          {{ query('ansible.builtin.file', *(peer_plugin_files.files | map(attribute='path') | select('search', '/service[.]yml$')
+             | reject('search', '/[.]fetched/') | sort)) | map('from_yaml') | list }}
+
     - name: Turn on two services
       ansible.builtin.set_fact:
         dockge_enabled: true
@@ -61,17 +80,25 @@
     ansible_user: pi
     ansible_facts: {mounts: []}   # gathered on a real host
   tasks:
-    - name: Find every role's defaults and templates
+    # The template plugin (plugin-template/) and the plugins kept in this repo are rendered like roles. Fetched plugins
+    # (plugins/.fetched) are not here: CI has none, and `just preview` is their check.
+    - name: Find every role's and plugin's defaults and templates
       ansible.builtin.find:
-        paths: "{{ repo }}/roles"
-        patterns: ["main.yml", "*.j2"]
+        paths: ["{{ repo }}/roles", "{{ repo }}/plugins", "{{ repo }}/plugin-template"]
+        patterns: ["main.yml", "defaults.yml", "service.yml", "*.j2"]
         recurse: true
-      register: found
+      register: found_all
+
+    - name: Leave out the fetched plugins
+      ansible.builtin.set_fact:
+        found: "{{ {'files': found_all.files | rejectattr('path', 'search', '/[.]fetched/') | list} }}"
 
     - name: Split into defaults and constants files (roles/*/defaults and roles/*/vars) and templates
       ansible.builtin.set_fact:
         defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(defaults|vars)/main.yml$') | sort }}"
         template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
+        plugin_defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template)/defaults[.]yml$') | sort }}"
+        plugin_service_files: "{{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template)/service[.]yml$') | sort }}"
         shared_defaults_files: "{{ query('ansible.builtin.fileglob', repo ~ '/group_vars/all/*.yml') | select('search', shared_defaults_regex) | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
@@ -86,7 +113,7 @@
       ansible.builtin.include_vars:
         file: "{{ item }}"
       loop: >-
-        {{ defaults_files + shared_defaults_files
+        {{ defaults_files + shared_defaults_files + plugin_defaults_files
            + [repo + '/group_vars/all/derived.yml',
               repo + '/group_vars/all/vars.yml.example',
               repo + '/group_vars/all/versions.yml',
@@ -94,6 +121,11 @@
               repo + '/host_vars/vars.yml.example',
               repo + '/host_vars/vault.yml.example',
               repo + '/group_vars/all/vault.yml.example'] }}
+
+    # What `just plugins` would put in plugin_services: the template plugin and the plugins kept in this repo.
+    - name: Add the plugins' entries to the services
+      ansible.builtin.set_fact:
+        plugin_services: "{{ query('ansible.builtin.file', *plugin_service_files) | map('from_yaml') | list }}"
 
     # Every service on, so every template renders. Branches behind other settings (Copyparty's folders, extra ports
     # and volumes, USB volumes; Crafty Bedrock; the Gitea runner; the optional Pics lines) are
@@ -491,6 +523,21 @@
         recurse: true
       register: host_vars_found
 
+    # CI has no fetched plugins, so a key that starts with the name of a plugin in the plugins list, or kept in plugins/, is accepted.
+    - name: Find the plugins kept in this repo
+      ansible.builtin.find:
+        paths: ["{{ repo }}/plugins"]
+        file_type: directory
+        recurse: false
+      register: plugin_folders
+
+    - name: Work out the plugin names
+      ansible.builtin.set_fact:
+        plugin_prefixes: >-
+          {{ (lookup('ansible.builtin.file', repo ~ '/group_vars/all/vars.yml', errors='ignore') | from_yaml | default({}, true)).plugins | default([])
+             | map(attribute='key') | list
+             + (plugin_folders.files | map(attribute='path') | map('basename') | reject('match', '[.]') | list) }}
+
     # include_tasks, not import_tasks: each file in the loop is checked with its own variables.
     - name: Every key in each vars.yml must also be in its example
       ansible.builtin.include_tasks: check_keys.yml
@@ -568,6 +615,21 @@
         sites: "{{ caddy_labels | dict2items | selectattr('key', 'match', '^caddy_[0-9]+$') | list }}"
       ansible.builtin.set_fact:
         caddy_site: "{{ dict(sites | map(attribute='value') | zip(sites | map(attribute='key'))) }}"
+
+    # A plugin's entry (here the template's) reaches every reader without a line in the core.
+    - name: The template plugin is a service everywhere
+      ansible.builtin.assert:
+        that:
+          - "'example' in services | map(attribute='key')"
+          - "'example' in web_services | map(attribute='key')"
+          - "'example' in enabled_service_keys"
+          - "'example' not in oidc_service_keys and 'example' not in dump_service_keys"
+          - "'example' in protected_service_keys"
+          - "caddy_labels[caddy_site['example.pi4.example.com'] ~ '.import'] == 'tinyauth_forwarder'"
+          - "caddy_labels[caddy_site['example.pi4.example.com'] ~ '.reverse_proxy'] == 'http://example:80'"
+          - "'Example' in lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml')"
+          - "('image: ' ~ example_image) in lookup('ansible.builtin.file', out_dir ~ '/plugin-template/docker-compose.yml')"
+        quiet: true
 
     # The optional branches above only count as tested if their lines reach the output.
     - name: The optional template branches rendered

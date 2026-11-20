@@ -8,7 +8,7 @@
 #       git_clone_url: https://github.com/owner/name.git   # required
 #       git_clone_dest: /some/path                         # required
 #       git_clone_version: main                            # optional: branch, tag or commit
-#       git_clone_token: "{{ vault_example_token }}"       # optional
+#       git_clone_token: "{{ a_token_variable }}"          # optional
 #       git_clone_depth: 1                                 # optional: see defaults/main.yml
 # The result is in `git_clone_result`. To decide whether to rebuild, compare `.before` and `.after` (the commit
 # hashes); `.changed` also flips on a changed remote URL.
@@ -25,10 +25,13 @@
   # the port against a server on one. x-access-token is the user name GitHub documents; Gitea, GitLab and others take any
   # name with a token. no_log is on only with a token, because Ansible would print it in a failure or at -vvv; a failed
   # clone with a token then shows no git error: rerun the git clone by hand to see it.
-  environment: "{{ {'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': git_clone_header_key, 'GIT_CONFIG_VALUE_0': git_clone_header_value} if git_clone_token | length > 0 else {} }}"
+  environment: >-
+    {{ {'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': git_clone_header_key, 'GIT_CONFIG_VALUE_0': git_clone_header_value}
+       if git_clone_token | length > 0 else {} }}
   vars:
     git_clone_port: "{{ git_clone_url | urlsplit('port') }}"
     git_clone_header_key: >-
-      http.{{ git_clone_url | urlsplit('scheme') }}://{{ git_clone_url | urlsplit('hostname') }}{{ (':' ~ git_clone_port) if git_clone_port else '' }}/.extraHeader
+      http.{{ git_clone_url | urlsplit('scheme') }}://{{ git_clone_url | urlsplit('hostname') }}
+      {{- (':' ~ git_clone_port) if git_clone_port else '' }}/.extraHeader
     git_clone_header_value: "Authorization: Basic {{ ('x-access-token:' ~ git_clone_token) | b64encode }}"
   no_log: "{{ git_clone_token | length > 0 }}"

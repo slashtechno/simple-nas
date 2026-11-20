@@ -28,8 +28,8 @@ find "$work/plugins" -name '*.bak' -delete
 cd "$work"
 
 run() { ansible-playbook update_plugins.yml "$@" 2>&1; }
-echo "$work" >&2
 ok=$(run) || { echo "$ok" >&2; echo "FAIL: the generator failed on the template and the committed plugins" >&2; exit 1; }
+[ -n "${KEEP:-}" ] && { echo "$work" >&2; echo "$ok" | tail -15 >&2; }
 [ -f group_vars/all/plugins.yml ] || { echo "FAIL: plugins.yml was not written" >&2; exit 1; }
 grep -q "if aaa_enabled | bool" group_vars/all/plugins.yml || { echo "FAIL: the {{ }} in an entry did not survive" >&2; exit 1; }
 rm -f group_vars/all/plugins.yml.bak

@@ -6,7 +6,7 @@
 # (storage_enabled, tailscale_enabled; default true) are off; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
 # (default: false, in group_vars/all/defaults-flags.yml).
 # To deploy one host only:     --limit pi4
-# To deploy one service only:  --tags immich
+# To deploy one service only:  --tags immich   (a plugin the same way; --tags plugins is all plugins, --skip-tags plugins none)
 # To stop deploying a service: set <name>_enabled: false for the host.
 
 - name: Deploy every server
@@ -231,6 +231,20 @@
         name: garage
       tags: [garage]
       when: garage_enabled | bool
+
+    # The plugins (docs/writing-a-plugin.md), after everything they may rely on and before the backup, which checks their dump scripts.
+    # include_role, not import_role (AGENTS.md exception): import_role cannot loop. The loop carries `always` so --tags reaches it, and
+    # `apply` tags the plugin's own tasks: --tags <key> deploys one plugin, --tags plugins all of them, --skip-tags plugins none.
+    - name: Deploy the plugins
+      ansible.builtin.include_role:
+        name: "{{ item.key }}"
+        apply:
+          tags: ["{{ item.key }}", plugins]
+      loop: "{{ plugin_services | default([]) }}"
+      loop_control:
+        label: "{{ item.key }}"
+      when: lookup('ansible.builtin.vars', item.key ~ '_enabled') | bool
+      tags: [always]
 
     - name: Deploy backup
       ansible.builtin.import_role:

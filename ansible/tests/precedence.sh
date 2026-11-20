@@ -10,7 +10,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/group_vars/all" "$work/host_vars/h"
 for f in "$source_dir"/group_vars/all/*.yml; do
-  case "$f" in */vars.yml | */vault.yml) ;; *) cp "$f" "$work/group_vars/all/" ;; esac
+  case "$f" in */vars.yml | */vault.yml | */plugins.yml) ;; *) cp "$f" "$work/group_vars/all/" ;; esac
 done
 # The owner's file overrides a default (timezone), sets a flag, and tries to override a version (which must not win).
 printf '%s\n' 'timezone: Owner/Zone' 'gitea_enabled: true' 'caddy_version: 0.0.0-owner' > "$work/group_vars/all/vars.yml"

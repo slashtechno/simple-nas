@@ -1,6 +1,6 @@
 # Ansible playbooks
 
-Each service is a role with its own Docker Compose project at `/opt/services/<compose dir>/` on the host. They share the Docker network `services` (Homebridge uses the host network for HomeKit discovery). Ansible runs on your Mac and SSHes into each host, which needs only SSH and Python. New to Ansible? The last section of [docs/glossary.md](../docs/glossary.md#ansible) lists the parts you will meet.
+Each service is a role with its own Docker Compose project at `/opt/services/<compose dir>/` on the host. They share the Docker network `services` (Homebridge uses the host network for HomeKit discovery). Ansible runs on your Mac and SSHes into each host, which needs only SSH and Python. Your computer also needs `git` (for plugins fetched from git) and ansible-core 2.21 or newer (what this repo is tested on). New to Ansible? The last section of [docs/glossary.md](../docs/glossary.md#ansible) lists the parts you will meet.
 
 Ansible overwrites the files it manages on the next run, so change them here, not on the host. That means `/opt/services/*/docker-compose.yml`, cron jobs and rendered configs. Everything else on the host is yours, except these system files, each documented in its role:
 
@@ -33,6 +33,7 @@ All commands run from `ansible/`.
 | Encrypt a folder | `encrypted_folders` ([docs/encryption.md](../docs/encryption.md)) | `just deploy encryption,backup --limit <host>`, then [set up the folder](../docs/encryption.md#set-up-a-folder) |
 | Unlock or lock from a browser | [the unlock page](../docs/encryption.md#unlock-page) | `unlock_page_enabled`, then `just deploy encryption,unlock_page --limit <host>` |
 | Add a new service to the repo | [add a new service](#add-a-new-service) | `just check`, then `just deploy <name>` |
+| Write or use a plugin (a service kept outside the core files) | [docs/writing-a-plugin.md](../docs/writing-a-plugin.md) | `just plugins`, then `just preview <key> --limit <host>` |
 | Preview, or check my edits | nothing | `just preview <tag> --limit <host>`, or `just check` |
 | Run a backup now, or check that backups ran | nothing | [checking backup status](../docs/backups.md#checking-backup-status) |
 | Check a drive's health | `scrutiny_enabled: true` | [Scrutiny](../docs/services.md#scrutiny-drive-health) |
@@ -51,8 +52,10 @@ All commands run from `ansible/`.
 | `group_vars/all/versions.yml` | yes | Every image version. |
 | `group_vars/all/services.yml` | yes | One entry per service: settings prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container. |
 | `group_vars/all/derived.yml` | yes | Values worked out from the settings (`fast_drive`, `drive_mounts`, ...). Not settings. Not edited. |
+| `plugins/<key>/` | yes | A plugin you keep in this repo ([docs/writing-a-plugin.md](../docs/writing-a-plugin.md)); `plugin-template/` is the one to copy. |
+| `plugins/.fetched/`, `group_vars/all/plugins.yml` | no | Written by `just plugins`: the plugins fetched from git, and the entries and settings of every plugin. Never edited. |
 
-Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CAUTION:` where changing it later has a consequence). No tool generates these files: edit them by hand.
+Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CAUTION:` where changing it later has a consequence). Edit these files by hand; only `plugins.yml` is written by a tool (`just plugins`).
 
 **Which value wins**, from first to last: a role's `defaults/main.yml`, the shared defaults files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`. Files in `group_vars/all/` load in name order, and the defaults files sort before `vars.yml`. `just check` enforces that.
 
@@ -136,7 +139,7 @@ Every part is a switch in `host_vars/<host>/vars.yml`, and a service you leave o
 - **Bare minimum:** `tailscale_enabled: true` (the default: `pi_enabled` is `auto`, so a Pi also gets its memory cgroup), `backup_local_enabled: true` and `drives:`. No service containers. Run your own software however you like and still get the drives, remote access and backups.
 - **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, a `drives` entry with the `fast` role (Dockge keeps its stacks there) and `backup_local_enabled: true` with a drive whose roles include `backup`. You write the compose stacks in Dockge. Ansible keeps Docker, the tunnel and the backups.
 
-To add your own service as a fork, follow [Add a new service](#add-a-new-service).
+To add your own service as a fork, follow [Add a new service](#add-a-new-service), or write it as a [plugin](../docs/writing-a-plugin.md) to leave the core files alone. `--skip-tags plugins` deploys without any plugin.
 
 ## Using this repo for your own hosts
 
@@ -156,6 +159,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just settings [word]` | Every setting with its default and whether a host sets it (needs `uv` for colour, `python3 tools/settings.py` otherwise) |
 | `just edit [vars\|vault] [--host H \| --all]` | Opens a vars or vault file in `$EDITOR`, decrypting and re-encrypting a vault (needs `uv`, but `ansible-vault edit --vault-password-file .vault-pass <file>` always works) |
 | `just setup <host>` | First-run setup for a host ([vault](#vault-secrets)) |
+| `just plugins` | Fetches the plugins in the `plugins` list, checks them with the ones in `plugins/`, and writes `group_vars/all/plugins.yml`; deploy, preview and teardown run it first |
 | `just deploy [tags] [flags]` | `site.yml`, e.g. `just deploy immich` or `just deploy '' --limit pinas -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#turn-off-or-remove-a-service)) |
@@ -164,7 +168,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just deps` | Installs the collections and roles in `requirements.yml` |
 
 - **`''`** is the empty list of tags, which means every role. `just deploy` takes the tags first, so a command that has flags but no tags still needs it (`just deploy '' --limit pinas`).
-- **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,pics` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
+- **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,pics` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. `--tags plugins` runs every plugin, `--skip-tags plugins` none, and a plugin's key runs that one. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host.
 - **`-K`** asks for the host's sudo password. Only a first deploy needs it.
 - `--check` does not create directories, so on a first deploy a later step can fail with "not a directory": a preview limit, not a bug.
@@ -172,7 +176,8 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 ### What `just check` runs
 
 - `_lint`: ansible-lint, shellcheck and ruff (skipped rules and reasons are in `.ansible-lint`).
-- `_syntax`: both playbooks parse.
+- `_syntax`: the playbooks parse.
+- `_plugins`: the plugin generator runs on a copy of the repo and refuses each mistake a plugin author can make.
 - `_vars`: every vault name and every setting with no default appears in its example file. No setting has a default in two files. The defaults files sort before `vars.yml`. `group_vars/all/` holds only the expected files.
 - `_links`: every `file.md#anchor` names a heading.
 - `_precedence`: `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after `vars.yml`.
@@ -224,6 +229,8 @@ just teardown <host> -e remove_data=true -e confirm_remove_data=<host>   # also 
 Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, if `dockge_port` is `""`, Dockge without a login: Dockge's recovery is in [services.md](../docs/services.md#ad-hoc-app-platform).
 
 ## Add a new service
+
+A service you want to keep out of the core files, or share, is a [plugin](../docs/writing-a-plugin.md) instead of the steps below.
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
 2. `templates/docker-compose.yml.j2`: join the external `services` network. Set `container_name` (use it for `container` in the `services.yml` entry and for a `cloudflared_ingress` service) and `restart: unless-stopped`. Take the image from a variable in `versions.yml` (`myservice_image: owner/myservice:1.2.3`), pinned to a version, or a digest if upstream has no versioned tag. Check the image has arm64 and x64 builds (`just platforms`).

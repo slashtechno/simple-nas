@@ -69,8 +69,9 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # The git module returns no commit when it only checks one out; there is no module for rev-parse.
     - name: Read the commit of each fetched repository
-      ansible.builtin.command: git -C "{{ fetched_dir }}/.src/{{ item.key }}" rev-parse --short HEAD
+      ansible.builtin.command: git -C "{{ fetched_dir }}/.src/{{ item.key }}" rev-parse --short HEAD   # noqa: command-instead-of-module
       register: fetched_commits
       changed_when: false
       loop: "{{ plugins }}"
@@ -102,8 +103,12 @@
 
     - name: Sort what was found
       ansible.builtin.set_fact:
-        service_files: "{{ found_files.files | map(attribute='path') | select('search', '/plugins/(\\.fetched/)?[^/]+/service\\.yml$') | sort | list }}"
-        role_defaults_files: "{{ found_files.files | map(attribute='path') | select('search', '/(roles|plugins|\\.fetched)/[^/]+/defaults/main\\.yml$') | sort | list }}"
+        service_files: >-
+          {{ found_files.files | map(attribute='path') | select('search', '/plugins/(\.fetched/)?[^/]+/service\.yml$')
+             | unique | sort | list }}
+        role_defaults_files: >-
+          {{ found_files.files | map(attribute='path') | select('search', '/(roles|plugins|\.fetched)/[^/]+/defaults/main\.yml$')
+             | unique | sort | list }}
 
     - name: Check every plugin in the list has a service.yml
       ansible.builtin.assert:
