@@ -132,7 +132,7 @@ protected_service_keys: >-
 # The keys service_users may name: the services Tinyauth limits (above) and the apps that limit their own users from service_users
 # (login tinyauth_users). Not cut down to this host's switches: with pics_sso_enabled off during a Tinyauth outage, service_users.pics
 # must not stop the deploy.
-# Example: [dockge, dozzle, scrutiny, pics].
+# Example: [dockge, dozzle, scrutiny].
 limitable_service_keys: >-
   {{ protected_service_keys + (services | selectattr('login', 'defined') | selectattr('login', 'eq', 'tinyauth_users') | map(attribute='key') | list) }}
 

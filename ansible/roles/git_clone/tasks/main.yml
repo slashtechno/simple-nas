@@ -1,6 +1,6 @@
 ---
 # Clone or update a git repository over https, optionally with an access token. A role of its own because including `common`
-# would also run its Docker dependency. The fetch of plugins (update_plugins.yml) and the pics role use it.
+# would also run its Docker dependency. The fetch of plugins (update_plugins.yml) and the roles that build from a repository use it.
 # Call it with include_role (import_role would tag every inner task):
 #   - ansible.builtin.include_role:
 #       name: git_clone

@@ -74,7 +74,7 @@ check: _lint _syntax _vars _links _precedence _plugins _test
 plugins:
     ansible-playbook update_plugins.yml --vault-password-file .vault-pass
 
-# Deploy everything, or one service: `just deploy crafty`. Extra flags go after: `just deploy '' --limit pinas -K`
+# Deploy everything, or one service: `just deploy immich`. Extra flags go after: `just deploy '' --limit pinas -K`
 deploy tags='' *flags: plugins (_tags tags)
     ansible-playbook site.yml --vault-password-file .vault-pass {{ if tags == '' { '' } else { '--tags ' + tags } }} {{ flags }}
 

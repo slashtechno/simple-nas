@@ -25,7 +25,7 @@
     # A plugin's settings and entry reach every host through group_vars/all/plugins.yml; the test loads them the same way.
     - name: Find the plugins' settings and entries
       ansible.builtin.find:
-        paths: ["{{ playbook_dir }}/../plugins", "{{ playbook_dir }}/../plugin-template"]
+        paths: ["{{ playbook_dir }}/../plugins", "{{ playbook_dir }}/../plugin-template", "{{ playbook_dir }}/fixture-plugin"]
         patterns: ["defaults.yml", "service.yml"]
         recurse: true
       register: peer_plugin_files
@@ -80,11 +80,11 @@
     ansible_user: pi
     ansible_facts: {mounts: []}   # gathered on a real host
   tasks:
-    # The template plugin (plugin-template/) and the plugins kept in this repo are rendered like roles. Fetched plugins
+    # The template plugin, the test's made-up one (tests/fixture-plugin/) and the plugins kept in this repo are rendered like roles. Fetched plugins
     # (plugins/.fetched) are not here: CI has none, and `just preview` is their check.
     - name: Find every role's and plugin's defaults and templates
       ansible.builtin.find:
-        paths: ["{{ repo }}/roles", "{{ repo }}/plugins", "{{ repo }}/plugin-template"]
+        paths: ["{{ repo }}/roles", "{{ repo }}/plugins", "{{ repo }}/plugin-template", "{{ repo }}/tests/fixture-plugin"]
         patterns: ["main.yml", "defaults.yml", "service.yml", "*.j2"]
         recurse: true
       register: found_all
@@ -97,8 +97,10 @@
       ansible.builtin.set_fact:
         defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(defaults|vars)/main.yml$') | sort }}"
         template_files: "{{ found.files | map(attribute='path') | select('search', '/templates/[^/]*\\.j2$') | sort }}"
-        plugin_defaults_files: "{{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template)/defaults[.]yml$') | sort }}"
-        plugin_service_files: "{{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template)/service[.]yml$') | sort }}"
+        plugin_defaults_files: >-
+          {{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template|tests/fixture-plugin)/defaults[.]yml$') | sort }}
+        plugin_service_files: >-
+          {{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template|tests/fixture-plugin)/service[.]yml$') | sort }}
         shared_defaults_files: "{{ query('ansible.builtin.fileglob', repo ~ '/group_vars/all/*.yml') | select('search', shared_defaults_regex) | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
@@ -129,7 +131,7 @@
         entry_files: "{{ plugin_service_files }}"
 
     # Every service on, so every template renders. Branches behind other settings (Copyparty's folders, extra ports
-    # and volumes, USB volumes; Crafty Bedrock; the Gitea runner; the optional Pics lines) are
+    # and volumes, USB volumes; the Gitea runner; the optional Copyparty lines) are
     # switched on in the tasks after this one, and the render step asserts their lines reached the output.
     - name: Enable every service
       ansible.builtin.set_fact:
@@ -163,12 +165,9 @@
 
     - name: Turn on the optional settings that change a template
       ansible.builtin.set_fact:
-        crafty_bedrock_enabled: true
         homepage_links: [{name: Example, href: "https://example.com", description: "a: b", icon: mdi-star, monitor: true}]
         vault_gitea_runner_token: "runner$token"
         vault_ntfy_token: "tk_a$b"
-        pics_artist: Render Test
-        pics_links: [{text: example.com, url: "https://example.com", watermark: true}]
         caddy_private_domains: [pi4.example.com, second.example.com]
         caddy_sites:
           homepage.pi4.example.com: {reverse_proxy: "homepage:3000"}
@@ -177,7 +176,7 @@
         tinyauth_environment: {TINYAUTH_OAUTH_PROVIDERS_GITHUB_CLIENTSECRET: "s$ecret"}
         immich_port: ""
         immich_extra_origins: ["https://photos.example.org"]
-        pics_extra_origins: ["http://nas:8100"]
+        fixture_extra_origins: ["http://nas:8100"]
         copyparty_port: ""
         # Copyparty's single sign-on, with a $ in the secret to check the compose escaping.
         copyparty_sso_enabled: true
@@ -185,9 +184,9 @@
         # Gitea's and Immich's sign-in through Tinyauth, with a $ in each secret to check the escaping.
         gitea_sso_enabled: true
         immich_sso_enabled: true
-        pics_sso_enabled: true
-        service_users: {pics: [owner, second], dozzle: [owner], backup_status: [owner]}
-        vault_pics_oidc_secret: "pics$secret"
+        fixture_sso_enabled: true
+        service_users: {fixture: [owner, second], dozzle: [owner], backup_status: [owner]}
+        vault_fixture_oidc_secret: "fixture$secret"
         vault_gitea_oidc_secret: "gitea$secret"
         vault_immich_oidc_secret: "immich$secret"
         dockge_port: ""
@@ -203,7 +202,7 @@
           home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
         system_alert_to: home
         scrutiny_alert_to: home
-        pics_alert_to: home
+        fixture_alert_to: home
         unlock_alert_to: home
     - name: Turn on the offsite backup
       ansible.builtin.set_fact:
@@ -464,14 +463,14 @@
         quiet: true
 
     # teardown.yml refuses remove_data when a data folder is, or holds, an encrypted folder (docs/encryption.md#turning-it-off).
-    # The same selection of data settings and the same comparison, with the folder above pics' photos listed with a trailing slash.
-    - name: List the folder above pics' photos as encrypted, with a trailing slash
+    # The same selection of data settings and the same comparison, with the folder above the fixture's data folder listed with a trailing slash.
+    - name: List the folder above the fixture's data folder as encrypted, with a trailing slash
       ansible.builtin.set_fact:
-        encrypted_folders: ["{{ pics_photos_dir | dirname }}/"]
+        encrypted_folders: ["{{ fixture_data_dir | dirname }}/"]
 
-    - name: Teardown finds pics' photos inside it
+    - name: Teardown finds the fixture's data inside it
       vars:
-        selected: "{{ services | selectattr('key', 'in', ['pics']) | list }}"
+        selected: "{{ services | selectattr('key', 'in', ['fixture']) | list }}"
         names: "{{ (selected | map(attribute='data', default=[]) | flatten + selected | map(attribute='no_backup', default=[]) | flatten) | select | list }}"
         paths: "{{ query('ansible.builtin.vars', *names) | map('regex_replace', '/+$', '') | list }}"
       ansible.builtin.assert:
@@ -480,7 +479,7 @@
       loop: "{{ paths | product(encrypted_pairs | map(attribute='mount') | list) | list }}"
       loop_control:
         label: "{{ item[0] }}"
-      when: item[0] == pics_photos_dir
+      when: item[0] == fixture_data_dir
 
     - name: Put the encrypted folder of the fixture back
       ansible.builtin.set_fact:
@@ -504,15 +503,14 @@
     - name: Each app uses its service key as its Tinyauth client id
       vars:
         app_id_lines:
-          pics: ["plugins/pics/templates/pics.env.j2", "HUB_OIDC_CLIENT_ID='pics'"]
           immich: ["roles/immich/tasks/main.yml", "'clientId': 'immich'"]
           gitea: ["roles/gitea/tasks/sso.yml", "--key gitea"]
       ansible.builtin.assert:
         that:
-          - app_id_lines.keys() | list | sort == services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
+          - app_id_lines.keys() | list | sort == core_services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
           - app_id_lines[item.key][1] in lookup('ansible.builtin.file', repo + '/' + app_id_lines[item.key][0])
         quiet: true
-      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
+      loop: "{{ core_services | selectattr('oidc', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -641,7 +639,6 @@
         hook_sh: "{{ lookup('ansible.builtin.file', out_dir ~ '/encryption/00-containers.sh') }}"
       ansible.builtin.assert:
         that:
-          - "'19132:19132/udp' in lookup('ansible.builtin.file', out_dir ~ '/crafty/docker-compose.yml')"
           # Encryption: unlock.sh makes the locked folder immutable, mounts with -allow_other and never -nonempty;
           # the backups refuse a locked folder and skip its encrypted copy.
           - "'.immich.gocryptfs' in setup_sh"
@@ -692,7 +689,7 @@
             in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-cloud.txt')
           - "caddy_labels[caddy_site['homepage.pi4.example.com'] ~ '.reverse_proxy'] == 'homepage:3000'"
           - "'immich.pi4.example.com immich.second.example.com' in caddy_site"
-          - "(caddy_site['crafty.pi4.example.com'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
+          - "(caddy_site['fixture.pi4.example.com fixture.second.example.com'] ~ '.reverse_proxy.transport.tls_insecure_skip_verify') in caddy_labels"
           - "caddy_labels[caddy_site['gh.pi4.example.com'] ~ '.redir'] == 'https://github.com{uri}'"
           - "'http://render-full' in caddy_site"
           - "caddy_labels[caddy_site['*.pi4.example.com'] ~ '.respond'] == '404'"
@@ -746,11 +743,8 @@
           - "'/apps' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'- /mnt/fast/shared:/fast:ro' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "\"COPYPARTY_ROOT='/services/pics/photos'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"COPYPARTY_TRASH_ROOT='/services/pics/trash'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'dockge.second.example.com' not in (caddy_site.keys() | join(' '))"
           - "(caddy_site['immich.pi4.example.com immich.second.example.com'] ~ '.import') not in caddy_labels"
-          - "(caddy_site['crafty.pi4.example.com'] ~ '.import') in caddy_labels"
           - "caddy_labels[caddy_site['(tinyauth_forwarder)'] ~ '.forward_auth.uri'] == '/api/auth/caddy'"
           - "'TINYAUTH_AUTH_USERS: ' ~ \"'owner:$$2b$$\" in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
           - "'TINYAUTH_AUTH_USERATTRIBUTES_OWNER_EMAIL: \"owner@real.example\"' in lookup('ansible.builtin.file', out_dir ~ '/tinyauth/docker-compose.yml')"
@@ -775,19 +769,15 @@
             ~ 'https://immich.second.example.com/user-settings,https://photos.example.org/auth/login,'
             ~ 'https://photos.example.org/user-settings,app.immich:///oauth-callback"')
             in tinyauth_compose
-          - "'TINYAUTH_OIDC_CLIENTS_PICS_CLIENTID: \"pics\"' in tinyauth_compose"
-          - "\"TINYAUTH_OIDC_CLIENTS_PICS_CLIENTSECRET: 'pics$$secret'\" in tinyauth_compose"
+          - "'TINYAUTH_OIDC_CLIENTS_FIXTURE_CLIENTID: \"fixture\"' in tinyauth_compose"
+          - "\"TINYAUTH_OIDC_CLIENTS_FIXTURE_CLIENTSECRET: 'fixture$$secret'\" in tinyauth_compose"
           - >-
-            ('TINYAUTH_OIDC_CLIENTS_PICS_TRUSTEDREDIRECTURIS: "https://pics.pi4.example.com/api/auth/oidc/callback,'
-            ~ 'https://pics.second.example.com/api/auth/oidc/callback,http://nas:8100/api/auth/oidc/callback"') in tinyauth_compose
-          - "\"HUB_OIDC_ISSUER='https://auth.pi4.example.com'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'HUB_OIDC_REDIRECT_URL' not in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "\"HUB_OIDC_USERS='owner second'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
+            ('TINYAUTH_OIDC_CLIENTS_FIXTURE_TRUSTEDREDIRECTURIS: "https://fixture.pi4.example.com/callback,'
+            ~ 'https://fixture.second.example.com/callback,http://nas:8100/callback"') in tinyauth_compose
           # service_users: the app id has dashes, the host is matched exactly, an unlisted service has no rule
           - "'TINYAUTH_APPS_BACKUP-STATUS_USERS_ALLOW: \"owner\"' in tinyauth_compose"
           - "'TINYAUTH_APPS_DOZZLE_CONFIG_DOMAIN: \"dozzle.pi4.example.com\"' in tinyauth_compose"
           - "'TINYAUTH_APPS_CRAFTY' not in tinyauth_compose"
-          - "\"HUB_OIDC_CLIENT_SECRET='pics$secret'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           # Caddy answers the login page's name inside the Docker network, so the app containers can read its settings.
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml') | from_yaml).services.caddy.networks.services.aliases
@@ -807,7 +797,6 @@
           - >-
             'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_a$$b@pi4:8090/alerts?scheme=http"'
             in lookup('ansible.builtin.file', out_dir ~ '/scrutiny/docker-compose.yml')
-          - "\"HUB_ALERT_URLS='ntfy://tk_a$b@pi4:8090/alerts'\" in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'2283' not in lookup('ansible.builtin.file', out_dir ~ '/immich/docker-compose.yml')"
           - "'git.pi4.example.com git.second.example.com' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
           - "'CLOUDFLARE_API_TOKEN: \"render-dns-token\"' in lookup('ansible.builtin.file', out_dir ~ '/caddy/docker-compose.yml')"
@@ -822,7 +811,7 @@
           - "(copyparty_config_dir ~ '/copyparty') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(tinyauth_data_dir ~ '/oidc') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "(gitea_data_dir ~ '/ssh') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
-          - "(crafty_data_dir ~ '/backups') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
+          - "(fixture_data_dir ~ '/cache') in lookup('ansible.builtin.file', out_dir ~ '/backup/restic-excludes-local.txt')"
           - "'--fsck=' in lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')"
           - >-
             drives | map(attribute='uuid') | map('lower') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
@@ -831,7 +820,6 @@
             drives | map(attribute='uuid') | map('upper') | reject('in', lookup('ansible.builtin.file', out_dir ~ '/storage/98-usb-automount.rules')) | list
             | length == 0
           - "(direct_link_ip ~ '/' ~ direct_link_prefix | string) in lookup('ansible.builtin.file', out_dir ~ '/network/direct-link-netplan.yaml')"
-          - "'HUB_ALERT_URLS' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
           - "'homepage.pi4.example.com,homepage.second.example.com,' in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "'ports:' not in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
           - "(',' ~ homepage_host ~ '\"') in lookup('ansible.builtin.file', out_dir ~ '/homepage/docker-compose.yml')"
@@ -843,8 +831,8 @@
             | length == (web_services | map(attribute='key') | select('in', enabled_service_keys) | list | length)
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
-            | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
-            == ['https://immich.pi4.example.com', 'https://git.pi4.example.com', 'https://crafty.pi4.example.com']
+            | selectattr('key', 'in', ['Immich', 'Gitea']) | map(attribute='value') | map(attribute='href') | list
+            == ['https://immich.pi4.example.com', 'https://git.pi4.example.com']
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[1]['render-peer'] | map('dict2items') | map('first')
             | map(attribute='value') | map(attribute='href') | list == ['http://peer.example.com:5001', 'http://peer.example.com:8090']
@@ -858,8 +846,6 @@
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.icon == 'mdi-star'
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage/services.yaml') | from_yaml)[2].Links[0].Example.siteMonitor == 'https://example.com'
-          - "'HUB_ARTIST' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
-          - "'HUB_LINKS=' in lookup('ansible.builtin.file', out_dir ~ '/pics/pics.env')"
         quiet: true
 
     # Copyparty's own login is the default: no IdP lines in its config and nothing in front of its Caddy name.
@@ -966,7 +952,7 @@
           public: {url: "https://ntfy.sh/my-topic"}
         system_alert_to: ""
         scrutiny_alert_to: public
-        pics_alert_to: public
+        fixture_alert_to: public
         unlock_alert_to: ""
 
     - name: Render the two apps' files with it
@@ -976,20 +962,19 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - ../plugins/pics/templates/pics.env.j2
 
     - name: The hosted topic keeps its https scheme and carries no token
       ansible.builtin.assert:
         that:
           - "'SCRUTINY_NOTIFY_URLS: \"ntfy://ntfy.sh/my-topic?scheme=https\"' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/hosted-docker-compose.yml')"
-          - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/my-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/hosted-pics.env')"
+          - "alert_targets.fixture.url == 'https://ntfy.sh/my-topic' and alert_targets.fixture.token == ''"
         quiet: true
 
     # With both senders off, neither file mentions an alert address.
     - name: Switch the two apps' alerts off
       ansible.builtin.set_fact:
         scrutiny_alert_to: ""
-        pics_alert_to: ""
+        fixture_alert_to: ""
 
     - name: Render the two apps' files with alerts off
       ansible.builtin.template:
@@ -998,13 +983,12 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - ../plugins/pics/templates/pics.env.j2
 
     - name: Neither file has an alert address
       ansible.builtin.assert:
         that:
           - "'SCRUTINY_NOTIFY_URLS' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/off-docker-compose.yml')"
-          - "'HUB_ALERT_URLS' not in lookup('ansible.builtin.file', out_dir ~ '/sso-off/off-pics.env')"
+          - "alert_targets.fixture.url == ''"
         quiet: true
 
     - name: Put the ntfy settings back
@@ -1013,7 +997,7 @@
           home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
         system_alert_to: home
         scrutiny_alert_to: home
-        pics_alert_to: home
+        fixture_alert_to: home
         unlock_alert_to: home
 
     # Each sender names its own destination; a destination with no token means no login.
@@ -1021,11 +1005,11 @@
       ansible.builtin.set_fact:
         ntfy_destinations:
           scrutiny-topic: {url: "https://ntfy.example.org/scrutiny", token: "tk_scrutiny"}
-          pics-topic: {url: "https://ntfy.sh/pics-topic"}
+          fixture-topic: {url: "https://ntfy.sh/fixture-topic"}
           system-topic: {url: "https://ntfy.sh/host-topic"}
           unlock-topic: {url: "https://ntfy.sh/unlock-topic", token: "tk_unlock"}
         scrutiny_alert_to: scrutiny-topic
-        pics_alert_to: pics-topic
+        fixture_alert_to: fixture-topic
         system_alert_to: system-topic
         unlock_alert_to: unlock-topic
 
@@ -1036,7 +1020,6 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - ../plugins/pics/templates/pics.env.j2
         - common/templates/alert.sh.j2
 
     - name: Each sender uses its own URL and token
@@ -1045,7 +1028,7 @@
           - >-
             'SCRUTINY_NOTIFY_URLS: "ntfy://:tk_scrutiny@ntfy.example.org/scrutiny?scheme=https"'
             in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-docker-compose.yml')
-          - "\"HUB_ALERT_URLS='ntfys://ntfy.sh/pics-topic'\" in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-pics.env')"
+          - "alert_targets.fixture.url == 'https://ntfy.sh/fixture-topic'"
           # alert.sh has one branch per sender, with its own address and its own token file (only the unlock destination has a token).
           - "'https://ntfy.sh/host-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
           - "'https://ntfy.sh/unlock-topic' in lookup('ansible.builtin.file', out_dir ~ '/sso-off/own-alert.sh')"
@@ -1087,7 +1070,7 @@
         ntfy_destinations:
           home: {url: "http://pi4:8090/alerts", token: "{{ vault_ntfy_token }}"}
         scrutiny_alert_to: home
-        pics_alert_to: home
+        fixture_alert_to: home
         system_alert_to: home
         unlock_alert_to: home
 
@@ -1155,8 +1138,8 @@
         that:
           - >-
             (lookup('ansible.builtin.file', out_dir ~ '/homepage-public-url.yaml') | from_yaml)[0]['render-full'] | map('dict2items') | map('first')
-            | selectattr('key', 'in', ['Immich', 'Gitea', 'Crafty']) | map(attribute='value') | map(attribute='href') | list
-            == ['https://immich.pi4.example.com', 'https://git.example.org', 'https://crafty.pi4.example.com']
+            | selectattr('key', 'in', ['Immich', 'Gitea']) | map(attribute='value') | map(attribute='href') | list
+            == ['https://immich.pi4.example.com', 'https://git.example.org']
         quiet: true
 
     - name: Put Gitea's address back
@@ -1170,26 +1153,20 @@
         path: "{{ out_dir }}/oidc-off/{{ item }}"
         state: directory
         mode: "0755"
-      loop: [tinyauth, caddy, gitea, immich, pics]
+      loop: [tinyauth, caddy, gitea, immich]
 
     - name: Turn the two OIDC logins off
       ansible.builtin.set_fact:
         gitea_sso_enabled: false
         immich_sso_enabled: false
-        pics_sso_enabled: false
+        fixture_sso_enabled: false
 
     - name: Render the four templates that carry them
       ansible.builtin.template:
-        src: "{{ repo }}/{{ 'plugins' if item == 'pics' else 'roles' }}/{{ item }}/templates/docker-compose.yml.j2"
+        src: "{{ repo }}/roles/{{ item }}/templates/docker-compose.yml.j2"
         dest: "{{ out_dir }}/oidc-off/{{ item }}/docker-compose.yml"
         mode: "0644"
       loop: [tinyauth, caddy, gitea, immich]
-
-    - name: Render pics' settings file without its OIDC login
-      ansible.builtin.template:
-        src: "{{ repo }}/plugins/pics/templates/pics.env.j2"
-        dest: "{{ out_dir }}/oidc-off/pics/pics.env"
-        mode: "0644"
 
     - name: Without them, nothing asks Tinyauth for a login or Immich for its config file
       vars:
@@ -1200,7 +1177,6 @@
         that:
           - "'TINYAUTH_OIDC_CLIENTS' not in tinyauth_compose"
           - "'GITEA__oauth2_client__' not in gitea_compose"
-          - "'HUB_OIDC' not in lookup('ansible.builtin.file', out_dir ~ '/oidc-off/pics/pics.env')"
           # The login page keeps its name inside the network whatever apps sign in through it.
           - "'auth.pi4.example.com' in caddy_compose"
         quiet: true

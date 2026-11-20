@@ -168,7 +168,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just deps` | Installs the collections and roles in `requirements.yml` |
 
 - **`''`** is the empty list of tags, which means every role. `just deploy` takes the tags first, so a command that has flags but no tags still needs it (`just deploy '' --limit pinas`).
-- **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,pics` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. `--tags plugins` runs every plugin, `--skip-tags plugins` none, and a plugin's key runs that one. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
+- **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,gitea` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. `--tags plugins` runs every plugin, `--skip-tags plugins` none, and a plugin's key runs that one. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host.
 - **`-K`** asks for the host's sudo password. Only a first deploy needs it.
 - `--check` does not create directories, so on a first deploy a later step can fail with "not a directory": a preview limit, not a bug.
@@ -181,7 +181,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 - `_vars`: every vault name and every setting with no default appears in its example file. No setting has a default in two files. The defaults files sort before `vars.yml`. `group_vars/all/` holds only the expected files.
 - `_links`: every `file.md#anchor` names a heading.
 - `_precedence`: `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after `vars.yml`.
-- `_test`: renders every template with the example vars and shellchecks the scripts, then checks each drive layout. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
+- `_test`: renders every template (the plugins' too, and `tests/fixture-plugin/`, a made-up service that keeps the core's https, Tinyauth-users and alert branches tested when a fork deletes the bundled plugins) with the example vars and shellchecks the scripts, then checks each drive layout. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
 
 ## Update service images
 
@@ -189,7 +189,7 @@ Every image version is a line in `group_vars/all/versions.yml`, most with a rele
 
 - A floating tag (`latest`, `release`, `nightly`) does not move until you ask: `just deploy gitea -e docker_pull_policy=always` (`-e` sets a variable for this run). Pin it to the running version once it works (`docker inspect <container>` shows `org.opencontainers.image.version`).
 - Moving Immich to a newer version can run database migrations. Read its notes first. Its Postgres and Valkey use a pinned digest: change them only when Immich's notes say to.
-- Caddy, Copyparty and backup-status build on the host and always rebuild. The pics role rebuilds when its repository's commit changed. `docker_pull_policy` does not apply to them.
+- Caddy, Copyparty and backup-status build on the host and always rebuild. A role that clones a repository (`git_clone`) rebuilds when the commit changed. `docker_pull_policy` does not apply to them.
 
 ## Update software that is not a Docker image
 

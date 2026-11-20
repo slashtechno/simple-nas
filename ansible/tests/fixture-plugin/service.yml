@@ -1,0 +1,18 @@
+---
+# A made-up service for the render test, so the core's branches (a service behind https, a Tinyauth login that limits
+# its users, an alert sender, a data folder left out of the backup) stay tested whatever plugins a fork keeps in plugins/.
+name: Fixture
+key: fixture
+compose: fixture
+data: [fixture_data_dir]
+no_backup_in: {fixture_data_dir: cache}
+container: fixture
+container_port: 8443
+scheme: https
+login: tinyauth_users
+alert_to: true
+icon: mdi-puzzle
+description: Render test only
+oidc_secret: vault_fixture_oidc_secret
+oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ fixture_subdomain ~ '.') | list + fixture_extra_origins)
+          | map('regex_replace', '$', '/callback') | list }}"

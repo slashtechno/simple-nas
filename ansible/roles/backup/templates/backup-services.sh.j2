@@ -8,7 +8,7 @@ set -euo pipefail
 # Each service with a live database installs its own script there from its role
 # (docs/backups.md), so a service that is not deployed leaves no script. A script receives the dump directory as $1 and
 # names its output <script name>-*, e.g. immich.sh writes immich-db-*.sql.gz.
-# Services that are plain files (Copyparty, pics, Homebridge, Crafty)
+# Services that are plain files (Copyparty, Homebridge, and plugins whose data is plain files)
 # need no script: restic copies them directly.
 #
 # The loop below is deliberate, not run-parts: run-parts only runs names made of
