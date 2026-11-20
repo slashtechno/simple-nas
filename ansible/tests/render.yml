@@ -317,6 +317,21 @@
       loop_control:
         label: "{{ item.key }}"
 
+    # The plugins have no task of their own: one looped task deploys each, and `just deploy <key>` and `--tags plugins` rely on its tags.
+    - name: site.yml deploys the plugins with their key and the tag plugins
+      vars:
+        site_text: "{{ site_yml.content | b64decode }}"
+      ansible.builtin.assert:
+        that:
+          - site_text is search('loop[:] .[{][{] plugin_services [}][}].')
+          - site_text is search('name[:] .[{][{] item.key [}][}].')
+          - site_text is search('tags[:] \[.[{][{] item.key [}][}]., plugins\]')
+          - site_text is search('item.key ~ ._enabled.\) \| bool\n +tags[:] \[always\]')
+        fail_msg: >-
+          site.yml must loop over plugin_services with include_role of item.key, apply tags [item.key, plugins], a when on the
+          flag and tags [always] (docs/writing-a-plugin.md).
+        quiet: true
+
     # The vault names are written out in services.yml, so tools/check_vars.py checks they are documented; the switch
     # name is built from the key, so check it here.
     - name: A service with oidc has its sso switch in the shared defaults files

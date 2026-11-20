@@ -18,7 +18,7 @@ VARS_EXAMPLE = ANSIBLE / "group_vars/all/vars.yml.example"
 # plugins.yml is written by `just plugins` from the plugins, which are checked where they are (it is not committed, so CI has none).
 NOT_DEFAULTS = {"vars.yml", "vault.yml", "versions.yml", "derived.yml", "services.yml", "plugins.yml"}
 SHARED = sorted((ANSIBLE / "group_vars/all").glob("defaults*.yml"))
-PLUGIN_DIRS = sorted(ANSIBLE.glob("plugins/*")) + [ANSIBLE / "plugin-template"]   # the ones kept in this repo, not plugins/.fetched
+PLUGIN_DIRS = sorted(p for p in ANSIBLE.glob("plugins/*") if not p.name.startswith(".")) + [ANSIBLE / "plugin-template"]   # kept in this repo, not plugins/.fetched
 DEFAULTS = SHARED + sorted(ANSIBLE.glob("roles/*/defaults/main.yml"))
 DEFAULTS += sorted(p / f for p in PLUGIN_DIRS for f in ("defaults.yml", "defaults/main.yml") if (p / f).exists())
 

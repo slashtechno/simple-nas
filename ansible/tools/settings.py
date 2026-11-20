@@ -34,6 +34,8 @@ MAX_VALUE = 70
 NOT_DEFAULTS = {"vars.yml", "vault.yml", "services.yml", "derived.yml"}
 DEFAULT_FILES = sorted(str(p.relative_to(ANSIBLE)) for p in (ANSIBLE / "group_vars/all").glob("*.yml") if p.name not in NOT_DEFAULTS)
 DEFAULT_FILES += sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("roles/*/defaults/main.yml"))
+# A plugin's defaults.yml is in group_vars/all/plugins.yml (written by `just plugins`); its defaults/main.yml is read in place.
+DEFAULT_FILES += sorted(str(p.relative_to(ANSIBLE)) for pattern in ("plugins/*/defaults/main.yml", "plugins/.fetched/*/defaults/main.yml") for p in ANSIBLE.glob(pattern))
 OWNER_FILES = ["group_vars/all/vars.yml"] + sorted(str(p.relative_to(ANSIBLE)) for p in ANSIBLE.glob("host_vars/*/vars.yml"))
 
 

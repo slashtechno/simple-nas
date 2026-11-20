@@ -1,6 +1,7 @@
 ---
 # Full deployment playbook.
-# Run with: ansible-playbook site.yml --vault-password-file .vault-pass
+# Run with: just deploy (it runs `just plugins` first). With ansible-playbook directly, run `just plugins` before
+# the first deploy and after each change to plugins: without group_vars/all/plugins.yml a plugin's sites and backup are left out.
 #
 # One play over every server. The base roles (common, network) run everywhere, and so do storage and Tailscale unless their switches
 # (storage_enabled, tailscale_enabled; default true) are off; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
@@ -14,6 +15,15 @@
   become: true
 
   pre_tasks:
+    - name: Check the plugins were fetched and checked
+      ansible.builtin.assert:
+        that: plugin_services is defined
+        fail_msg: >-
+          group_vars/all/plugins.yml is missing, so the plugins would be left out of Caddy, Homepage and the backup.
+          Run `just plugins` (just deploy does).
+        quiet: true
+      tags: [always]
+
     - name: Check the host runs a Debian-family OS
       ansible.builtin.assert:
         that: ansible_facts['os_family'] == "Debian"
@@ -228,7 +238,7 @@
         name: "{{ item.key }}"
         apply:
           tags: ["{{ item.key }}", plugins]
-      loop: "{{ plugin_services | default([]) }}"
+      loop: "{{ plugin_services }}"
       loop_control:
         label: "{{ item.key }}"
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled') | bool

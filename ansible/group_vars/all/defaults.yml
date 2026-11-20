@@ -23,10 +23,9 @@ encrypted_folders: []
 # (explained in host_vars/vars.yml.example).
 drives: []
 
-# The plugins fetched from git repositories (docs/writing-a-plugin.md#from-a-git-repository). Each entry: key (the plugin's folder
-# and role name), location (an https git repository), commit (the full 40-character hash of the exact code to run; a tag or branch can be moved), and optionally path (the folder inside
-# a repository that holds several plugins) and auth (the name of a vault variable holding an access token for a private
-# repository). Set it here for every host, never in host_vars. A plugin kept in ansible/plugins/ needs no entry. `just plugins` fetches them.
+# The plugins fetched from git: each entry's fields are in docs/writing-a-plugin.md#from-a-git-repository. The owner sets the
+# list in group_vars/all/vars.yml (vars.yml.example shows it), for every host, never in host_vars. A plugin kept in ansible/plugins/
+# needs no entry.
 plugins: []
 
 # false: plugged-in drives are read-only. true: Copyparty can change and delete files on them.

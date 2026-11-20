@@ -40,6 +40,8 @@ Settings of this repo, available in tasks, templates and the entry:
 | Variable | Is |
 |---|---|
 | `services_dir` | `/opt/services`: the parent of every compose directory. |
+| `docker_network` | The shared network every compose file joins (`services`). |
+| `timezone` | The host's timezone, for a container's `TZ`. |
 | `fast_appdata_dir`, `primary_appdata_dir` | The app data folders on the `fast` and `primary` drives ([storage.md](./storage.md)). A plugin's data folder defaults to `{{ primary_appdata_dir }}/<key>` or `{{ fast_appdata_dir }}/<key>`. |
 | `ansible_user` | The user that owns the files a task creates. |
 | `service_dump_scripts_dir` | Where a dump script is installed. |
@@ -50,4 +52,4 @@ Settings of this repo, available in tasks, templates and the entry:
 | `vault_<name>` | Any value in the host's vault ([ansible/README.md](../ansible/README.md#vault-secrets)). |
 | `<other service>_enabled`, `<other service>_port`, … | Any other service's settings, for example to check that Copyparty runs on the host. |
 
-`just settings <word>` lists every setting with its default and what sets it.
+`just settings <word>` lists the core's settings with their default and what sets it, and each plugin's once `just plugins` has run.

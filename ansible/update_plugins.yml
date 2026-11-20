@@ -3,8 +3,8 @@
 # and writes group_vars/all/plugins.yml: the plugins' entries (plugin_services) and settings (each plugin's defaults.yml).
 # Run it with `just plugins`; `just deploy`, `preview` and `teardown` run it first. The plugin docs: docs/writing-a-plugin.md.
 #
-# It runs on the machine you run Ansible from. Nothing is written until every fetch and check has passed, so a failed run
-# leaves the last plugins.yml as it was.
+# It runs on the machine you run Ansible from. plugins.yml is written only after every fetch and check has passed, so a failed
+# run leaves the last one as it was.
 - name: Fetch and check the plugins
   hosts: localhost
   connection: local
@@ -14,11 +14,15 @@
     plugins_dir: "{{ playbook_dir }}/plugins"
     fetched_dir: "{{ playbook_dir }}/plugins/.fetched"
     plugins_file: "{{ playbook_dir }}/group_vars/all/plugins.yml"
+    # The fields a service entry may have (docs/plugin-reference.md#the-service-entry): a misspelt one would do nothing.
+    service_fields: [name, key, compose, data, no_backup, no_backup_in, keep, dump_required, alert_to, login, oidc_secret, oidc,
+                     port, container, container_port, tile_url, scheme, icon, description]
   tasks:
     - name: Check the plugins list
       ansible.builtin.assert:
         that:
           - plugins is sequence and plugins is not string
+          - item is mapping
           - item.keys() | difference(['key', 'location', 'commit', 'path', 'auth']) | length == 0
           - item.key | default('') is match('^[a-z][a-z0-9_]*$')
           - item.location | default('') is match('^https://[^/ ]+/.')
@@ -27,7 +31,7 @@
           - item.auth is not defined or lookup('ansible.builtin.vars', item.auth, default='') | string | length > 0
         fail_msg: >-
           The plugins entry {{ item }} is wrong. It needs key (lower-case letters, digits and _), location (an https git
-          address) and commit (the full 40-character hash, never a tag or branch: those can be moved), and may have
+          address) and commit (the full 40-character hash in quotes, never a tag or branch: those can be moved), and may have
           path (a folder inside the repository, not leaving it)
           and auth (the name of a vault variable that holds a token, which must be in the vault). Nothing else is allowed
           (docs/writing-a-plugin.md#from-a-git-repository). Get a hash with: git ls-remote <location> <tag or branch>.
@@ -69,7 +73,7 @@
 
     # The git module returns no commit when it only checks one out; there is no module for rev-parse.
     - name: Read the commit of each fetched repository
-      ansible.builtin.command: git -C "{{ fetched_dir }}/.src/{{ item.key }}" rev-parse --short HEAD   # noqa: command-instead-of-module
+      ansible.builtin.command: git -C "{{ fetched_dir }}/.src/{{ item.key }}" rev-parse HEAD   # noqa: command-instead-of-module
       register: fetched_commits
       changed_when: false
       loop: "{{ plugins }}"
@@ -82,6 +86,14 @@
         src: "{{ fetched_dir }}/.src/{{ item.key }}/{{ item.path | default('') }}/"
         dest: "{{ fetched_dir }}/{{ item.key }}/"
         mode: preserve
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Remove the git data of each plugin
+      ansible.builtin.file:
+        path: "{{ fetched_dir }}/{{ item.key }}/.git"
+        state: absent
       loop: "{{ plugins }}"
       loop_control:
         label: "{{ item.key }}"
@@ -156,10 +168,17 @@
                 playbook_dir ~ '/group_vars/all/services.yml']
              + (role_defaults_files | select('match', playbook_dir ~ '/roles/') | list) }}
 
-    - name: Check no plugin key is used twice or is a built-in service's
+    - name: Find the roles of the core
+      ansible.builtin.find:
+        paths: ["{{ playbook_dir }}/roles"]
+        file_type: directory
+      register: core_roles
+
+    - name: Check no plugin key is used twice or is a built-in service's or role's
       vars:
         keys: "{{ found | default([]) | map(attribute='service') | map(attribute='key') | list }}"
-        core_keys: "{{ core_services | map(attribute='key') | list }}"
+        # roles/ is searched before plugins/, so a plugin with a role's name would never run
+        core_keys: "{{ core_services | map(attribute='key') | list + core_roles.files | map(attribute='path') | map('basename') | list }}"
         clashes: >-
           {%- set out = [] -%}
           {%- for k in keys | unique if k in core_keys or keys | select('equalto', k) | list | length > 1 -%}
@@ -169,7 +188,7 @@
       ansible.builtin.assert:
         that: clashes | length == 0
         fail_msg: >-
-          The plugin key {{ clashes | join(', ') }} is used twice or is a built-in service's. A folder in plugins/ and a fetched
+          The plugin key {{ clashes | join(', ') }} is used twice or is the name of a built-in service or role. A folder in plugins/ and a fetched
           plugin with one key are the same key: to use your own copy, remove the entry from plugins and keep the folder in
           plugins/ (docs/writing-a-plugin.md#from-a-git-repository).
         quiet: true
@@ -201,6 +220,9 @@
           {%- if key != item.folder -%}
           {%- set _ = out.append('key is ' ~ key ~ ' but the folder is named ' ~ item.folder ~ ': they must be the same (the key is the role name)') -%}
           {%- endif -%}
+          {%- for field in service.keys() | difference(service_fields) -%}
+          {%- set _ = out.append(field ~ ' is not a field of a service entry (docs/plugin-reference.md#the-service-entry)') -%}
+          {%- endfor -%}
           {%- if service.name is not defined -%}
           {%- set _ = out.append('service.yml needs a name') -%}
           {%- endif -%}

@@ -1,6 +1,6 @@
 # Writing and using a plugin
 
-A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty and pics are plugins (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. Plugins run as root on your hosts, so read a third party's before you list it. The fields of `service.yml` and the variables a plugin can use are in [plugin-reference.md](./plugin-reference.md).
+A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty and pics are plugins (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. A plugin runs as root on your hosts, and its `service.yml` and `defaults.yml` are also templated on your computer, where Jinja can run commands and your vault is open: read a third party's plugin before you list it, and again before you change its commit. The fields of `service.yml` and the variables a plugin can use are in [plugin-reference.md](./plugin-reference.md).
 
 ## Where things are
 
@@ -11,7 +11,7 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 
 1. Copy `ansible/plugin-template/` to `ansible/plugins/<key>/`. The key is lower-case letters, digits and `_`; it is also the role name, the `<key>_enabled` switch and the prefix of every setting.
 2. Rename `example` to your key in every file and edit them (the table below).
-3. `just plugins` (it needs the vault password file `ansible/.vault-pass`, which `just setup` makes) checks the plugin and its messages say what is wrong; fix and repeat. It refuses a key that is not lower-case letters, digits and `_`, a folder without `service.yml`, `defaults.yml` and `tasks/main.yml`, a setting that is declared twice, a missing `<key>_enabled` or `<key>_sso_enabled`, and an entry whose fields do not fit (the message names the file and the problem).
+3. `just plugins` (it needs the vault password file `ansible/.vault-pass`, which `just setup` makes) checks the plugin; its messages name the file and the problem, so fix and repeat. It refuses, among others: a key that is not lower-case letters, digits and `_` or is a role's name, a folder without `service.yml`, `defaults.yml` and `tasks/main.yml`, a setting declared twice, a field `service.yml` does not have, and a missing `<key>_enabled` (and `<key>_sso_enabled` with `oidc`, `<key>_alert_to` with `alert_to`).
 4. `just preview <key> --limit <host>`, then `just deploy <key> --limit <host>`, with `<key>_enabled: true` in that host's `vars.yml`.
 
 | File | What it holds |
@@ -24,14 +24,21 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 | `files/` | Files the tasks copy as they are (`ansible.builtin.copy` finds them here), such as a dump script. |
 | `handlers/` | Optional handlers, as in any role. |
 | `vars.yml.example` | The values the owner must set in `vars.yml` (every setting with `undef`). `just check` fails if one is missing. |
-| `vault.yml.example` | Every `vault_` name the plugin uses, with a comment and a placeholder; `just setup <host>` fills the random ones into the host's vault. `just check` fails if a name is missing. |
+| `vault.yml.example` | Every `vault_` name the plugin uses, with a comment and a placeholder; `just setup <host>` fills the random ones into the host's vault (for a plugin from git, run `just plugins` first). `just check` fails if a name is missing. |
 | `README.md` | What an operator must do by hand (below), and every moved data folder or renamed setting. |
 
 ## Recipes
 
 Each bullet is what a plugin of that kind adds to the template's tasks. The fields it sets are in [plugin-reference.md](./plugin-reference.md#the-service-entry).
 
-- **A plain container:** create the data folder, run `compose_service`. The compose file joins the `services` network and sets `container_name` (the entry's `container`).
+- **A plain container:** create the data folder, then run `compose_service`, which renders `templates/docker-compose.yml.j2` into `{{ services_dir }}/<name>/` and starts it (it recreates the container when the file changed). A compose file that holds a secret sets `compose_service_has_secrets: true`, which keeps it out of the `just preview` diff. `container_name` is the entry's `container`:
+
+  ```yaml
+  - ansible.builtin.import_role:
+      name: compose_service
+    vars:
+      compose_service_name: example
+  ```
 - **Data folders:** each is `<parent>/<key>` or, for several, `<parent>/<key>/<part>`, where the parent is `fast_appdata_dir` (databases, configs) or `primary_appdata_dir` (bulk data); one folder never sits inside another. Name each in `defaults.yml` (`<key>_data_dir`) and list the names under `data`, `keep`, `no_backup` or `no_backup_in` (a folder is in one list). The backup covers `data` and `keep` ([storage.md](./storage.md)).
 - **A container that runs as another user:** the folder belongs to that uid (`owner: "<uid>"` on the folder task). The backup reads files of any owner ([backups.md](./backups.md#root-only-files)).
 - **A settings file with secrets** (an env file): mode `0600` and `diff: false`, so the values never print. It is in the backup like any file of the service.

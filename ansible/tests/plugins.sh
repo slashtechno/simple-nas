@@ -60,6 +60,15 @@ rm -f plugins/aaa/defaults.yml.bak /tmp/aaa-defaults.$$
 mv plugins/zzz plugins/zzy
 fails "the folder is named zzy" "a folder named differently from its key"
 mv plugins/zzy plugins/zzz
+cp -R plugins/zzz plugins/zram
+sed -i.bak 's/zzz/zram/g' plugins/zram/service.yml plugins/zram/defaults.yml plugins/zram/defaults/main.yml
+fails "name of a built-in service or role" "a plugin named like a role in roles/ (which would run instead)"
+rm -rf plugins/zram
+cp plugins/aaa/service.yml /tmp/aaa-service.$$
+printf '%s\n' 'dump_require: true' >> plugins/aaa/service.yml
+fails "dump_require is not a field" "a misspelt field in service.yml"
+cp /tmp/aaa-service.$$ plugins/aaa/service.yml
+rm -f plugins/aaa/service.yml.bak /tmp/aaa-service.$$
 mkdir plugins/roles_dup && cp plugins/zzz/service.yml plugins/zzz/defaults.yml plugins/roles_dup/ && mkdir plugins/roles_dup/tasks && cp plugins/zzz/tasks/main.yml plugins/roles_dup/tasks/
 fails "is used twice" "two plugin folders with one key"
 rm -rf plugins/roles_dup
@@ -74,3 +83,5 @@ printf '%s\n' 'plugins: [{key: x, location: "https://example.com/x", commit: v1.
 fails "The plugins entry" "a tag instead of a commit hash"
 printf '%s\n' 'plugins: [{key: x, location: "https://example.com/x", commit: abc1234}]' > group_vars/all/vars.yml
 fails "The plugins entry" "a short hash instead of the full commit hash"
+printf '%s\n' 'plugins: [oops]' > group_vars/all/vars.yml
+fails "The plugins entry" "a plugins entry that is not a mapping"

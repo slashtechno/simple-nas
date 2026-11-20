@@ -38,10 +38,11 @@
     # The container runs as uid 10001 and must own its data folder
     - { path: "{{ pics_data_dir }}", owner: "10001" }
 
+# A branch or tag can be moved, and this code runs as root on the host.
 - name: Check pics_commit is a full commit hash
   ansible.builtin.assert:
     that: pics_commit is match('^[0-9a-f]{40}$')
-    fail_msg: pics_commit must be the full 40-character commit hash, not a branch or tag, because those can be moved.
+    fail_msg: pics_commit must be the full 40-character commit hash, not a branch or tag.
     quiet: true
 
 # include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of git_clone.
