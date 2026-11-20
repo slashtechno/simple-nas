@@ -34,14 +34,60 @@ Each bullet is what a plugin of that kind adds to the template's tasks. The fiel
 - **A plain container:** create the data folder, run `compose_service`. The compose file joins the `services` network and sets `container_name` (the entry's `container`).
 - **Data folders:** each is `<parent>/<key>` or, for several, `<parent>/<key>/<part>`, where the parent is `fast_appdata_dir` (databases, configs) or `primary_appdata_dir` (bulk data); one folder never sits inside another. Name each in `defaults.yml` (`<key>_data_dir`) and list the names under `data`, `keep`, `no_backup` or `no_backup_in` (a folder is in one list). The backup covers `data` and `keep` ([storage.md](./storage.md)).
 - **A container that runs as another user:** the folder belongs to that uid (`owner: "<uid>"` on the folder task). The backup reads files of any owner ([backups.md](./backups.md#root-only-files)).
-- **A settings file with secrets** (an env file): mode `0600` and `diff: false` on the task, so the values never print. It is in the backup like any file of the service.
-- **Build from a git repository:** `compose_service` only renders a compose file, so write the tasks yourself.
-  1. `include_role: git_clone` (`include_role`, because `import_role` would tag every inner task) with `git_clone_url`, `git_clone_dest` (under `{{ services_dir }}/<compose>/`), `git_clone_version` (a commit hash) and, for a private repository, `git_clone_token` (a vault variable holding an access token, sent as a header and never stored on the host). `git_clone_result.before` and `.after` are the commit hashes before and after.
-  2. In the compose file give the service `build: {context: ./src/<folder in the repository>}`.
-  3. Render the compose file and settings file with `template` tasks, then run `community.docker.docker_compose_v2` (`project_src: "{{ services_dir }}/<compose>"`, `state: present`) with `build: "{{ 'always' if git_clone_result.before != git_clone_result.after else 'policy' }}"`, which rebuilds only when the source moved.
-- **A live database:** the file copy of it can be torn, so it is not a backup. Set `dump_required: true`, put the script in `files/dump.sh` and install it as `{{ service_dump_scripts_dir }}/<compose>.sh` (mode `0755`, owned by `ansible_user`); the deploy stops if it is missing. The backup runs it with the dump directory as `$1` and keeps the last 3 files named `<compose>-*`. Write to `<name>.tmp` and rename on success, so a half-written dump is never kept. Restoring is by hand ([backups.md](./backups.md#what-is-backed-up-where)). If the app writes its own consistent snapshot into a data folder, that snapshot is the backup and no script is needed: say so in the README.
-- **A login:** set `login` ([values](./plugin-reference.md#the-service-entry)). Both Tinyauth values need `oidc`, `oidc_secret` (also in `vault.yml.example`) and a `<key>_sso_enabled` setting (default false) in `defaults.yml`; `tinyauth_users` also needs your tasks to hand `service_users.<key>` to the app. Sign-in is explained in [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc).
-- **Alerts:** `alert_to: true` and `<key>_alert_to: ""` in `defaults.yml`. Your template reads `alert_targets.<key>.url` (an ntfy topic address) and `.token`, both empty when off, and builds the app's own format from them ([services.md](./services.md#ntfy-failure-alerts)).
+- **A settings file with secrets** (an env file): mode `0600` and `diff: false`, so the values never print. It is in the backup like any file of the service.
+- **A login:** set `login` ([values](./plugin-reference.md#the-service-entry)). Both Tinyauth values need `oidc`, `oidc_secret` (also in `vault.yml.example`) and `<key>_sso_enabled` (default false) in `defaults.yml`; `tinyauth_users` also needs your template to hand `service_users.<key>` to the app. Sign-in: [auth-reference.md](./auth-reference.md#sign-in-with-tinyauth-oidc).
+
+**Build from a git repository.** `compose_service` only renders a compose file, so write the tasks (the compose file has `build: {context: ./src}` or the repository's subfolder):
+
+```yaml
+# include_role, not import_role: import would tag every inner task
+- ansible.builtin.include_role:
+    name: git_clone
+  vars:
+    git_clone_url: "https://github.com/{{ example_repo }}.git"
+    git_clone_dest: "{{ services_dir }}/example/src"
+    git_clone_version: "{{ example_commit }}"       # a full commit hash
+    git_clone_token: "{{ vault_example_repo_token }}"   # optional: a private repository; sent as a header, never stored
+
+- ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ services_dir }}/example/docker-compose.yml"
+    mode: "0640"
+
+- community.docker.docker_compose_v2:
+    project_src: "{{ services_dir }}/example"
+    state: present
+    # before and after are the commit hashes: rebuild only when the source moved
+    build: "{{ 'always' if git_clone_result.before != git_clone_result.after else 'policy' }}"
+```
+
+**A live database.** Its file copy can be torn, so it is not a backup. Set `dump_required: true` and install a script the backup runs with the dump directory as `$1`; it keeps the last 3 files named `<compose>-*`, and the deploy stops if the script is missing:
+
+```yaml
+- ansible.builtin.copy:
+    src: dump.sh                                   # plugins/<key>/files/dump.sh
+    dest: "{{ service_dump_scripts_dir }}/example.sh"
+    mode: "0755"
+```
+
+```bash
+#!/bin/bash
+set -euo pipefail
+OUT="$1/example-$(date +%Y%m%dT%H%M%S).sql"
+docker exec example pg_dump -U example example > "$OUT.tmp"   # .tmp first: a half-written dump is never kept
+mv "$OUT.tmp" "$OUT"
+```
+
+Restoring is by hand ([backups.md](./backups.md#what-is-backed-up-where)). If the app writes its own consistent snapshot into a data folder, that snapshot is the backup and no script is needed: say so in the README.
+
+**Alerts.** `alert_to: true` in the entry and `<key>_alert_to: ""` in `defaults.yml`. The deploy resolves the operator's destination into `alert_targets.<key>`, empty when off ([services.md](./services.md#ntfy-failure-alerts)):
+
+```jinja
+{% if alert_targets.example.url | length > 0 %}
+ALERT_URL={{ alert_targets.example.url }}      {# an ntfy topic address #}
+ALERT_TOKEN={{ alert_targets.example.token }}
+{% endif %}
+```
 
 ## What stays by hand
 
