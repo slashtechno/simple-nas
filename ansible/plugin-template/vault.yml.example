@@ -1,0 +1,5 @@
+---
+# Every vault_ name this plugin reads, in the host's vault (host_vars/<host>/vault.yml). One line of comment each: what it is for and
+# how to make it. `just setup <host>` fills the ones whose placeholder starts with "change-me-generate-with-" with random values.
+# Delete this file if the plugin has no secrets. `just check` fails if a name used by the plugin is missing here.
+# vault_example_password: "change-me-generate-with-openssl-rand-base64-32"

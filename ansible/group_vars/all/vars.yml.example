@@ -14,7 +14,14 @@ cloudflare_zones:
 # set gitea_domain or gitea_ssh_domain only to use a different name (docs/services.md).
 # gitea_root_url: "https://gitea.example.com/"
 # ntfy alerts: ntfy_destinations and one <sender>_alert_to name each, all off by default (docs/services.md#ntfy-failure-alerts).
-# Plugins from git (docs/writing-a-plugin.md#from-a-git-repository); a plugin kept in ansible/plugins/ needs no entry.
+# Plugins fetched from git (docs/writing-a-plugin.md#from-a-git-repository); a plugin kept in ansible/plugins/ needs no entry.
+# Run `just plugins` after changing this list. A plugin runs as root on your hosts: read its code at the commit first.
+#   key       the plugin's name (lower-case letters, digits, _); it must match the key in the plugin's service.yml
+#   location  an https git address
+#   commit    the full 40-character hash of the code to run; a tag or branch is refused because it can be moved.
+#             Get it with: git ls-remote <location> <tag or branch>
+#   path      optional: the folder inside the repository that holds the plugin (for a repository with several)
+#   auth      optional: the name of a vault variable (group_vars/all/vault.yml) holding an access token, for a private repository
 # plugins:
 #   - {key: myservice, location: "https://git.example.com/you/myservice", commit: "0123456789abcdef0123456789abcdef01234567", auth: vault_myservice_repo_token}
 # Who may use a service (docs/auth-reference.md#who-may-use-what), e.g. {dozzle: [you]}.

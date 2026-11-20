@@ -1,5 +1,5 @@
 ---
-# This plugin's entry in the services list. The fields are explained at the top of group_vars/all/services.yml: what
+# This plugin's entry in the services list. Every field is in docs/plugin-reference.md: what
 # teardown removes (compose, data), what the backup covers (data), the Caddy name and Homepage tile (icon, container,
 # container_port), how people sign in (login) and whether it alerts (alert_to). Leave `login` out for a web app with no
 # login of its own: Tinyauth's login page then sits in front of it.

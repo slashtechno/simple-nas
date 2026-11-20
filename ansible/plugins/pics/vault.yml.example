@@ -7,7 +7,7 @@ vault_pics_users: [yourusername]
 # pics' password for its Copyparty login: also add an entry to vault_copyparty_accounts with `user: "pics"` and
 # `pass: "{{ vault_pics_copyparty_password }}"`.
 vault_pics_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
-# Read-only token pics uses to clone its private GitHub repo onto the host (roles/git_clone/tasks/main.yml).
+# Read-only token pics uses to clone its private GitHub repo onto the host (sent as a header, never stored on the host).
 # Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
 # "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
 # It expires after at most a year; set a reminder to renew it.

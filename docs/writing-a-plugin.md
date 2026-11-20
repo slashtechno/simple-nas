@@ -1,6 +1,6 @@
 # Writing and using a plugin
 
-A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty and pics are plugins (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. Plugins run as root on your hosts, so read a third party's before you list it.
+A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty and pics are plugins (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. Plugins run as root on your hosts, so read a third party's before you list it. The fields of `service.yml` and the variables a plugin can use are in [plugin-reference.md](./plugin-reference.md).
 
 ## Where things are
 
@@ -11,14 +11,14 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 
 1. Copy `ansible/plugin-template/` to `ansible/plugins/<key>/`. The key is lower-case letters, digits and `_`; it is also the role name, the `<key>_enabled` switch and the prefix of every setting.
 2. Rename `example` to your key in every file and edit them (the table below).
-3. `just plugins` checks the plugin and its messages say what is wrong; fix and repeat. The checks are in `ansible/update_plugins.yml`; read it for the full list.
+3. `just plugins` checks the plugin and its messages say what is wrong; fix and repeat. It refuses a key that is not lower-case letters, digits and `_`, a folder without `service.yml`, `defaults.yml` and `tasks/main.yml`, a setting that is declared twice, a missing `<key>_enabled` or `<key>_sso_enabled`, and an entry whose fields do not fit (the message names the file and the problem).
 4. `just preview <key> --limit <host>`, then `just deploy <key> --limit <host>`, with `<key>_enabled: true` in that host's `vars.yml`.
 
 | File | What it holds |
 |---|---|
-| `service.yml` | The plugin's entry in the services list: what teardown removes, what the backup covers, the Caddy name and Homepage tile, how people sign in, whether it alerts. Every field is explained at the top of `ansible/group_vars/all/services.yml`. |
+| `service.yml` | The plugin's entry in the services list: what teardown removes, what the backup covers, the Caddy name and Homepage tile, how people sign in, whether it alerts. Every field is in [plugin-reference.md](./plugin-reference.md#the-service-entry). |
 | `defaults.yml` | Settings the rest of the repo reads (other hosts, `service.yml`, the backup): `<key>_enabled: false`, `<key>_port`, `<key>_subdomain`, data folders, the image version, `<key>_sso_enabled`, `<key>_alert_to`. A comment above each. A setting declared here and in the core, or in another plugin, is refused. |
-| `defaults/main.yml` | Settings only the plugin's own tasks read. A setting with no default uses `"{{ undef(hint='...') }}"`. |
+| `defaults/main.yml` | Settings only the plugin's own tasks read. A setting with no default uses `"{{ undef(hint='...') }}"`, which fails the deploy with the hint until the owner sets it. |
 | `tasks/main.yml` | Ordinary Ansible, run on the host. Most services create their folders and run `compose_service`. |
 | `templates/` | The compose file and any other file the tasks render (`ansible.builtin.template`). |
 | `files/` | Files the tasks copy as they are (`ansible.builtin.copy` finds them here), such as a dump script. |
@@ -32,7 +32,7 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 - **A plain container:** `tasks/main.yml` creates the data folder and runs `compose_service` (the template's tasks). The compose file joins the `services` network and sets `container_name`, which is `container` in `service.yml`.
 - **A container that runs as another user:** the folder must belong to that uid, so the task sets `owner: "<uid>"` instead of `{{ ansible_user }}`. The backup reads files of any owner by default (`backup_read_all_files`, [backups.md](./backups.md#root-only-files)).
 - **Build from a git repository:** `compose_service` only renders a compose file, so write the tasks yourself.
-  1. Run `include_role: git_clone` with `git_clone_url`, `git_clone_dest` (under `{{ services_dir }}/<compose>/`), `git_clone_version` (a commit hash) and, for a private repository, `git_clone_token`. The header of `ansible/roles/git_clone/tasks/main.yml` lists the variables. It is `include_role` on purpose: `import_role` would tag every inner task.
+  1. Run `include_role: git_clone` with `git_clone_url`, `git_clone_dest` (under `{{ services_dir }}/<compose>/`), `git_clone_version` (a commit hash) and, for a private repository, `git_clone_token` (a vault variable holding an access token, sent as a header and never stored on the host). Afterwards `git_clone_result.before` and `.after` are the commit hashes before and after. It is `include_role` on purpose: `import_role` would tag every inner task.
   2. Give the compose service `build: {context: ./src/<folder in the repository>}`; for a repository holding several projects that is the project's folder.
   3. Render the compose file, then run `community.docker.docker_compose_v2` with `build: "{{ 'always' if git_clone_result.before != git_clone_result.after else 'policy' }}"`, which rebuilds only when the source moved.
 - **A live database:** its file copy is not a restorable backup. Set `dump_required: true` in `service.yml`, put the script in `files/dump.sh` and install it in the tasks as `{{ service_dump_scripts_dir }}/<compose>.sh` (mode `0755`, owned by `ansible_user`); the deploy stops if it is missing. The backup runs the script with the dump directory as `$1` and keeps the last 3 files whose names start with `<compose>-`. Write to `<name>.tmp` and rename on success, so a half-written dump is never kept. The restore is by hand, from the dump file ([backups.md](./backups.md#what-is-backed-up-where)).
