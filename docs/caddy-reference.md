@@ -27,7 +27,13 @@ The optional reverse proxy (`caddy_enabled`). It watches Docker: a container's *
 
 ## Web addresses and HTTPS
 
-A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet (`https` for a container with a self-signed certificate). Tailscale already encrypts that traffic, so plain `http` needs no certificate. Immich, Copyparty, Gitea, Dockge, ntfy and Homebridge have a host port by default, and a plugin has one if its `defaults.yml` sets `<key>_port`. Tinyauth, Dozzle, Scrutiny, the backup dashboard and Homepage have none: they open only at their `https://` name. The backup dashboard and Homepage need a port on a host without Tinyauth. The Homepage lists every address ([services.md](./services.md#homepage)).
+A service with a host port (a `<name>_port` that is not `""`) answers at `http://<tailnet name>:<port>` from any device on your tailnet (`https` for a container with a self-signed certificate). Tailscale already encrypts that traffic, so plain `http` needs no certificate. The Homepage lists every address ([services.md](./services.md#homepage)).
+
+| Has a host port by default | Opens only at its `https://` name |
+|---|---|
+| Immich, Copyparty, Gitea, Dockge, ntfy, Homebridge, and a plugin whose `defaults.yml` sets `<key>_port` | Tinyauth, Dozzle, Scrutiny, the backup dashboard, Homepage |
+
+The backup dashboard and Homepage need a port on a host without Tinyauth.
 
 For `https://` names with real certificates, use Caddy with a private domain, below. Each service gets its own name.
 

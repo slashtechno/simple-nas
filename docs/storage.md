@@ -91,7 +91,13 @@ The role adds `x-systemd.automount,x-systemd.device-timeout=30s` to each drive's
 For a drive new to the host, before it goes in `drives`. Run on the host.
 
 1. **Identify it.** `lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE`. Letters such as `sdc` change when you replug drives. Check the model and serial against the drive's label before you wipe it: `sudo smartctl -i -d sat /dev/sdX` (`-d sat` makes it work through a USB adapter). Give every command the `/dev/disk/by-id/...` path, or a letter you just re-checked.
-2. **Look before wiping.** A second-hand drive can hold files: `sudo mount -o ro /dev/sdX1 /mnt/check` (`-t ntfs-3g` for NTFS), `sudo ls -la /mnt/check`, `sudo umount /mnt/check`.
+2. **Look before wiping.** A second-hand drive can hold files:
+
+   ```bash
+   sudo mount -o ro /dev/sdX1 /mnt/check      # add -t ntfs-3g for NTFS
+   sudo ls -la /mnt/check
+   sudo umount /mnt/check
+   ```
 3. **Vet a used drive** with SMART and a read-only `badblocks` scan ([Drive damage and wear](#drive-damage-and-wear)).
 4. **Partition and format** (this wipes the drive):
 
@@ -211,7 +217,12 @@ To go back, set `docker_data_root: ""` and repeat. Do not `rsync` layers (whiteo
 
 **Gitea runner registration:** the runner keeps it in `gitea_runner_data_dir` (fast drive). A new directory registers again with the vault token, and the old registration shows as an offline runner in Gitea (Site Administration, Actions, Runners). Remove it there.
 
-**Leftover volumes:** `docker volume ls` can list volumes from older project names. Check no container mounts one (`docker ps -a --filter volume=<name>`), then `docker volume rm <name>`. Never `docker volume prune -a`: it also removes named volumes of stopped containers, such as `immich_model-cache`.
+**Leftover volumes:** `docker volume ls` can list volumes from older project names. Check that no container mounts one, then remove it. Never `docker volume prune -a`: it also removes named volumes of stopped containers, such as `immich_model-cache`.
+
+```bash
+docker ps -a --filter volume=<name>
+docker volume rm <name>
+```
 
 </details>
 
@@ -226,10 +237,27 @@ Read the counters with `sudo smartctl -A -d sat /dev/disk/by-id/<drive>`, on the
 <details>
 <summary>Find and repair bad sectors</summary>
 
-1. **Scan read-only** with the drive unmounted: `sudo systemd-run --unit=scan /usr/sbin/badblocks -b 4096 -sv -o /var/tmp/bad.txt /dev/disk/by-id/<drive>`. Never `-w`. It takes hours on a 2 TB drive. `systemd-run` keeps it going when SSH ends. `journalctl -u scan -f` shows progress, and the numbers also land in `/var/tmp/bad.txt`. Each number is a 4 KiB block counted from the start of the whole disk.
-2. **Find the files they hit before the repair.** Mount the drive read-only (`sudo mount -o ro /dev/disk/by-id/<drive>-part1 /mnt/check`) and read everything: `sudo find /mnt/check -xdev -type f -exec cat {} + >/dev/null`. An unreadable file prints its path with `Input/output error`. Restore it from backup. A clean pass shows every file can be read. It does not show that its content is right: compare `sha256sum` lists with a second copy and test archives with `7z t` or `unzip -t`.
-3. **Overwrite each bad block no file needs.** Unmount the drive first (a block outside every file can still hold filesystem metadata, so run the filesystem check afterwards: `sudo e2fsck -fn /dev/disk/by-uuid/<uuid>` for ext4): `sudo dd if=/dev/zero of=/dev/disk/by-id/<drive> bs=4096 seek=<block> count=1 oflag=direct conv=notrunc`. The drive then repairs or remaps the sector, and what was in the block is gone. Then `smartctl -t long`. It takes hours, and a pass means the whole surface reads.
-4. **Keep watching the counters**, and keep nothing on a drive with defects that exists nowhere else ([backups.md](./backups.md)).
+Run these in order. `<drive>` is the name under `/dev/disk/by-id/`.
+
+```bash
+# 1. Scan read-only, drive unmounted (hours on 2 TB; systemd-run survives SSH ending). Never use -w.
+#    Each number in bad.txt is a 4 KiB block counted from the start of the whole disk.
+sudo systemd-run --unit=scan /usr/sbin/badblocks -b 4096 -sv -o /var/tmp/bad.txt /dev/disk/by-id/<drive>
+journalctl -u scan -f                                   # progress
+
+# 2. Find the files the bad blocks hit: mount read-only and read everything.
+sudo mount -o ro /dev/disk/by-id/<drive>-part1 /mnt/check
+sudo find /mnt/check -xdev -type f -exec cat {} + >/dev/null   # an unreadable file prints its path
+# Restore those files from backup. A clean pass proves every file reads, not that its content is right:
+# compare `sha256sum` lists with a second copy, and test archives with `7z t` or `unzip -t`.
+
+# 3. Overwrite each bad block no file needs (drive unmounted; the block's content is lost, the drive remaps it).
+sudo dd if=/dev/zero of=/dev/disk/by-id/<drive> bs=4096 seek=<block> count=1 oflag=direct conv=notrunc
+sudo e2fsck -fn /dev/disk/by-uuid/<uuid>                # ext4: a block outside every file can hold metadata
+sudo smartctl -t long /dev/disk/by-id/<drive>           # hours; a pass means the whole surface reads
+```
+
+Then keep watching the counters, and keep nothing on a drive with defects that exists nowhere else ([backups.md](./backups.md)).
 
 </details>
 

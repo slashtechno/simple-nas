@@ -135,9 +135,27 @@ Raspberry Pi OS only. Ansible leaves it alone because its sign-in needs a short-
 
 Every part is a switch in `host_vars/<host>/vars.yml`, and a service you leave off is not touched. On a Raspberry Pi, `pi_enabled: auto` still edits the kernel command line, so set it to `false` to skip. The `common` role ([what it does](../docs/services.md#every-host)) and the `network` role (the shared Docker network and the direct link) always run. Three example hosts:
 
-- **Everything:** turn on the services in [docs/services.md](../docs/services.md).
-- **Bare minimum:** `tailscale_enabled: true` (the default: `pi_enabled` is `auto`, so a Pi also gets its memory cgroup), `backup_local_enabled: true` and `drives:`. No service containers. Run your own software however you like and still get the drives, remote access and backups.
-- **Dockge and Cloudflare:** `dockge_enabled: true` and `cloudflared_enabled: true` with your own `cloudflared_ingress`, a `drives` entry with the `fast` role (Dockge keeps its stacks there) and `backup_local_enabled: true` with a drive whose roles include `backup`. You write the compose stacks in Dockge. Ansible keeps Docker, the tunnel and the backups.
+Three example hosts, each a host's `vars.yml`:
+
+```yaml
+# Everything: turn on the services in docs/services.md (each <name>_enabled: true).
+
+# Bare minimum: drives, remote access and backups, no service containers. Run your own software however you like.
+tailscale_enabled: true            # the default; pi_enabled is auto, so a Pi also gets its memory cgroup
+backup_local_enabled: true
+drives:
+  - { uuid: "1111-AAAA", mount: /mnt/data, roles: [fast, backup] }
+
+# Dockge and Cloudflare: you write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+dockge_enabled: true               # keeps its stacks on the `fast` drive
+cloudflared_enabled: true
+cloudflared_ingress:
+  - hostname: app.example.com
+    service: "http://myapp:8080"
+backup_local_enabled: true
+drives:
+  - { uuid: "1111-AAAA", mount: /mnt/data, roles: [fast, backup] }
+```
 
 To add your own service as a fork, follow [Add a new service](#add-a-new-service), or write it as a [plugin](../docs/writing-a-plugin.md) to leave the core files alone. `--skip-tags plugins` deploys without any plugin.
 
@@ -168,7 +186,14 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just deps` | Installs the collections and roles in `requirements.yml` |
 
 - **`''`** is the empty list of tags, which means every role. `just deploy` takes the tags first, so a command that has flags but no tags still needs it (`just deploy '' --limit pinas`).
-- **Tags** pick roles: each role in `site.yml` has a tag of its name (`ansible-playbook site.yml --list-tags`), and `just deploy immich,gitea` runs only those. A tag only selects a role. One whose flag is false on the host is still skipped. `--tags plugins` runs every plugin, `--skip-tags plugins` none, and a plugin's key runs that one. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
+- **Tags** pick roles. A tag only selects a role: one whose flag is false on the host is still skipped. A tag that matches no role stops `just deploy` and `just preview` with the list of tags.
+
+  ```bash
+  ansible-playbook site.yml --list-tags     # each role has a tag of its name
+  just deploy immich,gitea                  # only those roles
+  just deploy plugins                       # every plugin; a plugin's key runs that one
+  just deploy '' --skip-tags plugins        # every role except the plugins
+  ```
 - **`--limit <host>`** restricts a run to one host (or a comma-separated list). Without it a run covers every host.
 - **`-K`** asks for the host's sudo password. Only a first deploy needs it.
 - `--check` does not create directories, so on a first deploy a later step can fail with "not a directory": a preview limit, not a bug.
@@ -181,7 +206,9 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 - `_vars`: every vault name and every setting with no default appears in its example file. No setting has a default in two files. The defaults files sort before `vars.yml`. `group_vars/all/` holds only the expected files.
 - `_links`: every `file.md#anchor` names a heading.
 - `_precedence`: `vars.yml` beats the defaults, a host's vars beat `vars.yml`, and `versions.yml` loads after `vars.yml`.
-- `_test`: renders every template (the plugins' too, and `tests/fixture-plugin/`, a made-up service that keeps the core's https, Tinyauth-users and alert branches tested when a fork deletes the bundled plugins) with the example vars and shellchecks the scripts, then checks each drive layout. It fails on an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
+- `_test`: renders every template with the example vars, shellchecks the scripts, and checks each drive layout.
+  - **Renders:** the core, every plugin, and `tests/fixture-plugin/`, a made-up service that keeps the core's https, Tinyauth-users and alert branches tested when a fork deletes the bundled plugins.
+  - **Fails on:** an undefined variable, an undeclared key in a `vars.yml`, or a service missing from its flag, port or subdomain setting, `site.yml`, `services.yml` or `docs/services.md`.
 
 ## Update service images
 
@@ -233,7 +260,19 @@ Removing Tinyauth (`-e only=tinyauth`) leaves every protected name failing and, 
 A service you want to keep out of the core files, or share, is a [plugin](../docs/writing-a-plugin.md) instead of the steps below.
 
 1. `mkdir -p roles/myservice/{tasks,templates,defaults}`
-2. `templates/docker-compose.yml.j2`: join the external `services` network. Set `container_name` (use it for `container` in the `services.yml` entry and for a `cloudflared_ingress` service) and `restart: unless-stopped`. Take the image from a variable in `versions.yml` (`myservice_image: owner/myservice:1.2.3`), pinned to a version, or a digest if upstream has no versioned tag. Check the image has arm64 and x64 builds (`just platforms`).
+2. `templates/docker-compose.yml.j2`. The image comes from `versions.yml` (`myservice_image: owner/myservice:1.2.3`), pinned to a version, or a digest if upstream has no versioned tag; `just platforms` checks it has arm64 and x64 builds. `container_name` is the `container` of the `services.yml` entry and the host of a `cloudflared_ingress` service:
+
+   ```yaml
+   services:
+     myservice:
+       image: "{{ myservice_image }}"
+       container_name: myservice
+       restart: unless-stopped
+       networks: [services]
+   networks:
+     services:
+       external: true
+   ```
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (copy `roles/gitea`). A service that builds its own image or restarts on config changes writes its own tasks instead: copy `roles/backup_status`, the smallest.
 4. `defaults/main.yml`: settings only this role reads.
 5. `group_vars/all/`: `myservice_enabled: false` in `defaults-flags.yml`, the data directories in `defaults-data-dirs.yml` and, for a web UI, `myservice_port` and `myservice_subdomain` in `defaults-ports-and-names.yml`, each with a comment. A value with no sensible default goes in `vars.yml.example`.

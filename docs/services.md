@@ -142,7 +142,16 @@ Tinyauth answers every request on the Caddy name before Copyparty sees it. So a 
   3. Add the app's login to `vault_copyparty_accounts`. Put its password in the vault.
   4. Point the app at `/<folder>` through Copyparty. The app does not mount the folder.
 - **Give a login another folder:** add the login to the `access` of that folder, then deploy. Point the app at `/<folder>`. `access` decides only what a login can open.
-- **Any other Copyparty option** (an SFTP or FTP listener, global options, more volumes) goes in `copyparty_extra_conf`. The deploy writes it to `extra.conf` beside the generated config. Accounts, groups and global options combine. A volume (a `[/path]` section; `[/]` is taken when a folder has `root: true`) can appear in only one file, so you cannot extend a folder from `copyparty_folders` there ([config reference](https://github.com/9001/copyparty#global-options)). `copyparty_extra_volumes` mounts more host folders. `copyparty_extra_ports` publishes a listener port as `"host:container"` strings. Without it, only other containers reach the listener.
+- **Any other Copyparty option** (an SFTP or FTP listener, global options, more volumes) goes in `copyparty_extra_conf`, written to `extra.conf` beside the generated config ([config reference](https://github.com/9001/copyparty#global-options)). Accounts, groups and global options combine; a volume (`[/path]` section; `[/]` is taken by a folder with `root: true`) may be in only one file, so you cannot extend a `copyparty_folders` folder there.
+
+  ```yaml
+  copyparty_extra_conf: |
+    [global]
+      ftp: 3921
+  copyparty_extra_ports: ["3921:3921"]   # "host:container"; without it only other containers reach the listener
+  ```
+
+  More host folders: [Show a read-only host folder](#show-a-read-only-host-folder).
 
   ```yaml
   # An SFTP listener for a sync client (WebDAV lacks the modtimes rclone needs).

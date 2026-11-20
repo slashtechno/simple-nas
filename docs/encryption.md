@@ -30,7 +30,13 @@ sudo /opt/services/scripts/unlock.sh      # asks for the passphrase once
 - `sudo .../unlock.sh --status` shows each folder as unlocked, locked, or without encrypted files (never set up, or its drive is not mounted). It also lists the containers that wait for a locked folder. It changes nothing.
 - The passphrase can come from standard input: `printf %s "$PASSPHRASE" | sudo .../unlock.sh`.
 - Until you unlock, services that use an encrypted folder see it empty or do not start ([containers](#containers-and-locked-folders)), and **no backup runs**. What still works depends on where its data is: see [Which folders to list](#which-folders-to-list).
-- To lock again, run `just lock <host>`, or run `sudo /opt/services/scripts/unlock.sh --lock` on the host. The script stops the containers that use a folder. Then it unmounts every folder. It refuses while a backup runs. It reports a busy folder: `fuser -vm <folder>` lists the processes that hold it. The next unlock starts the containers that the lock stopped. An unlock does not start other stopped containers.
+- To lock again, stop the containers that use a folder and unmount every folder. It refuses while a backup runs and names a busy folder. The next unlock starts the containers the lock stopped, and no others:
+
+  ```bash
+  just lock <host>                                  # from your computer
+  sudo /opt/services/scripts/unlock.sh --lock       # or on the host
+  fuser -vm <folder>                                # lists the processes holding a busy folder
+  ```
 
 ## Alert while locked
 
@@ -175,11 +181,19 @@ gocryptfs cannot change the master key of a folder. You decrypt the folder and e
 Per folder, easiest first:
 
 1. **From a backup:** `restic restore latest --target <scratch> --include <the .gocryptfs folder>/gocryptfs.conf` ([backups.md](./backups.md)), put it back in the `.gocryptfs` folder, unlock as usual. It needs the passphrase, not the master key.
-2. **From the master key:** in an empty folder run `sudo gocryptfs -init -masterkey <key> <empty folder>`. Use the settings the folder was created with. `setup-encrypted-folder.sh` printed them (`gocryptfs -info`) next to the master key. If they show `XChaCha20Poly1305`, add `-xchacha`. If not, add no option, because AES-GCM is the gocryptfs default. Do not guess from today's CPU. The script chose the cipher from the CPU that created the folder. Copy the `gocryptfs.conf` that the command writes into the `.gocryptfs` folder. With the wrong option the mount works, but every read fails with an input/output error.
+2. **From the master key:** `setup-encrypted-folder.sh` printed the folder's settings (`gocryptfs -info`) next to the master key. Recreate the conf with the same settings, in an empty folder, and copy the `gocryptfs.conf` it writes into the `.gocryptfs` folder. With the wrong option the mount works, but every read fails with an input/output error. Do not guess from today's CPU: the script chose the cipher from the CPU that created the folder.
+
+   ```bash
+   sudo gocryptfs -init -masterkey <key> <empty folder>            # the settings show AES-GCM (gocryptfs' default)
+   sudo gocryptfs -init -xchacha -masterkey <key> <empty folder>   # the settings show XChaCha20Poly1305
+   ```
 3. **Whole `.gocryptfs` folder gone:** the encrypted files are gone, so there is nothing left to unlock. The backups hold your files in plain form (restic encrypts them with `vault_restic_password`), so restore from there:
-   1. [Set up a new encrypted folder](#set-up-a-folder) at the same path. It gets a new master key. Save it.
-   2. Restore the latest snapshot to a scratch folder: `restic restore latest --target <scratch>`.
-   3. Copy the files in: `sudo rsync -aHAX <scratch>/<path of the folder>/ <the folder>/` ([flags](./glossary.md#commands)).
+   Set up a new encrypted folder at the same path ([how](#set-up-a-folder)): it gets a new master key, so save it. Then restore into it:
+
+   ```bash
+   restic restore latest --target <scratch>
+   sudo rsync -aHAX <scratch>/<path of the folder>/ <the folder>/    # flags: ./glossary.md#commands
+   ```
 
    This works only if the backup includes the folder. On a host with a local backup the deploy checks that every listed folder is in it, so it always does. On a host with only a cloud backup nothing checks: look in `restic_cloud_rules` and `restic_cloud_extra_rules` ([backups.md](./backups.md#what-is-backed-up-where)).
 

@@ -51,7 +51,11 @@ ssh <user>@<host> sudo tailscale up                     # open the link it print
 just deploy encryption --limit home
 ```
 
-Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in. The script stops on a folder that does not exist, so create the ones the storage deploy did not make, on your own mounts. For example, with the `fast` drive at `<fast mount>` and the `primary` drive at `<primary mount>`: `sudo mkdir -p <fast mount>/stacks <primary mount>/shared`.
+Then [set up each encrypted folder](./encryption.md#set-up-a-folder) and unlock. The folders are empty, so there is nothing to move in. The script stops on a folder that does not exist, so first create the ones the storage deploy did not make:
+
+```bash
+sudo mkdir -p <fast mount>/stacks <primary mount>/shared   # the mounts of your fast and primary drives
+```
 
 ## 5. Deploy everything
 

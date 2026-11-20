@@ -94,7 +94,12 @@ The restic password is in no backup. Keep it in two places:
 
 Changing `vault_restic_password` does not change an existing repository: it still opens only with the password it was created with, so every backup fails until you put the old one back. The deploy keeps the replaced file beside the new one: copy it over `.restic-password` to undo.
 
-- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`. Moving a service to a drive without a role then cannot silently drop it from the backup. The exceptions are the directories a service lists as `no_backup`: Immich's raw Postgres directory (a dump covers it), Scrutiny's history and Copyparty's thumbnails (both are written again). The deploy checks encrypted folders too. To leave a directory out on purpose, add `- <that directory>` to `restic_local_extra_rules`.
+- **Enforced (local):** the deploy fails if an enabled service's data directory is outside every path in `restic_local_rules`, so moving a service to a drive without a role cannot silently drop it from the backup. Encrypted folders are checked too. The exceptions are a service's `no_backup` directories (a dump covers them, or they are written again). To leave a directory out on purpose:
+
+  ```yaml
+  restic_local_extra_rules:
+    - "- /mnt/primary/appdata/example/cache"
+  ```
 - **Not enforced (cloud):** the cloud list is short on purpose. With the cloud backup on, each deploy prints the data it leaves out.
 - **Dumps:** one script per service with a live database (`files/dump.sh` in the role of Immich, Gitea or Garage), installed into `service_dump_scripts_dir`. `backup-services.sh` runs them all before each backup and keeps the last 3 files named `<script name>-*`. Everything else is plain files. A new service's dump: add `files/dump.sh` to its role (copy Gitea's) or plugin ([how](./writing-a-plugin.md#recipes)), its files starting with `<service>-`. For software this repo does not run, put a `<name>.sh` in `service_dump_scripts_dir` by hand.
 
@@ -295,7 +300,13 @@ To replace a broken login, remove `rclone.conf` from `rclone_config_dir` on the 
 
 The `backup_status` role (`backup_status_enabled`, needs `backup_local_enabled`) deploys a read-only dashboard. It shows job status, the drive's mount state, a warning when a restic lock remains, and the snapshot list for both repositories. A local snapshot's files open as a folder tree with sizes, and the dashboard lists its changes since the previous snapshot on request. Running a job, restoring, removing and the cloud snapshots show the exact SSH command to copy and run yourself.
 
-It runs at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login). A host without Tinyauth sets `backup_status_port` (for example `8091`) to publish it at `http://<host>:<port>` with no login, open to everyone on the network, local snapshot file names included. The deploy stops if the host has neither, so it never comes up without a login or a port you chose. The container mounts the repository, logs and password file read-only, so it cannot write to or remove a backup.
+It runs at `https://backups.<private domain>` behind the [Tinyauth login](./services.md#tinyauth-login). The deploy stops if the host has neither a login nor a port you chose. A host without Tinyauth publishes it with no login, open to everyone on the network, local snapshot file names included:
+
+```yaml
+backup_status_port: 8091     # http://<host>:8091
+```
+
+ The container mounts the repository, logs and password file read-only, so it cannot write to or remove a backup.
 
 ## Offline copy on a second drive
 
