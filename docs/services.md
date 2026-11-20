@@ -105,7 +105,7 @@ copyparty_folders:
 - **Name:** letters, digits, `-` and `_`, with `/` between levels (`services/pics/photos`). The first level is not `drives` or `shares`.
 - **Parent folders:** `/services` and `/services/pics` open read-only and list their children, for the logins named in the children's `access` and the admins.
 - **`root: true`:** serves that folder at `/` instead of `/<name>`. Only one folder may have it, and not a pics folder. A folder inside it named like another folder, `shares` or `drives` is hidden.
-- **`dir`:** an absolute path on the host, created by the deploy. Default `<copyparty_shared_dir>/<name>` on the `primary` drive. Keep it on the `primary` or `fast` drive: the local backup covers those.
+- **`dir`:** an absolute path on the host, created by the deploy. Default `<copyparty_shared_dir>/<name>` on the `primary` drive (`shared/` holds your own files). An app's folder sets `dir` to the app's own data folder under `appdata/`, so `shared/` stays yours. Keep it on the `primary` or `fast` drive: the local backup covers those.
 - **Names in the vault:** write `access: "{{ vault_copyparty_collab_access }}"` and put the mapping in the vault. The tracked file then holds no user names.
 - **No `d` for an app:** without `d`, Copyparty also refuses to overwrite a file.
 - **Your own list replaces the default whole:** write `files: {}` in it to keep the admins' folder.
