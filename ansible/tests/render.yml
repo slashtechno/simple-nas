@@ -85,7 +85,7 @@
     - name: Find every role's and plugin's defaults and templates
       ansible.builtin.find:
         paths: ["{{ repo }}/roles", "{{ repo }}/plugins", "{{ repo }}/plugin-template", "{{ repo }}/tests/fixture-plugin"]
-        patterns: ["main.yml", "defaults.yml", "service.yml", "*.j2"]
+        patterns: ["main.yml", "defaults.yml", "service.yml", "*.j2", "vars.yml.example", "vault.yml.example"]
         recurse: true
       register: found_all
 
@@ -101,6 +101,8 @@
           {{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template|tests/fixture-plugin)/defaults[.]yml$') | sort }}
         plugin_service_files: >-
           {{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template|tests/fixture-plugin)/service[.]yml$') | sort }}
+        plugin_example_files: >-
+          {{ found.files | map(attribute='path') | select('search', '/(plugins/[^/]+|plugin-template|tests/fixture-plugin)/v[a-z]+[.]yml[.]example$') | sort }}
         shared_defaults_files: "{{ query('ansible.builtin.fileglob', repo ~ '/group_vars/all/*.yml') | select('search', shared_defaults_regex) | sort }}"
 
     # A glob that silently matches nothing would make this whole test pass while testing nothing.
@@ -122,7 +124,7 @@
               repo + '/group_vars/all/services.yml',
               repo + '/host_vars/vars.yml.example',
               repo + '/host_vars/vault.yml.example',
-              repo + '/group_vars/all/vault.yml.example'] }}
+              repo + '/group_vars/all/vault.yml.example'] + plugin_example_files }}
 
     # What `just plugins` would put in plugin_services: the template plugin and the plugins kept in this repo.
     - name: Add the plugins' entries to the services
@@ -147,7 +149,7 @@
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
         # one list of logins: the admin and the people and the app have a password, owner signs in through Tinyauth only
-        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}] }}"
+        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}, {'user': 'pics', 'pass': 'app-login-password'}] }}"
         # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
         copyparty_folders:
           files: {root: true, access: {friend2: r}}
@@ -344,10 +346,13 @@
       loop_control:
         label: "{{ item.key }}"
 
-    # The expected keys are written out by hand, so a dump_required dropped from an entry by mistake fails here; update them when one is added.
+    # The built-in expected keys are written out by hand, so a dump_required dropped from an entry by mistake fails here; update
+    # them when one is added. A plugin's own entries are not listed: a fork may delete the bundled ones.
     - name: Only the enabled services that need a dump are in dump_service_keys
       ansible.builtin.assert:
-        that: dump_service_keys | sort == (['garage', 'gitea', 'immich'] | select('in', enabled_service_keys) | list | sort)
+        that: >-
+          dump_service_keys | select('in', core_services | map(attribute='key')) | sort
+          == (['garage', 'gitea', 'immich'] | select('in', enabled_service_keys) | list | sort)
         fail_msg: dump_service_keys must be the enabled entries with dump_required in services.yml; update the list in tests/render.yml
         quiet: true
 

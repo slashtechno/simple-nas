@@ -265,7 +265,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 ### How an app joins
 
-How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). Crafty has none, so behind Tinyauth you sign in twice ([Crafty](../ansible/plugins/crafty/README.md)). Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
+How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). Crafty has none, so behind Tinyauth you sign in twice (Crafty, a bundled plugin). Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
 
 ## Dozzle: container logs
 

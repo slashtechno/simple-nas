@@ -30,7 +30,7 @@
 #                tinyauth       its own login plus "sign in with Tinyauth" (OIDC); the app's own accounts decide who
 #                               enters (Gitea, Immich). Needs oidc and oidc_secret.
 #                tinyauth_users the same, but the app lets in only the users in service_users.<key>, which its role must
-#                               hand over (pics' env file). Tinyauth cannot limit an OIDC client. Needs oidc and oidc_secret.
+#                               hand over (a plugin's settings file). Tinyauth cannot limit an OIDC client. Needs oidc and oidc_secret.
 #              Copyparty's web address joins the login page with copyparty_sso_enabled. A fixed port has no Caddy name,
 #              so no login page either.
 #   oidc_secret

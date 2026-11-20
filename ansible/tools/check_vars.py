@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Checks that keep the example files honest. Standard library only.
 
-  - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example,
+  - every `vault_*` name used in roles/ or group_vars/ appears in a vault.yml.example (a plugin's own counts),
   - no setting is written in two of the files that hold defaults (the later file would silently win),
   - every file in group_vars/all/ is a known one (defaults.yml, defaults-<topic>.yml, vars, vault, derived, services, versions, plugins),
   - every shared defaults file in group_vars/all/ sorts before vars.yml (the later file wins), and no version is set in vars.yml,
-  - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example.
+  - every setting with no default (`undef(hint=...)`) appears in group_vars/all/vars.yml.example, or in the vars.yml.example of its plugin.
+  A plugin's own vault.yml.example holds the vault names it uses.
 """
 import re
 import sys
@@ -27,6 +28,8 @@ for path in sorted((ANSIBLE / "group_vars/all").glob("*.yml")):
     if path not in SHARED and path.name not in NOT_DEFAULTS:
         problems.append(f"{path.relative_to(ANSIBLE)} is not a known file; shared defaults are in defaults.yml or defaults-<topic>.yml")
 
+# A plugin may ship its own vars.yml.example and vault.yml.example, shaped like the core ones; its names count as documented.
+VAULT_EXAMPLES += [d / "vault.yml.example" for d in PLUGIN_DIRS if (d / "vault.yml.example").exists()]
 documented = set()
 for path in VAULT_EXAMPLES:
     documented |= set(re.findall(r"^(vault_[a-z0-9_]+):", path.read_text(), re.M))
@@ -45,6 +48,9 @@ for path in sources:
         problems.append(f"{name} is used in {path.relative_to(ANSIBLE)} but is in no vault.yml.example")
 
 example_keys = set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", VARS_EXAMPLE.read_text(), re.M))
+for d in PLUGIN_DIRS:
+    if (d / "vars.yml.example").exists():
+        example_keys |= set(re.findall(r"^#?\s*([a-z][a-z0-9_]*):", (d / "vars.yml.example").read_text(), re.M))
 # Ansible loads group_vars/all/*.yml in name order and the later file wins. A shared defaults file sorting after
 # vars.yml would override the owner's values, so each must sort before it.
 GROUP_ALL = ANSIBLE / "group_vars/all"

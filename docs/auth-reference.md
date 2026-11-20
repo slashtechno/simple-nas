@@ -68,8 +68,8 @@ Do not give an `email` to someone whose GitHub login equals another user's name:
 
 OIDC (OpenID Connect) is the login standard most apps support. The app sends your browser to Tinyauth, and Tinyauth tells the app who you are. The app never sees your password. One Tinyauth login then opens Gitea, Immich and pics, and each keeps its own accounts and permissions.
 
-1. Set `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` to `true` in the host's `vars.yml`. Each needs `tinyauth_enabled` and `caddy_enabled`.
-2. Check the vault holds `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and `vault_pics_oidc_secret`. `just setup <host>` adds them: rerun it if they are missing.
+1. Set `gitea_sso_enabled`, `immich_sso_enabled` or a plugin's `<key>_sso_enabled` (pics) to `true` in the host's `vars.yml`. Each needs `tinyauth_enabled` and `caddy_enabled`.
+2. Check the vault holds `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and the plugin's (`vault.yml.example` in its folder). `just setup <host>` adds them: rerun it if they are missing.
 3. Run `just deploy tinyauth,gitea,immich,pics --limit <host>`.
 
 To change a secret, put a new value in the vault and run the same deploy. Each role writes the secret to its app, so do not edit it in the app.

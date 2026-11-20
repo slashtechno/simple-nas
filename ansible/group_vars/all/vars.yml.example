@@ -17,9 +17,5 @@ cloudflare_zones:
 # Plugins from git (docs/writing-a-plugin.md#from-a-git-repository); a plugin kept in ansible/plugins/ needs no entry.
 # plugins:
 #   - {key: myservice, location: "https://git.example.com/you/myservice", commit: "0123456789abcdef0123456789abcdef01234567", auth: vault_myservice_repo_token}
-# pics (plugins/pics/README.md): the private GitHub repo it builds from and its public guest URL.
-pics_repo: owner/lab
-pics_commit: "0123456789abcdef0123456789abcdef01234567"
-pics_public_url: "https://photos.example.com"
 # Who may use a service (docs/auth-reference.md#who-may-use-what), e.g. {dozzle: [you]}.
 service_users: {dozzle: [you]}

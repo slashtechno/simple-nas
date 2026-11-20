@@ -1,0 +1,9 @@
+---
+# The values pics needs in group_vars/all/vars.yml (every host) or a host's vars.yml. Each setting is described in defaults.yml
+# and defaults/main.yml.
+
+# The private GitHub repository (owner/name) pics builds from, and the exact commit of it to build (the full 40-character hash).
+pics_repo: owner/lab
+pics_commit: "0123456789abcdef0123456789abcdef01234567"
+# The public address of the guest pages: the Cloudflare hostname that points at pics_public_port.
+pics_public_url: "https://photos.example.com"

@@ -102,7 +102,10 @@ def main():
         print(f"Created {host_vars.relative_to(ANSIBLE)}: set the drives and switch on the services you want.")
 
     manual_all = []
-    for vault_file, example in (GROUP_VAULT, (host_dir / "vault.yml", HOST_VAULT_EXAMPLE)):
+    # A plugin's secrets go in the host's vault too: the plugins in plugins/ and the ones `just plugins` fetched.
+    plugin_examples = sorted(ANSIBLE.glob("plugins/*/vault.yml.example")) + sorted(ANSIBLE.glob("plugins/.fetched/*/vault.yml.example"))
+    for vault_file, example in (GROUP_VAULT, (host_dir / "vault.yml", HOST_VAULT_EXAMPLE),
+                                *[(host_dir / "vault.yml", e) for e in plugin_examples]):
         added, manual, had_file = fill(vault_file, example)
         shown = vault_file.relative_to(ANSIBLE)
         if added:
