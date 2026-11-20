@@ -27,6 +27,12 @@ Teardown, the backup, the Caddy name and the Homepage tile all read it. Settings
 | `icon` | A name from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons), or `mdi-<name>` from [Material Design Icons](https://pictogrammers.com/library/mdi/). An entry with an `icon` has a Homepage tile and a Caddy name. |
 | `description` | The line under the Homepage tile's name. |
 
+`oidc` for an app served at `<key>_subdomain` under every private domain, whose login returns to `/auth/callback`:
+
+```yaml
+oidc: "{{ caddy_private_domains | map('regex_replace', '^', 'https://' ~ example_subdomain ~ '.') | map('regex_replace', '$', '/auth/callback') | list }}"
+```
+
 ## Variables a plugin can use
 
 Settings of this repo, available in tasks, templates and the entry:

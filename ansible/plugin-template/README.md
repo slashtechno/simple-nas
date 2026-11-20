@@ -6,4 +6,4 @@ Copy this folder to `ansible/plugins/<key>/` and rename `example` to your key in
 - a Copyparty login and its folders, a Cloudflare tunnel entry, `service_users` (nothing in a plugin names a person);
 - every data folder that moved and every setting that was renamed, so an upgrade does not lose data silently.
 
-Optional files a plugin adds when it needs them: `files/` (copied as they are, such as `dump.sh`), `handlers/`, `vars.yml.example`, `vault.yml.example`.
+Optional files a plugin adds when it needs them (the two `.example` files here show the format): `files/` (copied as they are, such as `dump.sh`), `handlers/`, `vars.yml.example`, `vault.yml.example`.
