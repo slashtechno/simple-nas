@@ -27,6 +27,19 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 | `vault.yml.example` | Every `vault_` name the plugin uses, with a comment and a placeholder; `just setup <host>` fills the random ones into the host's vault (for a plugin from git, run `just plugins` first). `just check` fails if a name is missing. |
 | `README.md` | What an operator must do by hand (below), and every moved data folder or renamed setting. |
 
+The two defaults files differ in who reads them. A setting with no default fails the deploy with its hint until the owner sets it (and sits, uncommented, in `vars.yml.example`):
+
+```yaml
+# defaults.yml: read by the rest of the repo
+example_enabled: false
+example_port: 8200
+example_subdomain: example
+example_data_dir: "{{ fast_appdata_dir }}/example"
+
+# defaults/main.yml: read only by this plugin's tasks
+example_url: "{{ undef(hint='Set example_url (https://example.com) in group_vars/all/vars.yml') }}"
+```
+
 ## Recipes
 
 Each bullet is what a plugin of that kind adds to the template's tasks. The fields it sets are in [plugin-reference.md](./plugin-reference.md#the-service-entry).
@@ -52,7 +65,7 @@ Each bullet is what a plugin of that kind adds to the template's tasks. The fiel
     name: git_clone
   vars:
     git_clone_url: "https://github.com/{{ example_repo }}.git"
-    git_clone_dest: "{{ services_dir }}/example/src"
+    git_clone_dest: "{{ services_dir }}/example/src"   # compose: build: {context: ./src}, or ./src/<folder> for a repository of several projects
     git_clone_version: "{{ example_commit }}"       # a full commit hash
     git_clone_token: "{{ vault_example_repo_token }}"   # optional: a private repository; sent as a header, never stored
 
@@ -100,9 +113,23 @@ ALERT_TOKEN={{ alert_targets.example.token }}
 
 These are the same for a built-in service. List the ones that apply in the plugin's README, with the exact names:
 
-- A Cloudflare tunnel entry (`cloudflared_ingress`) for a public hostname, and its DNS.
-- Copyparty, for an app that reads or writes files there: give it a login and a folder. The login's password is a vault variable, and the operator adds an entry to `vault_copyparty_accounts` with that name. The folder is an entry in `copyparty_folders`, whose `dir` is the plugin's data folder or a part of it, and whose `access` names the login ([services.md](./services.md#copyparty-folders-and-logins)); name the folders and the access in the README.
 - `service_users.<key>` for a plugin with `login: tinyauth_users`, and the vault values.
+
+Example of the three, in the host's `vars.yml` and vault (`<key>` is `example`; a plugin's folders are `services/<key>/<name>` in Copyparty):
+
+```yaml
+cloudflared_ingress:                           # a public hostname (and its DNS: services.md#cloudflare-add-a-public-hostname)
+  - hostname: example.example.com
+    service: "http://example:8200"
+copyparty_folders:                             # the app reads and writes files in Copyparty
+  services/example/files: {dir: "{{ example_files_dir }}", access: {example: rwm}}
+service_users: {example: [alice]}              # who may open an app with login: tinyauth_users
+```
+
+```yaml
+vault_copyparty_accounts:                      # the login the app signs in to Copyparty with
+  - {user: example, pass: "{{ vault_example_copyparty_password }}"}
+```
 
 A plugin fetched from git is not rendered by `just check`: `just preview` is its check. A plugin kept in `ansible/plugins/` is rendered with example values, with `<key>_sso_enabled` and `<key>_alert_to` off, so `just check` says nothing about those branches: turn them on in `just preview` on a host before you trust them.
 
@@ -135,6 +162,7 @@ plugins:
 | `path` | Optional. The folder inside the repository that holds the plugin, for a repository with several. Without it the repository root is the plugin. |
 | `auth` | Optional. The name of a vault variable (in `group_vars/all/vault.yml`) holding an access token for a private repository. It is sent as a header, never stored in `.git/config`. For a forge that wants a particular user name, put it in the address: `https://alice@host/...`. |
 
+- `could not read Username` from `just plugins` means the repository is private and the token is missing, wrong or expired: git shows the same message for each. Tested against a Gitea server on a non-default port.
 - `just plugins` fetches every entry again (and `just deploy`, `preview` and `teardown` run it first), so the network is needed. It prints each plugin's source and commit.
 - A plugin kept in `ansible/plugins/` needs no entry and no commit: its files are in your repo, and git history is its pin. A key in both places is refused, so to use your own copy of a fetched plugin, remove the entry.
 - A copy of this repo keeps your `vars.yml`, including this list: [ansible/README.md](../ansible/README.md#using-this-repo-for-your-own-hosts).

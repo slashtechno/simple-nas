@@ -1,4 +1,5 @@
 ---
 # The values the owner must set in group_vars/all/vars.yml (every host) or a host's vars.yml: every setting of this plugin that has
-# no default (its defaults use undef(hint=...)). Delete this file if there are none. `just check` fails if a setting is missing here.
+# no default (its defaults use undef(hint=...)). Delete this file if there are none. `just check` needs a value for each such
+# setting and reads it from here, so write each one uncommented, with an example value.
 # example_url: "https://example.com"

@@ -33,7 +33,7 @@
           The plugins entry {{ item }} is wrong. It needs key (lower-case letters, digits and _), location (an https git
           address) and commit (the full 40-character hash in quotes, never a tag or branch: those can be moved), and may have
           path (a folder inside the repository, not leaving it)
-          and auth (the name of a vault variable that holds a token, which must be in the vault). Nothing else is allowed
+          and auth (the name of a vault variable that holds a token; it must exist and not be empty). Nothing else is allowed
           (docs/writing-a-plugin.md#from-a-git-repository). Get a hash with: git ls-remote <location> <tag or branch>.
         quiet: true
       loop: "{{ plugins }}"

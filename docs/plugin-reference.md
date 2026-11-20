@@ -4,6 +4,23 @@ The fields of a service entry (`service.yml` in a plugin, an item of `core_servi
 
 ## The service entry
 
+A web app with data, a database folder the backup skips in part, and a Tinyauth login:
+
+```yaml
+name: Example
+key: example
+compose: example
+data: [example_data_dir]                 # setting names, declared in defaults.yml
+no_backup_in: {example_data_dir: cache}  # a folder inside it the backup leaves out
+container: example
+container_port: 8000
+icon: mdi-application                    # an icon gives a Homepage tile and a Caddy name
+description: What it does
+login: tinyauth
+oidc_secret: vault_example_oidc_secret
+oidc: "{{ caddy_private_domains | map('regex_replace', '^', 'https://' ~ example_subdomain ~ '.') | map('regex_replace', '$', '/auth/callback') | list }}"
+```
+
 Teardown, the backup, the Caddy name and the Homepage tile all read it. Settings that differ per host (`<key>_port`, data folder paths) are not in it: they are plain settings in `defaults.yml`, and the entry names them.
 
 | Field | Meaning |
@@ -21,7 +38,7 @@ Teardown, the backup, the Caddy name and the Homepage tile all read it. Settings
 | `oidc_secret` | The name of the vault variable holding the app's Tinyauth client secret. Required with `login: tinyauth` or `tinyauth_users`, and only then. |
 | `oidc` | The redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them (an app that sends the address it was opened on needs one per address). An entry with `oidc` is a Tinyauth client (id: its key, name: its name) on a host with `<key>_sso_enabled`. The id is part of the account id the app stores, so changing it orphans every linked account. The app's own side repeats the id and the URI: change both together. |
 | `port` | A fixed host port, for a service whose port is not ours to set (one on the host network). Such a service has no `<key>_port`, no `<key>_subdomain` and no Caddy name. |
-| `container`, `container_port` | What Caddy proxies to on the `services` network. A web service needs both, an `icon`, and `<key>_port` and `<key>_subdomain` in `defaults.yml`. |
+| `container`, `container_port` | What Caddy proxies to on the `services` network: one port. (A second port, such as a public one for a tunnel, goes in `cloudflared_ingress`: `service: http://<container>:<port>`.) A web service needs both, an `icon`, and `<key>_port` and `<key>_subdomain` in `defaults.yml`. |
 | `tile_url` | The name of a setting (not an address) holding the address the Homepage tile links to, when the sign-in has to start there instead of on the Caddy name. |
 | `scheme` | `http` unless set; `https` means the container serves a self-signed certificate, which Caddy accepts. |
 | `icon` | A name from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons), or `mdi-<name>` from [Material Design Icons](https://pictogrammers.com/library/mdi/). An entry with an `icon` has a Homepage tile and a Caddy name. |
