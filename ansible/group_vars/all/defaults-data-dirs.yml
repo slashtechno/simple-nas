@@ -79,5 +79,3 @@ garage_meta_dir: "{{ fast_appdata_dir }}/garage/meta"
 # Garage's object blocks, plain files.
 garage_blocks_dir: "{{ primary_appdata_dir }}/garage/data"
 
-# Crafty's servers, worlds and configuration.
-crafty_data_dir: "{{ primary_appdata_dir }}/crafty"

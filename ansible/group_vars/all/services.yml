@@ -79,9 +79,6 @@ core_services:
                | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_data_dir],
      port: 8581, icon: homebridge, description: HomeKit}
-  # Crafty's own backup archives (backups/) dedupe badly and would grow the repo; the live servers/ copy is still backed up.
-  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir], no_backup_in: {crafty_data_dir: backups},
-     container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
   # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
   - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}

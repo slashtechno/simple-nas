@@ -202,12 +202,6 @@
       tags: [pics]
       when: pics_enabled | bool
 
-    - name: Deploy crafty
-      ansible.builtin.import_role:
-        name: crafty
-      tags: [crafty]
-      when: crafty_enabled | bool
-
     - name: Deploy dockge
       ansible.builtin.import_role:
         name: dockge

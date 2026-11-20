@@ -42,9 +42,6 @@ backup_status_port: ""
 # The Homepage start page: no login of its own. Behind Tinyauth by default; a host without Tinyauth must set a port and accepts that anyone on the network can open it.
 homepage_port: ""
 
-# Crafty's panel (HTTPS); the container always listens on 8443.
-crafty_port: 28443
-
 # With caddy_private_domains set, Caddy serves each service switched on at https://<name>.<private domain>
 # (docs/caddy-reference.md#names-for-apps-caddy_private_domains). Set one to "" and that service gets no name.
 # Immich's name.
@@ -66,9 +63,6 @@ gitea_root_url: >-
 
 # pics' owner pages.
 pics_subdomain: pics
-
-# Crafty's panel.
-crafty_subdomain: crafty
 
 # Dockge's name.
 dockge_subdomain: dockge

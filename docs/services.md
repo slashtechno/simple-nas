@@ -42,7 +42,6 @@ The `common` role runs on every host. It:
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
 | [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/git_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_pics_repo_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
 | [Garage](#garage-s3) | S3-compatible object storage | `roles/garage` | `fast` and `primary` drive roles, a Caddy name, `tinyauth_enabled`, `vault_garage_rpc_secret`, `vault_garage_admin_token` |
-| [Crafty](#crafty-minecraft-servers) | Minecraft servers | `roles/crafty` | `primary` drive role, RAM headroom |
 | [ntfy](#ntfy-failure-alerts) | Push alerts for failed backups | `roles/ntfy` | `fast` drive role, `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` |
 | [Tinyauth](#tinyauth-login) | Login page in front of browser-only services | `roles/tinyauth` | `fast` drive role, a Caddy name, `vault_tinyauth_users` |
 | [Dozzle](#dozzle-container-logs) | Container logs in a browser | `roles/dozzle` | `fast` drive role, a Caddy name, `tinyauth_enabled` |
@@ -284,7 +283,7 @@ It cannot report the host being down or a backup that never started (cron not ru
 
 ### How an app joins
 
-How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). Crafty has none, so behind Tinyauth you sign in twice ([Crafty](#crafty-minecraft-servers)). Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
+How an app gets past its own login, for this repo's services and your own, is in [Protect an app of your own](./auth-reference.md#protect-an-app-of-your-own). Dockge's switch is under [Ad-hoc app platform](#ad-hoc-app-platform). Crafty has none, so behind Tinyauth you sign in twice ([Crafty](../ansible/plugins/crafty/README.md)). Every deploy sets an app's own login in both directions: turning Tinyauth off, or publishing a port again, brings the app's own login back.
 
 ## Dozzle: container logs
 
@@ -321,16 +320,6 @@ Set `garage_enabled: true`, fill in `vault_garage_rpc_secret` and `vault_garage_
 - The web UI is at `https://garage.<private domain>` (create buckets and access keys there). It holds Garage's admin token, so it has no host port and no tunnel name: never point a `cloudflared_ingress` entry at `garage-webui`. Any container on the `services` network can reach it.
 - Apps connect to the hostname of the `garage-cors-proxy` container's `cloudflared_ingress` entry, with region `garage` and the key pair from the UI. The S3 API also answers on the host at `garage_s3_port` (3900, LAN and tailnet) through the `garage-cors-proxy` container.
 - Garage's metadata is root-owned, so the backup carries it as a dump (`garage-meta-*.tar.gz`): [Restore: Garage](./backups.md#restore-garage).
-
-## Crafty (Minecraft servers)
-
-One container runs every server. All data is under `crafty_data_dir` (`appdata/crafty` on the primary drive: `servers/ backups/ logs/ config/ import/`).
-
-- Panel: `https://<host-ip>:28443` (`crafty_port`, self-signed certificate). The first admin password is in `<crafty_data_dir>/config/default-creds.txt` (Crafty makes it and has no setting for it). Behind Tinyauth it is the second login, so change it in the panel to something short, then delete the file.
-- Each server needs a port inside `crafty_mc_ports` (default 25565-25575). Set it when creating the server.
-- `crafty_memory_limit` caps all servers combined. On a Raspberry Pi Docker enforces it once the memory cgroup is on ([memory.md](./memory.md#memory-limits)). It competes with Immich on a small host: size the two so they leave room for the rest.
-- Not behind Cloudflare Tunnel: players join over the LAN, a router port-forward of the game port, or Tailscale. Docker publishes the panel and game ports on all interfaces, so do not forward the panel port.
-- The live `servers/` directory is in the daily backup. Crafty's own `backups/` archives are not ([backups.md](./backups.md#what-is-backed-up-where)).
 
 ## Homebridge
 

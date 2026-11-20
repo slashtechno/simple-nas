@@ -45,9 +45,6 @@ pics_sso_enabled: false
 # Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
 garage_enabled: false
 
-# Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).
-crafty_enabled: false
-
 # ntfy push-notification server (docs/services.md#ntfy-failure-alerts).
 ntfy_enabled: false
 

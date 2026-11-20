@@ -17,7 +17,7 @@ homebridge_enabled: true
 cloudflared_enabled: true
 pics_enabled: true
 garage_enabled: true    # needs post-deploy init (see docs/services.md#garage-s3)
-crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see docs/services.md#crafty-minecraft-servers
+crafty_enabled: true   # Minecraft server manager (Crafty Controller); needs RAM headroom, see ansible/plugins/crafty/README.md
 # No second copy of any video: Immich is a mirror and photo dump here, and the copies were 38 GB of HDR phone video.
 immich_transcode_policy: disabled
 # A backlog of smart search or face detection can otherwise take all the RAM (docs/memory.md#memory-limits).

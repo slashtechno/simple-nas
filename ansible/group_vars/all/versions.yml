@@ -19,9 +19,6 @@ garage_image: dxflrs/garage:v2.4.1
 garage_caddy_image: "caddy:{{ caddy_version }}-alpine"
 garage_webui_image: khairul169/garage-webui:1.1.0
 
-# Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
-crafty_image: registry.gitlab.com/crafty-controller/crafty-4:4.11.0
-
 # Gitea and its runner: https://github.com/go-gitea/gitea/releases
 gitea_image: gitea/gitea:1.27.3
 gitea_runner_image: docker.io/gitea/act_runner:0.6.1
