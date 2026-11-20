@@ -81,6 +81,19 @@ Each bullet is what a plugin of that kind adds to the template's tasks. The fiel
     build: "{{ 'always' if git_clone_result.before != git_clone_result.after else 'policy' }}"
 ```
 
+A plugin kept in the app's own repository (a `path` in its [`plugins` entry](#from-a-git-repository)) builds from the repository it was fetched from, so one entry pins both. The tasks read that entry instead of `example_repo` and `example_commit`:
+
+```yaml
+- ansible.builtin.include_role:
+    name: git_clone
+  vars:
+    example_source: "{{ plugins | selectattr('key', 'equalto', 'example') | first }}"
+    git_clone_url: "{{ example_source.location }}"
+    git_clone_dest: "{{ services_dir }}/example/src"
+    git_clone_version: "{{ example_source.commit }}"
+    git_clone_token: "{{ lookup('ansible.builtin.vars', example_source.auth) if example_source.auth is defined else '' }}"
+```
+
 **A live database.** Its file copy can be torn, so it is not a backup. Set `dump_required: true` and install a script the backup runs with the dump directory as `$1`; it keeps the last 3 files named `<compose>-*`, and the deploy stops if the script is missing:
 
 ```yaml
@@ -162,7 +175,7 @@ plugins:
 | `path` | Optional. The folder inside the repository that holds the plugin, for a repository with several. Without it the repository root is the plugin. |
 | `auth` | Optional. The name of a vault variable (in `group_vars/all/vault.yml`) holding an access token for a private repository. It is sent as a header, never stored in `.git/config`. For a forge that wants a particular user name, put it in the address: `https://alice@host/...`. |
 
-- `could not read Username` from `just plugins` means the repository is private and the token is missing, wrong or expired: git shows the same message for each. Tested against a Gitea server on a non-default port.
+- `could not read Username` from `just plugins` means the repository is private and the token is missing, wrong or expired: git shows the same message for each.
 - A fetched plugin stays in `ansible/plugins/.fetched/` until its entry (commit, location or path) changes, so only a new or changed one needs the network. `just plugins` runs the same step alone and prints each plugin's source and commit.
 - A plugin kept in `ansible/plugins/` needs no entry and no commit: its files are in your repo, and git history is its pin. A key in both places is refused, so to use your own copy of a fetched plugin, remove the entry.
 - A copy of this repo keeps your `vars.yml`, including this list: [ansible/README.md](../ansible/README.md#using-this-repo-for-your-own-hosts).
