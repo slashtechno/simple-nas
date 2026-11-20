@@ -1,0 +1,17 @@
+---
+# Your role runs as root on the host, so read a third party's before you list it. A plugin is a role: the tasks here are
+# ordinary Ansible. Most services only need their folders created and compose_service run.
+- name: Create the Example data directory
+  ansible.builtin.file:
+    path: "{{ example_data_dir }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+# Renders templates/docker-compose.yml.j2 of this plugin and starts it; recreates the container when the file changed.
+- name: Deploy Example
+  ansible.builtin.import_role:
+    name: compose_service
+  vars:
+    compose_service_name: example

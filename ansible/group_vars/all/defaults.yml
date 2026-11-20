@@ -23,6 +23,11 @@ encrypted_folders: []
 # (explained in host_vars/vars.yml.example).
 drives: []
 
+# The plugins fetched from git: each entry's fields are in docs/writing-a-plugin.md#from-a-git-repository. The owner sets the
+# list in group_vars/all/vars.yml (vars.yml.example shows it), for every host, never in host_vars. A plugin kept in ansible/plugins/
+# needs no entry.
+plugins: []
+
 # false: plugged-in drives are read-only. true: Copyparty can change and delete files on them.
 usb_automount_writable: false
 
@@ -64,14 +69,14 @@ encryption_hooks_dir: "{{ scripts_dir }}/after-unlock.d"
 
 # The folders Copyparty serves, for people and apps alike: {name: {dir, access, root}}. Each is served at /<name>, and / lists the folders a login may open.
 # One folder may have root: true: it is served at / instead. A folder inside it named like another folder, shares or drives is hidden.
-# dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>, so services/pics/photos is <copyparty_shared_dir>/services/pics/photos). access is {login: permissions}, where a login is a user
+# dir is the folder on the host (created; default: <copyparty_shared_dir>/<name>, so services/myapp/photos is <copyparty_shared_dir>/services/myapp/photos). access is {login: permissions}, where a login is a user
 # of vault_copyparty_accounts (or * for everyone, @acct for every login) and permissions are letters: A everything, or r read, w write, m move, d delete (g, G, h and a: see Copyparty's docs).
-# Every admin has full access to every folder. A name is letters, digits, - and _, with / between levels (services/pics/photos; the parent opens read-only and lists its children). The first level is not drives or shares. The default is one folder for
+# Every admin has full access to every folder. A name is letters, digits, - and _, with / between levels (services/myapp/photos; the parent opens read-only and lists its children). The first level is not drives or shares. The default is one folder for
 # the admins' files; a host's own value replaces it whole. {} serves no folder. Example:
 #   copyparty_folders:
 #     files: {}
 #     collab: {access: {friend1: rwmd}}
-#     services/pics/photos: {dir: "{{ pics_photos_dir }}", access: {pics: rwm}}
+#     services/myapp/photos: {dir: "{{ myapp_photos_dir }}", access: {myapp: rwm}}
 copyparty_folders:
   files: {}
 
@@ -90,8 +95,6 @@ ntfy_destinations: {}
 system_alert_to: ""
 # Scrutiny's drive alerts.
 scrutiny_alert_to: ""
-# The pics app's drive alerts.
-pics_alert_to: ""
 # The locked-folder alert after a reboot (unlock.sh).
 unlock_alert_to: ""
 # Folder on the host with one token file per alert that alert.sh sends (named after the sender). Here because teardown.yml removes
@@ -104,5 +107,5 @@ cloudflared_token_file: "{{ services_dir }}/cloudflared/token"
 
 # Who may use a service: {service key: [Tinyauth user names]}. A service not listed is open to every user in
 # vault_tinyauth_users; which services accept a list is in docs/auth-reference.md#who-may-use-what.
-# Example: {dozzle: [alice], pics: [alice, bob]}
+# Example: {dozzle: [alice], myapp: [alice, bob]}
 service_users: {}

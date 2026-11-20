@@ -47,7 +47,12 @@ nmcli device wifi list         # networks the host can see right now
 - If `/etc/cloud/cloud.cfg.d` exists, writes `99-disable-network-config.cfg` (`network: {config: disabled}`). That stops cloud-init from rewriting the network config later. Raspberry Pi Imager and Ubuntu's Raspberry Pi images use cloud-init, which configures a machine at first boot.
 - Sets up the direct Ethernet link when `direct_link_enabled` is true.
 - Does not edit `/etc/netplan/90-NM-*.yaml`, which NetworkManager generates.
-- The direct link uses whichever network stack the host runs. With NetworkManager (Raspberry Pi OS, Ubuntu Desktop) it is an `nmcli` profile named `direct-link` with a higher autoconnect priority than the installer's. Without it (Ubuntu Server, which configures the network with netplan, Ubuntu's network config files) it is `/etc/netplan/60-direct-link.yaml`. That file overrides the port's DHCP from the installer's file, and the deploy runs `netplan apply` to load it. A host with neither stops with a message.
+- The direct link uses whichever network stack the host runs; a host with neither stops with a message:
+
+  | Host | The link is | Notes |
+  |---|---|---|
+  | NetworkManager (Raspberry Pi OS, Ubuntu Desktop) | an `nmcli` profile `direct-link` | higher autoconnect priority than the installer's |
+  | netplan (Ubuntu Server) | `/etc/netplan/60-direct-link.yaml` | overrides the port's DHCP from the installer's file; the deploy runs `netplan apply` |
 
 </details>
 

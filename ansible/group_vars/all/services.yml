@@ -1,52 +1,15 @@
 ---
-# One entry per service this repo deploys; the roles that are not a service are not listed (the render test names them). To add a service, add an entry here; README's
-# "Add a new service" lists the other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain,
-# the data directories in defaults-data-dirs.yml): a list is replaced whole by a host, so keep values out of it.
-#   key        the prefix of the service's settings: <key>_enabled switches it on, <key>_port is its host port and
-#              <key>_subdomain its name under the private domain. The role is roles/<key>.
-#   compose    the service's directory under services_dir (also its compose project). Teardown removes it.
-#   data       names of the settings that hold the service's data directories (not the paths: a path needs the host's
-#              drives, and a host without them still reads this list). With backup_local_enabled the deploy fails unless
-#              the local backup covers them; the offsite notice names them, and teardown deletes them with remove_data=true.
-#              Consumers turn the names into paths with query('ansible.builtin.vars', ...). An empty string is
-#              skipped, so "{{ 'x_dir' if x_enabled | bool else '' }}" makes a directory conditional.
-#   no_backup  setting names of directories teardown deletes but the backup leaves out on purpose
-#              (restic-excludes-services.txt.j2)
-#   no_backup_in
-#              {setting name: folder}: a folder inside a data directory that the backup leaves out on purpose (it is
-#              made again). Write the reason in a comment by the entry.
-#   keep       setting names of directories the backup must cover but teardown never deletes (the owner's files)
-#   dump_required
-#              true when the backup's file copy of the live database is not the copy to restore (it is left out, or it
-#              is copied torn while running). The dump script the role installs is then the only copy, so the deploy
-#              fails if it is missing
-#   oidc_secret
-#              the name of the vault variable holding the app's Tinyauth client secret; required with oidc
-#   oidc       the redirect URIs the app returns to after a Tinyauth login, full addresses, exactly as the app sends them
-#              (an app that sends the address it was opened on gets one per address it is opened at: immich_extra_origins, pics_extra_origins).
-#              An entry with oidc is a Tinyauth client (id: its key, name: its name, secret: oidc_secret) on
-#              a host that has <key>_sso_enabled (docs/auth-reference.md#sign-in-with-tinyauth-oidc). The id is part
-#              of the account id the app stores, so changing it orphans every linked account. The app's own side
-#              repeats the id and the URI (pics' env file, Immich's settings in roles/immich/tasks/main.yml): change both together.
-#   Web UI fields (an entry with an icon has a Homepage tile and a Caddy name):
-#   port       a fixed host port, for a service whose port is not ours to set (Homebridge runs on the host
-#              network); such a service has no <key>_port, no <key>_subdomain and no Caddy name
-#   container, container_port
-#              what Caddy proxies to on the services network
-#   tile_url   the name of a setting (not an address) that holds the address the Homepage tile links to, when the
-#              service's sign-in has to start there instead of on its Caddy name (Gitea: gitea_root_url).
-#   scheme     http unless set; https means the container serves a self-signed certificate, which Caddy accepts
-#   own_login  true when Tinyauth must not sit in front of the Caddy name, because the service's clients cannot sign in
-#              through a web page (apps, git, WebDAV, push) or it is the login itself; Copyparty's web address is
-#              behind it with copyparty_sso_enabled. Every other web service is behind Tinyauth on a host that has
-#              tinyauth_enabled, even one with a login page of its own (Crafty).
-#   icon       a name from https://github.com/homarr-labs/dashboard-icons, or mdi-<name> from https://pictogrammers.com/library/mdi/
-services:
+# One entry per service this repo deploys; the roles that are not a service are not listed (the render test names them). This list is
+# the built-in services; plugins (docs/writing-a-plugin.md) add their own entries, and derived.yml joins the two as `services`.
+# Every field is explained in docs/plugin-reference.md. To add a service here, add an entry; README's "Add a new service" lists the
+# other steps. Per-host tuning stays in plain settings (<key>_port, <key>_subdomain, the data directories in defaults-data-dirs.yml):
+# a list is replaced whole by a host, so keep values out of it.
+core_services:
   # Immich's oidc: its web login and its "link OAuth" page in the user settings, under every private domain (the browser sends the address
-  # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one; pics sends the address it was opened on, like Immich.
+  # it was opened on), and the phone apps' fixed callback. Gitea sends one fixed address, so it lists one.
   - {name: Immich, key: immich, compose: immich, dump_required: true,
      data: [immich_photos_dir], no_backup: [immich_postgres_dir],
-     container: immich_server, container_port: 2283, own_login: true, icon: immich, description: Photos,
+     container: immich_server, container_port: 2283, login: tinyauth, icon: immich, description: Photos,
      oidc_secret: vault_immich_oidc_secret,
      oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ immich_subdomain ~ '.') | list + immich_extra_origins)
                | product(['/auth/login', '/user-settings']) | map('join') | list + ['app.immich:///oauth-callback'] }}"}
@@ -55,37 +18,29 @@ services:
   - {name: Copyparty, key: copyparty, compose: copyparty,
      data: [copyparty_config_dir, "{{ 'copyparty_shared_dir' if copyparty_folders.values() | map(attribute='dir', default='') | reject | list | length > 0 else '' }}"],
      no_backup: [copyparty_hist_dir], no_backup_in: {copyparty_config_dir: copyparty},
-     container: copyparty, container_port: 3923, own_login: true, icon: copyparty, description: Files}
+     container: copyparty, container_port: 3923, login: own, icon: copyparty, description: Files}
   # Gitea's data/ssh holds the SSH host keys: unsafe to copy, and the compose file makes them again.
   - {name: Gitea, key: gitea, compose: gitea, dump_required: true,
      data: [gitea_data_dir, gitea_runner_data_dir], no_backup_in: {gitea_data_dir: ssh},
-     container: gitea, container_port: 3000, own_login: true, icon: gitea, description: Git, tile_url: gitea_root_url,
+     container: gitea, container_port: 3000, login: tinyauth, icon: gitea, description: Git, tile_url: gitea_root_url,
      oidc_secret: vault_gitea_oidc_secret,
      oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
-  - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
-     container: pics, container_port: 8000, own_login: true, icon: mdi-image-multiple, description: Photo culling and sharing,
-     oidc_secret: vault_pics_oidc_secret,
-     oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ pics_subdomain ~ '.') | list + pics_extra_origins)
-               | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_data_dir],
      port: 8581, icon: homebridge, description: HomeKit}
-  # Crafty's own backup archives (backups/) dedupe badly and would grow the repo; the live servers/ copy is still backed up.
-  - {name: Crafty, key: crafty, compose: crafty, data: [crafty_data_dir], no_backup_in: {crafty_data_dir: backups},
-     container: crafty, container_port: 8443, scheme: https, icon: crafty-controller, description: Minecraft servers}
   # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
   - {name: Dockge, key: dockge, compose: dockge, data: [dockge_data_dir], keep: [dockge_stacks_dir],
      container: dockge, container_port: 5001, icon: dockge, description: Compose stacks}
   - {name: ntfy, key: ntfy, compose: ntfy, data: [ntfy_data_dir],
-     container: ntfy, container_port: 80, own_login: true, icon: ntfy, description: Alerts}
+     container: ntfy, container_port: 80, login: own, icon: ntfy, description: Alerts}
   # Tinyauth's oidc/ holds its OIDC signing keys, root-owned, and Tinyauth makes new keys when the folder is missing, which a non-root restore
   # could not write back into a root-owned folder.
   - {name: Tinyauth, key: tinyauth, compose: tinyauth, data: [tinyauth_data_dir], no_backup_in: {tinyauth_data_dir: oidc},
-     container: tinyauth, container_port: 3000, own_login: true, icon: mdi-shield-account, description: Login}
+     container: tinyauth, container_port: 3000, login: own, icon: mdi-shield-account, description: Login}
   - {name: Dozzle, key: dozzle, compose: dozzle, data: [dozzle_data_dir],
      container: dozzle, container_port: 8080, icon: dozzle, description: Logs}
   - {name: Scrutiny, key: scrutiny, compose: scrutiny,
      data: [scrutiny_config_dir], no_backup: [scrutiny_influx_dir],
-     container: scrutiny, container_port: 8080, icon: scrutiny, description: Disk health}
+     container: scrutiny, container_port: 8080, alert_to: true, icon: scrutiny, description: Disk health}
   - {name: Backups, key: backup_status, compose: backup-status,
      container: backup-status, container_port: 8080, icon: restic, description: Backup status}
   # No data directory: the page keeps nothing, not even the passphrase (roles/unlock_page).

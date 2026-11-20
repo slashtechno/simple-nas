@@ -1,0 +1,13 @@
+---
+# Crafty Controller, a Minecraft server manager. The settings the rest of the repo reads; the role's own are in defaults/main.yml.
+
+# Crafty Controller; needs RAM headroom (README.md).
+crafty_enabled: false
+# Crafty's panel (HTTPS); the container always listens on 8443.
+crafty_port: 28443
+# Crafty's panel.
+crafty_subdomain: crafty
+# Crafty's servers, worlds and configuration.
+crafty_data_dir: "{{ primary_appdata_dir }}/crafty"
+# Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
+crafty_image: registry.gitlab.com/crafty-controller/crafty-4:4.11.0

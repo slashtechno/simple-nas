@@ -1,0 +1,7 @@
+---
+# The branch, tag or commit to check out.
+git_clone_version: HEAD
+# An access token for a private repository (sent as a header, see tasks/main.yml). Empty clones without one.
+git_clone_token: ""
+# The history to fetch: 0 is all of it, 1 only the commit (the fastest, for a branch or tag). Use 0 for a commit hash.
+git_clone_depth: 0

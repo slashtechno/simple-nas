@@ -1,0 +1,12 @@
+---
+# Crafty's own backup archives (backups/) dedupe badly and would grow the repo; the live servers/ copy is still backed up.
+name: Crafty
+key: crafty
+compose: crafty
+data: [crafty_data_dir]
+no_backup_in: {crafty_data_dir: backups}
+container: crafty
+container_port: 8443
+scheme: https
+icon: crafty-controller
+description: Minecraft servers

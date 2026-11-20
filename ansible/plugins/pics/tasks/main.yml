@@ -4,22 +4,13 @@
     that:
       - vault_pics_password is defined
       - vault_pics_secret_key is defined
-      - vault_github_read_token is defined
+      - vault_pics_repo_token is defined
       - vault_pics_copyparty_password is defined
     fail_msg: >-
-      pics needs vault_pics_password, vault_pics_secret_key, vault_github_read_token and vault_pics_copyparty_password
+      pics needs vault_pics_password, vault_pics_secret_key, vault_pics_repo_token and vault_pics_copyparty_password
       in the vault that applies to {{ inventory_hostname }}
       (host_vars/{{ inventory_hostname }}/vault.yml or group_vars/all/vault.yml; see vault.yml.example).
     quiet: true
-
-- name: Check pics has the users who may sign in through Tinyauth
-  ansible.builtin.assert:
-    that: service_users.pics | default([]) | length > 0
-    fail_msg: >-
-      pics_sso_enabled needs service_users.pics: the Tinyauth user names that may open pics, e.g.
-      service_users: {pics: [alice]} (docs/auth-reference.md#who-may-use-what).
-    quiet: true
-  when: pics_sso_enabled | bool
 
 # pics reaches Copyparty by container name on the Docker network, with the login named pics.
 - name: Check Copyparty runs on this host and serves the two pics folders
@@ -32,7 +23,7 @@
     fail_msg: >-
       pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add the folders services/pics/photos and
       services/pics/trash to copyparty_folders, with dir pics_photos_dir and pics_trash_dir, which the backup covers.
-      Neither may have root: true: pics reaches them at /services/pics/photos and /services/pics/trash (docs/services.md#pics-photo-culling-and-sharing).
+      Neither may have root: true: pics reaches them at /services/pics/photos and /services/pics/trash (plugins/pics/README.md).
     quiet: true
 
 - name: Create pics directories
@@ -47,14 +38,22 @@
     # The container runs as uid 10001 and must own its data folder
     - { path: "{{ pics_data_dir }}", owner: "10001" }
 
-# include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of github_clone.
+# A branch or tag can be moved, and this code runs as root on the host.
+- name: Check pics_commit is a full commit hash
+  ansible.builtin.assert:
+    that: pics_commit is match('^[0-9a-f]{40}$')
+    fail_msg: pics_commit must be the full 40-character commit hash, not a branch or tag.
+    quiet: true
+
+# include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of git_clone.
 - name: Fetch the pics source
   ansible.builtin.include_role:
-    name: github_clone
+    name: git_clone
   vars:
-    repo: "{{ pics_repo }}"
-    dest: "{{ services_dir }}/pics/src"
-    version: "{{ pics_version }}"
+    git_clone_url: "https://github.com/{{ pics_repo }}.git"
+    git_clone_dest: "{{ services_dir }}/pics/src"
+    git_clone_version: "{{ pics_commit }}"
+    git_clone_token: "{{ vault_pics_repo_token }}"
 
 - name: Render pics.env
   ansible.builtin.template:
@@ -80,4 +79,4 @@
   community.docker.docker_compose_v2:
     project_src: "{{ services_dir }}/pics"
     state: present
-    build: "{{ 'always' if private_repo_clone.before != private_repo_clone.after else 'policy' }}"
+    build: "{{ 'always' if git_clone_result.before != git_clone_result.after else 'policy' }}"

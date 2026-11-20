@@ -1,7 +1,8 @@
 ---
 # A service whose data directory is outside every path the local backup copies would be missing from it, silently.
-# The directories are backup_service_dirs (roles/backup/defaults/main.yml), built from the `data` and `keep` lists in
-# group_vars/all/services.yml: a service's new data directory goes there. Folders in encrypted_folders are checked too.
+# The directories are backup_service_dirs (roles/backup/defaults/main.yml), built from the `data` and `keep` lists of every
+# service entry (core_services in group_vars/all/services.yml, a plugin's in its service.yml): a service's new data directory
+# goes there. Folders in encrypted_folders are checked too.
 # To leave a directory out on purpose, add "- <that directory>" to restic_local_extra_rules: it then counts as decided.
 - name: Work out which paths the local backup copies
   ansible.builtin.set_fact:

@@ -86,23 +86,25 @@
     quiet: true
   when: backup_local_enabled | bool or backup_cloud_enabled | bool
 
-# The backup leaves out Immich's, Gitea's and Garage's live database directories (restic-excludes-services.txt.j2), and
-# Gitea's is copied live; the dump their roles install is the only copy. Without the dump script the backup would run
+# The backup leaves out the live database directories of the services marked dump_required (restic-excludes-services.txt.j2), and
+# some are copied live; the dump their roles install is the only copy. Without the dump script the backup would run
 # without errors and hold no consistent database. The roles run before this one in site.yml.
 - name: Look for the dump scripts of the services whose live database is left out
   ansible.builtin.stat:
-    path: "{{ service_dump_scripts_dir }}/{{ item }}.sh"
+    path: "{{ service_dump_scripts_dir }}/{{ item.compose }}.sh"
   register: backup_dump_scripts
-  loop: "{{ dump_service_keys }}"
+  loop: "{{ services | selectattr('key', 'in', dump_service_keys) | list }}"
+  loop_control:
+    label: "{{ item.key }}"
   check_mode: false
 
 - name: Check those dump scripts are installed
   ansible.builtin.assert:
     that: item.stat.exists
     fail_msg: >-
-      {{ item.item }} is enabled but {{ service_dump_scripts_dir }}/{{ item.item }}.sh is not installed, so the
-      backup would hold no {{ item.item }} database. Deploy {{ item.item }} first: just deploy {{ item.item }}.
+      {{ item.item.key }} is enabled but {{ service_dump_scripts_dir }}/{{ item.item.compose }}.sh is not installed, so the
+      backup would hold no {{ item.item.key }} database. Deploy {{ item.item.key }} first: just deploy {{ item.item.key }}.
     quiet: true
   loop: "{{ backup_dump_scripts.results | default([]) }}"
   loop_control:
-    label: "{{ item.item }}"
+    label: "{{ item.item.key }}"

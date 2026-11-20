@@ -55,7 +55,7 @@
 {% endfor %}
 
 {% endfor %}
-{# A parent of nested names (pics for pics/photos) is a read-only volume on an empty directory, so its address opens and lists the children. -e2d turns indexing off. #}
+{# A parent of nested names (myapp for myapp/photos) is a read-only volume on an empty directory, so its address opens and lists the children. -e2d turns indexing off. #}
 {% for parent, logins in copyparty_parents.items() %}
 [/{{ parent }}]
   /vol/{{ parent }}

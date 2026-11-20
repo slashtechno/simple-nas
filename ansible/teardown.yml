@@ -18,7 +18,8 @@
 #   # Remove everything from one host
 #   ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass
 #
-#   # Remove specific services only (the keys in group_vars/all/services.yml)
+#   # Remove specific services only (the keys in group_vars/all/services.yml, or a plugin's). For a plugin use `just teardown`,
+#   # which first runs `just plugins` so the service is known; this raw playbook never does.
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
 #   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, the USB rule,
@@ -89,9 +90,9 @@
 
     # ── Services ───────────────────────────────────────────────────────────
 
-    # Every entry of `services` (group_vars/all/services.yml) with a compose directory, or only those named in
-    # `only`. include_tasks, not import_tasks, because a loop needs it (a kept exception, as in roles/pics and
-    # roles/tailscale), so these tasks have no tags: select services with -e only=a,b.
+    # Every entry of `services` (the built-in ones in group_vars/all/services.yml and the plugins') with a compose directory, or only those named in
+    # `only`. include_tasks, not import_tasks, because a loop needs it (a kept exception, as in roles/tailscale and
+    # the plugin loop in site.yml), so these tasks have no tags: select services with -e only=a,b.
     - name: Check every name in only is a service
       ansible.builtin.assert:
         that: only_keys | difference(services | map(attribute='key')) | length == 0

@@ -1,12 +1,13 @@
 ---
 # Full deployment playbook.
-# Run with: ansible-playbook site.yml --vault-password-file .vault-pass
+# Run with: just deploy (it runs `just plugins` first). With ansible-playbook directly, run `just plugins` before
+# the first deploy and after each change to plugins: without group_vars/all/plugins.yml a plugin's sites and backup are left out.
 #
 # One play over every server. The base roles (common, network) run everywhere, and so do storage and Tailscale unless their switches
 # (storage_enabled, tailscale_enabled; default true) are off; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
 # (default: false, in group_vars/all/defaults-flags.yml).
 # To deploy one host only:     --limit pi4
-# To deploy one service only:  --tags immich
+# To deploy one service only:  --tags immich   (a plugin the same way; --tags plugins is all plugins, --skip-tags plugins none)
 # To stop deploying a service: set <name>_enabled: false for the host.
 
 - name: Deploy every server
@@ -14,6 +15,15 @@
   become: true
 
   pre_tasks:
+    - name: Check the plugins were fetched and checked
+      ansible.builtin.assert:
+        that: plugin_services is defined
+        fail_msg: >-
+          group_vars/all/plugins.yml is missing, so the plugins would be left out of Caddy, Homepage and the backup.
+          Run `just plugins` (just deploy does).
+        quiet: true
+      tags: [always]
+
     - name: Check the host runs a Debian-family OS
       ansible.builtin.assert:
         that: ansible_facts['os_family'] == "Debian"
@@ -54,6 +64,22 @@
       when: lookup('ansible.builtin.vars', item.key ~ '_enabled', default='') | bool
       tags: [always]
 
+    # The login field and the data it needs agree, for every built-in and plugin entry (services.yml).
+    - name: Check every service's login matches its oidc and oidc_secret
+      ansible.builtin.assert:
+        that:
+          - item.login | default('own') in ['own', 'tinyauth', 'tinyauth_users']
+          - (item.login | default('') in ['tinyauth', 'tinyauth_users']) == (item.oidc is defined and item.oidc_secret is defined)
+          - (item.oidc is defined) == (item.oidc_secret is defined)
+        fail_msg: >-
+          {{ item.name }}: login is own, tinyauth or tinyauth_users (or absent), and oidc and oidc_secret are set exactly
+          when it is tinyauth or tinyauth_users (see the header of group_vars/all/services.yml).
+        quiet: true
+      loop: "{{ services }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [always]
+
     # An app that signs in through Tinyauth needs the login page's name (Tinyauth with Caddy and a private domain) and
     # the client secret Tinyauth checks (oidc in services.yml, docs/auth-reference.md#sign-in-with-tinyauth-oidc).
     - name: Check every app that signs in through Tinyauth has what it needs
@@ -70,6 +96,19 @@
           (vault.yml.example says how to make it).
         quiet: true
       loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | list }}"
+      loop_control:
+        label: "{{ item.name }}"
+      tags: [always]
+
+    # An app that lets in only the users in service_users (login tinyauth_users) with nobody listed would lock everyone out.
+    - name: Check every app that limits its own users has some
+      ansible.builtin.assert:
+        that: service_users[item.key] | default([]) | length > 0
+        fail_msg: >-
+          Signing {{ item.name }} in through Tinyauth needs service_users.{{ item.key }}: the Tinyauth user names that may open {{ item.name }}, e.g.
+          service_users: {{ '{' }}{{ item.key }}: [alice]{{ '}' }} (docs/auth-reference.md#who-may-use-what).
+        quiet: true
+      loop: "{{ services | selectattr('key', 'in', oidc_service_keys) | selectattr('login', 'eq', 'tinyauth_users') | list }}"
       loop_control:
         label: "{{ item.name }}"
       tags: [always]
@@ -167,18 +206,6 @@
       tags: [homebridge]
       when: homebridge_enabled | bool
 
-    - name: Deploy pics
-      ansible.builtin.import_role:
-        name: pics
-      tags: [pics]
-      when: pics_enabled | bool
-
-    - name: Deploy crafty
-      ansible.builtin.import_role:
-        name: crafty
-      tags: [crafty]
-      when: crafty_enabled | bool
-
     - name: Deploy dockge
       ansible.builtin.import_role:
         name: dockge
@@ -202,6 +229,20 @@
         name: garage
       tags: [garage]
       when: garage_enabled | bool
+
+    # The plugins (docs/writing-a-plugin.md), after everything they may rely on and before the backup, which checks their dump scripts.
+    # include_role, not import_role (AGENTS.md exception): import_role cannot loop. The loop carries `always` so --tags reaches it, and
+    # `apply` tags the plugin's own tasks: --tags <key> deploys one plugin, --tags plugins all of them, --skip-tags plugins none.
+    - name: Deploy the plugins
+      ansible.builtin.include_role:
+        name: "{{ item.key }}"
+        apply:
+          tags: ["{{ item.key }}", plugins]
+      loop: "{{ plugin_services }}"
+      loop_control:
+        label: "{{ item.key }}"
+      when: lookup('ansible.builtin.vars', item.key ~ '_enabled') | bool
+      tags: [always]
 
     - name: Deploy backup
       ansible.builtin.import_role:

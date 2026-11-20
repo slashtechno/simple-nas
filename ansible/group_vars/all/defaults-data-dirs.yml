@@ -61,15 +61,6 @@ gitea_runner_data_dir: "{{ fast_appdata_dir }}/gitea/runner"
 # ntfy's message history and user database; little is lost without it.
 ntfy_data_dir: "{{ fast_appdata_dir }}/ntfy"
 
-# pics' data directory.
-pics_data_dir: "{{ fast_appdata_dir }}/pics/data"
-
-# Where pics keeps its photos. Copyparty serves them as the folder services/pics/photos (copyparty_folders).
-pics_photos_dir: "{{ primary_appdata_dir }}/pics/photos"
-
-# Where pics moves deleted photos; the only pics folder where files can be deleted (served as services/pics/trash).
-pics_trash_dir: "{{ primary_appdata_dir }}/pics/trash"
-
 # Homebridge's configuration and pairings.
 homebridge_data_dir: "{{ fast_appdata_dir }}/homebridge"
 
@@ -79,5 +70,3 @@ garage_meta_dir: "{{ fast_appdata_dir }}/garage/meta"
 # Garage's object blocks, plain files.
 garage_blocks_dir: "{{ primary_appdata_dir }}/garage/data"
 
-# Crafty's servers, worlds and configuration.
-crafty_data_dir: "{{ primary_appdata_dir }}/crafty"

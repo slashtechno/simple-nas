@@ -1,0 +1,310 @@
+---
+# Fetches the plugins listed in `plugins` (group_vars/all) from git, checks them together with the ones kept in plugins/,
+# and writes group_vars/all/plugins.yml: the plugins' entries (plugin_services) and settings (each plugin's defaults.yml).
+# Run it with `just plugins`; `just deploy`, `preview` and `teardown` run it first. The plugin docs: docs/writing-a-plugin.md.
+#
+# It runs on the machine you run Ansible from. plugins.yml is written only after every fetch and check has passed, so a failed
+# run leaves the last one as it was.
+- name: Fetch and check the plugins
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false   # ansible.cfg turns it on for every play, and sudo would ask for a password here
+  vars:
+    plugins_dir: "{{ playbook_dir }}/plugins"
+    fetched_dir: "{{ playbook_dir }}/plugins/.fetched"
+    plugins_file: "{{ playbook_dir }}/group_vars/all/plugins.yml"
+    # The fields a service entry may have (docs/plugin-reference.md#the-service-entry): a misspelt one would do nothing.
+    service_fields: [name, key, compose, data, no_backup, no_backup_in, keep, dump_required, alert_to, login, oidc_secret, oidc,
+                     port, container, container_port, tile_url, scheme, icon, description]
+  tasks:
+    - name: Check the plugins list
+      ansible.builtin.assert:
+        that:
+          - plugins is sequence and plugins is not string
+          - item is mapping
+          - item.keys() | difference(['key', 'location', 'commit', 'path', 'auth']) | length == 0
+          - item.key | default('') is match('^[a-z][a-z0-9_]*$')
+          - item.location | default('') is match('^https://[^/ ]+/.')
+          - item.commit | default('') | string is match('^[0-9a-f]{40}$')
+          - item.path | default('') is not search('^/|(^|/)[.][.](/|$)')
+          - item.auth is not defined or lookup('ansible.builtin.vars', item.auth, default='') | string | length > 0
+        fail_msg: >-
+          The plugins entry {{ item }} is wrong. It needs key (lower-case letters, digits and _), location (an https git
+          address) and commit (the full 40-character hash in quotes, never a tag or branch: those can be moved), and may have
+          path (a folder inside the repository, not leaving it)
+          and auth (the name of a vault variable that holds a token; it must exist and not be empty). Nothing else is allowed
+          (docs/writing-a-plugin.md#from-a-git-repository). Get a hash with: git ls-remote <location> <tag or branch>.
+        quiet: true
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key | default(item) }}"
+
+    - name: Check no plugin is listed twice
+      ansible.builtin.assert:
+        that: plugins | map(attribute='key') | unique | length == plugins | length
+        fail_msg: "plugins lists the same key twice: {{ plugins | map(attribute='key') | list }}."
+        quiet: true
+
+    # Every deploy fetches again, so a plugin you removed from the list is gone and a moved branch is picked up.
+    - name: Remove the plugins fetched last time
+      ansible.builtin.file:
+        path: "{{ fetched_dir }}"
+        state: absent
+
+    - name: Make the folder for the fetched plugins
+      ansible.builtin.file:
+        path: "{{ fetched_dir }}/.src"
+        state: directory
+        mode: "0755"
+
+    # include_role, not import_role: import_role cannot loop.
+    - name: Fetch the repository of each plugin
+      ansible.builtin.include_role:
+        name: git_clone
+      vars:
+        git_clone_url: "{{ item.location }}"
+        git_clone_dest: "{{ fetched_dir }}/.src/{{ item.key }}"
+        git_clone_version: "{{ item.commit }}"
+        git_clone_token: "{{ lookup('ansible.builtin.vars', item.auth) if item.auth is defined else '' }}"
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # The git module returns no commit when it only checks one out; there is no module for rev-parse.
+    - name: Read the commit of each fetched repository
+      ansible.builtin.command: git -C "{{ fetched_dir }}/.src/{{ item.key }}" rev-parse HEAD   # noqa: command-instead-of-module
+      register: fetched_commits
+      changed_when: false
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    # The folder name is the key, not the name the plugin has in its repository.
+    - name: Copy each plugin out of its repository
+      ansible.builtin.copy:
+        src: "{{ fetched_dir }}/.src/{{ item.key }}/{{ item.path | default('') }}/"
+        dest: "{{ fetched_dir }}/{{ item.key }}/"
+        mode: preserve
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Remove the git data of each plugin
+      ansible.builtin.file:
+        path: "{{ fetched_dir }}/{{ item.key }}/.git"
+        state: absent
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Remove the repositories
+      ansible.builtin.file:
+        path: "{{ fetched_dir }}/.src"
+        state: absent
+
+    # find, not the fileglob lookup, which does not take a * in a folder name.
+    - name: Find the plugin folders and the role defaults
+      ansible.builtin.find:
+        paths: ["{{ playbook_dir }}/roles", "{{ plugins_dir }}", "{{ fetched_dir }}"]
+        patterns: [main.yml, service.yml]
+        recurse: true
+      register: found_files
+
+    - name: Sort what was found
+      ansible.builtin.set_fact:
+        service_files: >-
+          {{ found_files.files | map(attribute='path') | select('search', '/plugins/(\.fetched/)?[^/]+/service\.yml$')
+             | unique | sort | list }}
+        role_defaults_files: >-
+          {{ found_files.files | map(attribute='path') | select('search', '/(roles|plugins|\.fetched)/[^/]+/defaults/main\.yml$')
+             | unique | sort | list }}
+
+    - name: Check every plugin in the list has a service.yml
+      ansible.builtin.assert:
+        that: (fetched_dir ~ '/' ~ item.key ~ '/service.yml') in service_files
+        fail_msg: >-
+          {{ item.location }} at {{ item.commit }}{{ ' in ' ~ item.path if item.path is defined else '' }} has no service.yml,
+          so it is no plugin: check location, commit and path of the plugins entry {{ item.key }}.
+        quiet: true
+      loop: "{{ plugins }}"
+      loop_control:
+        label: "{{ item.key }}"
+
+    - name: Check each plugin folder has the files a plugin needs
+      ansible.builtin.assert:
+        that:
+          - query('ansible.builtin.fileglob', (item | dirname) ~ '/defaults.yml') | length == 1
+          - query('ansible.builtin.fileglob', (item | dirname) ~ '/tasks/main.yml') | length == 1
+        fail_msg: "The plugin {{ item | dirname }} needs a defaults.yml and a tasks/main.yml next to its service.yml."
+        quiet: true
+      loop: "{{ service_files }}"
+      loop_control:
+        label: "{{ item | dirname | basename }}"
+
+    - name: Read each plugin
+      ansible.builtin.set_fact:
+        found: >-
+          {{ found | default([]) + [{
+               'folder': item | dirname | basename,
+               'path': item | dirname,
+               'fetched': '/.fetched/' in item,
+               'service': lookup('ansible.builtin.file', item) | from_yaml,
+               'defaults_text': lookup('ansible.builtin.file', (item | dirname) ~ '/defaults.yml'),
+               'defaults': lookup('ansible.builtin.file', (item | dirname) ~ '/defaults.yml') | from_yaml | default({}, true),
+               'role_defaults': lookup('ansible.builtin.file', (item | dirname) ~ '/defaults/main.yml', errors='ignore') | from_yaml | default({}, true)
+             }] }}
+      loop: "{{ service_files }}"
+      loop_control:
+        label: "{{ item | dirname | basename }}"
+
+    # The keys of the settings every core file declares, to find a plugin that declares one too (its file would load later and
+    # silently win). check_vars.py makes the same check for the core files, which it can see.
+    - name: Read the settings of the core files
+      ansible.builtin.set_fact:
+        core_setting_files: >-
+          {{ query('ansible.builtin.fileglob', playbook_dir ~ '/group_vars/all/defaults*.yml')
+             + [playbook_dir ~ '/group_vars/all/derived.yml', playbook_dir ~ '/group_vars/all/versions.yml',
+                playbook_dir ~ '/group_vars/all/services.yml']
+             + (role_defaults_files | select('match', playbook_dir ~ '/roles/') | list) }}
+
+    - name: Find the roles of the core
+      ansible.builtin.find:
+        paths: ["{{ playbook_dir }}/roles"]
+        file_type: directory
+      register: core_roles
+
+    - name: Check no plugin key is used twice or is a built-in service's or role's
+      vars:
+        keys: "{{ found | default([]) | map(attribute='service') | map(attribute='key') | list }}"
+        # roles/ is searched before plugins/, so a plugin with a role's name would never run
+        core_keys: "{{ core_services | map(attribute='key') | list + core_roles.files | map(attribute='path') | map('basename') | list }}"
+        clashes: >-
+          {%- set out = [] -%}
+          {%- for k in keys | unique if k in core_keys or keys | select('equalto', k) | list | length > 1 -%}
+          {%- set _ = out.append(k) -%}
+          {%- endfor -%}
+          {{ out }}
+      ansible.builtin.assert:
+        that: clashes | length == 0
+        fail_msg: >-
+          The plugin key {{ clashes | join(', ') }} is used twice or is the name of a built-in service or role. A folder in plugins/ and a fetched
+          plugin with one key are the same key: to use your own copy, remove the entry from plugins and keep the folder in
+          plugins/ (docs/writing-a-plugin.md#from-a-git-repository).
+        quiet: true
+
+    - name: Check each plugin
+      vars:
+        service: "{{ item.service }}"
+        key: "{{ item.service.key | default('') }}"
+        defaults: "{{ item.defaults }}"
+        # The settings the plugin's role and compose files may read from another host or the core: the names in `data` and
+        # the like. An entry with {{ is conditional (copyparty's shared folder), so only the plain names are checked.
+        named: >-
+          {{ ((service.data | default([])) + (service.keep | default([])) + (service.no_backup | default([]))
+              + (service.no_backup_in | default({}) | list)) | select('match', '^[a-z0-9_]+$') | list }}
+        others: >-
+          {%- set seen = [] -%}
+          {%- for f in core_setting_files -%}
+          {%- set _ = seen.extend(lookup('ansible.builtin.file', f) | from_yaml | default({}, true) | list) -%}
+          {%- endfor -%}
+          {%- for p in found if p.path != item.path -%}
+          {%- set _ = seen.extend(p.defaults | list + p.role_defaults | list) -%}
+          {%- endfor -%}
+          {{ seen }}
+        problems: >-
+          {%- set out = [] -%}
+          {%- if not (key is match('^[a-z][a-z0-9_]*$')) -%}
+          {%- set _ = out.append('key must be lower-case letters, digits and _, starting with a letter') -%}
+          {%- endif -%}
+          {%- if key != item.folder -%}
+          {%- set _ = out.append('key is ' ~ key ~ ' but the folder is named ' ~ item.folder ~ ': they must be the same (the key is the role name)') -%}
+          {%- endif -%}
+          {%- for field in service.keys() | difference(service_fields) -%}
+          {%- set _ = out.append(field ~ ' is not a field of a service entry (docs/plugin-reference.md#the-service-entry)') -%}
+          {%- endfor -%}
+          {%- if service.name is not defined -%}
+          {%- set _ = out.append('service.yml needs a name') -%}
+          {%- endif -%}
+          {%- if (key ~ '_enabled') not in defaults -%}
+          {%- set _ = out.append('defaults.yml needs ' ~ key ~ '_enabled: false') -%}
+          {%- elif defaults[key ~ '_enabled'] is not sameas false -%}
+          {%- set _ = out.append(key ~ '_enabled must default to false in defaults.yml') -%}
+          {%- endif -%}
+          {%- if service.icon is defined and service.port is not defined -%}
+          {%- for suffix in ['_port', '_subdomain'] if (key ~ suffix) not in defaults -%}
+          {%- set _ = out.append('a web service needs ' ~ key ~ suffix ~ ' in defaults.yml') -%}
+          {%- endfor -%}
+          {%- endif -%}
+          {%- if service.oidc is defined and (key ~ '_sso_enabled') not in defaults -%}
+          {%- set _ = out.append('a service with oidc needs ' ~ key ~ '_sso_enabled in defaults.yml') -%}
+          {%- endif -%}
+          {%- if service.alert_to | default(false) and (key ~ '_alert_to') not in defaults -%}
+          {%- set _ = out.append('a service with alert_to needs ' ~ key ~ '_alert_to: "" in defaults.yml') -%}
+          {%- endif -%}
+          {%- for name in named if name not in defaults -%}
+          {%- set _ = out.append(name ~ ' is named in service.yml (data, keep, no_backup or no_backup_in) but is not in defaults.yml') -%}
+          {%- endfor -%}
+          {%- for name in (defaults | list + item.role_defaults | list) if name in others or (name in defaults and name in item.role_defaults) -%}
+          {%- set _ = out.append(name ~ ' is already declared in another file (the core or another plugin); a setting is declared once') -%}
+          {%- endfor -%}
+          {{ out }}
+      ansible.builtin.assert:
+        that: problems | length == 0
+        fail_msg: "The plugin {{ item.folder }} ({{ item.path }}): {{ problems | join('; ') }}."
+        quiet: true
+      loop: "{{ found | default([]) }}"
+      loop_control:
+        label: "{{ item.folder }}"
+
+    - name: Find the vars.yml of each host
+      ansible.builtin.find:
+        paths: ["{{ playbook_dir }}/host_vars"]
+        patterns: [vars.yml]
+        recurse: true
+      register: host_vars_found
+
+    - name: Check the settings in your vars.yml files against the plugins' settings
+      ansible.builtin.include_tasks: tests/check_keys.yml
+      vars:
+        repo: "{{ playbook_dir }}"
+        shared_defaults_files: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/group_vars/all/defaults*.yml') | sort }}"
+        defaults_files: "{{ role_defaults_files + (found | default([]) | map(attribute='path') | map('regex_replace', '$', '/defaults.yml') | list) }}"
+      loop: "{{ query('ansible.builtin.fileglob', playbook_dir ~ '/group_vars/all/vars.yml') + (host_vars_found.files | map(attribute='path') | list) }}"
+      loop_control:
+        loop_var: real_file
+
+    # to_nice_yaml keeps the {{ }} in an entry as text, so Ansible resolves it when it reads the file, like services.yml. The
+    # entries are sorted by key: the order of the Caddy sites and Homepage tiles must not change between runs.
+    - name: Write plugins.yml
+      vars:
+        ordered: "{{ found | default([]) | sort(attribute='service.key') }}"
+      ansible.builtin.copy:
+        dest: "{{ plugins_file }}"
+        mode: "0644"
+        content: |
+          # Written by `just plugins`; do not edit. Every deploy, preview and teardown writes it again from ansible/plugins/ and the
+          # plugins list (docs/writing-a-plugin.md). It is not committed.
+          {% if ordered | length > 0 %}
+          plugin_services:
+          {{ ordered | map(attribute='service') | list | to_nice_yaml(indent=2, width=1000) | trim | indent(2, true) }}
+          {% else %}
+          plugin_services: []
+          {% endif %}
+          {% for plugin in ordered %}
+
+          # The settings of the plugin {{ plugin.service.key }} (its defaults.yml)
+          {{ plugin.defaults_text | regex_replace('^---\n', '') }}
+          {% endfor %}
+
+    - name: Show the plugins
+      vars:
+        commits: "{{ dict(fetched_commits.results | map(attribute='item.key') | zip(fetched_commits.results | map(attribute='stdout'))) }}"
+        sources: "{{ dict(plugins | map(attribute='key') | zip(plugins)) }}"
+      ansible.builtin.debug:
+        msg: >-
+          {{ item.service.key }}: {{ (sources[item.service.key].location ~ ' at ' ~ commits[item.service.key])
+             if item.fetched else 'plugins/' ~ item.folder }}; login: {{ item.service.login | default('none (Tinyauth in front)') }}
+      loop: "{{ found | default([]) | sort(attribute='service.key') }}"
+      loop_control:
+        label: "{{ item.folder }}"

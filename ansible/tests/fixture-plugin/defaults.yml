@@ -1,0 +1,17 @@
+---
+# Settings of the render test's made-up service (service.yml).
+
+# The switch.
+fixture_enabled: false
+# Sign-in through Tinyauth.
+fixture_sso_enabled: false
+# Host port; "" publishes none.
+fixture_port: ""
+# The name under the private domain.
+fixture_subdomain: fixture
+# Addresses besides the Caddy names that the app is opened at.
+fixture_extra_origins: []
+# Its data folder.
+fixture_data_dir: "{{ primary_appdata_dir }}/fixture"
+# Its alerts.
+fixture_alert_to: ""

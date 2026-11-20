@@ -5,7 +5,7 @@
 | Add a user, change a password | [Users and passwords](#users-and-passwords) |
 | Add a second factor | [Two-factor codes](#two-factor-codes-totp) |
 | Sign in with GitHub or Google | [GitHub, Google](#sign-in-with-github-google-or-another-openid-connect-provider) |
-| Log in to Gitea, Immich or pics with Tinyauth | [OIDC](#sign-in-with-tinyauth-oidc) |
+| Log in to Gitea, Immich or a plugin with Tinyauth | [OIDC](#sign-in-with-tinyauth-oidc) |
 | Put my own app behind the login | [Protect an app](#protect-an-app-of-your-own) |
 | Let only some users open a service | [Who may use what](#who-may-use-what) |
 | Reach a protected service away from Tailscale | [From outside](#reach-a-protected-service-from-outside-the-tailnet) |
@@ -62,21 +62,21 @@ The password login and the GitHub login then give apps the same name, so apps se
 - **Google** is the same with `GOOGLE`. Google gives the user name `you_example.com`, so name the user that.
 - **Another provider** (Pocket ID, Authentik, Keycloak) is any other id, plus `_AUTHURL`, `_TOKENURL`, `_USERINFOURL`, `_SCOPES` and `_NAME` ([guide](https://tinyauth.app/docs/guides/other-oauth/)).
 
-Do not give an `email` to someone whose GitHub login equals another user's name: they would become that user in Copyparty, pics, Immich and Gitea. Use only GitHub or Google. Tinyauth does not verify a provider's emails, so a provider where anyone may register any address lets anyone in.
+Do not give an `email` to someone whose GitHub login equals another user's name: they would become that user in Copyparty, Immich, Gitea and any other app that signs in through Tinyauth. Use only GitHub or Google. Tinyauth does not verify a provider's emails, so a provider where anyone may register any address lets anyone in.
 
 ## Sign in with Tinyauth (OIDC)
 
-OIDC (OpenID Connect) is the login standard most apps support. The app sends your browser to Tinyauth, and Tinyauth tells the app who you are. The app never sees your password. One Tinyauth login then opens Gitea, Immich and pics, and each keeps its own accounts and permissions.
+OIDC (OpenID Connect) is the login standard most apps support. The app sends your browser to Tinyauth, and Tinyauth tells the app who you are. The app never sees your password. One Tinyauth login then opens Gitea, Immich and every plugin that signs in through Tinyauth, and each keeps its own accounts and permissions.
 
-1. Set `gitea_sso_enabled`, `immich_sso_enabled` or `pics_sso_enabled` to `true` in the host's `vars.yml`. Each needs `tinyauth_enabled` and `caddy_enabled`.
-2. Check the vault holds `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and `vault_pics_oidc_secret`. `just setup <host>` adds them: rerun it if they are missing.
-3. Run `just deploy tinyauth,gitea,immich,pics --limit <host>`.
+1. Set `gitea_sso_enabled`, `immich_sso_enabled` or a plugin's `<key>_sso_enabled` to `true` in the host's `vars.yml`. Each needs `tinyauth_enabled` and `caddy_enabled`.
+2. Check the vault holds `vault_gitea_oidc_secret`, `vault_immich_oidc_secret` and the plugin's (`vault.yml.example` in its folder). `just setup <host>` adds them: rerun it if they are missing.
+3. Run `just deploy tinyauth,gitea,immich --limit <host>`, adding the key of each plugin you switched on.
 
 To change a secret, put a new value in the vault and run the same deploy. Each role writes the secret to its app, so do not edit it in the app.
 
 - **Password login stays,** so a Tinyauth problem does not lock you out.
 - **Who gets in:** every user in `vault_tinyauth_users` can sign in, but the app decides who may enter ([Who may use what](#who-may-use-what)).
-- **Addresses:** Immich and pics return you to the address you opened them on. Tinyauth trusts every Caddy name, and `immich_extra_origins` and `pics_extra_origins` add others, such as a tunnel hostname. Gitea sends one fixed address (`gitea_root_url`), so Tinyauth sign-in works on that name only. Its password login works on every name.
+- **Addresses:** An app that sends the address it was opened on (Immich) returns you there. Tinyauth trusts every Caddy name, and `immich_extra_origins` (a plugin may have its own list) adds others, such as a tunnel hostname. Gitea sends one fixed address (`gitea_root_url`), so Tinyauth sign-in works on that name only. Its password login works on every name.
 
 **Immich** needs one extra step. The deploy sets the sign-in block, and the settings that `immich_job_concurrency`, `immich_transcode_policy` and `immich_accepted_video_codecs` name, through Immich's API. It needs a non-empty `immich_port` and `vault_immich_api_key`:
 
@@ -111,11 +111,11 @@ The app receives the user in the `Remote-User`, `Remote-Name`, `Remote-Email` an
 
 If the app also has its own login, pick the first option that fits:
 
-1. **It speaks OpenID Connect (Gitea, Immich, pics):** Tinyauth is its OIDC provider ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment`: `TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS` and `_NAME` (see `roles/tinyauth/templates/docker-compose.yml.j2`). Give the app the issuer `https://auth.<first private domain>`.
+1. **It speaks OpenID Connect (Gitea, Immich):** Tinyauth is its OIDC provider ([above](#sign-in-with-tinyauth-oidc)). For an app of your own, add a client in `tinyauth_environment`: `TINYAUTH_OIDC_CLIENTS_<ID>_CLIENTID`, `_CLIENTSECRET`, `_TRUSTEDREDIRECTURIS` and `_NAME` (see `roles/tinyauth/templates/docker-compose.yml.j2`). Give the app the issuer `https://auth.<first private domain>`.
 2. **It trusts a proxy's user header (Dozzle, Copyparty):** the app takes the name from `Remote-User`. If you can name the header, make the name a secret, so another container cannot forge it.
 3. **It has an off switch (Dockge; the role switches it off itself):** turn the app's login off. Every user then shares one app account.
 4. **Its login is optional (Homepage):** leave it unset, so Tinyauth is the only login.
-5. **Nothing fits (Crafty):** the app's own login stays, and you sign in twice.
+5. **Nothing fits:** the app's own login stays, and you sign in twice.
 
 The forwarder stops clients that cannot use a web login page (mobile apps, API tokens, git, WebDAV, webhooks) with a 401. For those, leave the label off, so the app's own login protects it (as for Immich and Gitea). Or give them a second name without the label.
 
@@ -155,7 +155,7 @@ By default every user in `vault_tinyauth_users` can open every service. To limit
 
 ```yaml
 service_users:       # in group_vars/all/vars.yml or the host's vars.yml
-  pics: [alice, bob]
+  myapp: [alice, bob]
   dozzle: [alice]
 ```
 
@@ -163,9 +163,9 @@ The keys are service keys from `group_vars/all/services.yml`. The names must be 
 
 | Service | What `service_users` does | With no entry |
 |---|---|---|
-| **Behind the Caddy login** (Crafty, Dockge, Dozzle, Scrutiny, Homepage, the backup dashboard, the unlock page, the Garage web UI; Copyparty with `copyparty_sso_enabled`) | Tinyauth gets a rule for the service's web address. A user not listed gets "forbidden" after signing in. | Every Tinyauth user can open it |
-| **pics** (`pics_sso_enabled`) | Tinyauth cannot limit an OIDC client, so the deploy passes the list to pics. pics lets in only those users, and each is a full owner. | The deploy stops |
-| **Immich and Gitea** | Not available: an entry for them stops the deploy. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
+| **Behind the Caddy login** (no `login` in its entry: Dockge, Dozzle, Scrutiny, Homepage, the backup dashboard, the unlock page, the Garage web UI; Copyparty with `copyparty_sso_enabled`) | Tinyauth gets a rule for the service's web address. A user not listed gets "forbidden" after signing in. | Every Tinyauth user can open it |
+| **A plugin with `login: tinyauth_users`** (and `<key>_sso_enabled`) | Tinyauth cannot limit an OIDC client, so the deploy passes the list to the app, which lets in only those users. | The deploy stops |
+| **Immich and Gitea** (`login: tinyauth`) | Not available: an entry for them stops the deploy. Their own accounts decide: a Tinyauth login creates none, so only people with an account there get in. | Same |
 
 - **Copyparty:** `service_users.copyparty` limits only who may open the page. Folder access comes from `vault_copyparty_accounts` ([Copyparty](./services.md#copyparty-folders-and-logins)). The entry needs `copyparty_sso_enabled`: the deploy stops without it.
 - **GitHub and Google users** are let in by email, so a list limits them through the emails of its users.
@@ -192,7 +192,7 @@ Tinyauth checks a Tailscale login like a password user: by user name against `se
 
 Password, GitHub, Google and Tailscale logins each give the session a different name, and Tinyauth cannot link them. A name that is not a user in `vault_tinyauth_users` is another person to the apps. Where one person needs the same access under another name, add that name too:
 
-- **Copyparty and pics:** use the same name in the `user` of the Copyparty login and in `service_users.pics`.
+- **Copyparty and an app that uses it:** use the same name in the `user` of the Copyparty login and in `service_users.<key>`.
 - **Behind the Caddy login:** a GitHub or Google login is let in by email, so there is nothing to add. A password or Tailscale login is let in by name, so list that name in `service_users`.
 - **Immich and Gitea:** the second name is a new login. Link it to the same account by hand ([first sign-in](#sign-in-with-tinyauth-oidc)).
 

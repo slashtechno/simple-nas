@@ -36,17 +36,8 @@ gitea_sso_enabled: false
 # Homebridge, a HomeKit bridge.
 homebridge_enabled: false
 
-# pics, the photo sharing app.
-pics_enabled: false
-
-# pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs service_users.pics.
-pics_sso_enabled: false
-
 # Garage S3 object store with its web UI and CORS proxy; needs post-deploy init (docs/services.md#garage-s3).
 garage_enabled: false
-
-# Crafty Controller, a Minecraft server manager; needs RAM headroom (docs/services.md#crafty-minecraft-servers).
-crafty_enabled: false
 
 # ntfy push-notification server (docs/services.md#ntfy-failure-alerts).
 ntfy_enabled: false
@@ -54,7 +45,7 @@ ntfy_enabled: false
 # Cloudflare Tunnel that publishes the hostnames in cloudflared_ingress.
 cloudflared_enabled: false
 
-# Tinyauth, a login page that Caddy puts in front of every service with a Caddy name, except those marked own_login in
+# Tinyauth, a login page that Caddy puts in front of every service with a Caddy name, except those with a login in
 # services.yml (docs/services.md#tinyauth-login). Here, not in the tinyauth role, because Caddy and Homepage read it.
 tinyauth_enabled: false
 

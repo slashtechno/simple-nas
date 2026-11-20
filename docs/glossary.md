@@ -32,7 +32,7 @@ This page defines each word once. The other docs link to it. [encryption.md](./e
 - **Redirect (302) and 401.** A browser follows a 302 to the login page. A script or phone app gets a 401 and fails loudly.
 - **TLS termination.** TLS is the encryption of https. Terminating it means decrypting there and passing plain http on. Behind a Cloudflare tunnel Cloudflare does it, so Caddy gets plain http and needs no certificate (ACME is how Caddy gets one).
 - **OAuth app.** To offer "sign in with GitHub", you register an application with GitHub. It gives you a *client id* (its name) and a *client secret* (its password). You tell it the *callback URL* it may send the browser back to.
-- **OpenID Connect (OIDC).** The same arrangement with Tinyauth as the provider and Gitea, Immich or pics as the apps. The *client secret* is a random value only that app and Tinyauth know.
+- **OpenID Connect (OIDC).** The same arrangement with Tinyauth as the provider and Gitea, Immich or a plugin as the apps. The *client secret* is a random value only that app and Tinyauth know.
 - **IdP header key.** (IdP: identity provider, here Tinyauth.) A header whose *name* is a secret (`vault_copyparty_idp_key`), added by Caddy on Copyparty's web address only. Copyparty trusts `Remote-User` only on requests that carry it, so the host port and the tunnel cannot claim to be a user.
 - **Hash and salt.** A hash is a one-way scramble of a password, so a config file can check a login without holding the password. A salt is random input so equal passwords hash differently. Some hashes here use a fixed salt, so the file does not change on every deploy.
 - **S3, bucket and access key.** S3 is Amazon's storage API, which Garage also answers. A bucket is a named container for objects. An access key is the id and secret an app signs in with.
@@ -74,7 +74,7 @@ You describe the desired state in YAML and a run makes each host match it. Each 
 
 - **`pre_tasks`.** Run first, tagged `always`. `site.yml` uses them to check the OS, that Docker is not a snap, and that every web service has a port or a name. They also check that every Tinyauth app has Tinyauth, Caddy and its vault secret.
 - **`teardown.yml`.** Refuses to run without `--limit`. Its `remove_data: false` is what `-e remove_data=true` overrides. One looped `include_tasks` of `teardown_service.yml` removes each entry of `services` (`-e only=a,b` picks some). With `remove_data=true` it deletes each data folder the service lists, then the service's own folder above them (`appdata/copyparty`) if that is empty. Without `-e confirm_remove_data=<host>` it stops first and prints the folders it would delete and the ones that stay (`stacks`).
-- **`import_*` vs `include_*`.** Ansible reads `import_role` and `import_tasks` when the playbook loads, so `--tags` reach inside. `include_*` runs at run time, and tags do not reach inside. The repo uses it only where a role runs mid-task (tailscale, pics).
+- **`import_*` vs `include_*`.** Ansible reads `import_role` and `import_tasks` when the playbook loads, so `--tags` reach inside. `include_*` runs at run time, and tags do not reach inside. The repo uses it only where `import_*` cannot: a loop over the plugins (`site.yml`, `update_plugins.yml`), teardown's loop over services, and a role called from the middle of another's tasks (Tailscale, `git_clone`).
 - **Role directories.**
 
   | Directory | Holds |

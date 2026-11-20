@@ -22,30 +22,13 @@ vault_copyparty_accounts:
     pass: "change-me-generate-with-openssl-rand-base64-32"
   - user: "friend2"
     pass: "change-me-generate-with-openssl-rand-base64-32"
-  # pics' login: the same password as pics' own env file.
-  - user: "pics"
-    pass: "{{ vault_pics_copyparty_password }}"
 # Who may use the folder /collab and with which permissions, {login: letters}, when a host's vars.yml reads it there
 # (copyparty_folders: collab: {access: "{{ vault_copyparty_collab_access }}"}) to keep user names out of the tracked file.
 vault_copyparty_collab_access: {friend1: rwmd, friend2: rwmd}
-# Only for pics_sso_enabled: the Tinyauth user names that may open pics, each a full owner. A host's vars.yml can read it
-# (service_users: {pics: "{{ vault_pics_users }}"}) to keep user names out of the tracked file.
-vault_pics_users: [yourusername]
 # Only used if copyparty_sso_enabled is true (vars.yml): the name of the header Caddy adds to the Copyparty web
 # address, which Copyparty expects (its idp-h-key setting). Hex only, because this becomes an HTTP header name and
 # base64's +, / and = are not allowed there: `openssl rand -hex 24`.
 vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
-# pics' password for its Copyparty login (the entry named pics in vault_copyparty_accounts):
-vault_pics_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
-# Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).
-# Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
-# "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
-# It expires after at most a year; set a reminder to renew it.
-vault_github_read_token: "github_pat_..."
-# pics: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
-vault_pics_password: "change-me-12-characters-minimum"
-# Signs pics' share links.
-vault_pics_secret_key: "change-me-generate-with-openssl-rand-base64-48"
 # Optional; leave empty to skip the Gitea runner.
 vault_gitea_runner_token: ""
 # Only used if gitea_sso_enabled is true (vars.yml): the client secret Tinyauth checks for Gitea's OpenID Connect login.
@@ -58,9 +41,6 @@ vault_immich_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 # exactly the permissions systemConfig.read and systemConfig.update, which the deploy uses to set Immich's sign-in, job
 # concurrency and transcode policy (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Create it in Immich after its first start.
 vault_immich_api_key: "change-me-create-in-immich"
-# Only used if pics_sso_enabled is true (vars.yml): the client secret Tinyauth checks for pics' OpenID Connect login.
-# Any long random string; `openssl rand -hex 24`.
-vault_pics_oidc_secret: "change-me-generate-with-openssl-rand-hex-24"
 # Shared secret for Garage's node-to-node RPC.
 vault_garage_rpc_secret: "change-me-generate-with-openssl-rand-hex-32"
 # Token for Garage's admin API.

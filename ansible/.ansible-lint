@@ -2,6 +2,8 @@
 exclude_paths:
   # Settings files, not playbooks: the linter has no rules for them.
   - group_vars/
+  # Plugins fetched from git are someone else's code, replaced on every deploy; the ones in plugins/ are linted (`just _lint`).
+  - plugins/.fetched/
 skip_list:
   # Role-private names such as `register: restic_init` are not worth a prefix; the shared
   # variables in group_vars are global by design.

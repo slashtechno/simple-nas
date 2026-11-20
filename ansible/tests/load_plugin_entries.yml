@@ -1,0 +1,17 @@
+---
+# Sets plugin_services from the service.yml files in entry_files, the way group_vars/all/plugins.yml does: written to a
+# vars file and loaded, so a {{ }} in an entry is templated when it is used (set_fact would keep it as plain text).
+- name: Make a place for the vars file
+  ansible.builtin.tempfile:
+    state: directory
+  register: plugin_entries_dir
+
+- name: Write the entries
+  ansible.builtin.copy:
+    content: "{{ {'plugin_services': query('ansible.builtin.file', *entry_files) | map('from_yaml') | list} | to_nice_yaml(indent=2, width=1000) }}"
+    dest: "{{ plugin_entries_dir.path }}/plugins.yml"
+    mode: "0644"
+
+- name: Load the entries
+  ansible.builtin.include_vars:
+    file: "{{ plugin_entries_dir.path }}/plugins.yml"

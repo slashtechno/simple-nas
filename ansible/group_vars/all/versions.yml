@@ -1,6 +1,7 @@
 ---
 # Every image version in one place. How to update one, and what a floating
 # tag does: ansible/README.md#update-service-images
+# A plugin's image version lives in the plugin's defaults.yml, and `just platforms` does not check it.
 
 # Immich: the server and machine-learning images must use the same version. Release notes https://github.com/immich-app/immich/releases
 immich_version: v3.1.0
@@ -17,9 +18,6 @@ copyparty_base_image: copyparty/iv:1.20.26
 garage_image: dxflrs/garage:v2.4.1
 garage_caddy_image: "caddy:{{ caddy_version }}-alpine"
 garage_webui_image: khairul169/garage-webui:1.1.0
-
-# Crafty: https://gitlab.com/crafty-controller/crafty-4/-/releases
-crafty_image: registry.gitlab.com/crafty-controller/crafty-4:4.11.0
 
 # Gitea and its runner: https://github.com/go-gitea/gitea/releases
 gitea_image: gitea/gitea:1.27.3
@@ -60,9 +58,6 @@ dozzle_image: amir20/dozzle:v11.4.0
 # Scrutiny (disk SMART dashboard), the Starosdev fork of AnalogJ/scrutiny: https://github.com/Starosdev/scrutiny/releases
 # Image tags have no "v". A release tags its image a few minutes after the GitHub release.
 scrutiny_image: ghcr.io/starosdev/scrutiny:1.79.1-omnibus
-
-# pics: git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
-pics_version: main
 
 # Zellij terminal multiplexer: https://github.com/zellij-org/zellij/releases
 # Static (musl) builds. The sha256 is of the .tar.gz, as GitHub shows it on the release page.
