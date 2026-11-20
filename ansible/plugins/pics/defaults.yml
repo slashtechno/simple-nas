@@ -1,7 +1,6 @@
 ---
 # pics, the photo culling and sharing app. The settings the rest of the repo reads; the role's own are in defaults/main.yml.
 
-# pics, the photo sharing app.
 pics_enabled: false
 # pics' owner login also accepts a Tinyauth login (docs/auth-reference.md#sign-in-with-tinyauth-oidc). Needs service_users.pics.
 pics_sso_enabled: false
@@ -21,5 +20,5 @@ pics_data_dir: "{{ fast_appdata_dir }}/pics/data"
 pics_photos_dir: "{{ primary_appdata_dir }}/pics/photos"
 # Where pics moves deleted photos; the only pics folder where files can be deleted (served as services/pics/trash).
 pics_trash_dir: "{{ primary_appdata_dir }}/pics/trash"
-# The pics app's drive alerts.
+# pics' own alerts (docs/services.md#ntfy-failure-alerts).
 pics_alert_to: ""
