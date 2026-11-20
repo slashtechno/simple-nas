@@ -12,7 +12,7 @@ mkdir -p "$work/group_vars/all" "$work/host_vars" "$work/plugins" "$work/tests"
 for f in "$source_dir"/group_vars/all/*; do
   case "$f" in */vars.yml | */vault.yml | */plugins.yml) ;; *) cp "$f" "$work/group_vars/all/" ;; esac
 done
-cp "$source_dir/ansible.cfg" "$source_dir/update_plugins.yml" "$work/"
+cp "$source_dir/ansible.cfg" "$source_dir/update_plugins.yml" "$source_dir/plugins_prepare.yml" "$work/"
 cp "$source_dir/tests/check_keys.yml" "$work/tests/"
 cp "$source_dir/host_vars/vars.yml.example" "$work/host_vars/"
 cp -R "$source_dir/roles" "$work/roles"
@@ -33,6 +33,8 @@ ok=$(run) || { echo "$ok" >&2; echo "FAIL: the generator failed on the template 
 [ -f group_vars/all/plugins.yml ] || { echo "FAIL: plugins.yml was not written" >&2; exit 1; }
 grep -q "if aaa_enabled | bool" group_vars/all/plugins.yml || { echo "FAIL: the {{ }} in an entry did not survive" >&2; exit 1; }
 rm -f group_vars/all/plugins.yml.bak
+run | grep -q "changed=0" || { echo "FAIL: a second run changed something (the file or a fetched plugin is not stable)" >&2; exit 1; }
+echo "ok: a second run changes nothing"
 
 value() { ansible localhost -m ansible.builtin.debug -a "msg={{ $1 | string }}" 2>/dev/null | sed -n 's/.*"msg": "\(.*\)".*/\1/p'; }
 keys="$(value "plugin_services | map(attribute='key') | join(',')")"

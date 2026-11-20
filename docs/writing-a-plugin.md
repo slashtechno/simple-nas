@@ -4,7 +4,7 @@ A plugin is a service this repo does not ship: a folder shaped like a role, pick
 
 ## Where things are
 
-- **Your computer (where you run `just`):** the plugin folders, in `ansible/plugins/<key>/`. `just plugins` also clones plugins from git here (into `ansible/plugins/.fetched/`, ignored by git) and writes `group_vars/all/plugins.yml`. Templates and settings are read and rendered here. It needs `git` and, for git plugins, the network.
+- **Your computer (where you run `just`):** the plugin folders, in `ansible/plugins/<key>/`. Every deploy, preview and teardown clones the plugins from git here (into `ansible/plugins/.fetched/`, ignored by git) and writes `group_vars/all/plugins.yml`. Templates and settings are read and rendered here. It needs `git` and, for a new or changed git plugin, the network.
 - **The host:** only what the plugin's tasks put there over SSH: the rendered `/opt/services/<compose>/docker-compose.yml`, folders, copied files. Nothing fetches plugin code on the host. A plugin that builds an app from its source clones the app's repository onto the host itself (see "Build from a git repository").
 
 ## Write one
@@ -140,7 +140,7 @@ A plugin fetched from git is not rendered by `just check`: `just preview` is its
 - Do not register a fact named `services` (`service_facts` does): it hides the services list.
 - Plugins are deployed after Garage and before the backup role, so a plugin can rely on everything before it.
 - The render test also loads `ansible/tests/fixture-plugin/`, a made-up service that covers the core's branches, so deleting a bundled plugin does not break `just check`.
-- `ansible/group_vars/all/plugins.yml` is generated and never edited. `just deploy`, `preview` and `teardown` write it first.
+- `ansible/group_vars/all/plugins.yml` is generated and never edited. Every deploy, preview and teardown writes it first. Ansible reads `group_vars` only when it starts, so a run that changed it stops once with "run the same command again"; the next run goes on.
 
 </details>
 
@@ -163,7 +163,7 @@ plugins:
 | `auth` | Optional. The name of a vault variable (in `group_vars/all/vault.yml`) holding an access token for a private repository. It is sent as a header, never stored in `.git/config`. For a forge that wants a particular user name, put it in the address: `https://alice@host/...`. |
 
 - `could not read Username` from `just plugins` means the repository is private and the token is missing, wrong or expired: git shows the same message for each. Tested against a Gitea server on a non-default port.
-- `just plugins` fetches every entry again (and `just deploy`, `preview` and `teardown` run it first), so the network is needed. It prints each plugin's source and commit.
+- A fetched plugin stays in `ansible/plugins/.fetched/` until its entry (commit, location or path) changes, so only a new or changed one needs the network. `just plugins` runs the same step alone and prints each plugin's source and commit.
 - A plugin kept in `ansible/plugins/` needs no entry and no commit: its files are in your repo, and git history is its pin. A key in both places is refused, so to use your own copy of a fetched plugin, remove the entry.
 - A copy of this repo keeps your `vars.yml`, including this list: [ansible/README.md](../ansible/README.md#using-this-repo-for-your-own-hosts).
 

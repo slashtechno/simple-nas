@@ -53,9 +53,9 @@ All commands run from `ansible/`.
 | `group_vars/all/services.yml` | yes | One entry per service: settings prefix, compose directory, data directories (backup coverage and teardown) and, for a web UI, the Homepage tile and Caddy container. |
 | `group_vars/all/derived.yml` | yes | Values worked out from the settings (`fast_drive`, `drive_mounts`, ...). Not settings. Not edited. |
 | `plugins/<key>/` | yes | A plugin you keep in this repo ([docs/writing-a-plugin.md](../docs/writing-a-plugin.md)); `plugin-template/` is the one to copy. |
-| `plugins/.fetched/`, `group_vars/all/plugins.yml` | no | Written by `just plugins`: the plugins fetched from git, and the entries and settings of every plugin. Never edited. |
+| `plugins/.fetched/`, `group_vars/all/plugins.yml` | no | Written by every deploy, preview and teardown: the plugins fetched from git, and the entries and settings of every plugin. Never edited. |
 
-Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CAUTION:` where changing it later has a consequence). Edit these files by hand; only `plugins.yml` is written by a tool (`just plugins`).
+Read a setting's file for its comment (what it does, `Allowed:`, `Default:`, `CAUTION:` where changing it later has a consequence). Edit these files by hand; only `plugins.yml` is written by a tool (every deploy).
 
 **Which value wins**, from first to last: a role's `defaults/main.yml`, the shared defaults files, `group_vars/all/vars.yml`, `host_vars/<host>/vars.yml`. Files in `group_vars/all/` load in name order, and the defaults files sort before `vars.yml`. `just check` enforces that.
 
@@ -179,7 +179,7 @@ The tracked `vars.yml` files hold the repo owner's values (domains, SSH public k
 | `just settings [word]` | Every setting with its default and whether a host sets it (needs `uv` for colour, `python3 tools/settings.py` otherwise) |
 | `just edit [vars\|vault] [--host H \| --all]` | Opens a vars or vault file in `$EDITOR`, decrypting and re-encrypting a vault (needs `uv`, but `ansible-vault edit --vault-password-file .vault-pass <file>` always works) |
 | `just setup <host>` | First-run setup for a host ([vault](#vault-secrets)) |
-| `just plugins` | Fetches the plugins in the `plugins` list, checks them with the ones in `plugins/`, and writes `group_vars/all/plugins.yml`; deploy, preview and teardown run it first |
+| `just plugins` | Fetches the plugins in the `plugins` list, checks them with the ones in `plugins/`, and writes `group_vars/all/plugins.yml`; deploy, preview and teardown do the same first, so run it alone only to see what a plugin would do |
 | `just deploy [tags] [flags]` | `site.yml`, e.g. `just deploy immich` or `just deploy '' --limit pinas -K` |
 | `just preview [tags] [flags]` | The same with `--check --diff`, which changes nothing |
 | `just teardown <host> [flags]` | `teardown.yml` for one host ([remove a service](#turn-off-or-remove-a-service)) |

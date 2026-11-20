@@ -15,7 +15,7 @@ cloudflare_zones:
 # gitea_root_url: "https://gitea.example.com/"
 # ntfy alerts: ntfy_destinations and one <sender>_alert_to name each, all off by default (docs/services.md#ntfy-failure-alerts).
 # Plugins fetched from git (docs/writing-a-plugin.md#from-a-git-repository); a plugin kept in ansible/plugins/ needs no entry.
-# Run `just plugins` after changing this list. A plugin runs as root on your hosts: read its code at the commit first.
+# The next deploy fetches a changed entry (and stops once: run it again). A plugin runs as root on your hosts: read its code at the commit first.
 #   key       the plugin's name (lower-case letters, digits, _); it must match the key in the plugin's service.yml
 #   location  an https git address
 #   commit    the full 40-character hash of the code to run; a tag or branch is refused because it can be moved.

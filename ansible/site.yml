@@ -1,7 +1,7 @@
 ---
 # Full deployment playbook.
-# Run with: just deploy (it runs `just plugins` first). With ansible-playbook directly, run `just plugins` before
-# the first deploy and after each change to plugins: without group_vars/all/plugins.yml a plugin's sites and backup are left out.
+# Run with: just deploy, or ansible-playbook site.yml. The first step fetches the plugins (docs/writing-a-plugin.md); when they changed, it
+# stops once and the same command is run again.
 #
 # One play over every server. The base roles (common, network) run everywhere, and so do storage and Tailscale unless their switches
 # (storage_enabled, tailscale_enabled; default true) are off; each service role runs where `<name>_enabled` is true, which host_vars/<host>/vars.yml sets
@@ -15,13 +15,22 @@
   become: true
 
   pre_tasks:
-    - name: Check the plugins were fetched and checked
-      ansible.builtin.assert:
-        that: plugin_services is defined
-        fail_msg: >-
-          group_vars/all/plugins.yml is missing, so the plugins would be left out of Caddy, Homepage and the backup.
-          Run `just plugins` (just deploy does).
-        quiet: true
+    # Ansible reads group_vars once, at start: a plugins.yml this changed is only read by the next run (docs/writing-a-plugin.md).
+    - name: Fetch and check the plugins   # noqa: run-once[task] one fetch on the control machine; the strategy is linear
+      ansible.builtin.import_tasks: plugins_prepare.yml
+      delegate_to: localhost
+      run_once: true
+      become: false
+      check_mode: false   # --check must fetch too
+      tags: [always]
+
+    - name: Stop when the plugins changed since this run started   # noqa: run-once[task] same reason as the fetch
+      ansible.builtin.fail:
+        msg: >-
+          The plugins changed, and group_vars/all/plugins.yml is rewritten now. Ansible reads it only at start: run the same command
+          again.
+      when: plugins_file_written is changed   # noqa: no-handler a handler cannot stop the run before the next task
+      run_once: true
       tags: [always]
 
     - name: Check the host runs a Debian-family OS

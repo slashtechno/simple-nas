@@ -70,7 +70,7 @@ platforms:
 check: _lint _syntax _vars _links _precedence _plugins _test
 
 # Fetch the plugins listed in `plugins` (vars.yml), check them with the ones in ansible/plugins/, and write group_vars/all/plugins.yml.
-# Deploy, preview and teardown run it first; run it alone to see what a plugin would do (docs/writing-a-plugin.md).
+# Deploy, preview and teardown do this themselves; run it alone to see what a plugin would do (docs/writing-a-plugin.md).
 plugins:
     ansible-playbook update_plugins.yml --vault-password-file .vault-pass
 

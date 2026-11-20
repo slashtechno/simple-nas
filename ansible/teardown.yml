@@ -18,8 +18,7 @@
 #   # Remove everything from one host
 #   ansible-playbook teardown.yml --limit pi4 --vault-password-file .vault-pass
 #
-#   # Remove specific services only (the keys in group_vars/all/services.yml, or a plugin's). For a plugin use `just teardown`,
-#   # which first runs `just plugins` so the service is known; this raw playbook never does.
+#   # Remove specific services only (the keys in group_vars/all/services.yml, or a plugin's)
 #   ansible-playbook teardown.yml --limit pi4 -e only=copyparty,garage --vault-password-file .vault-pass
 #
 #   # Remove only the backup scripts, the encryption scripts, the connectivity watchdog, the network config, the USB rule,
@@ -51,6 +50,25 @@
          | select | list }}
     delete_paths: "{{ query('ansible.builtin.vars', *delete_names) | map('regex_replace', '/+$', '') | list }}"
     keep_paths: "{{ query('ansible.builtin.vars', *(selected_services | map(attribute='keep', default=[]) | flatten | select | list)) }}"
+
+  # The plugins' services are removed like the built-in ones, so they must be known first (site.yml says why it may stop once).
+  pre_tasks:
+    - name: Fetch and check the plugins   # noqa: run-once[task] one fetch on the control machine; the strategy is linear
+      ansible.builtin.import_tasks: plugins_prepare.yml
+      delegate_to: localhost
+      run_once: true
+      become: false
+      check_mode: false
+      tags: [always]
+
+    - name: Stop when the plugins changed since this run started   # noqa: run-once[task] same reason as the fetch
+      ansible.builtin.fail:
+        msg: >-
+          The plugins changed, and group_vars/all/plugins.yml is rewritten now. Ansible reads it only at start: run the same command
+          again.
+      when: plugins_file_written is changed   # noqa: no-handler a handler cannot stop the run before the next task
+      run_once: true
+      tags: [always]
 
   tasks:
 
