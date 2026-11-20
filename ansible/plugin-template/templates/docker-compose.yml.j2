@@ -1,0 +1,22 @@
+# Ansible-managed — do not edit directly, edit the example_* settings and re-deploy.
+networks:
+  {{ docker_network }}:
+    external: true
+
+services:
+  example:
+    image: {{ example_image }}
+    container_name: example
+    restart: unless-stopped
+{% if example_port != '' %}
+    ports:
+      - "{{ example_port }}:80"
+{% endif %}
+    volumes:
+      # whoami keeps nothing; the mount shows where a service's data goes.
+      - {{ example_data_dir }}:/data
+    environment:
+      TZ: {{ timezone }}
+      WHOAMI_NAME: {{ example_name | to_json }}
+    networks:
+      - {{ docker_network }}

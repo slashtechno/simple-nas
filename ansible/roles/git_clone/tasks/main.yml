@@ -1,0 +1,34 @@
+---
+# Clone or update a git repository over https, optionally with an access token. A role of its own because including `common`
+# would also run its Docker dependency. The fetch of plugins (update_plugins.yml) and the pics role use it.
+# Call it with include_role (import_role would tag every inner task):
+#   - ansible.builtin.include_role:
+#       name: git_clone
+#     vars:
+#       git_clone_url: https://github.com/owner/name.git   # required
+#       git_clone_dest: /some/path                         # required
+#       git_clone_version: main                            # optional: branch, tag or commit
+#       git_clone_token: "{{ vault_example_token }}"       # optional
+#       git_clone_depth: 1                                 # optional: see defaults/main.yml
+# The result is in `git_clone_result`. To decide whether to rebuild, compare `.before` and `.after` (the commit
+# hashes); `.changed` also flips on a changed remote URL.
+
+- name: "Clone {{ git_clone_url }}"
+  ansible.builtin.git:
+    repo: "{{ git_clone_url }}"
+    dest: "{{ git_clone_dest }}"
+    version: "{{ git_clone_version }}"
+    depth: "{{ git_clone_depth if git_clone_depth | int > 0 else omit }}"
+  register: git_clone_result
+  # The token goes in through git's environment as an HTTP Basic header, so it is never written to .git/config or a command
+  # line. The header applies to the repository's own address only (scheme, host and port): git does not match a key without
+  # the port against a server on one. x-access-token is the user name GitHub documents; Gitea, GitLab and others take any
+  # name with a token. no_log is on only with a token, because Ansible would print it in a failure or at -vvv; a failed
+  # clone with a token then shows no git error: rerun the git clone by hand to see it.
+  environment: "{{ {'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': git_clone_header_key, 'GIT_CONFIG_VALUE_0': git_clone_header_value} if git_clone_token | length > 0 else {} }}"
+  vars:
+    git_clone_port: "{{ git_clone_url | urlsplit('port') }}"
+    git_clone_header_key: >-
+      http.{{ git_clone_url | urlsplit('scheme') }}://{{ git_clone_url | urlsplit('hostname') }}{{ (':' ~ git_clone_port) if git_clone_port else '' }}/.extraHeader
+    git_clone_header_value: "Authorization: Basic {{ ('x-access-token:' ~ git_clone_token) | b64encode }}"
+  no_log: "{{ git_clone_token | length > 0 }}"

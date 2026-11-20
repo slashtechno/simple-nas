@@ -83,7 +83,8 @@ def main():
     overrides = owner_overrides()
     shown = 0
     for path in DEFAULT_FILES:
-        rows = [row for row in top_level(path) if word in row[0]]
+        # plugin_services (group_vars/all/plugins.yml, written by `just plugins`) is the plugins' entries, not a setting.
+        rows = [row for row in top_level(path) if word in row[0] and row[0] != "plugin_services"]
         if not rows:
             continue
         if console:

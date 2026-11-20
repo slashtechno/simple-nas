@@ -37,11 +37,12 @@ vault_pics_users: [yourusername]
 vault_copyparty_idp_key: "change-me-generate-with-openssl-rand-hex-24"
 # pics' password for its Copyparty login (the entry named pics in vault_copyparty_accounts):
 vault_pics_copyparty_password: "change-me-generate-with-openssl-rand-base64-32"
-# Read-only token for cloning private GitHub repos onto the host (roles/github_clone/tasks/main.yml).
+# Read-only token pics uses to clone its private GitHub repo onto the host (roles/git_clone/tasks/main.yml). A plugin from a
+# private repository names its own token the same way (`auth` in the plugins list, docs/writing-a-plugin.md).
 # Create a fine-grained token at https://github.com/settings/personal-access-tokens/new: repository access
 # "Only select repositories" (just the one you need), permission Contents: Read-only, and nothing else.
 # It expires after at most a year; set a reminder to renew it.
-vault_github_read_token: "github_pat_..."
+vault_pics_repo_token: "github_pat_..."
 # pics: the owner login (12+ characters) and the key that signs share links (openssl rand -base64 48).
 vault_pics_password: "change-me-12-characters-minimum"
 # Signs pics' share links.

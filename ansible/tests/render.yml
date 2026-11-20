@@ -251,7 +251,7 @@
           - compose_service
           - connectivity_watchdog
           - encryption
-          - github_clone
+          - git_clone
           - network
           - pi
           - storage

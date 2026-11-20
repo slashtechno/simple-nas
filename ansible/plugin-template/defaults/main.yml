@@ -1,0 +1,5 @@
+---
+# Settings only this role reads go here. Settings anything else reads go in ../defaults.yml.
+
+# The text the example page shows.
+example_name: hello from a plugin

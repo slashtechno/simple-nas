@@ -4,6 +4,10 @@ ansible/host_vars/*/vault.yml
 ansible/inventory/hosts.yml
 .vault-pass*
 
+# Written by `just plugins`: the plugins fetched from git, and the settings and entries of every plugin
+ansible/plugins/.fetched/
+ansible/group_vars/all/plugins.yml
+
 # macOS and Python leftovers
 .DS_Store
 __pycache__/

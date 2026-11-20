@@ -1,0 +1,16 @@
+---
+# The settings other hosts or the core read: the switch, the Caddy name and port, the data folder, the image. They
+# are here (not in defaults/main.yml) because a role's own defaults are invisible to the rest of the repo.
+# Every setting has a comment above it and starts with the plugin's key. An owner overrides any of them in vars.yml or a host's vars.yml.
+
+# Switches the plugin on for a host: example_enabled: true in host_vars/<host>/vars.yml. Always false here.
+example_enabled: false
+# Host port; "" publishes none, and the service is only reached through its Caddy name.
+example_port: ""
+# The name under the private domain: example.<your domain>.
+example_subdomain: example
+# Where the service keeps its data. The backup covers it, and teardown removes it with remove_data=true. It must be
+# on a drive (docs/storage.md), or the deploy stops while backup_local_enabled is on.
+example_data_dir: "{{ primary_appdata_dir }}/example"
+# The container image (https://hub.docker.com/r/traefik/whoami/tags).
+example_image: traefik/whoami:v1.10.3

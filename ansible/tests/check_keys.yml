@@ -18,6 +18,10 @@
         repo + '/group_vars/all/vars.yml.example', repo + '/host_vars/vars.yml.example'] + defaults_files + shared_defaults_files }}
 
 - name: Every key in {{ real_file | basename }} must be declared somewhere
+  vars:
+    unknown: >-
+      {{ real_vars.keys() | list | difference(known_keys)
+         | reject('match', '^(' ~ (plugin_prefixes | default([]) | join('|') or '(?!)') ~ ')_') | list }}
   ansible.builtin.assert:
-    that: (real_vars.keys() | list | difference(known_keys)) | length == 0
-    fail_msg: "In {{ real_file }} but declared in no example or role defaults: {{ real_vars.keys() | list | difference(known_keys) }}"
+    that: unknown | length == 0
+    fail_msg: "In {{ real_file }} but declared in no example or role defaults: {{ unknown }}"

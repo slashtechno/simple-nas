@@ -40,7 +40,7 @@ The `common` role runs on every host. It:
 | [Copyparty](#copyparty-folders-and-logins) | File sharing | `roles/copyparty` | `primary` and `fast` drive roles, `vault_copyparty_accounts` with at least one `admin: true` login, `copyparty_folders` for folders besides the default `files` |
 | [Gitea](#gitea) | Git server | `roles/gitea` | `fast` drive role, `caddy_private_domains` or `gitea_root_url`, `vault_gitea_runner_token` optional |
 | [Homebridge](#homebridge) | HomeKit bridge | `roles/homebridge` | `fast` drive role |
-| [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/github_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_github_read_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
+| [pics](#pics-photo-culling-and-sharing) | Photo culling and sharing | `roles/pics`, `roles/git_clone` | `fast` and `primary` drive roles, Copyparty, `pics_repo`, `pics_public_url`, `vault_pics_repo_token`, `vault_pics_password`, `vault_pics_secret_key`, `vault_pics_copyparty_password` ([private repo](#clone-a-private-github-repo)) |
 | [Garage](#garage-s3) | S3-compatible object storage | `roles/garage` | `fast` and `primary` drive roles, a Caddy name, `tinyauth_enabled`, `vault_garage_rpc_secret`, `vault_garage_admin_token` |
 | [Crafty](#crafty-minecraft-servers) | Minecraft servers | `roles/crafty` | `primary` drive role, RAM headroom |
 | [ntfy](#ntfy-failure-alerts) | Push alerts for failed backups | `roles/ntfy` | `fast` drive role, `vault_ntfy_user`, `vault_ntfy_password`, `vault_ntfy_token` |
@@ -181,7 +181,7 @@ To change anything else, edit `copyparty.conf.j2` or the settings, then run `jus
 
 ## Clone a private GitHub repo
 
-Token: `vault_github_read_token`, a read-only fine-grained token scoped to the one repo (`vault.yml.example` says how). A role calls `roles/github_clone` with `repo` and `dest`. The token reaches git through its environment, so it is not stored in `.git/config`. If it expires the clone step fails: make a new one and update the vault.
+Token: `vault_pics_repo_token`, a read-only fine-grained token scoped to the one repo (`vault.yml.example` says how). A role calls `roles/git_clone` with a URL and `dest`. The token reaches git through its environment, so it is not stored in `.git/config`. If it expires the clone step fails: make a new one and update the vault.
 
 ## pics: photo culling and sharing
 
