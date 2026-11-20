@@ -96,8 +96,6 @@ ntfy_destinations: {}
 system_alert_to: ""
 # Scrutiny's drive alerts.
 scrutiny_alert_to: ""
-# The pics app's drive alerts.
-pics_alert_to: ""
 # The locked-folder alert after a reboot (unlock.sh).
 unlock_alert_to: ""
 # Folder on the host with one token file per alert that alert.sh sends (named after the sender). Here because teardown.yml removes

@@ -196,12 +196,6 @@
       tags: [homebridge]
       when: homebridge_enabled | bool
 
-    - name: Deploy pics
-      ansible.builtin.import_role:
-        name: pics
-      tags: [pics]
-      when: pics_enabled | bool
-
     - name: Deploy dockge
       ansible.builtin.import_role:
         name: dockge

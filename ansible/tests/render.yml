@@ -36,10 +36,10 @@
       loop: "{{ peer_plugin_files.files | map(attribute='path') | select('search', '/defaults[.]yml$') | reject('search', '/[.]fetched/') | sort }}"
 
     - name: Load the plugins' entries
-      ansible.builtin.set_fact:
-        plugin_services: >-
-          {{ query('ansible.builtin.file', *(peer_plugin_files.files | map(attribute='path') | select('search', '/service[.]yml$')
-             | reject('search', '/[.]fetched/') | sort)) | map('from_yaml') | list }}
+      ansible.builtin.include_tasks: load_plugin_entries.yml
+      vars:
+        entry_files: >-
+          {{ peer_plugin_files.files | map(attribute='path') | select('search', '/service[.]yml$') | reject('search', '/[.]fetched/') | sort }}
 
     - name: Turn on two services
       ansible.builtin.set_fact:
@@ -124,8 +124,9 @@
 
     # What `just plugins` would put in plugin_services: the template plugin and the plugins kept in this repo.
     - name: Add the plugins' entries to the services
-      ansible.builtin.set_fact:
-        plugin_services: "{{ query('ansible.builtin.file', *plugin_service_files) | map('from_yaml') | list }}"
+      ansible.builtin.include_tasks: load_plugin_entries.yml
+      vars:
+        entry_files: "{{ plugin_service_files }}"
 
     # Every service on, so every template renders. Branches behind other settings (Copyparty's folders, extra ports
     # and volumes, USB volumes; Crafty Bedrock; the Gitea runner; the optional Pics lines) are
@@ -503,15 +504,15 @@
     - name: Each app uses its service key as its Tinyauth client id
       vars:
         app_id_lines:
-          pics: ["roles/pics/templates/pics.env.j2", "HUB_OIDC_CLIENT_ID='pics'"]
+          pics: ["plugins/pics/templates/pics.env.j2", "HUB_OIDC_CLIENT_ID='pics'"]
           immich: ["roles/immich/tasks/main.yml", "'clientId': 'immich'"]
           gitea: ["roles/gitea/tasks/sso.yml", "--key gitea"]
       ansible.builtin.assert:
         that:
-          - app_id_lines.keys() | list | sort == core_services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
+          - app_id_lines.keys() | list | sort == services | selectattr('oidc', 'defined') | map(attribute='key') | list | sort
           - app_id_lines[item.key][1] in lookup('ansible.builtin.file', repo + '/' + app_id_lines[item.key][0])
         quiet: true
-      loop: "{{ core_services | selectattr('oidc', 'defined') | list }}"
+      loop: "{{ services | selectattr('oidc', 'defined') | list }}"
       loop_control:
         label: "{{ item.key }}"
 
@@ -975,7 +976,7 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - pics/templates/pics.env.j2
+        - ../plugins/pics/templates/pics.env.j2
 
     - name: The hosted topic keeps its https scheme and carries no token
       ansible.builtin.assert:
@@ -997,7 +998,7 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - pics/templates/pics.env.j2
+        - ../plugins/pics/templates/pics.env.j2
 
     - name: Neither file has an alert address
       ansible.builtin.assert:
@@ -1035,7 +1036,7 @@
         mode: "0644"
       loop:
         - scrutiny/templates/docker-compose.yml.j2
-        - pics/templates/pics.env.j2
+        - ../plugins/pics/templates/pics.env.j2
         - common/templates/alert.sh.j2
 
     - name: Each sender uses its own URL and token
@@ -1179,14 +1180,14 @@
 
     - name: Render the four templates that carry them
       ansible.builtin.template:
-        src: "{{ repo }}/roles/{{ item }}/templates/docker-compose.yml.j2"
+        src: "{{ repo }}/{{ 'plugins' if item == 'pics' else 'roles' }}/{{ item }}/templates/docker-compose.yml.j2"
         dest: "{{ out_dir }}/oidc-off/{{ item }}/docker-compose.yml"
         mode: "0644"
       loop: [tinyauth, caddy, gitea, immich]
 
     - name: Render pics' settings file without its OIDC login
       ansible.builtin.template:
-        src: "{{ repo }}/roles/pics/templates/pics.env.j2"
+        src: "{{ repo }}/plugins/pics/templates/pics.env.j2"
         dest: "{{ out_dir }}/oidc-off/pics/pics.env"
         mode: "0644"
 

@@ -14,3 +14,5 @@ pics_artist: ""
 # start with http:// or https://; `watermark: false` keeps the text off photos.
 # For example [{text: example.com, url: "https://example.com", watermark: true}]. Links saved in pics' Settings are used when this is empty.
 pics_links: []
+# Git branch, tag or commit of the private repo. `main` builds the latest commit on each deploy; set a tag or commit when a stable build matters.
+pics_version: main

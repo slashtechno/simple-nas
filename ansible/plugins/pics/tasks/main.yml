@@ -23,7 +23,7 @@
     fail_msg: >-
       pics stores photos in Copyparty. On {{ inventory_hostname }} set copyparty_enabled: true and add the folders services/pics/photos and
       services/pics/trash to copyparty_folders, with dir pics_photos_dir and pics_trash_dir, which the backup covers.
-      Neither may have root: true: pics reaches them at /services/pics/photos and /services/pics/trash (docs/services.md#pics-photo-culling-and-sharing).
+      Neither may have root: true: pics reaches them at /services/pics/photos and /services/pics/trash (plugins/pics/README.md).
     quiet: true
 
 - name: Create pics directories

@@ -72,11 +72,6 @@ core_services:
      container: gitea, container_port: 3000, login: tinyauth, icon: gitea, description: Git, tile_url: gitea_root_url,
      oidc_secret: vault_gitea_oidc_secret,
      oidc: ["https://{{ gitea_root_url | default('') | urlsplit('hostname') }}/user/oauth2/tinyauth/callback"]}
-  - {name: pics, key: pics, compose: pics, data: [pics_data_dir, pics_photos_dir, pics_trash_dir],
-     container: pics, container_port: 8000, login: tinyauth_users, alert_to: true, icon: mdi-image-multiple, description: Photo culling and sharing,
-     oidc_secret: vault_pics_oidc_secret,
-     oidc: "{{ (caddy_private_domains | map('regex_replace', '^', 'https://' ~ pics_subdomain ~ '.') | list + pics_extra_origins)
-               | map('regex_replace', '$', '/api/auth/oidc/callback') | list }}"}
   - {name: Homebridge, key: homebridge, compose: homebridge, data: [homebridge_data_dir],
      port: 8581, icon: homebridge, description: HomeKit}
   # Dockge's stacks are yours: teardown removes Dockge's own database, never dockge_stacks_dir.
