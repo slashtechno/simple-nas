@@ -38,6 +38,12 @@
     # The container runs as uid 10001 and must own its data folder
     - { path: "{{ pics_data_dir }}", owner: "10001" }
 
+- name: Check pics_commit is a full commit hash
+  ansible.builtin.assert:
+    that: pics_commit is match('^[0-9a-f]{40}$')
+    fail_msg: pics_commit must be the full 40-character commit hash, not a branch or tag, because those can be moved.
+    quiet: true
+
 # include_role, not import_role (AGENTS.md exception): import_role would tag every inner task of git_clone.
 - name: Fetch the pics source
   ansible.builtin.include_role:
@@ -45,7 +51,7 @@
   vars:
     git_clone_url: "https://github.com/{{ pics_repo }}.git"
     git_clone_dest: "{{ services_dir }}/pics/src"
-    git_clone_version: "{{ pics_version }}"
+    git_clone_version: "{{ pics_commit }}"
     git_clone_token: "{{ vault_pics_repo_token }}"
 
 - name: Render pics.env

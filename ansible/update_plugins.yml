@@ -14,24 +14,23 @@
     plugins_dir: "{{ playbook_dir }}/plugins"
     fetched_dir: "{{ playbook_dir }}/plugins/.fetched"
     plugins_file: "{{ playbook_dir }}/group_vars/all/plugins.yml"
-    # A commit hash cannot be fetched shallow; a branch or tag can.
-    commit_hash: '^[0-9a-f]{7,40}$'
   tasks:
     - name: Check the plugins list
       ansible.builtin.assert:
         that:
           - plugins is sequence and plugins is not string
-          - item.keys() | difference(['key', 'location', 'version', 'path', 'auth']) | length == 0
+          - item.keys() | difference(['key', 'location', 'commit', 'path', 'auth']) | length == 0
           - item.key | default('') is match('^[a-z][a-z0-9_]*$')
           - item.location | default('') is match('^https://[^/ ]+/.')
-          - item.version | default('') | string | length > 0
+          - item.commit | default('') | string is match('^[0-9a-f]{40}$')
           - item.path | default('') is not search('^/|(^|/)[.][.](/|$)')
           - item.auth is not defined or lookup('ansible.builtin.vars', item.auth, default='') | string | length > 0
         fail_msg: >-
           The plugins entry {{ item }} is wrong. It needs key (lower-case letters, digits and _), location (an https git
-          address) and version (a tag, commit or branch), and may have path (a folder inside the repository, not leaving it)
+          address) and commit (the full 40-character hash, never a tag or branch: those can be moved), and may have
+          path (a folder inside the repository, not leaving it)
           and auth (the name of a vault variable that holds a token, which must be in the vault). Nothing else is allowed
-          (docs/writing-a-plugin.md#from-a-git-repository).
+          (docs/writing-a-plugin.md#from-a-git-repository). Get a hash with: git ls-remote <location> <tag or branch>.
         quiet: true
       loop: "{{ plugins }}"
       loop_control:
@@ -62,9 +61,8 @@
       vars:
         git_clone_url: "{{ item.location }}"
         git_clone_dest: "{{ fetched_dir }}/.src/{{ item.key }}"
-        git_clone_version: "{{ item.version }}"
+        git_clone_version: "{{ item.commit }}"
         git_clone_token: "{{ lookup('ansible.builtin.vars', item.auth) if item.auth is defined else '' }}"
-        git_clone_depth: "{{ 0 if item.version | string is match(commit_hash) else 1 }}"
       loop: "{{ plugins }}"
       loop_control:
         label: "{{ item.key }}"
@@ -114,8 +112,8 @@
       ansible.builtin.assert:
         that: (fetched_dir ~ '/' ~ item.key ~ '/service.yml') in service_files
         fail_msg: >-
-          {{ item.location }} at {{ item.version }}{{ ' in ' ~ item.path if item.path is defined else '' }} has no service.yml,
-          so it is no plugin: check location, version and path of the plugins entry {{ item.key }}.
+          {{ item.location }} at {{ item.commit }}{{ ' in ' ~ item.path if item.path is defined else '' }} has no service.yml,
+          so it is no plugin: check location, commit and path of the plugins entry {{ item.key }}.
         quiet: true
       loop: "{{ plugins }}"
       loop_control:
@@ -283,7 +281,7 @@
         sources: "{{ dict(plugins | map(attribute='key') | zip(plugins)) }}"
       ansible.builtin.debug:
         msg: >-
-          {{ item.service.key }}: {{ (sources[item.service.key].location ~ ' ' ~ sources[item.service.key].version ~ ' (' ~ commits[item.service.key] ~ ')')
+          {{ item.service.key }}: {{ (sources[item.service.key].location ~ ' at ' ~ commits[item.service.key])
              if item.fetched else 'plugins/' ~ item.folder }}; login: {{ item.service.login | default('none (Tinyauth in front)') }}
       loop: "{{ found | default([]) | sort(attribute='service.key') }}"
       loop_control:

@@ -68,5 +68,9 @@ fails "aaa_typo" "a setting no plugin declares in vars.yml"
 printf '%s\n' 'aaa_port: 8080' > group_vars/all/vars.yml
 run >/dev/null || { echo "FAIL: a plugin's own setting in vars.yml was refused" >&2; exit 1; }
 echo "ok: a plugin's setting in vars.yml is accepted"
-printf '%s\n' 'plugins: [{key: x, location: "http://example.com/x", version: v1}]' > group_vars/all/vars.yml
+printf '%s\n' 'plugins: [{key: x, location: "http://example.com/x", commit: "0000000000000000000000000000000000000000"}]' > group_vars/all/vars.yml
 fails "The plugins entry" "a plugin location that is not https"
+printf '%s\n' 'plugins: [{key: x, location: "https://example.com/x", commit: v1.0.0}]' > group_vars/all/vars.yml
+fails "The plugins entry" "a tag instead of a commit hash"
+printf '%s\n' 'plugins: [{key: x, location: "https://example.com/x", commit: abc1234}]' > group_vars/all/vars.yml
+fails "The plugins entry" "a short hash instead of the full commit hash"

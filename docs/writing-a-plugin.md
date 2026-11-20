@@ -43,11 +43,11 @@ A plugin in a git repository is listed in `ansible/group_vars/all/vars.yml` (eve
 
 ```yaml
 plugins:
-  - {key: myservice, location: "https://git.example.com/you/myservice", version: v1.0.0, auth: vault_myservice_repo_token}
-  - {key: other, location: "https://github.com/someone/plugins", version: v1.2.0, path: other}
+  - {key: myservice, location: "https://git.example.com/you/myservice", commit: "0123456789abcdef0123456789abcdef01234567", auth: vault_myservice_repo_token}
+  - {key: other, location: "https://github.com/someone/plugins", commit: "89abcdef0123456789abcdef0123456789abcdef", path: other}
 ```
 
-- `location` is an https git address, `version` a tag, commit or branch. Pin a tag or commit for anything that is not yours.
+- `location` is an https git address, `commit` the full 40-character hash of the exact code to run. A tag or branch is refused because its owner can move it, and plugin code runs as root on your hosts. Get the hash with `git ls-remote <location> <tag or branch>`, read the code at that commit, and update the hash only after reading the changes.
 - `path` is the folder inside the repository that holds the plugin, for a repository with several. Without it the repository root is the plugin. The `key` here is the role name, whatever the folder is called there.
 - `auth` names a vault variable (in `group_vars/all/vault.yml`) holding an access token for a private repository. It is sent as a header, never stored in `.git/config`. For a forge that wants a particular user name, put it in the address: `https://alice@host/...`.
 - `just plugins` fetches every entry again (and `just deploy`, `preview` and `teardown` run it first), so the network is needed and a moved branch is picked up. It prints each plugin's source and commit.
