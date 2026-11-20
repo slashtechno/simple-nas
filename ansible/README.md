@@ -135,18 +135,20 @@ Raspberry Pi OS only. Ansible leaves it alone because its sign-in needs a short-
 
 Every part is a switch in `host_vars/<host>/vars.yml`, and a service you leave off is not touched. On a Raspberry Pi, `pi_enabled: auto` still edits the kernel command line, so set it to `false` to skip. The `common` role ([what it does](../docs/services.md#every-host)) and the `network` role (the shared Docker network and the direct link) always run. Three example hosts:
 
-Three example hosts, each a host's `vars.yml`:
+Three example hosts, each a host's `vars.yml`. **Everything:** turn on the services in [docs/services.md](../docs/services.md) (each `<name>_enabled: true`).
+
+**Bare minimum:** drives, remote access and backups, no service containers. Run your own software however you like.
 
 ```yaml
-# Everything: turn on the services in docs/services.md (each <name>_enabled: true).
-
-# Bare minimum: drives, remote access and backups, no service containers. Run your own software however you like.
 tailscale_enabled: true            # the default; pi_enabled is auto, so a Pi also gets its memory cgroup
 backup_local_enabled: true
 drives:
   - { uuid: "1111-AAAA", mount: /mnt/data, roles: [fast, backup] }
+```
 
-# Dockge and Cloudflare: you write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+**Dockge and Cloudflare:** you write the compose stacks in Dockge; Ansible keeps Docker, the tunnel and the backups.
+
+```yaml
 dockge_enabled: true               # keeps its stacks on the `fast` drive
 cloudflared_enabled: true
 cloudflared_ingress:
@@ -268,9 +270,9 @@ A service you want to keep out of the core files, or share, is a [plugin](../doc
        image: "{{ myservice_image }}"
        container_name: myservice
        restart: unless-stopped
-       networks: [services]
+       networks: ["{{ docker_network }}"]       # the shared network, `services`
    networks:
-     services:
+     "{{ docker_network }}":
        external: true
    ```
 3. `tasks/main.yml`: create the data dirs, then `import_role: compose_service` with `compose_service_name: myservice` (copy `roles/gitea`). A service that builds its own image or restarts on config changes writes its own tasks instead: copy `roles/backup_status`, the smallest.
