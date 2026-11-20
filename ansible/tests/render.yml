@@ -149,8 +149,8 @@
     - name: Turn on Copyparty's optional volumes and listeners
       ansible.builtin.set_fact:
         # one list of logins: the admin and the people and the app have a password, owner signs in through Tinyauth only
-        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}, {'user': 'pics', 'pass': 'app-login-password'}] }}"
-        # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and pics has its two folders
+        vault_copyparty_accounts: "{{ vault_copyparty_accounts + [{'user': 'owner', 'admin': true}, {'user': 'myapp', 'pass': 'app-login-password'}] }}"
+        # people and an app in one model: friend1 and friend2 write in collab, friend1 only reads team, and myapp has its two folders
         copyparty_folders:
           files: {root: true, access: {friend2: r}}
           collab: {access: {friend1: rwmd, friend2: rwmd}}
@@ -158,8 +158,8 @@
           # * is everyone and @acct is every login: both render as logins
           public: {access: {"*": r, "@acct": w}}
           # a dir written out: set_fact resolves it now, before this test host has a primary drive
-          services/pics/photos: {dir: /mnt/primary/appdata/pics/photos, access: {pics: rwm}}
-          services/pics/trash: {dir: /mnt/primary/appdata/pics/trash, access: {pics: rwmd}}
+          services/myapp/photos: {dir: /mnt/primary/appdata/myapp/photos, access: {myapp: rwm}}
+          services/myapp/trash: {dir: /mnt/primary/appdata/myapp/trash, access: {myapp: rwmd}}
         copyparty_extra_conf: "[global]\n  sftp: 3922"
         copyparty_extra_ports: ["3922:3922"]
         copyparty_extra_volumes: ["/mnt/fast/shared:/fast:ro"]
@@ -739,20 +739,20 @@
           # No dir: inside copyparty_shared_dir. A dir: that directory.
           - "(copyparty_shared_dir ~ '/files:/vol/files:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "(copyparty_shared_dir ~ '/collab:/vol/collab:rw') in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          - "'/mnt/primary/appdata/pics/photos:/vol/services/pics/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
-          # An app is a login like any other: pics has no delete in the photos and has it in the trash.
+          - "'/mnt/primary/appdata/myapp/photos:/vol/services/myapp/photos:rw' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
+          # An app is a login like any other: myapp has no delete in the photos and has it in the trash.
           - >-
-            '[/services/pics/photos]\n  /vol/services/pics/photos\n  accs:\n    A: yourusername\n    A: owner\n    rwm: pics\n'
+            '[/services/myapp/photos]\n  /vol/services/myapp/photos\n  accs:\n    A: yourusername\n    A: owner\n    rwm: myapp\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
-          # services and services/pics are no folders, so each is a read-only volume for the logins in its children's access.
+          # services and services/myapp are no folders, so each is a read-only volume for the logins in its children's access.
           - >-
-            '[/services]\n  /vol/services\n  accs:\n    r: yourusername\n    r: owner\n    r: pics\n  flags:\n    -e2d\n'
+            '[/services]\n  /vol/services\n  accs:\n    r: yourusername\n    r: owner\n    r: myapp\n  flags:\n    -e2d\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
           - >-
-            '[/services/pics]\n  /vol/services/pics\n  accs:\n    r: yourusername\n    r: owner\n    r: pics\n  flags:\n    -e2d\n'
+            '[/services/myapp]\n  /vol/services/myapp\n  accs:\n    r: yourusername\n    r: owner\n    r: myapp\n  flags:\n    -e2d\n'
             in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')
-          - "'    rwmd: pics\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
-          - "'  pics: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'    rwmd: myapp\n' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
+          - "'  myapp: ' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'/apps' not in lookup('ansible.builtin.file', out_dir ~ '/copyparty/copyparty.conf')"
           - "'- /mnt/fast/shared:/fast:ro' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"
           - "'\"3922:3922\"' in lookup('ansible.builtin.file', out_dir ~ '/copyparty/docker-compose.yml')"

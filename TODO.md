@@ -7,8 +7,6 @@ The owner's list: work that needs their time or hardware, or that lives outside 
 - Drive unplug tests: boot with a drive unplugged, unplug one while running, run a backup with the backup drive unplugged ([storage.md](./docs/storage.md#how-a-drive-is-mounted)) — waits for: someone at the host.
 - A USB drive plugged into a host with `usb_automount_enabled: true` appears under `/run/media/system/<label>` and in Copyparty's `/drives` — waits for: a plug-in.
 - The direct Ethernet link on Ubuntu Server ([networking.md](./docs/networking.md#direct-ethernet-link)) — waits for: an Ubuntu Server host and a cable to a laptop.
-- Move pics to its own GitHub repo: set `pics_repo` to it and change `build: ./src/local/pics` in `plugins/pics/templates/docker-compose.yml.j2` to `./src` — waits for: the owner creating the repo.
-- A pics `archive_dir` option, with its path under a drive that has a role so the backup covers it — waits for: the owner writing it in the pics repository.
 - Delete the stale `pi-nas-runner` entry in Gitea — waits for: a few minutes in Gitea's admin page.
 - Drive migration: [plans/drive-migration.md](./plans/drive-migration.md) — waits for: the new drive passing its vetting.
 - Encryption at rest: run each folder's real workload through a mounted folder on pi4 before listing it, starting with `stacks` (writes ran at 3 to 5 MB/s in a plain copy test; [encryption.md](./docs/encryption.md#which-folders-to-list)) — waits for: choosing which folders to list.

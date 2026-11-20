@@ -1,5 +1,0 @@
----
-- name: Restart pics
-  community.docker.docker_compose_v2:
-    project_src: "{{ services_dir }}/pics"
-    state: restarted

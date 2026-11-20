@@ -9,8 +9,13 @@ ssh_authorized_keys:
 cloudflare_zones:
   slashtechno.com: 4c2f7e1b060532aac3b3c7e408153222
   angad.me: f0cf329b896c61d1f5bc2a4c53c03647
-pics_repo: slashtechno/lab
-pics_commit: "3e25d29c24017b46e36a772af9828d9aad243048"
+# Plugins fetched from git (docs/writing-a-plugin.md#from-a-git-repository). pics and the app it builds are one repository.
+plugins:
+  - key: pics
+    location: https://github.com/slashtechno/lab
+    path: local/pics/plugin
+    commit: "d32a571e68da27673b481f3b4118945f9780af32"
+    auth: vault_pics_repo_token
 pics_public_url: "https://pics.angad.me"
 gitea_root_url: "https://git.slashtechno.com/"
 # Alerts from every host go to the ntfy on pi4 (docs/services.md#ntfy-failure-alerts).

@@ -1,6 +1,6 @@
 # Writing and using a plugin
 
-A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty and pics are plugins (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. A plugin runs as root on your hosts, and its `service.yml` and `defaults.yml` are also templated on your computer, where Jinja can run commands and your vault is open: read a third party's plugin before you list it, and again before you change its commit. The fields of `service.yml` and the variables a plugin can use are in [plugin-reference.md](./plugin-reference.md).
+A plugin is a service this repo does not ship: a folder shaped like a role, picked up without editing any core file. Crafty is a plugin (`ansible/plugins/`); copy the one closest to yours, or `ansible/plugin-template/`. A plugin runs as root on your hosts, and its `service.yml` and `defaults.yml` are also templated on your computer, where Jinja can run commands and your vault is open: read a third party's plugin before you list it, and again before you change its commit. The fields of `service.yml` and the variables a plugin can use are in [plugin-reference.md](./plugin-reference.md).
 
 ## Where things are
 
