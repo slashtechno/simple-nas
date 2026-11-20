@@ -300,37 +300,30 @@
           nor a role listed in not_services in tests/render.yml.
         quiet: true
 
+    # The plugins have no task of their own: one looped task deploys each, and `just deploy <key>` and `--tags plugins` rely on
+    # its tags, so the last four checks read that task.
     - name: Every service is deployed by site.yml with its tag and its flag
       vars:
         site_tasks: "{{ (site_yml.content | b64decode | from_yaml)[0].tasks }}"
         deploys: "{{ site_tasks | selectattr('tags', 'defined') | selectattr('tags', 'contains', item.key) | list }}"
+        site_text: "{{ site_yml.content | b64decode }}"
       ansible.builtin.assert:
         that:
           - deploys | length == 1
           - deploys[0]['ansible.builtin.import_role'].name == item.key
           - deploys[0].when == item.key ~ '_enabled | bool'
+          - site_text is search('loop[:] .[{][{] plugin_services [}][}].')
+          - site_text is search('name[:] .[{][{] item.key [}][}].')
+          - site_text is search('tags[:] \\[.[{][{] item.key [}][}]., plugins\\]')
+          - site_text is search('item.key ~ ._enabled.\\) \\| bool\\n +tags[:] \\[always\\]')
         fail_msg: >-
           site.yml needs one task for {{ item.key }}: import_role name {{ item.key }}, tags [{{ item.key }}],
-          when: {{ item.key }}_enabled | bool
+          when: {{ item.key }}_enabled | bool; and a loop over plugin_services with include_role of item.key, apply tags
+          [item.key, plugins], a when on the flag and tags [always] (docs/writing-a-plugin.md)
         quiet: true
       loop: "{{ core_services }}"
       loop_control:
         label: "{{ item.key }}"
-
-    # The plugins have no task of their own: one looped task deploys each, and `just deploy <key>` and `--tags plugins` rely on its tags.
-    - name: site.yml deploys the plugins with their key and the tag plugins
-      vars:
-        site_text: "{{ site_yml.content | b64decode }}"
-      ansible.builtin.assert:
-        that:
-          - site_text is search('loop[:] .[{][{] plugin_services [}][}].')
-          - site_text is search('name[:] .[{][{] item.key [}][}].')
-          - site_text is search('tags[:] \[.[{][{] item.key [}][}]., plugins\]')
-          - site_text is search('item.key ~ ._enabled.\) \| bool\n +tags[:] \[always\]')
-        fail_msg: >-
-          site.yml must loop over plugin_services with include_role of item.key, apply tags [item.key, plugins], a when on the
-          flag and tags [always] (docs/writing-a-plugin.md).
-        quiet: true
 
     # The vault names are written out in services.yml, so tools/check_vars.py checks they are documented; the switch
     # name is built from the key, so check it here.
