@@ -184,6 +184,14 @@ copyparty_extra_conf: |
 
 - **One folder only:** mount the folder, not the whole drive. A drive root can hold `appdata` (database passwords, tokens) and the restic repository. Never give a volume write access to either.
 - **Locked folders:** a folder in an [encrypted folder](./encryption.md) looks empty until you unlock it. The unlock restarts Copyparty.
+- **Quick, no deploy:** a symlink in a served folder dangles inside the container, so bind-mount the host folder onto an empty directory there. It lasts until a reboot or an unlock. A read-only mount refuses deletes; with writes, `rm -r` on the mount point deletes the host folder's files, so unmount first.
+
+  ```bash
+  sudo mount --bind -o ro <host folder> <served folder>/<name>   # without ro, Copyparty can write
+  docker restart copyparty
+  sudo mount -o remount,bind,ro <served folder>/<name>           # make a writable mount read-only again
+  sudo umount <served folder>/<name> && rmdir <served folder>/<name>   # undo
+  ```
 
 To change anything else, edit `copyparty.conf.j2` or the settings, then run `just deploy copyparty`.
 
