@@ -23,6 +23,8 @@ tinyauth_enabled: true
 dozzle_enabled: true
 # Reconnect the Wi-Fi when it stays up but nothing can connect out (docs/networking.md#connectivity-watchdog).
 connectivity_watchdog_enabled: true
+# A cable from the idle eth0 straight to a laptop; the host is managed over Wi-Fi (docs/networking.md#direct-ethernet-link).
+direct_link_enabled: true
 
 copyparty_enabled: true
 # The admins' files stay in the encrypted /mnt/apps/files (docs/services.md#copyparty-folders-and-logins).
